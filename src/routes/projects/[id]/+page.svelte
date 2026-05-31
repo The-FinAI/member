@@ -58,6 +58,27 @@
   // new-need form
   let nRole = $state(''); let nSkill = $state(''); let nLevel = $state(''); let nCount = $state(1); let nDesc = $state('');
 
+  // ---- records / meetings / history ----
+  type Link = { id: string; kind: string; title: string; url: string; notes: string | null; created_at: string; member: { full_name: string } | null };
+  type Meeting = { id: string; title: string; scheduled_at: string; ends_at: string | null; location: string | null; agenda: string | null; member: { full_name: string } | null };
+  type Event = { id: string; event_type: string; summary: string; created_at: string; member: { full_name: string } | null };
+
+  let links = $state<Link[]>([]);
+  let meetings = $state<Meeting[]>([]);
+  let events = $state<Event[]>([]);
+  const iParticipate = $derived(participants.some((x) => x.member_id === $member?.id));
+  const canContribute = $derived(iManage || iParticipate);
+
+  const LINK_KINDS = ['proposal', 'overleaf', 'openreview', 'paper', 'repo', 'dataset', 'slides', 'drive', 'media', 'other'];
+  // add-link form
+  let lKind = $state('proposal'); let lTitle = $state(''); let lUrl = $state(''); let lNotes = $state('');
+  let addingLink = $state(false);
+  // add-meeting form
+  let mTitle = $state(''); let mAt = $state(''); let mEnds = $state(''); let mLoc = $state(''); let mAgenda = $state('');
+  let addingMeeting = $state(false);
+  // manual note
+  let noteText = $state('');
+
   // resources
   let resTypes = $state<ResType[]>([]);
   let resRequests = $state<ResRequest[]>([]);
@@ -159,6 +180,22 @@
     } else {
       settlementItems = [];
     }
+
+    // records / meetings / history
+    const [{ data: lk }, { data: mt }, { data: ev }] = await Promise.all([
+      supabase.from('project_link')
+        .select('id, kind, title, url, notes, created_at, member:added_by(full_name)')
+        .eq('project_id', id).order('created_at', { ascending: false }),
+      supabase.from('project_meeting')
+        .select('id, title, scheduled_at, ends_at, location, agenda, member:created_by(full_name)')
+        .eq('project_id', id).order('scheduled_at', { ascending: false }),
+      supabase.from('project_event')
+        .select('id, event_type, summary, created_at, member:actor_member_id(full_name)')
+        .eq('project_id', id).order('created_at', { ascending: false }).limit(100)
+    ]);
+    links = (lk as Link[]) ?? [];
+    meetings = (mt as Meeting[]) ?? [];
+    events = (ev as Event[]) ?? [];
 
     // seed the settlement builder defaults from participants (by role payout_weight)
     if (iManage && !settlement) {
@@ -266,6 +303,77 @@
     return resOffers.filter((o) => o.request_id === requestId);
   }
 
+  async function addLink() {
+    error = '';
+    if (!lTitle.trim() || !lUrl.trim()) { error = 'Title and URL are required.'; return; }
+    let url = lUrl.trim();
+    if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+    addingLink = true;
+    const { error: err } = await supabase.from('project_link').insert({
+      project_id: id, kind: lKind, title: lTitle.trim(), url, notes: lNotes.trim() || null
+    });
+    addingLink = false;
+    if (err) { error = err.message; return; }
+    lTitle = ''; lUrl = ''; lNotes = ''; lKind = 'proposal';
+    await load();
+  }
+
+  async function deleteLink(linkId: string) {
+    error = '';
+    const { error: err } = await supabase.from('project_link').delete().eq('id', linkId);
+    if (err) { error = err.message; return; }
+    await load();
+  }
+
+  async function addMeeting() {
+    error = '';
+    if (!mTitle.trim() || !mAt) { error = 'Meeting title and time are required.'; return; }
+    addingMeeting = true;
+    const { error: err } = await supabase.from('project_meeting').insert({
+      project_id: id, title: mTitle.trim(), scheduled_at: new Date(mAt).toISOString(),
+      ends_at: mEnds ? new Date(mEnds).toISOString() : null,
+      location: mLoc.trim() || null, agenda: mAgenda.trim() || null
+    });
+    addingMeeting = false;
+    if (err) { error = err.message; return; }
+    mTitle = ''; mAt = ''; mEnds = ''; mLoc = ''; mAgenda = '';
+    await load();
+  }
+
+  async function deleteMeeting(meetingId: string) {
+    error = '';
+    const { error: err } = await supabase.from('project_meeting').delete().eq('id', meetingId);
+    if (err) { error = err.message; return; }
+    await load();
+  }
+
+  async function postNote() {
+    error = '';
+    if (!noteText.trim() || !$member) return;
+    const { error: err } = await supabase.from('project_event').insert({
+      project_id: id, actor_member_id: $member.id, event_type: 'note', summary: noteText.trim()
+    });
+    if (err) { error = err.message; return; }
+    noteText = '';
+    await load();
+  }
+
+  function linkHost(u: string) {
+    try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return u; }
+  }
+  function fmt(ts: string) { return new Date(ts).toLocaleString(); }
+  function isUpcoming(ts: string) { return new Date(ts).getTime() > Date.now(); }
+
+  const EVENT_ICON: Record<string, string> = {
+    project_created: '◆', status_changed: '⇄', member_joined: '＋', need_posted: '⊕',
+    application_accepted: '✓', stake_committed: '◇', record_added: '🔗', meeting_scheduled: '◷',
+    note: '✎'
+  };
+  function eventIcon(t: string) {
+    if (t.startsWith('settlement_')) return '⚖';
+    return EVENT_ICON[t] ?? '•';
+  }
+
   onMount(load);
 
   async function apply(needId: string) {
@@ -337,6 +445,92 @@
       {#if iManage && project.project_status?.name !== 'Finished'}
         <button onclick={finishProject} disabled={finishing}>{finishing ? 'Finishing…' : 'Mark Finished'}</button>
       {/if}
+    </div>
+
+    <div class="row" style="align-items:stretch; gap:1rem;">
+      <!-- RECORDS / LINKS -->
+      <div class="card stack" style="flex:1; min-width:320px;">
+        <h2 style="margin:0;">Records & links</h2>
+        <p class="muted" style="font-size:.8rem; margin:0;">Proposal PDF, Overleaf, OpenReview, repo, datasets — anything with a URL.</p>
+        {#if links.length === 0}
+          <p class="muted">No records yet.</p>
+        {:else}
+          <div class="stack" style="gap:.5rem;">
+            {#each links as l}
+              <div class="row" style="justify-content:space-between; align-items:flex-start; border:1px solid var(--border); border-radius:8px; padding:.55rem .7rem;">
+                <div style="min-width:0;">
+                  <div class="row" style="gap:.4rem;">
+                    <span class="badge dim" style="text-transform:capitalize;">{l.kind}</span>
+                    <a href={l.url} target="_blank" rel="noopener" style="font-weight:500;">{l.title}</a>
+                  </div>
+                  <div class="muted" style="font-size:.74rem; margin-top:.15rem;">
+                    {linkHost(l.url)}{l.member ? ` · ${l.member.full_name}` : ''}
+                  </div>
+                  {#if l.notes}<div class="dim" style="font-size:.8rem; margin-top:.2rem;">{l.notes}</div>{/if}
+                </div>
+                {#if canContribute}<button class="ghost" style="padding:.2rem .5rem;" onclick={() => deleteLink(l.id)} title="Remove">✕</button>{/if}
+              </div>
+            {/each}
+          </div>
+        {/if}
+        {#if canContribute}
+          <div class="stack" style="gap:.4rem; border-top:1px dashed var(--border); padding-top:.7rem;">
+            <div class="row" style="gap:.4rem;">
+              <select bind:value={lKind} style="text-transform:capitalize;">
+                {#each LINK_KINDS as k}<option value={k}>{k}</option>{/each}
+              </select>
+              <input bind:value={lTitle} placeholder="Title" style="flex:1; min-width:120px;" />
+            </div>
+            <input bind:value={lUrl} placeholder="https://…" />
+            <input bind:value={lNotes} placeholder="Note (optional)" />
+            <div class="row"><button onclick={addLink} disabled={addingLink}>{addingLink ? 'Adding…' : 'Add record'}</button></div>
+          </div>
+        {/if}
+      </div>
+
+      <!-- MEETINGS -->
+      <div class="card stack" style="flex:1; min-width:320px;">
+        <h2 style="margin:0;">Meetings</h2>
+        <p class="muted" style="font-size:.8rem; margin:0;">Scheduled syncs with a join link.</p>
+        {#if meetings.length === 0}
+          <p class="muted">No meetings scheduled.</p>
+        {:else}
+          <div class="stack" style="gap:.5rem;">
+            {#each meetings as m}
+              <div class="row" style="justify-content:space-between; align-items:flex-start; border:1px solid var(--border); border-radius:8px; padding:.55rem .7rem;">
+                <div style="min-width:0;">
+                  <div class="row" style="gap:.4rem;">
+                    <strong>{m.title}</strong>
+                    {#if isUpcoming(m.scheduled_at)}<span class="badge info">upcoming</span>{:else}<span class="badge dim">past</span>{/if}
+                  </div>
+                  <div class="muted mono" style="font-size:.76rem; margin-top:.15rem;">{fmt(m.scheduled_at)}</div>
+                  {#if m.location}
+                    {#if /^https?:\/\//i.test(m.location)}
+                      <a href={m.location} target="_blank" rel="noopener" style="font-size:.82rem;">Join link ↗</a>
+                    {:else}<span class="dim" style="font-size:.82rem;">{m.location}</span>{/if}
+                  {/if}
+                  {#if m.agenda}<div class="dim" style="font-size:.8rem; margin-top:.2rem;">{m.agenda}</div>{/if}
+                </div>
+                {#if canContribute}<button class="ghost" style="padding:.2rem .5rem;" onclick={() => deleteMeeting(m.id)} title="Remove">✕</button>{/if}
+              </div>
+            {/each}
+          </div>
+        {/if}
+        {#if canContribute}
+          <div class="stack" style="gap:.4rem; border-top:1px dashed var(--border); padding-top:.7rem;">
+            <input bind:value={mTitle} placeholder="Meeting title" />
+            <div class="row" style="gap:.4rem;">
+              <label class="stack" style="gap:.15rem; flex:1;"><span class="muted" style="font-size:.7rem;">Starts</span>
+                <input type="datetime-local" bind:value={mAt} /></label>
+              <label class="stack" style="gap:.15rem; flex:1;"><span class="muted" style="font-size:.7rem;">Ends (opt.)</span>
+                <input type="datetime-local" bind:value={mEnds} /></label>
+            </div>
+            <input bind:value={mLoc} placeholder="Zoom/Meet link or place" />
+            <input bind:value={mAgenda} placeholder="Agenda (optional)" />
+            <div class="row"><button onclick={addMeeting} disabled={addingMeeting}>{addingMeeting ? 'Adding…' : 'Schedule meeting'}</button></div>
+          </div>
+        {/if}
+      </div>
     </div>
 
     <div class="card">
@@ -584,6 +778,33 @@
             <button onclick={postResourceRequest}>Post</button>
           </div>
           <input placeholder="Description (optional)" bind:value={rrDesc} style="margin-top:.5rem; width:100%;" />
+        </div>
+      {/if}
+    </div>
+
+    <!-- HISTORY -->
+    <div class="card">
+      <h2>History</h2>
+      {#if canContribute}
+        <div class="row" style="gap:.4rem; margin-bottom:.8rem;">
+          <input bind:value={noteText} placeholder="Add a note to the timeline…" style="flex:1;"
+            onkeydown={(e) => { if (e.key === 'Enter') postNote(); }} />
+          <button onclick={postNote} disabled={!noteText.trim()}>Note</button>
+        </div>
+      {/if}
+      {#if events.length === 0}
+        <p class="muted">No activity yet.</p>
+      {:else}
+        <div class="timeline">
+          {#each events as ev}
+            <div class="tl-item">
+              <span class="tl-dot" title={ev.event_type}>{eventIcon(ev.event_type)}</span>
+              <div class="tl-body">
+                <span class="tl-text">{ev.summary}</span>
+                <span class="tl-meta">{ev.member?.full_name ?? 'System'} · {fmt(ev.created_at)}</span>
+              </div>
+            </div>
+          {/each}
         </div>
       {/if}
     </div>
