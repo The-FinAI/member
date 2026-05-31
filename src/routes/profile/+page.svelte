@@ -173,7 +173,7 @@
                 <td class="muted" style="font-size:.78rem;">{new Date(e.created_at).toLocaleDateString()}</td>
                 <td><span class="badge">{e.entry_type}</span></td>
                 <td>{e.reason}</td>
-                <td style="text-align:right; color:{e.to_account === accountId ? '#15803d' : '#b91c1c'};">
+                <td style="text-align:right; color:{e.to_account === accountId ? 'var(--up)' : 'var(--down)'};">
                   {e.to_account === accountId ? '+' : '−'}{Number(e.amount).toLocaleString()}
                 </td>
               </tr>
@@ -187,7 +187,7 @@
 
     <div class="card stack">
       <h2>My skills</h2>
-      {#if error}<p style="color:#b91c1c;">{error}</p>{/if}
+      {#if error}<p style="color:var(--down);">{error}</p>{/if}
       {#if skillsLoading}
         <p class="muted">Loading…</p>
       {:else}

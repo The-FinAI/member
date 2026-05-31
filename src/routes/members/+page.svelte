@@ -101,7 +101,7 @@
     {#if $member}<span class="muted">Your balance: <strong>{myBalance.toLocaleString()}</strong> STR</span>{/if}
   </div>
   <input placeholder="Search by name…" bind:value={q} style="max-width:320px;" />
-  {#if error}<p style="color:#b91c1c;">{error}</p>{/if}
+  {#if error}<p style="color:var(--down);">{error}</p>{/if}
 
   <div class="card">
     {#if loading}
@@ -126,7 +126,7 @@
             </tr>
             {#if openId === r.id}
               <tr>
-                <td colspan="5" style="background:var(--bg-soft, #fafafa);">
+                <td colspan="5" style="background:var(--card-2);">
                   {#if panelLoading}
                     <p class="muted">Loading skills…</p>
                   {:else if openSkills.length === 0}

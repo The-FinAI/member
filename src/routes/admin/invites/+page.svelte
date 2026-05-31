@@ -54,7 +54,7 @@
     binds to this record automatically. Anyone not pre-created here cannot get in.
   </p>
 
-  {#if error}<p style="color:#b91c1c;">{error}</p>{/if}
+  {#if error}<p style="color:var(--down);">{error}</p>{/if}
 
   <div class="card row" style="align-items:flex-end;">
     <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.78rem;">Full name</span><input bind:value={fullName} /></label>

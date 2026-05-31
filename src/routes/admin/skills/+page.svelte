@@ -52,7 +52,7 @@
     Hierarchical skills. Members self-rate (Beginner→Expert) and can be endorsed; needs filter on these.
   </p>
 
-  {#if error}<p style="color:#b91c1c;">{error}</p>{/if}
+  {#if error}<p style="color:var(--down);">{error}</p>{/if}
 
   <div class="card row">
     <input placeholder="New skill name" bind:value={newName} />

@@ -89,8 +89,8 @@
     supply, grant to members, issue the monthly allowance, and tune the rules below.
   </p>
 
-  {#if error}<p style="color:#b91c1c;">{error}</p>{/if}
-  {#if ok}<p style="color:#15803d;">{ok}</p>{/if}
+  {#if error}<p style="color:var(--down);">{error}</p>{/if}
+  {#if ok}<p style="color:var(--up);">{ok}</p>{/if}
 
   {#if loading}
     <p class="muted">Loading…</p>

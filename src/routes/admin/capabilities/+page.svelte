@@ -62,7 +62,7 @@
     Capability keys are referenced in code — descriptions are editable, keys are fixed.
   </p>
 
-  {#if error}<p style="color:#b91c1c;">{error}</p>{/if}
+  {#if error}<p style="color:var(--down);">{error}</p>{/if}
 
   {#if loading}
     <div class="card"><p class="muted">Loading…</p></div>

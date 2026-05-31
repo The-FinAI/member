@@ -6,10 +6,31 @@
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { session, member, capabilities, authReady } from '$lib/session';
   import { loadProfile, clearProfile, claimMembership } from '$lib/profile';
+  import { theme, toggleTheme } from '$lib/theme';
 
   let { children } = $props();
 
   const PUBLIC_ROUTES = ['/login'];
+
+  let balance = $state<number | null>(null);
+
+  async function loadBalance(memberId: string) {
+    const { data } = await supabase
+      .from('stater_balance').select('balance').eq('owner_member_id', memberId).maybeSingle();
+    balance = Number((data as { balance: number } | null)?.balance ?? 0);
+  }
+
+  $effect(() => { if ($member) loadBalance($member.id); else balance = null; });
+
+  const navItems = [
+    { href: '/projects', label: 'Markets' },
+    { href: '/opportunities', label: 'Opportunities' },
+    { href: '/members', label: 'Members' },
+    { href: '/profile', label: 'Wallet' }
+  ];
+  function isActive(href: string, path: string) {
+    return href === '/' ? path === '/' : path.startsWith(href);
+  }
 
   onMount(() => {
     if (!supabaseConfigured) {
@@ -57,21 +78,39 @@
   );
 </script>
 
-<header style="background: var(--navy); color: #fff;">
-  <div class="container row" style="justify-content: space-between; padding-block: .8rem;">
-    <a href="/" style="color:#fff; font-family: Newsreader, serif; font-size:1.1rem; font-weight:600;">
-      The&nbsp;Fin&nbsp;AI · Community
+<header class="topbar">
+  <div class="container row" style="justify-content: space-between; padding-block: .65rem; gap: 1rem;">
+    <a href="/" class="brand">
+      <span class="dot"></span>
+      The&nbsp;Fin&nbsp;AI <span class="muted" style="font-weight:500;">· Stater</span>
     </a>
-    {#if $session}
-      <nav class="row" style="gap: 1rem;">
-        <a href="/projects" style="color:#cbd5e1;">Projects</a>
-        <a href="/opportunities" style="color:#cbd5e1;">Opportunities</a>
-        <a href="/members" style="color:#cbd5e1;">Members</a>
-        <a href="/profile" style="color:#cbd5e1;">Profile</a>
-        {#if canAdmin}<a href="/admin" style="color:#cbd5e1;">Admin</a>{/if}
-        <button class="ghost" style="color:#fff;border-color:#475569;" onclick={signOut}>Sign out</button>
-      </nav>
-    {/if}
+
+    <div class="row" style="gap: 1.1rem;">
+      {#if $session}
+        <nav class="row" style="gap: 1.1rem;">
+          {#each navItems as n}
+            <a href={n.href} class="navlink" class:active={isActive(n.href, $page.url.pathname)}>{n.label}</a>
+          {/each}
+          {#if canAdmin}
+            <a href="/admin" class="navlink" class:active={isActive('/admin', $page.url.pathname)}>Admin</a>
+          {/if}
+        </nav>
+
+        {#if balance !== null}
+          <a href="/profile" class="chip" title="Your STR balance">
+            <span class="amt">{balance.toLocaleString()}</span> STR
+          </a>
+        {/if}
+      {/if}
+
+      <button class="icon-btn" onclick={toggleTheme} title="Toggle theme" aria-label="Toggle theme">
+        {$theme === 'dark' ? '☀' : '☾'}
+      </button>
+
+      {#if $session}
+        <button class="ghost" onclick={signOut}>Sign out</button>
+      {/if}
+    </div>
   </div>
 </header>
 

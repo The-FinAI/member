@@ -310,7 +310,7 @@
 
 <div class="stack">
   <p><a href="/projects">← Projects</a></p>
-  {#if error}<p style="color:#b91c1c;">{error}</p>{/if}
+  {#if error}<p style="color:var(--down);">{error}</p>{/if}
 
   {#if loading}
     <p class="muted">Loading…</p>

@@ -99,7 +99,7 @@
     {/if}
   </div>
 
-  {#if error}<p style="color:#b91c1c;">{error}</p>{/if}
+  {#if error}<p style="color:var(--down);">{error}</p>{/if}
 
   {#if showForm}
     <div class="card stack">

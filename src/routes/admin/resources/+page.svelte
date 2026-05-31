@@ -79,7 +79,7 @@
     contact. (Personal resources are added by members on their own profile.)
   </p>
 
-  {#if error}<p style="color:#b91c1c;">{error}</p>{/if}
+  {#if error}<p style="color:var(--down);">{error}</p>{/if}
 
   <div class="card stack">
     <h2>Add a community resource</h2>
