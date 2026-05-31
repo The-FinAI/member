@@ -8,8 +8,11 @@
 
   type Project = {
     id: string; name: string; target_venue: string | null; summary: string | null;
-    project_type: { name: string } | null; project_status: { name: string } | null;
+    status_id: string | null; held_from_status_id: string | null;
+    project_type: { name: string } | null; project_status: { id: string; name: string; rank: number } | null;
+    venue: { name: string; kind: string; url: string | null; deadline: string | null } | null;
   };
+  type PStatus = { id: string; name: string; rank: number };
   type Participant = { member_id: string; member: { full_name: string } | null; project_role: { name: string; can_manage: boolean } | null };
   type Need = {
     id: string; description: string | null; headcount: number; min_level: string | null; status: string;
@@ -36,13 +39,14 @@
   let applications = $state<Application[]>([]);
   let roles = $state<Role[]>([]);
   let skills = $state<Skill[]>([]);
+  let statuses = $state<PStatus[]>([]);
+  let transitioning = $state(false);
   let appliedNeedIds = $state<Set<string>>(new Set());
   let iManage = $state(false);
   let loading = $state(true);
   let error = $state('');
   let escrow = $state(0);
   let joinStake = $state(20);
-  let finishing = $state(false);
 
   // stake commitments + settlement
   let commitments = $state<Commitment[]>([]);
@@ -96,18 +100,20 @@
   async function load() {
     if (!supabaseConfigured || !id) { loading = false; return; }
     loading = true;
-    const [{ data: p }, { data: pm }, { data: nd }, { data: rl }, { data: sk }] = await Promise.all([
-      supabase.from('project').select('id, name, target_venue, summary, project_type(name), project_status(name)').eq('id', id).maybeSingle(),
+    const [{ data: p }, { data: pm }, { data: nd }, { data: rl }, { data: sk }, { data: ps }] = await Promise.all([
+      supabase.from('project').select('id, name, target_venue, summary, status_id, held_from_status_id, project_type(name), project_status(id, name, rank), venue:venue_id(name, kind, url, deadline)').eq('id', id).maybeSingle(),
       supabase.from('project_member').select('member_id, member(full_name), project_role(name, can_manage)').eq('project_id', id),
       supabase.from('open_need').select('id, description, headcount, min_level, status, project_role_id, project_role(name), skill(name)').eq('project_id', id),
       supabase.from('project_role').select('id, name, payout_weight').order('name'),
-      supabase.from('skill').select('id, name, parent_id').order('name')
+      supabase.from('skill').select('id, name, parent_id').order('name'),
+      supabase.from('project_status').select('id, name, rank').order('rank')
     ]);
     project = (p as Project) ?? null;
     participants = (pm as Participant[]) ?? [];
     needs = (nd as Need[]) ?? [];
     roles = (rl as Role[]) ?? [];
     skills = (sk as Skill[]) ?? [];
+    statuses = (ps as PStatus[]) ?? [];
 
     const me = $member?.id;
     iManage =
@@ -210,12 +216,44 @@
     loading = false;
   }
 
-  // mark Finished (opens settlement; no auto-payout under the Stater economy)
-  async function finishProject() {
-    if (!confirm('Mark this project Finished? This opens settlement — payout happens when a settlement is submitted and approved.')) return;
-    error = ''; finishing = true;
-    const { error: err } = await supabase.rpc('finish_project', { p: id });
-    finishing = false;
+  // ---- controlled status pipeline ----
+  const pipeline = $derived([...statuses].filter((s) => s.name !== 'Hold').sort((a, b) => a.rank - b.rank));
+  const holdStatus = $derived(statuses.find((s) => s.name === 'Hold') ?? null);
+  const isHold = $derived(project?.project_status?.name === 'Hold');
+  const curIdx = $derived(pipeline.findIndex((s) => s.id === project?.status_id));
+  const nextStatus = $derived(!isHold && curIdx >= 0 && curIdx < pipeline.length - 1 ? pipeline[curIdx + 1] : null);
+  const prevStatus = $derived(!isHold && curIdx > 0 ? pipeline[curIdx - 1] : null);
+  const resumeStatus = $derived(isHold ? (statuses.find((s) => s.id === project?.held_from_status_id) ?? pipeline[0] ?? null) : null);
+
+  function statusClass(name: string | null | undefined) {
+    switch (name) {
+      case 'Proposal': return 'st-proposal';
+      case 'Data Collecting': return 'st-data';
+      case 'Work in progress': return 'st-wip';
+      case 'Under review': return 'st-review';
+      case 'Finished': return 'st-finished';
+      case 'Hold': return 'st-hold';
+      default: return 'st-proposal';
+    }
+  }
+  function fmtDay(d: string | null | undefined) {
+    if (!d) return '';
+    return new Date(d + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+  function ddlClass(d: string | null | undefined) {
+    if (!d) return 'muted';
+    const days = (new Date(d + 'T00:00:00').getTime() - Date.now()) / 86400000;
+    if (days < 0) return 'neg';
+    if (days < 14) return 'warn';
+    return 'dim';
+  }
+
+  async function transitionStatus(targetId: string | undefined, label: string) {
+    if (!targetId) return;
+    if (label === 'Finished' && !confirm('Advance to Finished? This opens settlement — payout happens when a settlement is submitted and approved.')) return;
+    error = ''; transitioning = true;
+    const { error: err } = await supabase.rpc('transition_project_status', { p: id, target: targetId });
+    transitioning = false;
     if (err) { error = err.message; return; }
     await load();
   }
@@ -431,10 +469,42 @@
     </div>
     <div class="row muted" style="font-size:.85rem;">
       <span>{project.project_type?.name ?? '—'}</span>
-      <span class="badge">{project.project_status?.name ?? '—'}</span>
-      {#if project.target_venue}<span>Target: {project.target_venue}</span>{/if}
+      {#if project.venue}
+        <span>Target:
+          {#if project.venue.url}<a href={project.venue.url} target="_blank" rel="noopener">{project.venue.name}</a>{:else}{project.venue.name}{/if}
+          <span class="badge dim" style="text-transform:capitalize;">{project.venue.kind}</span>
+        </span>
+        {#if project.venue.deadline}<span class="mono {ddlClass(project.venue.deadline)}">DDL {fmtDay(project.venue.deadline)}</span>{/if}
+      {:else if project.target_venue}<span>Target: {project.target_venue}</span>{/if}
     </div>
     {#if project.summary}<p>{project.summary}</p>{/if}
+
+    <!-- STATUS PIPELINE -->
+    <div class="card">
+      <div class="row" style="justify-content:space-between; align-items:center; gap:1rem;">
+        <div class="row" style="gap:.5rem; flex-wrap:wrap;">
+          {#each pipeline as s, i}
+            <span class="status {statusClass(s.name)}" style="opacity:{project.status_id === s.id ? 1 : (i <= curIdx && !isHold ? .85 : .4)};">
+              <span class="sdot" style="background:currentColor;"></span>{s.name}
+            </span>
+            {#if i < pipeline.length - 1}<span class="muted" style="opacity:.5;">→</span>{/if}
+          {/each}
+          {#if isHold}<span class="status st-hold" style="margin-left:.4rem;"><span class="sdot" style="background:currentColor;"></span>On hold</span>{/if}
+        </div>
+        {#if iManage}
+          <div class="row" style="gap:.4rem;">
+            {#if isHold}
+              <button onclick={() => transitionStatus(resumeStatus?.id, resumeStatus?.name ?? '')} disabled={transitioning}>
+                Resume → {resumeStatus?.name ?? 'Proposal'}</button>
+            {:else}
+              {#if prevStatus}<button class="ghost" onclick={() => transitionStatus(prevStatus?.id, prevStatus?.name ?? '')} disabled={transitioning}>← {prevStatus.name}</button>{/if}
+              {#if nextStatus}<button onclick={() => transitionStatus(nextStatus?.id, nextStatus?.name ?? '')} disabled={transitioning}>{nextStatus.name} →</button>{/if}
+              {#if holdStatus && project.project_status?.name !== 'Finished'}<button class="ghost" onclick={() => transitionStatus(holdStatus?.id, 'Hold')} disabled={transitioning}>Hold</button>{/if}
+            {/if}
+          </div>
+        {/if}
+      </div>
+    </div>
 
     <div class="card row" style="justify-content:space-between; align-items:center;">
       <div>
@@ -442,9 +512,6 @@
         <strong style="font-size:1.2rem; margin-left:.4rem;">{escrow.toLocaleString()}</strong>
         <span class="muted" style="font-size:.8rem;"> STR · staked by leader + members ({joinStake}/join)</span>
       </div>
-      {#if iManage && project.project_status?.name !== 'Finished'}
-        <button onclick={finishProject} disabled={finishing}>{finishing ? 'Finishing…' : 'Mark Finished'}</button>
-      {/if}
     </div>
 
     <div class="row" style="align-items:stretch; gap:1rem;">

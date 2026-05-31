@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { supabase, supabaseConfigured } from '$lib/supabase';
 
-  type Col = { key: string; label: string; type?: 'text' | 'number' | 'bool' };
+  type Col = { key: string; label: string; type?: 'text' | 'number' | 'bool' | 'date' | 'select'; options?: string[] };
 
   let {
     table,
@@ -17,7 +17,9 @@
 
   function emptyDraft() {
     const d: Record<string, any> = {};
-    for (const c of columns) d[c.key] = c.type === 'bool' ? false : c.type === 'number' ? 0 : '';
+    for (const c of columns)
+      d[c.key] = c.type === 'bool' ? false : c.type === 'number' ? 0
+        : c.type === 'select' ? (c.options?.[0] ?? '') : null;
     return d;
   }
 
@@ -76,6 +78,10 @@
                   <input type="checkbox" bind:checked={row[c.key]} />
                 {:else if c.type === 'number'}
                   <input type="number" bind:value={row[c.key]} style="width:80px;" />
+                {:else if c.type === 'date'}
+                  <input type="date" bind:value={row[c.key]} />
+                {:else if c.type === 'select'}
+                  <select bind:value={row[c.key]}>{#each c.options ?? [] as o}<option value={o}>{o}</option>{/each}</select>
                 {:else}
                   <input bind:value={row[c.key]} />
                 {/if}
@@ -94,6 +100,10 @@
                 <input type="checkbox" bind:checked={draft[c.key]} />
               {:else if c.type === 'number'}
                 <input type="number" bind:value={draft[c.key]} style="width:80px;" />
+              {:else if c.type === 'date'}
+                <input type="date" bind:value={draft[c.key]} />
+              {:else if c.type === 'select'}
+                <select bind:value={draft[c.key]}>{#each c.options ?? [] as o}<option value={o}>{o}</option>{/each}</select>
               {:else}
                 <input placeholder={`new ${c.label.toLowerCase()}`} bind:value={draft[c.key]} />
               {/if}

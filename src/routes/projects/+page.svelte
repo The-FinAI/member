@@ -5,6 +5,7 @@
 
   type PType = { id: string; name: string; leader_stake: number; join_stake: number; finish_bonus: number };
   type PStatus = { id: string; name: string; rank: number };
+  type Venue = { id: string; name: string; kind: string; deadline: string | null };
   // one fully-denormalised grid row
   type Grid = {
     id: string;
@@ -13,6 +14,7 @@
     status: string;
     statusRank: number;
     venue: string;
+    deadline: string | null;
     leader: string;
     members: number;
     openNeeds: number;
@@ -22,13 +24,14 @@
   let grid = $state<Grid[]>([]);
   let types = $state<PType[]>([]);
   let statuses = $state<PStatus[]>([]);
+  let venues = $state<Venue[]>([]);
   let loading = $state(true);
 
   // filters / search / sort
   let q = $state('');
   let typeFilter = $state('');
   let statusFilter = $state('');
-  type SortKey = 'name' | 'type' | 'status' | 'leader' | 'members' | 'openNeeds' | 'escrow' | 'venue';
+  type SortKey = 'name' | 'type' | 'status' | 'leader' | 'members' | 'openNeeds' | 'escrow' | 'venue' | 'deadline';
   let sortKey = $state<SortKey>('status');
   let sortDir = $state<1 | -1>(1);
 
@@ -36,7 +39,7 @@
   let myBalance = $state(0);
   let showForm = $state(false);
   let cName = $state(''); let cType = $state(''); let cStatus = $state('');
-  let cVenue = $state(''); let cSummary = $state('');
+  let cVenueId = $state(''); let cSummary = $state(''); let cProposal = $state('');
   let creating = $state(false);
   let error = $state('');
 
@@ -46,7 +49,7 @@
   async function loadGrid() {
     const [{ data: pr }, { data: pm }, { data: nd }, { data: esc }] = await Promise.all([
       supabase.from('project')
-        .select('id, name, target_venue, project_type(name), project_status(name, rank)'),
+        .select('id, name, target_venue, venue:venue_id(name, deadline), project_type(name), project_status(name, rank)'),
       supabase.from('project_member')
         .select('project_id, member(full_name), project_role(name, can_manage)'),
       supabase.from('open_need').select('project_id, status'),
@@ -72,7 +75,8 @@
       type: p.project_type?.name ?? '—',
       status: p.project_status?.name ?? '—',
       statusRank: p.project_status?.rank ?? 999,
-      venue: p.target_venue ?? '',
+      venue: p.venue?.name ?? p.target_venue ?? '',
+      deadline: p.venue?.deadline ?? null,
       leader: leaderName[p.id] ?? '',
       members: memberCount[p.id] ?? 0,
       openNeeds: openCount[p.id] ?? 0,
@@ -88,13 +92,15 @@
 
   onMount(async () => {
     if (!supabaseConfigured) { loading = false; return; }
-    const [, { data: ty }, { data: st }] = await Promise.all([
+    const [, { data: ty }, { data: st }, { data: vn }] = await Promise.all([
       loadGrid(),
       supabase.from('project_type').select('id, name, leader_stake, join_stake, finish_bonus').order('rank'),
-      supabase.from('project_status').select('id, name, rank').order('rank')
+      supabase.from('project_status').select('id, name, rank').order('rank'),
+      supabase.from('venue').select('id, name, kind, deadline').eq('is_active', true).order('rank')
     ]);
     types = (ty as PType[]) ?? [];
     statuses = (st as PStatus[]) ?? [];
+    venues = (vn as Venue[]) ?? [];
     cStatus = statuses.find((s) => s.name === 'Proposal')?.id ?? statuses[0]?.id ?? '';
     loading = false;
     const unsub = member.subscribe((m) => { if (m) loadMyBalance(); });
@@ -103,16 +109,20 @@
 
   async function createProject() {
     error = '';
-    if (!cName.trim() || !cType || !cStatus) { error = 'Name, type and status are required.'; return; }
+    if (!cName.trim() || !cType) { error = 'Name and type are required.'; return; }
+    if (!cProposal.trim()) { error = 'A proposal link is required to start a project.'; return; }
     if (leaderStake > myBalance) { error = `Leader stake is ${leaderStake} STR but you only have ${myBalance}.`; return; }
+    let proposal = cProposal.trim();
+    if (!/^https?:\/\//i.test(proposal)) proposal = 'https://' + proposal;
     creating = true;
     const { data, error: err } = await supabase.rpc('create_project_with_leader_stake', {
       p_name: cName.trim(), p_type_id: cType, p_status_id: cStatus,
-      p_venue: cVenue.trim() || null, p_summary: cSummary.trim() || null
+      p_venue: null, p_summary: cSummary.trim() || null,
+      p_venue_id: cVenueId || null, p_proposal_url: proposal
     });
     creating = false;
     if (err) { error = err.message; return; }
-    cName = ''; cVenue = ''; cSummary = ''; showForm = false;
+    cName = ''; cVenueId = ''; cSummary = ''; cProposal = ''; showForm = false;
     await Promise.all([loadGrid(), loadMyBalance()]);
     if (data) window.location.href = `/projects/${data}`;
   }
@@ -128,6 +138,18 @@
       case 'Hold': return 'st-hold';
       default: return 'st-proposal';
     }
+  }
+
+  function fmtDate(d: string | null) {
+    if (!d) return '';
+    return new Date(d + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+  }
+  function ddlClass(d: string | null) {
+    if (!d) return 'muted';
+    const days = (new Date(d + 'T00:00:00').getTime() - Date.now()) / 86400000;
+    if (days < 0) return 'neg';
+    if (days < 14) return 'warn';
+    return 'dim';
   }
 
   function setSort(k: SortKey) {
@@ -155,8 +177,8 @@
     );
     const key = sortKey;
     out = [...out].sort((a, b) => {
-      let av: string | number = key === 'status' ? a.statusRank : (a as any)[key];
-      let bv: string | number = key === 'status' ? b.statusRank : (b as any)[key];
+      let av: string | number = key === 'status' ? a.statusRank : ((a as any)[key] ?? '');
+      let bv: string | number = key === 'status' ? b.statusRank : ((b as any)[key] ?? '');
       if (typeof av === 'string' && typeof bv === 'string') {
         return av.localeCompare(bv) * sortDir;
       }
@@ -187,24 +209,38 @@
     <div class="card stack">
       <h2 style="margin:0;">Start a project</h2>
       <p class="muted" style="font-size:.82rem; margin:0;">
-        Starting a project stakes the leader initiation bond into its escrow. Your balance:
-        <strong class="mono">{myBalance.toLocaleString()}</strong> STR · leader stake for the chosen type:
-        <strong class="mono">{leaderStake}</strong> STR.
+        A new project always starts at <span class="badge dim">Proposal</span> with a proposal on file and the
+        leader initiation bond staked into its escrow.
       </p>
-      <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Name</span>
+      <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Name *</span>
         <input bind:value={cName} placeholder="Project / paper name" /></label>
       <div class="row" style="flex-wrap:wrap;">
-        <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Type</span>
+        <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Type *</span>
           <select bind:value={cType}><option value="">—</option>{#each types as t}<option value={t.id}>{t.name} (stake {t.leader_stake})</option>{/each}</select></label>
-        <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Status</span>
-          <select bind:value={cStatus}>{#each statuses as s}<option value={s.id}>{s.name}</option>{/each}</select></label>
         <label class="stack" style="gap:.2rem; flex:1;"><span class="muted" style="font-size:.75rem;">Target venue</span>
-          <input bind:value={cVenue} placeholder="e.g. NeurIPS" /></label>
+          <select bind:value={cVenueId}>
+            <option value="">— none —</option>
+            {#each venues as v}<option value={v.id}>{v.name}{v.deadline ? ` · ddl ${fmtDate(v.deadline)}` : ''}</option>{/each}
+          </select></label>
       </div>
+      <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Proposal link * <span class="dim">(PDF on Drive, Overleaf, OpenReview…)</span></span>
+        <input bind:value={cProposal} placeholder="https://…" /></label>
       <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Summary</span>
         <textarea bind:value={cSummary} rows="2" placeholder="One-line description"></textarea></label>
+      <div class="card" style="background:var(--accent-soft); border-color:transparent; padding:.6rem .8rem;">
+        <div class="row" style="justify-content:space-between;">
+          <span class="muted" style="font-size:.8rem;">Leader initiation stake</span>
+          <span class="mono" style="font-weight:600;">{leaderStake.toLocaleString()} STR</span>
+        </div>
+        <div class="row" style="justify-content:space-between;">
+          <span class="muted" style="font-size:.8rem;">Your balance after</span>
+          <span class="mono {myBalance - leaderStake < 0 ? 'neg' : ''}">{(myBalance - leaderStake).toLocaleString()} STR</span>
+        </div>
+      </div>
       <div class="row">
-        <button onclick={createProject} disabled={creating}>{creating ? 'Creating…' : `Stake ${leaderStake} STR & create`}</button>
+        <button onclick={createProject} disabled={creating || leaderStake > myBalance}>
+          {creating ? 'Creating…' : `Stake ${leaderStake} STR & create`}</button>
+        {#if leaderStake > myBalance}<span class="neg" style="font-size:.8rem;">Insufficient balance to stake.</span>{/if}
       </div>
     </div>
   {/if}
@@ -245,6 +281,7 @@
             <th class="sortable num" onclick={() => setSort('openNeeds')}>Open needs <span class="arrow">{arrow('openNeeds')}</span></th>
             <th class="sortable num" onclick={() => setSort('escrow')}>Escrow <span class="arrow">{arrow('escrow')}</span></th>
             <th class="sortable" onclick={() => setSort('venue')}>Target <span class="arrow">{arrow('venue')}</span></th>
+            <th class="sortable" onclick={() => setSort('deadline')}>Deadline <span class="arrow">{arrow('deadline')}</span></th>
           </tr>
         </thead>
         <tbody>
@@ -264,6 +301,7 @@
               </td>
               <td class="num mono">{r.escrow.toLocaleString()}</td>
               <td class="dim">{r.venue || '—'}</td>
+              <td class="mono {ddlClass(r.deadline)}" style="font-size:.82rem; white-space:nowrap;">{r.deadline ? fmtDate(r.deadline) : '—'}</td>
             </tr>
           {/each}
         </tbody>
@@ -273,6 +311,7 @@
             <td></td><td></td><td></td><td></td>
             <td class="num mono muted" style="font-size:.78rem;">{totalNeeds}</td>
             <td class="num mono muted" style="font-size:.78rem;">{totalEscrow.toLocaleString()}</td>
+            <td></td>
             <td></td>
           </tr>
         </tfoot>
