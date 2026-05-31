@@ -81,25 +81,45 @@ insert into project_role (name, can_manage) values
   ('Advisor',         false)
 on conflict (name) do nothing;
 
--- ---------- skill tree ----------
+-- ---------- skill tree (5 skill-type categories) ----------
 -- top-level categories
 insert into skill (parent_id, name) values
-  (null, 'Data'), (null, 'Modeling'), (null, 'Agent'),
-  (null, 'Eval & Benchmark'), (null, 'Domain'), (null, 'Writing')
+  (null, 'Domain'), (null, 'Language'), (null, 'Research'),
+  (null, 'Engineering'), (null, 'Organization & Communication')
 on conflict (parent_id, name) do nothing;
 
 -- children (resolve parent by name)
 insert into skill (parent_id, name)
 select s.id, child.name from skill s
 join (values
-  ('Data','Annotation'), ('Data','Data Cleaning'), ('Data','Data Collection'),
-  ('Modeling','Pretraining'), ('Modeling','Fine-tuning'), ('Modeling','RLHF'),
-  ('Modeling','Inference / Serving'), ('Modeling','MoE'),
-  ('Agent','Tool-use'), ('Agent','Multi-agent'), ('Agent','Agent Eval'),
-  ('Eval & Benchmark','Benchmark Design'), ('Eval & Benchmark','Metrics'), ('Eval & Benchmark','Leaderboard'),
-  ('Domain','Equities / Trading'), ('Domain','Audit / XBRL'), ('Domain','Risk'),
-  ('Domain','Sentiment'), ('Domain','Islamic Finance'), ('Domain','Multilingual'),
-  ('Writing','Paper Writing'), ('Writing','Rebuttal')
+  ('Domain','Equities / Trading'), ('Domain','Risk Management'),
+  ('Domain','Audit / Accounting / XBRL'), ('Domain','Portfolio / Asset Management'),
+  ('Domain','Banking / Credit'), ('Domain','RegTech / Compliance'),
+  ('Domain','Macroeconomics'), ('Domain','ESG / Sustainable Finance'),
+
+  ('Language','English'), ('Language','Chinese'), ('Language','Japanese'),
+  ('Language','Korean'), ('Language','Spanish'), ('Language','French'),
+  ('Language','German'), ('Language','Portuguese'), ('Language','Arabic'),
+  ('Language','Russian'), ('Language','Hindi'),
+
+  ('Research','Paper Writing'), ('Research','Rebuttal / Review'),
+  ('Research','Literature Review'), ('Research','Experiment Design'),
+  ('Research','Benchmark Design'), ('Research','Evaluation & Metrics'),
+  ('Research','Statistical Analysis'),
+
+  ('Engineering','Pretraining'), ('Engineering','Fine-tuning / SFT'),
+  ('Engineering','RLHF / Alignment'), ('Engineering','Inference & Serving'),
+  ('Engineering','Data Engineering / Pipelines'), ('Engineering','Agent / Tool-use / RAG'),
+  ('Engineering','Multimodal'), ('Engineering','Frontend / Backend Dev'),
+  ('Engineering','Distributed Training / GPU'),
+
+  ('Organization & Communication','Project Management / Coordination'),
+  ('Organization & Communication','Meeting Facilitation / Hosting'),
+  ('Organization & Communication','Minutes / Record-keeping'),
+  ('Organization & Communication','Mentoring / Onboarding'),
+  ('Organization & Communication','Presentation / Public Speaking'),
+  ('Organization & Communication','Community Building / Outreach'),
+  ('Organization & Communication','Cross-team Collaboration')
 ) as child(parent_name, name) on s.name = child.parent_name and s.parent_id is null
 on conflict (parent_id, name) do nothing;
 
