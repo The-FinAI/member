@@ -33,6 +33,9 @@
   let iManage = $state(false);
   let loading = $state(true);
   let error = $state('');
+  let escrow = $state(0);
+  let joinStake = $state(20);
+  let finishing = $state(false);
 
   // new-need form
   let nRole = $state(''); let nSkill = $state(''); let nLevel = $state(''); let nCount = $state(1); let nDesc = $state('');
@@ -108,7 +111,23 @@
         .from('resource_offer').select('id, status, message, request_id, member:offered_by(full_name), resource(name)').in('request_id', reqIds);
       resOffers = (offers as ResOffer[]) ?? [];
     }
+
+    const [{ data: esc }, { data: js }] = await Promise.all([
+      supabase.from('token_balance').select('balance').eq('project_id', id).maybeSingle(),
+      supabase.from('token_policy').select('value').eq('key', 'join_stake').maybeSingle()
+    ]);
+    escrow = Number((esc as { balance: number } | null)?.balance ?? 0);
+    joinStake = Number((js as { value: number } | null)?.value ?? 20);
     loading = false;
+  }
+
+  async function finishProject() {
+    if (!confirm('Finish this project and pay out the escrow to all authors by role weight? This cannot be undone.')) return;
+    error = ''; finishing = true;
+    const { error: err } = await supabase.rpc('finish_project', { p: id });
+    finishing = false;
+    if (err) { error = err.message; return; }
+    await load();
   }
 
   async function postResourceRequest() {
@@ -214,6 +233,17 @@
       {#if project.target_venue}<span>Target: {project.target_venue}</span>{/if}
     </div>
     {#if project.summary}<p>{project.summary}</p>{/if}
+
+    <div class="card row" style="justify-content:space-between; align-items:center;">
+      <div>
+        <span class="muted" style="font-size:.8rem;">Escrow</span>
+        <strong style="font-size:1.2rem; margin-left:.4rem;">{escrow.toLocaleString()}</strong>
+        <span class="muted" style="font-size:.8rem;"> tokens · staked by authors ({joinStake}/join)</span>
+      </div>
+      {#if iManage && project.project_status?.name !== 'Finished'}
+        <button onclick={finishProject} disabled={finishing}>{finishing ? 'Paying out…' : 'Finish & pay out'}</button>
+      {/if}
+    </div>
 
     <div class="card">
       <h2>Participants</h2>

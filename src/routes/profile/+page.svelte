@@ -7,6 +7,10 @@
 
   type Skill = { id: string; name: string; parent_id: string | null };
   type MySkill = { skill_id: string; self_level: string };
+  type LedgerRow = {
+    id: string; amount: number; kind: string; reason: string;
+    from_account: string | null; to_account: string | null; created_at: string;
+  };
   type ResType = { id: string; name: string };
   type MyResource = {
     id: string; name: string; description: string | null; capacity: string | null;
@@ -21,7 +25,11 @@
 
   let skills = $state<Skill[]>([]);
   let mySkills = $state<MySkill[]>([]);
-  let endorseCounts = $state<Record<string, number>>({});
+  let skillCredit = $state<Record<string, { credit: number; endorsements: number }>>({});
+  let balance = $state(0);
+  let accountId = $state('');
+  let ledger = $state<LedgerRow[]>([]);
+  let joinStake = $state(20);
   let addSkill = $state('');
   let addLevel = $state('Intermediate');
   let skillsLoading = $state(true);
@@ -39,22 +47,37 @@
 
   async function loadSkills(memberId: string) {
     skillsLoading = true;
-    const [{ data: tree }, { data: ms }, { data: end }, { data: rt }, { data: mr }] = await Promise.all([
+    const [{ data: tree }, { data: ms }, { data: cr }, { data: rt }, { data: mr }, { data: bal }, { data: pol }] = await Promise.all([
       supabase.from('skill').select('id, name, parent_id').order('name'),
       supabase.from('member_skill').select('skill_id, self_level').eq('member_id', memberId),
-      supabase.from('skill_endorsement').select('skill_id').eq('member_id', memberId),
+      supabase.from('skill_credit').select('skill_id, credit, endorsements').eq('member_id', memberId),
       supabase.from('resource_type').select('id, name').order('rank'),
       supabase.from('resource')
         .select('id, name, description, capacity, availability, resource_type(name)')
-        .eq('scope', 'member').eq('holder_member_id', memberId).order('name')
+        .eq('scope', 'member').eq('holder_member_id', memberId).order('name'),
+      supabase.from('token_balance').select('account_id, balance').eq('member_id', memberId).maybeSingle(),
+      supabase.from('token_policy').select('value').eq('key', 'join_stake').maybeSingle()
     ]);
     skills = (tree as Skill[]) ?? [];
     mySkills = (ms as MySkill[]) ?? [];
-    const counts: Record<string, number> = {};
-    for (const e of (end as { skill_id: string }[]) ?? []) counts[e.skill_id] = (counts[e.skill_id] ?? 0) + 1;
-    endorseCounts = counts;
+    const credit: Record<string, { credit: number; endorsements: number }> = {};
+    for (const c of (cr as { skill_id: string; credit: number; endorsements: number }[]) ?? [])
+      credit[c.skill_id] = { credit: Number(c.credit), endorsements: Number(c.endorsements) };
+    skillCredit = credit;
     resTypes = (rt as ResType[]) ?? [];
     myResources = (mr as MyResource[]) ?? [];
+    balance = Number((bal as { balance: number } | null)?.balance ?? 0);
+    accountId = (bal as { account_id: string } | null)?.account_id ?? '';
+    joinStake = Number((pol as { value: number } | null)?.value ?? 20);
+    if (accountId) {
+      const { data: lg } = await supabase
+        .from('token_ledger')
+        .select('id, amount, kind, reason, from_account, to_account, created_at')
+        .or(`from_account.eq.${accountId},to_account.eq.${accountId}`)
+        .order('created_at', { ascending: false })
+        .limit(12);
+      ledger = (lg as LedgerRow[]) ?? [];
+    }
     skillsLoading = false;
   }
 
@@ -134,6 +157,35 @@
     </div>
 
     <div class="card stack">
+      <div class="row" style="justify-content:space-between; align-items:baseline;">
+        <h2 style="margin:0;">Fin Credit</h2>
+        <strong style="font-size:1.4rem;">{balance.toLocaleString()} <span class="muted" style="font-size:.7rem;">tokens</span></strong>
+      </div>
+      <p class="muted" style="font-size:.82rem; margin-top:-.4rem;">
+        Earned by finishing projects; spent to join projects ({joinStake}/join) and endorse peers.
+      </p>
+      {#if ledger.length > 0}
+        <table>
+          <thead><tr><th>When</th><th>Type</th><th>Reason</th><th style="text-align:right;">Amount</th></tr></thead>
+          <tbody>
+            {#each ledger as e}
+              <tr>
+                <td class="muted" style="font-size:.78rem;">{new Date(e.created_at).toLocaleDateString()}</td>
+                <td><span class="badge">{e.kind}</span></td>
+                <td>{e.reason}</td>
+                <td style="text-align:right; color:{e.to_account === accountId ? '#15803d' : '#b91c1c'};">
+                  {e.to_account === accountId ? '+' : '−'}{Number(e.amount).toLocaleString()}
+                </td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      {:else}
+        <p class="muted">No transactions yet.</p>
+      {/if}
+    </div>
+
+    <div class="card stack">
       <h2>My skills</h2>
       {#if error}<p style="color:#b91c1c;">{error}</p>{/if}
       {#if skillsLoading}
@@ -143,13 +195,13 @@
           <p class="muted">No skills added yet.</p>
         {:else}
           <table>
-            <thead><tr><th>Skill</th><th>Self-rating</th><th>Endorsements</th><th></th></tr></thead>
+            <thead><tr><th>Skill</th><th>Self-rating</th><th>Credit (endorsers)</th><th></th></tr></thead>
             <tbody>
               {#each mySkills as s}
                 <tr>
                   <td>{skillName(s.skill_id)}</td>
                   <td><span class="badge">{s.self_level}</span></td>
-                  <td>{endorseCounts[s.skill_id] ?? 0}</td>
+                  <td>{skillCredit[s.skill_id]?.credit ?? 0} <span class="muted" style="font-size:.78rem;">({skillCredit[s.skill_id]?.endorsements ?? 0})</span></td>
                   <td><button class="danger" onclick={() => removeMySkill(s.skill_id)}>Remove</button></td>
                 </tr>
               {/each}

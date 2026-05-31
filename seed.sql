@@ -168,7 +168,8 @@ where not exists (select 1 from project p where p.name = v.name);
 
 -- =====================================================================
 -- Not seeded (created through the app, via invite-only flow):
---   project_member, open_need, need_application, member_skill, skill_endorsement, invite.
+--   project_member, open_need, need_application, member_skill, invite,
+--   and the token ledger (tokens.sql bootstraps the treasury; credit accrues in-app).
 -- Project participants from the tracking doc (Xueqing Peng, Lingfei Qian, Yan Wang,
 -- Zhuohan Xie, Yupeng Cao, Haohang Li, ...) can be bulk-imported as 'invited'
 -- members + project_member links in a follow-up if desired.
