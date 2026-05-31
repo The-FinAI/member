@@ -486,9 +486,43 @@ button.stake:not(:disabled) { animation: pulseRing 2.6s ease-out infinite; }
 .escrow-meter > i { display: block; height: 100%; border-radius: 999px;
   background: linear-gradient(90deg, var(--accent), var(--accent-2)); animation: growW .9s cubic-bezier(.21,.61,.35,1) both; }
 
-/* floating +amount confetti on a value */
-.float-gain { position: absolute; font-family: var(--font-mono); font-weight: 700; font-size: .9rem;
-  color: var(--up); pointer-events: none; animation: floatUp 1.4s ease-out forwards; }
+/* floating +amount on a value */
+.float-gain { position: absolute; z-index: 3; font-family: var(--font-mono); font-weight: 700;
+  font-size: 1.1rem; color: var(--up); pointer-events: none; animation: floatUp 1.5s ease-out forwards;
+  text-shadow: 0 2px 12px var(--up-soft); }
+
+/* payout celebration: brief glow sweep over the hero */
+@keyframes celebrateGlow {
+  0% { box-shadow: var(--shadow); }
+  35% { box-shadow: 0 0 0 1px color-mix(in srgb, var(--up) 55%, transparent), 0 0 38px var(--up-soft); }
+  100% { box-shadow: var(--shadow); }
+}
+.hero.celebrate { animation: fadeInUp .42s cubic-bezier(.21,.61,.35,1) both, celebrateGlow 1.6s ease-out; }
+
+/* confetti burst */
+@keyframes confettiFall {
+  0% { opacity: 0; transform: translate(0, 0) rotate(0); }
+  10% { opacity: 1; }
+  100% { opacity: 0; transform: translate(var(--dx), 120px) rotate(540deg); }
+}
+.confetti { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 2; }
+.confetti > i {
+  position: absolute; top: 18px; left: calc(8% + (var(--i) * 6.2%));
+  width: 7px; height: 11px; border-radius: 2px;
+  --dx: calc((var(--i) - 7) * 9px);
+  background: var(--accent);
+  animation: confettiFall 1.5s ease-in forwards;
+  animation-delay: calc(var(--i) * 18ms);
+}
+.confetti > i:nth-child(3n)   { background: var(--up); }
+.confetti > i:nth-child(3n+1) { background: var(--warn); }
+.confetti > i:nth-child(4n)   { background: var(--info); }
+
+@media (prefers-reduced-motion: reduce) {
+  .hero.celebrate { animation: none; }
+  .confetti { display: none; }
+  .float-gain { animation: fadeIn .3s ease both; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .rise, .rise-stagger > *, .pod, .alloc > i, .lb-bar > i, .escrow-meter > i,

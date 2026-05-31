@@ -15,6 +15,22 @@
   let staked = $state(0);
   let joinStake = $state(20);
   let loading = $state(true);
+  let gain = $state(0);          // STR gained since last visit → celebrate
+  let celebrate = $state(false);
+
+  function maybeCelebrate(memberId: string, current: number) {
+    if (typeof window === 'undefined') return;
+    const key = `str_last_balance_${memberId}`;
+    const prevRaw = window.localStorage.getItem(key);
+    window.localStorage.setItem(key, String(current));
+    if (prevRaw == null) return;            // first visit: just seed
+    const prev = Number(prevRaw);
+    if (Number.isFinite(prev) && current > prev) {
+      gain = current - prev;
+      celebrate = true;
+      setTimeout(() => { celebrate = false; gain = 0; }, 1600);
+    }
+  }
 
   const netWorth = $derived(balance + staked);
   const liquidPct = $derived(netWorth > 0 ? (balance / netWorth) * 100 : 100);
@@ -55,6 +71,7 @@
       ledger = (lg as LedgerRow[]) ?? [];
     }
     loading = false;
+    maybeCelebrate(memberId, balance);
   }
 
   onMount(() => {
@@ -76,8 +93,14 @@
     <div class="card"><p class="muted">No member record linked to this account yet.</p></div>
   {:else}
     <!-- HERO BALANCE -->
-    <div class="hero rise">
+    <div class="hero rise" class:celebrate>
       <span class="h-glow"></span>
+      {#if celebrate}
+        <span class="float-gain" style="left:1.5rem; top:2.3rem;">+{gain.toLocaleString()} STR</span>
+        <div class="confetti" aria-hidden="true">
+          {#each Array(14) as _, i}<i style="--i:{i}"></i>{/each}
+        </div>
+      {/if}
       <span class="h-label">Net worth</span>
       <div class="h-balance">
         {#if loading}<span class="sk sk-line" style="width:200px; height:42px;"></span>
