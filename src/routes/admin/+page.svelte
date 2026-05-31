@@ -1,7 +1,8 @@
 <script lang="ts">
   const sections = [
     { href: '/admin/invites', title: 'Invite Members', desc: 'Pre-create members by email (invite-only)' },
-    { href: '/admin/positions', title: 'Positions', desc: 'Community-level titles + capability grants' },
+    { href: '/admin/positions', title: 'Positions', desc: 'Community-level titles + ordering' },
+    { href: '/admin/capabilities', title: 'Capabilities', desc: 'Grant capabilities to positions (permission matrix)' },
     { href: '/admin/roles', title: 'Project Roles', desc: 'Roles members hold within a project' },
     { href: '/admin/types', title: 'Project Types', desc: 'Dataset & Benchmark, Model, Agent…' },
     { href: '/admin/statuses', title: 'Project Statuses', desc: 'Proposal → Finished workflow states' },

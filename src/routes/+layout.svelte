@@ -17,21 +17,21 @@
       return;
     }
 
-    supabase.auth.getSession().then(async ({ data }) => {
-      session.set(data.session);
-      if (data.session) {
-        await claimMembership();
-        await loadProfile(data.session.user.id);
-      }
-      authReady.set(true);
-    });
-
-    const { data: sub } = supabase.auth.onAuthStateChange(async (e, s) => {
+    // onAuthStateChange fires INITIAL_SESSION on subscribe (covers reload) and
+    // SIGNED_IN on login. Its callback runs while supabase-js holds the auth
+    // lock, so any supabase call awaited *inside* it deadlocks every later
+    // query. Defer the work out of the lock with setTimeout.
+    const { data: sub } = supabase.auth.onAuthStateChange((e, s) => {
       session.set(s);
-      if (s) {
-        if (e === 'SIGNED_IN') await claimMembership();
-        await loadProfile(s.user.id);
-      } else clearProfile();
+      setTimeout(async () => {
+        if (!s) {
+          clearProfile();
+        } else if (e === 'SIGNED_IN' || e === 'INITIAL_SESSION') {
+          if (e === 'SIGNED_IN') await claimMembership();
+          await loadProfile(s.user.id);
+        }
+        authReady.set(true);
+      }, 0);
     });
     return () => sub.subscription.unsubscribe();
   });

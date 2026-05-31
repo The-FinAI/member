@@ -14,5 +14,5 @@
       { key: 'description', label: 'Description' }
     ]}
   />
-  <p class="muted" style="font-size:.82rem;">Capability grants per position are edited next (position_capability).</p>
+  <p class="muted" style="font-size:.82rem;">Grant capabilities to each position in <a href="/admin/capabilities">Capabilities</a>.</p>
 </div>
