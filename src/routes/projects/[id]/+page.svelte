@@ -9,7 +9,7 @@
   type Project = {
     id: string; name: string; target_venue: string | null; summary: string | null;
     status_id: string | null; held_from_status_id: string | null; venue_id: string | null;
-    project_type: { name: string } | null; project_status: { id: string; name: string; rank: number } | null;
+    project_type: { name: string; join_stake: number } | null; project_status: { id: string; name: string; rank: number } | null;
     venue: { name: string; kind: string; url: string | null; deadline: string | null } | null;
   };
   type VenueOpt = { id: string; name: string; kind: string; deadline: string | null };
@@ -46,7 +46,10 @@
   let vSel = $state('');
   let savingVenue = $state(false);
   let transitioning = $state(false);
-  let appliedNeedIds = $state<Set<string>>(new Set());
+  // my application per need: needId -> { id, status }
+  let myApps = $state<Record<string, { id: string; status: string }>>({});
+  let applyMsg = $state<Record<string, string>>({});
+  let confirming = $state('');
   let iManage = $state(false);
   let loading = $state(true);
   let error = $state('');
@@ -106,7 +109,7 @@
     if (!supabaseConfigured || !id) { loading = false; return; }
     loading = true;
     const [{ data: p }, { data: pm }, { data: nd }, { data: rl }, { data: sk }, { data: ps }] = await Promise.all([
-      supabase.from('project').select('id, name, target_venue, summary, status_id, held_from_status_id, venue_id, project_type(name), project_status!project_status_id_fkey(id, name, rank), venue:venue_id(name, kind, url, deadline)').eq('id', id).maybeSingle(),
+      supabase.from('project').select('id, name, target_venue, summary, status_id, held_from_status_id, venue_id, project_type(name, join_stake), project_status!project_status_id_fkey(id, name, rank), venue:venue_id(name, kind, url, deadline)').eq('id', id).maybeSingle(),
       supabase.from('project_member').select('member_id, member(full_name), project_role(name, can_manage)').eq('project_id', id),
       supabase.from('open_need').select('id, description, headcount, min_level, status, project_role_id, project_role(name), skill(name)').eq('project_id', id),
       supabase.from('project_role').select('id, name, payout_weight').order('name'),
@@ -130,11 +133,17 @@
       $capabilities.has('edit_any_project') ||
       participants.some((x) => x.member_id === me && x.project_role?.can_manage);
 
+    joinStake = Number(project?.project_type?.join_stake ?? joinStake);
+
     const needIds = needs.map((n) => n.id);
     if (me && needIds.length) {
       const { data: mine } = await supabase
-        .from('need_application').select('open_need_id').eq('member_id', me).in('open_need_id', needIds);
-      appliedNeedIds = new Set((mine ?? []).map((r: any) => r.open_need_id));
+        .from('need_application').select('id, status, open_need_id').eq('member_id', me).in('open_need_id', needIds);
+      const map: Record<string, { id: string; status: string }> = {};
+      for (const r of (mine as any[]) ?? []) map[r.open_need_id] = { id: r.id, status: r.status };
+      myApps = map;
+    } else {
+      myApps = {};
     }
     if (iManage && needIds.length) {
       const { data: apps } = await supabase
@@ -451,9 +460,31 @@
   async function apply(needId: string) {
     error = '';
     if (!$member) return;
-    const { error: err } = await supabase.from('need_application').insert({ open_need_id: needId, member_id: $member.id });
+    const { error: err } = await supabase.from('need_application').insert({
+      open_need_id: needId, member_id: $member.id, message: applyMsg[needId]?.trim() || null
+    });
     if (err) { error = err.message; return; }
-    appliedNeedIds = new Set([...appliedNeedIds, needId]);
+    applyMsg[needId] = '';
+    await load();
+  }
+
+  async function confirmJoin(needId: string) {
+    error = '';
+    const app = myApps[needId];
+    if (!app) return;
+    if (!confirm(`Confirm joining this project? This stakes ${joinStake} STR from your balance into the project escrow.`)) return;
+    confirming = needId;
+    const { error: err } = await supabase.rpc('confirm_join', { app_id: app.id });
+    confirming = '';
+    if (err) { error = err.message; return; }
+    await load();
+  }
+
+  async function closeNeed(needId: string) {
+    error = '';
+    const { error: err } = await supabase.from('open_need').update({ status: 'closed' }).eq('id', needId);
+    if (err) { error = err.message; return; }
+    await load();
   }
 
   async function postNeed() {
@@ -756,18 +787,44 @@
         <div class="stack">
           {#each needs as n}
             <div style="border:1px solid var(--border); border-radius:8px; padding:.75rem;">
-              <div class="row" style="justify-content:space-between;">
+              <div class="row" style="justify-content:space-between; align-items:flex-start;">
                 <strong>{n.project_role?.name ?? 'Contributor'}</strong>
-                <span class="muted" style="font-size:.8rem;">{n.status} · {n.headcount} opening(s)</span>
+                <span class="row" style="gap:.4rem;">
+                  <span class="badge {n.status === 'open' ? 'info' : 'dim'}" style="text-transform:capitalize;">{n.status}</span>
+                  <span class="muted" style="font-size:.8rem;">{n.headcount} opening(s)</span>
+                  {#if iManage && n.status === 'open'}
+                    <button class="ghost" style="padding:.15rem .5rem; font-size:.76rem;" onclick={() => closeNeed(n.id)}>Close</button>
+                  {/if}
+                </span>
               </div>
               {#if n.skill}<div class="muted" style="font-size:.82rem;">Skill: {n.skill.name}{n.min_level ? ` (≥ ${n.min_level})` : ''}</div>{/if}
+              <div class="muted" style="font-size:.78rem;">Joining stakes <strong class="mono">{joinStake}</strong> STR into escrow.</div>
               {#if n.description}<p style="margin:.4rem 0;">{n.description}</p>{/if}
 
               {#if !iManage}
-                {#if appliedNeedIds.has(n.id)}
-                  <span class="badge">Applied</span>
+                {#if iParticipate}
+                  <span class="badge pos">You're on this project</span>
+                {:else if myApps[n.id]?.status === 'joined'}
+                  <span class="badge pos">Joined</span>
+                {:else if myApps[n.id]?.status === 'accepted'}
+                  <div class="card" style="background:var(--up-soft); border-color:transparent; padding:.6rem .8rem;">
+                    <div class="row" style="justify-content:space-between; align-items:center; gap:.6rem;">
+                      <span style="font-size:.85rem;">You've been <strong>accepted</strong>. Stake <strong class="mono">{joinStake}</strong> STR to take your seat.</span>
+                      <button onclick={() => confirmJoin(n.id)} disabled={confirming === n.id}>
+                        {confirming === n.id ? 'Joining…' : `Confirm join · ${joinStake} STR`}</button>
+                    </div>
+                  </div>
+                {:else if myApps[n.id]?.status === 'declined'}
+                  <span class="badge neg">Application declined</span>
+                {:else if myApps[n.id]?.status === 'pending'}
+                  <span class="badge dim">Applied · pending review</span>
+                {:else if n.status === 'open'}
+                  <div class="row" style="gap:.5rem;">
+                    <input bind:value={applyMsg[n.id]} placeholder="Short pitch (optional)" style="flex:1;" />
+                    <button onclick={() => apply(n.id)}>I can help</button>
+                  </div>
                 {:else}
-                  <button onclick={() => apply(n.id)}>I can help</button>
+                  <span class="muted" style="font-size:.82rem;">This need is {n.status}.</span>
                 {/if}
               {:else}
                 <!-- manager: review applications -->
@@ -775,12 +832,17 @@
                   <p class="muted" style="font-size:.82rem;">No applications yet.</p>
                 {:else}
                   <table>
-                    <thead><tr><th>Applicant</th><th>Status</th><th></th></tr></thead>
+                    <thead><tr><th>Applicant</th><th>Pitch</th><th>Status</th><th></th></tr></thead>
                     <tbody>
                       {#each appsFor(n.id) as a}
                         <tr>
                           <td>{a.member?.full_name ?? '—'}</td>
-                          <td><span class="badge">{a.status}</span></td>
+                          <td class="dim" style="font-size:.82rem;">{a.message ?? '—'}</td>
+                          <td>
+                            <span class="badge {a.status === 'joined' ? 'pos' : a.status === 'accepted' ? 'info' : a.status === 'declined' ? 'neg' : 'dim'}">
+                              {a.status === 'accepted' ? 'accepted · awaiting confirm' : a.status}
+                            </span>
+                          </td>
                           <td class="row">
                             {#if a.status === 'pending'}
                               <button class="ghost" onclick={() => accept(a, n.project_role_id)}>Accept</button>

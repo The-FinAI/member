@@ -4,7 +4,7 @@
   import { member } from '$lib/session';
 
   type MyProject = { project: { id: string; name: string; project_status: { name: string } | null } | null; project_role: { name: string } | null };
-  type MyApp = { id: string; status: string; open_need: { project: { name: string } | null } | null };
+  type MyApp = { id: string; status: string; open_need: { project: { id: string; name: string } | null } | null };
 
   let myProjects = $state<MyProject[]>([]);
   let myApps = $state<MyApp[]>([]);
@@ -21,7 +21,7 @@
         .select('project(id, name, project_status!project_status_id_fkey(name)), project_role(name)')
         .eq('member_id', memberId),
       supabase.from('need_application')
-        .select('id, status, open_need(project(name))')
+        .select('id, status, open_need(project(id, name))')
         .eq('member_id', memberId)
         .order('created_at', { ascending: false }),
       supabase.from('open_need').select('*', { count: 'exact', head: true }).eq('status', 'open'),
@@ -120,8 +120,14 @@
         <tbody>
           {#each myApps as a}
             <tr>
-              <td>{a.open_need?.project?.name ?? '—'}</td>
-              <td><span class="badge {a.status === 'accepted' ? 'pos' : a.status === 'declined' ? 'neg' : 'dim'}">{a.status}</span></td>
+              <td>{#if a.open_need?.project}<a href={`/projects/${a.open_need.project.id}`}>{a.open_need.project.name}</a>{:else}—{/if}</td>
+              <td>
+                {#if a.status === 'accepted'}
+                  <a href={`/projects/${a.open_need?.project?.id}`}><span class="badge info">accepted · confirm to join →</span></a>
+                {:else}
+                  <span class="badge {a.status === 'joined' ? 'pos' : a.status === 'declined' ? 'neg' : 'dim'}">{a.status}</span>
+                {/if}
+              </td>
             </tr>
           {/each}
         </tbody>
