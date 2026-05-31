@@ -177,12 +177,18 @@
     );
     const key = sortKey;
     out = [...out].sort((a, b) => {
-      // deadline: chronological, but projects without a deadline always sink to the bottom
+      // deadline: upcoming first (soonest on top); past deadlines sink below all
+      // upcoming ones; projects without a deadline sink to the very bottom.
       if (key === 'deadline') {
         if (!a.deadline && !b.deadline) return 0;
         if (!a.deadline) return 1;
         if (!b.deadline) return -1;
-        return a.deadline.localeCompare(b.deadline) * sortDir;
+        const now = Date.now();
+        const at = new Date(a.deadline + 'T00:00:00').getTime();
+        const bt = new Date(b.deadline + 'T00:00:00').getTime();
+        const aPast = at < now, bPast = bt < now;
+        if (aPast !== bPast) return aPast ? 1 : -1; // past always below upcoming
+        return (at - bt) * sortDir;                 // within group, chronological
       }
       let av: string | number = key === 'status' ? a.statusRank : ((a as any)[key] ?? '');
       let bv: string | number = key === 'status' ? b.statusRank : ((b as any)[key] ?? '');

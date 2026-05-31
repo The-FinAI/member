@@ -8,10 +8,11 @@
 
   type Project = {
     id: string; name: string; target_venue: string | null; summary: string | null;
-    status_id: string | null; held_from_status_id: string | null;
+    status_id: string | null; held_from_status_id: string | null; venue_id: string | null;
     project_type: { name: string } | null; project_status: { id: string; name: string; rank: number } | null;
     venue: { name: string; kind: string; url: string | null; deadline: string | null } | null;
   };
+  type VenueOpt = { id: string; name: string; kind: string; deadline: string | null };
   type PStatus = { id: string; name: string; rank: number };
   type Participant = { member_id: string; member: { full_name: string } | null; project_role: { name: string; can_manage: boolean } | null };
   type Need = {
@@ -40,6 +41,10 @@
   let roles = $state<Role[]>([]);
   let skills = $state<Skill[]>([]);
   let statuses = $state<PStatus[]>([]);
+  let venueOpts = $state<VenueOpt[]>([]);
+  let editingVenue = $state(false);
+  let vSel = $state('');
+  let savingVenue = $state(false);
   let transitioning = $state(false);
   let appliedNeedIds = $state<Set<string>>(new Set());
   let iManage = $state(false);
@@ -101,7 +106,7 @@
     if (!supabaseConfigured || !id) { loading = false; return; }
     loading = true;
     const [{ data: p }, { data: pm }, { data: nd }, { data: rl }, { data: sk }, { data: ps }] = await Promise.all([
-      supabase.from('project').select('id, name, target_venue, summary, status_id, held_from_status_id, project_type(name), project_status!project_status_id_fkey(id, name, rank), venue:venue_id(name, kind, url, deadline)').eq('id', id).maybeSingle(),
+      supabase.from('project').select('id, name, target_venue, summary, status_id, held_from_status_id, venue_id, project_type(name), project_status!project_status_id_fkey(id, name, rank), venue:venue_id(name, kind, url, deadline)').eq('id', id).maybeSingle(),
       supabase.from('project_member').select('member_id, member(full_name), project_role(name, can_manage)').eq('project_id', id),
       supabase.from('open_need').select('id, description, headcount, min_level, status, project_role_id, project_role(name), skill(name)').eq('project_id', id),
       supabase.from('project_role').select('id, name, payout_weight').order('name'),
@@ -114,6 +119,11 @@
     roles = (rl as Role[]) ?? [];
     skills = (sk as Skill[]) ?? [];
     statuses = (ps as PStatus[]) ?? [];
+
+    if (!venueOpts.length) {
+      const { data: vn } = await supabase.from('venue').select('id, name, kind, deadline').eq('is_active', true).order('rank');
+      venueOpts = (vn as VenueOpt[]) ?? [];
+    }
 
     const me = $member?.id;
     iManage =
@@ -385,6 +395,30 @@
     await load();
   }
 
+  function openVenueEdit() {
+    vSel = project?.venue_id ?? '';
+    editingVenue = true;
+  }
+  async function changeVenue() {
+    if (!project) return;
+    error = '';
+    const newId = vSel || null;
+    if (newId === (project.venue_id ?? null)) { editingVenue = false; return; }
+    savingVenue = true;
+    const { error: err } = await supabase.from('project').update({ venue_id: newId }).eq('id', id);
+    if (err) { savingVenue = false; error = err.message; return; }
+    if ($member) {
+      const target = venueOpts.find((v) => v.id === newId);
+      await supabase.from('project_event').insert({
+        project_id: id, actor_member_id: $member.id, event_type: 'note',
+        summary: `Target venue changed to ${target ? target.name : 'none'}`
+      });
+    }
+    savingVenue = false;
+    editingVenue = false;
+    await load();
+  }
+
   async function postNote() {
     error = '';
     if (!noteText.trim() || !$member) return;
@@ -469,13 +503,27 @@
     </div>
     <div class="row muted" style="font-size:.85rem;">
       <span>{project.project_type?.name ?? '—'}</span>
-      {#if project.venue}
-        <span>Target:
-          {#if project.venue.url}<a href={project.venue.url} target="_blank" rel="noopener">{project.venue.name}</a>{:else}{project.venue.name}{/if}
-          <span class="badge dim" style="text-transform:capitalize;">{project.venue.kind}</span>
+      {#if editingVenue}
+        <span class="row" style="gap:.4rem;">
+          <span>Target:</span>
+          <select bind:value={vSel}>
+            <option value="">— none —</option>
+            {#each venueOpts as v}<option value={v.id}>{v.name}{v.deadline ? ` · DDL ${fmtDay(v.deadline)}` : ''}</option>{/each}
+          </select>
+          <button onclick={changeVenue} disabled={savingVenue}>{savingVenue ? 'Saving…' : 'Save'}</button>
+          <button class="ghost" onclick={() => (editingVenue = false)} disabled={savingVenue}>Cancel</button>
         </span>
-        {#if project.venue.deadline}<span class="mono {ddlClass(project.venue.deadline)}">DDL {fmtDay(project.venue.deadline)}</span>{/if}
-      {:else if project.target_venue}<span>Target: {project.target_venue}</span>{/if}
+      {:else}
+        {#if project.venue}
+          <span>Target:
+            {#if project.venue.url}<a href={project.venue.url} target="_blank" rel="noopener">{project.venue.name}</a>{:else}{project.venue.name}{/if}
+            <span class="badge dim" style="text-transform:capitalize;">{project.venue.kind}</span>
+          </span>
+          {#if project.venue.deadline}<span class="mono {ddlClass(project.venue.deadline)}">DDL {fmtDay(project.venue.deadline)}</span>{/if}
+        {:else if project.target_venue}<span>Target: {project.target_venue}</span>
+        {:else}<span>No target venue</span>{/if}
+        {#if iManage}<button class="ghost" style="padding:.15rem .5rem; font-size:.78rem;" onclick={openVenueEdit}>Change</button>{/if}
+      {/if}
     </div>
     {#if project.summary}<p>{project.summary}</p>{/if}
 
