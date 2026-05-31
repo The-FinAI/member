@@ -1,0 +1,107 @@
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import { supabase, supabaseConfigured } from '$lib/supabase';
+
+  type Col = { key: string; label: string; type?: 'text' | 'number' | 'bool' };
+
+  let {
+    table,
+    columns,
+    orderBy = 'rank'
+  }: { table: string; columns: Col[]; orderBy?: string } = $props();
+
+  let rows = $state<Record<string, any>[]>([]);
+  let loading = $state(true);
+  let error = $state('');
+  let draft = $state<Record<string, any>>({});
+
+  function emptyDraft() {
+    const d: Record<string, any> = {};
+    for (const c of columns) d[c.key] = c.type === 'bool' ? false : c.type === 'number' ? 0 : '';
+    return d;
+  }
+
+  async function load() {
+    if (!supabaseConfigured) { loading = false; return; }
+    loading = true;
+    const { data, error: err } = await supabase.from(table).select('*').order(orderBy);
+    if (err) error = err.message;
+    rows = data ?? [];
+    loading = false;
+  }
+
+  onMount(() => {
+    draft = emptyDraft();
+    load();
+  });
+
+  async function add() {
+    error = '';
+    const { error: err } = await supabase.from(table).insert(draft);
+    if (err) { error = err.message; return; }
+    draft = emptyDraft();
+    await load();
+  }
+
+  async function save(row: Record<string, any>) {
+    error = '';
+    const { id, ...rest } = row;
+    const { error: err } = await supabase.from(table).update(rest).eq('id', id);
+    if (err) error = err.message;
+  }
+
+  async function remove(id: string) {
+    error = '';
+    const { error: err } = await supabase.from(table).delete().eq('id', id);
+    if (err) { error = err.message; return; }
+    await load();
+  }
+</script>
+
+<div class="card stack">
+  {#if error}<p style="color:#b91c1c;">{error}</p>{/if}
+  {#if loading}
+    <p class="muted">Loading…</p>
+  {:else}
+    <table>
+      <thead>
+        <tr>{#each columns as c}<th>{c.label}</th>{/each}<th></th></tr>
+      </thead>
+      <tbody>
+        {#each rows as row (row.id)}
+          <tr>
+            {#each columns as c}
+              <td>
+                {#if c.type === 'bool'}
+                  <input type="checkbox" bind:checked={row[c.key]} />
+                {:else if c.type === 'number'}
+                  <input type="number" bind:value={row[c.key]} style="width:80px;" />
+                {:else}
+                  <input bind:value={row[c.key]} />
+                {/if}
+              </td>
+            {/each}
+            <td class="row">
+              <button class="ghost" onclick={() => save(row)}>Save</button>
+              <button class="danger" onclick={() => remove(row.id)}>Delete</button>
+            </td>
+          </tr>
+        {/each}
+        <tr>
+          {#each columns as c}
+            <td>
+              {#if c.type === 'bool'}
+                <input type="checkbox" bind:checked={draft[c.key]} />
+              {:else if c.type === 'number'}
+                <input type="number" bind:value={draft[c.key]} style="width:80px;" />
+              {:else}
+                <input placeholder={`new ${c.label.toLowerCase()}`} bind:value={draft[c.key]} />
+              {/if}
+            </td>
+          {/each}
+          <td><button onclick={add}>Add</button></td>
+        </tr>
+      </tbody>
+    </table>
+  {/if}
+</div>
