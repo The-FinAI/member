@@ -75,14 +75,14 @@
       <span class="sub">bonded in projects</span>
     </div>
     <a class="tile" href="/projects" style="flex:1; min-width:170px;">
-      <span class="label">My positions</span>
+      <span class="label">My projects</span>
       <span class="value">{myProjects.length}</span>
       <span class="sub">projects joined</span>
     </a>
     <a class="tile" href="/opportunities" style="flex:1; min-width:170px;">
-      <span class="label">Open markets</span>
+      <span class="label">Open needs</span>
       <span class="value">{openCount}</span>
-      <span class="sub">of {projectCount} projects</span>
+      <span class="sub">across {projectCount} projects</span>
     </a>
   </div>
 

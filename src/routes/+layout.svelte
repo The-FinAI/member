@@ -23,7 +23,7 @@
   $effect(() => { if ($member) loadBalance($member.id); else balance = null; });
 
   const navItems = [
-    { href: '/projects', label: 'Markets' },
+    { href: '/projects', label: 'Projects' },
     { href: '/opportunities', label: 'Opportunities' },
     { href: '/members', label: 'Members' },
     { href: '/profile', label: 'Wallet' }

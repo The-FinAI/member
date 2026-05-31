@@ -3,44 +3,81 @@
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { member } from '$lib/session';
 
-  type Row = {
+  type PType = { id: string; name: string; leader_stake: number; join_stake: number; finish_bonus: number };
+  type PStatus = { id: string; name: string; rank: number };
+  // one fully-denormalised grid row
+  type Grid = {
     id: string;
     name: string;
-    target_venue: string | null;
-    deadline: string | null;
-    project_type: { name: string } | null;
-    project_status: { name: string } | null;
+    type: string;
+    status: string;
+    statusRank: number;
+    venue: string;
+    leader: string;
+    members: number;
+    openNeeds: number;
+    escrow: number;
   };
-  type PType = { id: string; name: string; leader_stake: number; join_stake: number; finish_bonus: number };
-  type PStatus = { id: string; name: string };
 
-  let rows = $state<Row[]>([]);
-  let loading = $state(true);
-  let typeFilter = $state('');
-  let statusFilter = $state('');
-
-  // creation form
+  let grid = $state<Grid[]>([]);
   let types = $state<PType[]>([]);
   let statuses = $state<PStatus[]>([]);
+  let loading = $state(true);
+
+  // filters / search / sort
+  let q = $state('');
+  let typeFilter = $state('');
+  let statusFilter = $state('');
+  type SortKey = 'name' | 'type' | 'status' | 'leader' | 'members' | 'openNeeds' | 'escrow' | 'venue';
+  let sortKey = $state<SortKey>('status');
+  let sortDir = $state<1 | -1>(1);
+
+  // create form
   let myBalance = $state(0);
   let showForm = $state(false);
-  let cName = $state('');
-  let cType = $state('');
-  let cStatus = $state('');
-  let cVenue = $state('');
-  let cSummary = $state('');
+  let cName = $state(''); let cType = $state(''); let cStatus = $state('');
+  let cVenue = $state(''); let cSummary = $state('');
   let creating = $state(false);
   let error = $state('');
 
   const chosenType = $derived(types.find((t) => t.id === cType) ?? null);
   const leaderStake = $derived(chosenType?.leader_stake ?? 0);
 
-  async function loadList() {
-    const { data } = await supabase
-      .from('project')
-      .select('id, name, target_venue, deadline, project_type(name), project_status(name)')
-      .order('name');
-    rows = (data as Row[]) ?? [];
+  async function loadGrid() {
+    const [{ data: pr }, { data: pm }, { data: nd }, { data: esc }] = await Promise.all([
+      supabase.from('project')
+        .select('id, name, target_venue, project_type(name), project_status(name, rank)'),
+      supabase.from('project_member')
+        .select('project_id, member(full_name), project_role(name, can_manage)'),
+      supabase.from('open_need').select('project_id, status'),
+      supabase.from('stater_balance').select('project_id, balance').not('project_id', 'is', null)
+    ]);
+
+    const memberCount: Record<string, number> = {};
+    const leaderName: Record<string, string> = {};
+    for (const r of (pm as any[]) ?? []) {
+      memberCount[r.project_id] = (memberCount[r.project_id] ?? 0) + 1;
+      if (r.project_role?.name === 'Leader' && r.member?.full_name) leaderName[r.project_id] = r.member.full_name;
+      else if (!leaderName[r.project_id] && r.project_role?.can_manage && r.member?.full_name) leaderName[r.project_id] = r.member.full_name;
+    }
+    const openCount: Record<string, number> = {};
+    for (const r of (nd as any[]) ?? [])
+      if (r.status === 'open') openCount[r.project_id] = (openCount[r.project_id] ?? 0) + 1;
+    const escrowOf: Record<string, number> = {};
+    for (const r of (esc as any[]) ?? []) escrowOf[r.project_id] = Number(r.balance) || 0;
+
+    grid = ((pr as any[]) ?? []).map((p) => ({
+      id: p.id,
+      name: p.name,
+      type: p.project_type?.name ?? '—',
+      status: p.project_status?.name ?? '—',
+      statusRank: p.project_status?.rank ?? 999,
+      venue: p.target_venue ?? '',
+      leader: leaderName[p.id] ?? '',
+      members: memberCount[p.id] ?? 0,
+      openNeeds: openCount[p.id] ?? 0,
+      escrow: escrowOf[p.id] ?? 0
+    }));
   }
 
   async function loadMyBalance() {
@@ -52,9 +89,9 @@
   onMount(async () => {
     if (!supabaseConfigured) { loading = false; return; }
     const [, { data: ty }, { data: st }] = await Promise.all([
-      loadList(),
+      loadGrid(),
       supabase.from('project_type').select('id, name, leader_stake, join_stake, finish_bonus').order('rank'),
-      supabase.from('project_status').select('id, name').order('rank')
+      supabase.from('project_status').select('id, name, rank').order('rank')
     ]);
     types = (ty as PType[]) ?? [];
     statuses = (st as PStatus[]) ?? [];
@@ -76,38 +113,83 @@
     creating = false;
     if (err) { error = err.message; return; }
     cName = ''; cVenue = ''; cSummary = ''; showForm = false;
-    await Promise.all([loadList(), loadMyBalance()]);
+    await Promise.all([loadGrid(), loadMyBalance()]);
     if (data) window.location.href = `/projects/${data}`;
   }
 
-  const typeNames = $derived([...new Set(rows.map((r) => r.project_type?.name).filter(Boolean))] as string[]);
-  const statusNames = $derived([...new Set(rows.map((r) => r.project_status?.name).filter(Boolean))] as string[]);
-  const filtered = $derived(
-    rows.filter(
-      (r) =>
-        (!typeFilter || r.project_type?.name === typeFilter) &&
-        (!statusFilter || r.project_status?.name === statusFilter)
-    )
+  // status → color class
+  function statusClass(name: string) {
+    switch (name) {
+      case 'Proposal': return 'st-proposal';
+      case 'Data Collecting': return 'st-data';
+      case 'Work in progress': return 'st-wip';
+      case 'Under review': return 'st-review';
+      case 'Finished': return 'st-finished';
+      case 'Hold': return 'st-hold';
+      default: return 'st-proposal';
+    }
+  }
+
+  function setSort(k: SortKey) {
+    if (sortKey === k) sortDir = (sortDir === 1 ? -1 : 1) as 1 | -1;
+    else { sortKey = k; sortDir = 1; }
+  }
+  function arrow(k: SortKey) { return sortKey === k ? (sortDir === 1 ? '▲' : '▼') : ''; }
+
+  const typeNames = $derived([...new Set(grid.map((r) => r.type))].filter((x) => x !== '—').sort());
+  const statusNames = $derived(
+    [...new Map(grid.map((r) => [r.status, r.statusRank])).entries()]
+      .sort((a, b) => a[1] - b[1]).map((e) => e[0]).filter((x) => x !== '—')
   );
+
+  const rows = $derived.by(() => {
+    const needle = q.trim().toLowerCase();
+    let out = grid.filter((r) =>
+      (!typeFilter || r.type === typeFilter) &&
+      (!statusFilter || r.status === statusFilter) &&
+      (!needle ||
+        r.name.toLowerCase().includes(needle) ||
+        r.venue.toLowerCase().includes(needle) ||
+        r.leader.toLowerCase().includes(needle) ||
+        r.type.toLowerCase().includes(needle))
+    );
+    const key = sortKey;
+    out = [...out].sort((a, b) => {
+      let av: string | number = key === 'status' ? a.statusRank : (a as any)[key];
+      let bv: string | number = key === 'status' ? b.statusRank : (b as any)[key];
+      if (typeof av === 'string' && typeof bv === 'string') {
+        return av.localeCompare(bv) * sortDir;
+      }
+      return ((av as number) - (bv as number)) * sortDir;
+    });
+    return out;
+  });
+
+  // aggregate footer
+  const totalEscrow = $derived(rows.reduce((a, r) => a + r.escrow, 0));
+  const totalNeeds = $derived(rows.reduce((a, r) => a + r.openNeeds, 0));
 </script>
 
 <div class="stack">
   <div class="row" style="justify-content:space-between; align-items:center;">
-    <h1 style="margin:0;">Projects</h1>
+    <div>
+      <h1 style="margin:0;">Projects</h1>
+      <span class="muted" style="font-size:.85rem;">{grid.length} research projects · live escrow & staffing</span>
+    </div>
     {#if $member}
       <button onclick={() => (showForm = !showForm)}>{showForm ? 'Cancel' : 'Start a project'}</button>
     {/if}
   </div>
 
-  {#if error}<p style="color:var(--down);">{error}</p>{/if}
+  {#if error}<p class="neg" style="font-size:.85rem;">{error}</p>{/if}
 
   {#if showForm}
     <div class="card stack">
       <h2 style="margin:0;">Start a project</h2>
       <p class="muted" style="font-size:.82rem; margin:0;">
         Starting a project stakes the leader initiation bond into its escrow. Your balance:
-        <strong>{myBalance.toLocaleString()}</strong> STR. Leader stake for the chosen type:
-        <strong>{leaderStake}</strong> STR.
+        <strong class="mono">{myBalance.toLocaleString()}</strong> STR · leader stake for the chosen type:
+        <strong class="mono">{leaderStake}</strong> STR.
       </p>
       <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Name</span>
         <input bind:value={cName} placeholder="Project / paper name" /></label>
@@ -127,7 +209,12 @@
     </div>
   {/if}
 
-  <div class="row">
+  <!-- toolbar: search + filters -->
+  <div class="row" style="gap:.6rem;">
+    <div class="search" style="flex:1; min-width:220px;">
+      <span class="ico">⌕</span>
+      <input placeholder="Search name, leader, venue, type…" bind:value={q} style="width:100%;" />
+    </div>
     <select bind:value={typeFilter}>
       <option value="">All types</option>
       {#each typeNames as t}<option value={t}>{t}</option>{/each}
@@ -136,29 +223,59 @@
       <option value="">All statuses</option>
       {#each statusNames as s}<option value={s}>{s}</option>{/each}
     </select>
-    <span class="muted">{filtered.length} project{filtered.length === 1 ? '' : 's'}</span>
+    {#if q || typeFilter || statusFilter}
+      <button class="ghost" onclick={() => { q = ''; typeFilter = ''; statusFilter = ''; }}>Reset</button>
+    {/if}
   </div>
 
-  <div class="card">
+  <div class="card" style="padding:0; overflow-x:auto;">
     {#if loading}
-      <p class="muted">Loading…</p>
-    {:else if filtered.length === 0}
-      <p class="muted">No projects.</p>
+      <p class="muted" style="padding:1rem;">Loading…</p>
+    {:else if rows.length === 0}
+      <p class="muted" style="padding:1rem;">No projects match.</p>
     {:else}
       <table>
         <thead>
-          <tr><th>Name</th><th>Type</th><th>Status</th><th>Target</th></tr>
+          <tr>
+            <th class="sortable" onclick={() => setSort('name')}>Project <span class="arrow">{arrow('name')}</span></th>
+            <th class="sortable" onclick={() => setSort('type')}>Type <span class="arrow">{arrow('type')}</span></th>
+            <th class="sortable" onclick={() => setSort('status')}>Status <span class="arrow">{arrow('status')}</span></th>
+            <th class="sortable" onclick={() => setSort('leader')}>Leader <span class="arrow">{arrow('leader')}</span></th>
+            <th class="sortable num" onclick={() => setSort('members')}>Members <span class="arrow">{arrow('members')}</span></th>
+            <th class="sortable num" onclick={() => setSort('openNeeds')}>Open needs <span class="arrow">{arrow('openNeeds')}</span></th>
+            <th class="sortable num" onclick={() => setSort('escrow')}>Escrow <span class="arrow">{arrow('escrow')}</span></th>
+            <th class="sortable" onclick={() => setSort('venue')}>Target <span class="arrow">{arrow('venue')}</span></th>
+          </tr>
         </thead>
         <tbody>
-          {#each filtered as r}
+          {#each rows as r}
             <tr>
-              <td><a href={`/projects/${r.id}`}>{r.name}</a></td>
-              <td>{r.project_type?.name ?? '—'}</td>
-              <td><span class="badge">{r.project_status?.name ?? '—'}</span></td>
-              <td>{r.target_venue ?? '—'}</td>
+              <td><a href={`/projects/${r.id}`} style="font-weight:500;">{r.name}</a></td>
+              <td class="dim">{r.type}</td>
+              <td>
+                <span class="status {statusClass(r.status)}">
+                  <span class="sdot" style="background:currentColor;"></span>{r.status}
+                </span>
+              </td>
+              <td class="dim">{r.leader || '—'}</td>
+              <td class="num mono">{r.members}</td>
+              <td class="num mono">
+                {#if r.openNeeds > 0}<span class="badge info">{r.openNeeds}</span>{:else}<span class="muted">0</span>{/if}
+              </td>
+              <td class="num mono">{r.escrow.toLocaleString()}</td>
+              <td class="dim">{r.venue || '—'}</td>
             </tr>
           {/each}
         </tbody>
+        <tfoot>
+          <tr style="border-top:1px solid var(--border-2);">
+            <td class="muted" style="font-size:.78rem;">{rows.length} shown</td>
+            <td></td><td></td><td></td><td></td>
+            <td class="num mono muted" style="font-size:.78rem;">{totalNeeds}</td>
+            <td class="num mono muted" style="font-size:.78rem;">{totalEscrow.toLocaleString()}</td>
+            <td></td>
+          </tr>
+        </tfoot>
       </table>
     {/if}
   </div>

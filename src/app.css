@@ -27,6 +27,8 @@
   --down-soft: rgba(246, 70, 93, .14);
   --warn:      #f0b90b;
   --warn-soft: rgba(240, 185, 11, .14);
+  --info:      #4c8dff;
+  --info-soft: rgba(76, 141, 255, .14);
   --shadow:    0 1px 0 rgba(255,255,255,.02), 0 8px 24px rgba(0,0,0,.32);
   --ring:      0 0 0 3px rgba(0, 211, 167, .25);
 
@@ -58,6 +60,8 @@
   --down-soft: rgba(224, 45, 75, .09);
   --warn:      #c98a04;
   --warn-soft: rgba(201, 138, 4, .12);
+  --info:      #2563eb;
+  --info-soft: rgba(37, 99, 235, .10);
   --shadow:    0 1px 2px rgba(16,24,40,.04), 0 8px 24px rgba(16,24,40,.06);
   --ring:      0 0 0 3px rgba(7, 169, 139, .18);
   color-scheme: light;
@@ -167,7 +171,34 @@ button:disabled { opacity: .45; cursor: not-allowed; filter: none; transform: no
 .badge.pos  { background: var(--up-soft);   color: var(--up); }
 .badge.neg  { background: var(--down-soft); color: var(--down); }
 .badge.warn { background: var(--warn-soft); color: var(--warn); }
+.badge.info { background: var(--info-soft); color: var(--info); }
 .badge.dim  { background: var(--card-2);    color: var(--muted); }
+
+/* status cell: colored dot + label */
+.status { display: inline-flex; align-items: center; gap: .45rem; white-space: nowrap; font-size: .82rem; }
+.sdot { width: 8px; height: 8px; border-radius: 50%; flex: none; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 18%, transparent); }
+.st-proposal { color: var(--muted); }
+.st-data     { color: var(--info); }
+.st-wip      { color: var(--warn); }
+.st-review   { color: var(--accent); }
+.st-finished { color: var(--up); }
+.st-hold     { color: var(--down); }
+
+/* sortable table headers */
+th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+th.sortable:hover { color: var(--text); }
+th .arrow { opacity: .55; font-size: .7em; margin-left: .2rem; }
+
+/* search / toolbar */
+.search {
+  display: flex; align-items: center; gap: .5rem;
+  background: var(--bg-2); border: 1px solid var(--border-2);
+  border-radius: 9px; padding: 0 .6rem;
+}
+.search:focus-within { border-color: var(--accent); box-shadow: var(--ring); }
+.search input { border: 0; background: transparent; padding: .5rem 0; }
+.search input:focus { outline: none; box-shadow: none; }
+.search .ico { color: var(--muted); font-size: .9rem; }
 
 /* ---------- layout helpers ---------- */
 .muted { color: var(--muted); }
