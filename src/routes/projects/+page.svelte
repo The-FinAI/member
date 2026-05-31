@@ -205,6 +205,18 @@
   const totalNeeds = $derived(rows.reduce((a, r) => a + r.openNeeds, 0));
   const maxEscrow = $derived(Math.max(1, ...rows.map((r) => r.escrow)));
 
+  // pagination
+  let pageSize = $state(10);
+  let pageNum = $state(1);
+  const pageCount = $derived(Math.max(1, Math.ceil(rows.length / pageSize)));
+  // keep the current page in range when filters/sort/size shrink the result set
+  $effect(() => { if (pageNum > pageCount) pageNum = pageCount; });
+  // reset to first page whenever the filter inputs change
+  $effect(() => { q; typeFilter; statusFilter; pageSize; pageNum = 1; });
+  const pageRows = $derived(rows.slice((pageNum - 1) * pageSize, pageNum * pageSize));
+  const rangeFrom = $derived(rows.length === 0 ? 0 : (pageNum - 1) * pageSize + 1);
+  const rangeTo = $derived(Math.min(pageNum * pageSize, rows.length));
+
   // pipeline (rank order, Hold excluded) for the mini progress indicator
   const pipeline = $derived(statuses.filter((s) => s.name !== 'Hold').sort((a, b) => a.rank - b.rank).map((s) => s.name));
   function pipeIndex(name: string) { return pipeline.indexOf(name); }
@@ -373,7 +385,7 @@
           </tr>
         </thead>
         <tbody>
-          {#each rows as r}
+          {#each pageRows as r}
             <tr>
               <td>
                 <a href={`/projects/${r.id}`} class="proj">
@@ -427,7 +439,7 @@
         </tbody>
         <tfoot>
           <tr style="border-top:1px solid var(--border-2);">
-            <td class="muted" style="font-size:.78rem;">{rows.length} shown</td>
+            <td class="muted" style="font-size:.78rem;">{rows.length} total</td>
             <td></td><td></td>
             <td class="num mono muted" style="font-size:.78rem;">{totalNeeds}</td>
             <td class="num mono muted" style="font-size:.78rem;">{totalEscrow.toLocaleString()}</td>
@@ -437,4 +449,24 @@
       </table>
     {/if}
   </div>
+
+  {#if !loading && rows.length > 0}
+    <div class="row" style="justify-content:space-between; align-items:center;">
+      <div class="row" style="gap:.5rem;">
+        <span class="muted" style="font-size:.8rem;">{rangeFrom}–{rangeTo} of {rows.length}</span>
+        <select bind:value={pageSize} style="padding:.3rem .5rem; font-size:.82rem;">
+          {#each [10, 25, 50, 100] as n}<option value={n}>{n} / page</option>{/each}
+        </select>
+      </div>
+      {#if pageCount > 1}
+        <div class="row" style="gap:.35rem;">
+          <button class="ghost" onclick={() => (pageNum = 1)} disabled={pageNum === 1} title="First">«</button>
+          <button class="ghost" onclick={() => (pageNum = Math.max(1, pageNum - 1))} disabled={pageNum === 1}>‹ Prev</button>
+          <span class="muted mono" style="font-size:.82rem; padding:0 .3rem;">{pageNum} / {pageCount}</span>
+          <button class="ghost" onclick={() => (pageNum = Math.min(pageCount, pageNum + 1))} disabled={pageNum === pageCount}>Next ›</button>
+          <button class="ghost" onclick={() => (pageNum = pageCount)} disabled={pageNum === pageCount} title="Last">»</button>
+        </div>
+      {/if}
+    </div>
+  {/if}
 </div>

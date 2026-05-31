@@ -88,7 +88,7 @@
 <header class="topbar">
   <div class="container row" style="justify-content: space-between; padding-block: .65rem; gap: 1rem;">
     <a href="/" class="brand">
-      <span class="dot"></span>
+      <img src="/logo.png" alt="The Fin AI" class="brand-logo" />
       The&nbsp;Fin&nbsp;AI <span class="muted" style="font-weight:500;">· Stater</span>
     </a>
 
