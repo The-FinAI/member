@@ -14,10 +14,18 @@
   type ResType = { id: string; name: string };
   type MyResource = {
     id: string; name: string; description: string | null; capacity: string | null;
-    availability: string; resource_type: { name: string } | null;
+    availability: string; approval_status: string; resource_type: { name: string } | null;
   };
 
   const AVAIL = ['available', 'limited', 'committed'];
+
+  // skill medal tier from earned endorsement credit
+  function medalTier(credit: number) {
+    if (credit >= 30) return { cls: 'tier-g', label: 'Gold' };
+    if (credit >= 10) return { cls: 'tier-s', label: 'Silver' };
+    if (credit >= 1) return { cls: 'tier-b', label: 'Bronze' };
+    return { cls: 'tier-0', label: 'Unproven' };
+  }
 
   let saving = $state(false);
   let affiliation = $state('');
@@ -53,7 +61,7 @@
       supabase.from('stater_skill_credit').select('skill_id, credit, endorsements').eq('member_id', memberId),
       supabase.from('resource_type').select('id, name').order('rank'),
       supabase.from('resource')
-        .select('id, name, description, capacity, availability, resource_type(name)')
+        .select('id, name, description, capacity, availability, approval_status, resource_type(name)')
         .eq('scope', 'member').eq('holder_member_id', memberId).order('name'),
       supabase.from('stater_balance').select('account_id, balance').eq('owner_member_id', memberId).maybeSingle(),
       supabase.from('stater_policy').select('value').eq('key', 'join_stake_normal').maybeSingle()
@@ -165,27 +173,31 @@
     </div>
 
     <div class="card stack">
-      <h2>My skills</h2>
+      <h2>Skill medals</h2>
+      <p class="muted" style="font-size:.82rem; margin-top:-.5rem;">
+        Each skill is a medal. Peer endorsements earn credit that levels it up — Bronze → Silver → Gold.
+      </p>
       {#if error}<p style="color:var(--down);">{error}</p>{/if}
       {#if skillsLoading}
         <p class="muted">Loading…</p>
       {:else}
         {#if mySkills.length === 0}
-          <p class="muted">No skills added yet.</p>
+          <p class="muted">No skill medals yet. Add one below to start earning endorsements.</p>
         {:else}
-          <table>
-            <thead><tr><th>Skill</th><th>Self-rating</th><th>Credit (endorsers)</th><th></th></tr></thead>
-            <tbody>
-              {#each mySkills as s}
-                <tr>
-                  <td>{skillName(s.skill_id)}</td>
-                  <td><span class="badge">{s.self_level}</span></td>
-                  <td>{skillCredit[s.skill_id]?.credit ?? 0} <span class="muted" style="font-size:.78rem;">({skillCredit[s.skill_id]?.endorsements ?? 0})</span></td>
-                  <td><button class="danger" onclick={() => removeMySkill(s.skill_id)}>Remove</button></td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
+          <div class="medals rise-stagger">
+            {#each mySkills as s}
+              {@const credit = skillCredit[s.skill_id]?.credit ?? 0}
+              {@const t = medalTier(credit)}
+              <div class="medal {t.cls}">
+                <button class="m-remove" title="Remove" onclick={() => removeMySkill(s.skill_id)}>✕</button>
+                <div class="emblem"><span class="star">★</span></div>
+                <div class="m-name">{skillName(s.skill_id)}</div>
+                <div class="m-tier">{t.label}</div>
+                <div class="m-level"><span class="badge dim">{s.self_level}</span></div>
+                <div class="m-credit">{credit} credit · {skillCredit[s.skill_id]?.endorsements ?? 0} endorsers</div>
+              </div>
+            {/each}
+          </div>
         {/if}
 
         <div class="row" style="align-items:flex-end; border-top:1px dashed var(--border); padding-top:.75rem;">
@@ -206,6 +218,7 @@
     <div class="card stack">
       <h2>My resources</h2>
       <p class="muted" style="font-size:.82rem; margin-top:-.5rem;">Resources you can bring to projects (compute, funding, data, expertise…).</p>
+      <div class="res-pending-note">⏳ New resources are reviewed by a steward before they can be offered to projects.</div>
       {#if skillsLoading}
         <p class="muted">Loading…</p>
       {:else}
@@ -213,14 +226,15 @@
           <p class="muted">No resources added yet.</p>
         {:else}
           <table>
-            <thead><tr><th>Name</th><th>Type</th><th>Capacity</th><th>Availability</th><th></th></tr></thead>
+            <thead><tr><th>Name</th><th>Type</th><th>Capacity</th><th>Availability</th><th>Review</th><th></th></tr></thead>
             <tbody>
               {#each myResources as r}
                 <tr>
                   <td>{r.name}</td>
                   <td>{r.resource_type?.name ?? '—'}</td>
                   <td>{r.capacity ?? '—'}</td>
-                  <td><span class="badge">{r.availability}</span></td>
+                  <td><span class="badge dim">{r.availability}</span></td>
+                  <td><span class="badge {r.approval_status}">{r.approval_status === 'approved' ? '✓ approved' : r.approval_status === 'rejected' ? '✕ rejected' : '⏳ pending'}</span></td>
                   <td><button class="danger" onclick={() => removeResource(r.id)}>Remove</button></td>
                 </tr>
               {/each}

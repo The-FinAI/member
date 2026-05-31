@@ -172,7 +172,8 @@
 
     if (me) {
       const { data: mine } = await supabase
-        .from('resource').select('id, name, scope').eq('holder_member_id', me).order('name');
+        .from('resource').select('id, name, scope').eq('holder_member_id', me)
+        .eq('approval_status', 'approved').order('name');
       myResources = (mine as OfferableResource[]) ?? [];
     }
     const reqIds = resRequests.map((r) => r.id);

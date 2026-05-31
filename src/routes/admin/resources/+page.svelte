@@ -7,16 +7,19 @@
   type Resource = {
     id: string; name: string; description: string | null; capacity: string | null;
     availability: string; type_id: string | null; holder_member_id: string | null;
+    approval_status: string; scope: string;
     resource_type: { name: string } | null; member: { full_name: string } | null;
   };
 
   const AVAIL = ['available', 'limited', 'committed'];
 
   let resources = $state<Resource[]>([]);
+  let pending = $state<Resource[]>([]);
   let types = $state<Type[]>([]);
   let members = $state<Member[]>([]);
   let loading = $state(true);
   let error = $state('');
+  let busy = $state('');
 
   // new community resource
   let name = $state('');
@@ -29,15 +32,16 @@
   async function load() {
     if (!supabaseConfigured) { loading = false; return; }
     loading = true;
-    const [{ data: r }, { data: t }, { data: m }] = await Promise.all([
-      supabase.from('resource')
-        .select('id, name, description, capacity, availability, type_id, holder_member_id, resource_type(name), member:holder_member_id(full_name)')
-        .eq('scope', 'community').order('name'),
+    const sel = 'id, name, description, capacity, availability, type_id, holder_member_id, approval_status, scope, resource_type(name), member:holder_member_id(full_name)';
+    const [{ data: r }, { data: pq }, { data: t }, { data: m }] = await Promise.all([
+      supabase.from('resource').select(sel).eq('scope', 'community').order('name'),
+      supabase.from('resource').select(sel).eq('approval_status', 'pending').order('created_at', { ascending: false }),
       supabase.from('resource_type').select('id, name').order('rank'),
       // only members who hold a position can steward a community resource
       supabase.from('member_position').select('member(id, full_name)')
     ]);
     resources = (r as Resource[]) ?? [];
+    pending = (pq as Resource[]) ?? [];
     types = (t as Type[]) ?? [];
     const seen = new Map<string, string>();
     for (const row of (m as any[]) ?? []) {
@@ -56,7 +60,7 @@
     const { error: err } = await supabase.from('resource').insert({
       name: name.trim(), type_id: typeId || null, scope: 'community',
       holder_member_id: steward || null, capacity: capacity || null,
-      availability, description: description || null
+      availability, description: description || null, approval_status: 'approved'
     });
     if (err) { error = err.message; return; }
     name = ''; typeId = ''; steward = ''; capacity = ''; availability = 'available'; description = '';
@@ -66,6 +70,14 @@
   async function remove(id: string) {
     error = '';
     const { error: err } = await supabase.from('resource').delete().eq('id', id);
+    if (err) { error = err.message; return; }
+    await load();
+  }
+
+  async function review(id: string, status: 'approved' | 'rejected') {
+    error = ''; busy = id;
+    const { error: err } = await supabase.from('resource').update({ approval_status: status }).eq('id', id);
+    busy = '';
     if (err) { error = err.message; return; }
     await load();
   }
@@ -80,6 +92,39 @@
   </p>
 
   {#if error}<p style="color:var(--down);">{error}</p>{/if}
+
+  <div class="card stack">
+    <div class="row" style="justify-content:space-between; align-items:center;">
+      <h2 style="margin:0;">Pending approvals</h2>
+      {#if pending.length}<span class="badge warn">{pending.length} waiting</span>{/if}
+    </div>
+    <p class="muted" style="font-size:.82rem; margin-top:-.3rem;">
+      Member-submitted resources can't be offered to projects until a steward approves them.
+    </p>
+    {#if loading}
+      <p class="muted">Loading…</p>
+    {:else if pending.length === 0}
+      <p class="muted">Nothing waiting for review.</p>
+    {:else}
+      <table>
+        <thead><tr><th>Name</th><th>Type</th><th>Submitted by</th><th>Scope</th><th></th></tr></thead>
+        <tbody>
+          {#each pending as r}
+            <tr>
+              <td><strong>{r.name}</strong>{#if r.description}<div class="muted" style="font-size:.8rem;">{r.description}</div>{/if}{#if r.capacity}<div class="muted" style="font-size:.78rem;">Capacity: {r.capacity}</div>{/if}</td>
+              <td>{r.resource_type?.name ?? '—'}</td>
+              <td>{r.member?.full_name ?? '—'}</td>
+              <td><span class="badge dim">{r.scope}</span></td>
+              <td class="row">
+                <button disabled={busy === r.id} onclick={() => review(r.id, 'approved')}>Approve</button>
+                <button class="danger" disabled={busy === r.id} onclick={() => review(r.id, 'rejected')}>Reject</button>
+              </td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    {/if}
+  </div>
 
   <div class="card stack">
     <h2>Add a community resource</h2>

@@ -530,6 +530,74 @@ button.stake:not(:disabled) { animation: pulseRing 2.6s ease-out infinite; }
   .sk::after { animation: none; }
 }
 
+/* ============================================================
+   Skill medals (achievements) + resource approval states
+   ============================================================ */
+.medals { display: grid; grid-template-columns: repeat(auto-fill, minmax(146px, 1fr)); gap: .8rem; }
+.medal {
+  position: relative; text-align: center; padding: 1rem .7rem .85rem;
+  border: 1px solid var(--border); border-radius: 14px;
+  background: linear-gradient(180deg, var(--card-2), var(--card));
+  transition: transform .14s ease, border-color .14s ease, box-shadow .14s ease;
+}
+.medal:hover { transform: translateY(-3px); border-color: var(--border-2); box-shadow: var(--shadow); }
+.medal .emblem {
+  width: 58px; height: 58px; margin: 0 auto .6rem; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; font-size: 1.5rem;
+  color: #3a2a00; position: relative; overflow: hidden;
+  box-shadow: inset 0 2px 4px rgba(255,255,255,.45), inset 0 -3px 6px rgba(0,0,0,.25), 0 4px 12px rgba(0,0,0,.3);
+}
+/* ribbon notch under the emblem */
+.medal .emblem::after {
+  content: ""; position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%);
+  width: 0; height: 0; border-left: 9px solid transparent; border-right: 9px solid transparent;
+  border-top: 10px solid var(--border-2);
+}
+.medal .emblem .star { position: relative; z-index: 1; }
+.medal .m-name { font-weight: 600; font-size: .9rem; color: var(--text); line-height: 1.2; }
+.medal .m-tier { font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; margin-top: .15rem; font-weight: 700; }
+.medal .m-level { margin-top: .4rem; }
+.medal .m-credit { font-size: .72rem; color: var(--muted); margin-top: .35rem; }
+.medal .m-remove {
+  position: absolute; top: .4rem; right: .4rem; width: 20px; height: 20px; padding: 0;
+  border-radius: 6px; font-size: .7rem; line-height: 1; background: transparent;
+  color: var(--muted); border: 1px solid var(--border); opacity: 0; transition: opacity .14s ease;
+}
+.medal:hover .m-remove { opacity: 1; }
+.medal .m-remove:hover { color: var(--down); border-color: var(--down); filter: none; }
+
+/* tiers */
+.medal.tier-g { border-color: rgba(240,185,11,.4); }
+.medal.tier-g .emblem { background: linear-gradient(140deg, #ffe28a, #e0992c); }
+.medal.tier-g .m-tier { color: #d99a13; }
+.medal.tier-s .emblem { background: linear-gradient(140deg, #f1f5fa, #9fb0c3); }
+.medal.tier-s .m-tier { color: var(--text-dim); }
+.medal.tier-b .emblem { background: linear-gradient(140deg, #edb98e, #b06a2c); }
+.medal.tier-b .m-tier { color: #b06a2c; }
+.medal.tier-0 .emblem { background: var(--elevate); color: var(--muted); box-shadow: inset 0 0 0 2px var(--border-2); }
+.medal.tier-0 .m-tier { color: var(--muted); }
+/* gold shimmer */
+.medal.tier-g .emblem::before {
+  content: ""; position: absolute; inset: 0; z-index: 0;
+  background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,.7) 50%, transparent 70%);
+  background-size: 220% 220%; animation: shimmerMedal 3s ease-in-out infinite;
+}
+@keyframes shimmerMedal { 0%,100% { background-position: 120% 0; } 50% { background-position: -20% 0; } }
+
+/* resource approval pills */
+.badge.pending  { background: var(--warn-soft); color: var(--warn); }
+.badge.approved { background: var(--up-soft);   color: var(--up); }
+.badge.rejected { background: var(--down-soft); color: var(--down); }
+.res-pending-note {
+  display: flex; align-items: center; gap: .5rem; font-size: .8rem; color: var(--warn);
+  background: var(--warn-soft); border-radius: 9px; padding: .5rem .7rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .medal.tier-g .emblem::before { animation: none; }
+  .medal:hover { transform: none; }
+}
+
 /* ---------- top bar ---------- */
 .topbar {
   position: sticky; top: 0; z-index: 40;
