@@ -9,7 +9,7 @@
   type Project = {
     id: string; name: string; target_venue: string | null; summary: string | null;
     status_id: string | null; held_from_status_id: string | null; venue_id: string | null;
-    project_type: { name: string; join_stake: number } | null; project_status: { id: string; name: string; rank: number } | null;
+    project_type: { name: string; join_stake: number; leader_stake: number } | null; project_status: { id: string; name: string; rank: number } | null;
     venue: { name: string; kind: string; url: string | null; deadline: string | null } | null;
   };
   type VenueOpt = { id: string; name: string; kind: string; deadline: string | null };
@@ -55,6 +55,9 @@
   let error = $state('');
   let escrow = $state(0);
   let joinStake = $state(20);
+  let leaderStake = $state(50);
+  let myBalance = $state(0);
+  let claiming = $state(false);
 
   // stake commitments + settlement
   let commitments = $state<Commitment[]>([]);
@@ -80,6 +83,7 @@
   let events = $state<Event[]>([]);
   const iParticipate = $derived(participants.some((x) => x.member_id === $member?.id));
   const canContribute = $derived(iManage || iParticipate);
+  const hasLeader = $derived(participants.some((x) => x.project_role?.can_manage));
 
   const LINK_KINDS = ['proposal', 'overleaf', 'openreview', 'paper', 'repo', 'dataset', 'slides', 'drive', 'media', 'other'];
   // add-link form
@@ -109,7 +113,7 @@
     if (!supabaseConfigured || !id) { loading = false; return; }
     loading = true;
     const [{ data: p }, { data: pm }, { data: nd }, { data: rl }, { data: sk }, { data: ps }] = await Promise.all([
-      supabase.from('project').select('id, name, target_venue, summary, status_id, held_from_status_id, venue_id, project_type(name, join_stake), project_status!project_status_id_fkey(id, name, rank), venue:venue_id(name, kind, url, deadline)').eq('id', id).maybeSingle(),
+      supabase.from('project').select('id, name, target_venue, summary, status_id, held_from_status_id, venue_id, project_type(name, join_stake, leader_stake), project_status!project_status_id_fkey(id, name, rank), venue:venue_id(name, kind, url, deadline)').eq('id', id).maybeSingle(),
       supabase.from('project_member').select('member_id, member(full_name), project_role(name, can_manage)').eq('project_id', id),
       supabase.from('open_need').select('id, description, headcount, min_level, status, project_role_id, project_role(name), skill(name)').eq('project_id', id),
       supabase.from('project_role').select('id, name, payout_weight').order('name'),
@@ -134,6 +138,12 @@
       participants.some((x) => x.member_id === me && x.project_role?.can_manage);
 
     joinStake = Number(project?.project_type?.join_stake ?? joinStake);
+    leaderStake = Number(project?.project_type?.leader_stake ?? leaderStake);
+
+    if (me) {
+      const { data: bal } = await supabase.from('stater_balance').select('balance').eq('owner_member_id', me).maybeSingle();
+      myBalance = Number((bal as { balance: number } | null)?.balance ?? 0);
+    }
 
     const needIds = needs.map((n) => n.id);
     if (me && needIds.length) {
@@ -480,6 +490,17 @@
     await load();
   }
 
+  async function claimLeadership() {
+    error = '';
+    if (!$member) return;
+    if (!confirm(`Take the lead on this project? This stakes ${leaderStake} STR from your balance into the project escrow and seats you as Leader.`)) return;
+    claiming = true;
+    const { error: err } = await supabase.rpc('claim_leadership', { p: id });
+    claiming = false;
+    if (err) { error = err.message; return; }
+    await load();
+  }
+
   async function closeNeed(needId: string) {
     error = '';
     const { error: err } = await supabase.from('open_need').update({ status: 'closed' }).eq('id', needId);
@@ -592,6 +613,24 @@
         <span class="muted" style="font-size:.8rem;"> STR · staked by leader + members ({joinStake}/join)</span>
       </div>
     </div>
+
+    {#if !hasLeader && $member}
+      <div class="card" style="background:var(--up-soft); border-color:transparent;">
+        <div class="row" style="justify-content:space-between; align-items:center; gap:.8rem; flex-wrap:wrap;">
+          <div>
+            <strong>This project has no leader.</strong>
+            <div class="muted" style="font-size:.84rem; margin-top:.15rem;">
+              Stake <strong class="mono">{leaderStake}</strong> STR to take the lead — you'll be able to post needs, accept applicants, and steer the project.
+            </div>
+          </div>
+          <div class="stack" style="gap:.2rem; align-items:flex-end;">
+            <button onclick={claimLeadership} disabled={claiming || leaderStake > myBalance}>
+              {claiming ? 'Staking…' : `Claim leadership · ${leaderStake} STR`}</button>
+            {#if leaderStake > myBalance}<span class="neg" style="font-size:.78rem;">Insufficient balance ({myBalance} STR).</span>{/if}
+          </div>
+        </div>
+      </div>
+    {/if}
 
     <div class="row" style="align-items:stretch; gap:1rem;">
       <!-- RECORDS / LINKS -->
