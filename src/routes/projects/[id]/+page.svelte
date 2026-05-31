@@ -16,7 +16,14 @@
     project_role_id: string | null; project_role: { name: string } | null; skill: { name: string } | null;
   };
   type Application = { id: string; status: string; message: string | null; open_need_id: string; member: { full_name: string } | null };
-  type Role = { id: string; name: string };
+  type Role = { id: string; name: string; payout_weight?: number };
+  type Commitment = {
+    id: string; member_id: string; commitment_type: string; status: string;
+    token_amount: number; token_equivalent: number; hours_committed: number | null;
+    member: { full_name: string } | null; skill: { name: string } | null;
+  };
+  type Settlement = { id: string; status: string; meeting_notes: string | null; submitted_by: string | null; review_window_ends_at: string | null; approved_at: string | null };
+  type SettlementItem = { id: string; member_id: string; role: string | null; final_payout_weight: number; is_author: boolean; author_order: number | null; member?: { full_name: string } | null };
   type Skill = { id: string; name: string; parent_id: string | null };
   type ResType = { id: string; name: string };
   type ResRequest = { id: string; description: string | null; quantity: string | null; status: string; type_id: string | null; resource_type: { name: string } | null };
@@ -36,6 +43,17 @@
   let escrow = $state(0);
   let joinStake = $state(20);
   let finishing = $state(false);
+
+  // stake commitments + settlement
+  let commitments = $state<Commitment[]>([]);
+  let settlement = $state<Settlement | null>(null);
+  let settlementItems = $state<SettlementItem[]>([]);
+  // settlement builder (manager): weights/authorship keyed by member_id
+  let sWeight = $state<Record<string, number>>({});
+  let sAuthor = $state<Record<string, boolean>>({});
+  let sNotes = $state('');
+  let submitting = $state(false);
+  const canApprove = $derived($capabilities.has('manage_stater') || $capabilities.has('edit_any_project'));
 
   // new-need form
   let nRole = $state(''); let nSkill = $state(''); let nLevel = $state(''); let nCount = $state(1); let nDesc = $state('');
@@ -61,7 +79,7 @@
       supabase.from('project').select('id, name, target_venue, summary, project_type(name), project_status(name)').eq('id', id).maybeSingle(),
       supabase.from('project_member').select('member_id, member(full_name), project_role(name, can_manage)').eq('project_id', id),
       supabase.from('open_need').select('id, description, headcount, min_level, status, project_role_id, project_role(name), skill(name)').eq('project_id', id),
-      supabase.from('project_role').select('id, name').order('name'),
+      supabase.from('project_role').select('id, name, payout_weight').order('name'),
       supabase.from('skill').select('id, name, parent_id').order('name')
     ]);
     project = (p as Project) ?? null;
@@ -113,19 +131,95 @@
     }
 
     const [{ data: esc }, { data: js }] = await Promise.all([
-      supabase.from('token_balance').select('balance').eq('project_id', id).maybeSingle(),
-      supabase.from('token_policy').select('value').eq('key', 'join_stake').maybeSingle()
+      supabase.from('stater_balance').select('balance').eq('project_id', id).maybeSingle(),
+      supabase.from('stater_policy').select('value').eq('key', 'join_stake_normal').maybeSingle()
     ]);
     escrow = Number((esc as { balance: number } | null)?.balance ?? 0);
     joinStake = Number((js as { value: number } | null)?.value ?? 20);
+
+    // stake commitments
+    const { data: cm } = await supabase
+      .from('stater_project_stake_commitment')
+      .select('id, member_id, commitment_type, status, token_amount, token_equivalent, hours_committed, member(full_name), skill(name)')
+      .eq('project_id', id).order('created_at');
+    commitments = (cm as Commitment[]) ?? [];
+
+    // latest settlement + items
+    const { data: stl } = await supabase
+      .from('stater_settlement')
+      .select('id, status, meeting_notes, submitted_by, review_window_ends_at, approved_at')
+      .eq('project_id', id).order('created_at', { ascending: false }).limit(1).maybeSingle();
+    settlement = (stl as Settlement) ?? null;
+    if (settlement) {
+      const { data: items } = await supabase
+        .from('stater_settlement_item')
+        .select('id, member_id, role, final_payout_weight, is_author, author_order, member(full_name)')
+        .eq('settlement_id', settlement.id);
+      settlementItems = (items as SettlementItem[]) ?? [];
+    } else {
+      settlementItems = [];
+    }
+
+    // seed the settlement builder defaults from participants (by role payout_weight)
+    if (iManage && !settlement) {
+      const w: Record<string, number> = {}; const a: Record<string, boolean> = {};
+      for (const pt of participants) {
+        const role = roles.find((r) => r.name === pt.project_role?.name);
+        w[pt.member_id] = Number(role?.payout_weight ?? 1);
+        a[pt.member_id] = true;
+      }
+      sWeight = w; sAuthor = a;
+    }
     loading = false;
   }
 
+  // mark Finished (opens settlement; no auto-payout under the Stater economy)
   async function finishProject() {
-    if (!confirm('Finish this project and pay out the escrow to all authors by role weight? This cannot be undone.')) return;
+    if (!confirm('Mark this project Finished? This opens settlement — payout happens when a settlement is submitted and approved.')) return;
     error = ''; finishing = true;
     const { error: err } = await supabase.rpc('finish_project', { p: id });
     finishing = false;
+    if (err) { error = err.message; return; }
+    await load();
+  }
+
+  async function verifyCommitment(commitmentId: string) {
+    error = '';
+    const { error: err } = await supabase.rpc('verify_commitment', { commitment_id: commitmentId });
+    if (err) { error = err.message; return; }
+    await load();
+  }
+
+  async function submitSettlement() {
+    error = ''; submitting = true;
+    const items = participants.map((pt, i) => ({
+      member_id: pt.member_id,
+      role: pt.project_role?.name ?? null,
+      final_payout_weight: Number(sWeight[pt.member_id] ?? 0),
+      is_author: sAuthor[pt.member_id] ?? true,
+      author_order: i + 1,
+      notes: null
+    }));
+    const { error: err } = await supabase.rpc('submit_settlement', { p: id, notes: sNotes.trim() || null, items });
+    submitting = false;
+    if (err) { error = err.message; return; }
+    sNotes = '';
+    await load();
+  }
+
+  async function approveSettlement() {
+    if (!settlement) return;
+    if (!confirm('Approve this settlement? The finish bonus is minted and the whole escrow is distributed by payout weight. This cannot be undone.')) return;
+    error = '';
+    const { error: err } = await supabase.rpc('approve_settlement', { settlement_id: settlement.id });
+    if (err) { error = err.message; return; }
+    await load();
+  }
+
+  async function rejectSettlement() {
+    if (!settlement) return;
+    error = '';
+    const { error: err } = await supabase.rpc('reject_settlement', { settlement_id: settlement.id, reason: 'rejected' });
     if (err) { error = err.message; return; }
     await load();
   }
@@ -238,10 +332,94 @@
       <div>
         <span class="muted" style="font-size:.8rem;">Escrow</span>
         <strong style="font-size:1.2rem; margin-left:.4rem;">{escrow.toLocaleString()}</strong>
-        <span class="muted" style="font-size:.8rem;"> tokens · staked by authors ({joinStake}/join)</span>
+        <span class="muted" style="font-size:.8rem;"> STR · staked by leader + members ({joinStake}/join)</span>
       </div>
       {#if iManage && project.project_status?.name !== 'Finished'}
-        <button onclick={finishProject} disabled={finishing}>{finishing ? 'Paying out…' : 'Finish & pay out'}</button>
+        <button onclick={finishProject} disabled={finishing}>{finishing ? 'Finishing…' : 'Mark Finished'}</button>
+      {/if}
+    </div>
+
+    <div class="card">
+      <h2>Stake commitments</h2>
+      {#if commitments.length === 0}
+        <p class="muted">No commitments yet.</p>
+      {:else}
+        <table>
+          <thead><tr><th>Member</th><th>Type</th><th>Staked (STR)</th><th>Valuation</th><th>Status</th>{#if iManage}<th></th>{/if}</tr></thead>
+          <tbody>
+            {#each commitments as c}
+              <tr>
+                <td>{c.member?.full_name ?? '—'}</td>
+                <td>{c.commitment_type.replace(/_/g, ' ')}{c.skill ? ` · ${c.skill.name}` : ''}{c.hours_committed ? ` · ${c.hours_committed}h` : ''}</td>
+                <td>{c.token_amount > 0 ? c.token_amount.toLocaleString() : '—'}</td>
+                <td>{c.token_equivalent > 0 ? `≈ ${c.token_equivalent.toLocaleString()}` : '—'}</td>
+                <td><span class="badge">{c.status}</span></td>
+                {#if iManage}
+                  <td>{#if c.status === 'pledged'}<button class="ghost" onclick={() => verifyCommitment(c.id)}>Verify</button>{/if}</td>
+                {/if}
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      {/if}
+    </div>
+
+    <div class="card">
+      <h2>Settlement</h2>
+      {#if !settlement}
+        {#if iManage}
+          <p class="muted" style="font-size:.82rem;">
+            Propose a settlement: assign each participant a payout weight (the escrow is split pro-rata)
+            and confirm authorship. After submission, a Stater manager approves it to mint the finish
+            bonus and distribute the escrow.
+          </p>
+          <table>
+            <thead><tr><th>Member</th><th>Role</th><th>Payout weight</th><th>Author</th></tr></thead>
+            <tbody>
+              {#each participants as pt}
+                <tr>
+                  <td>{pt.member?.full_name ?? '—'}</td>
+                  <td>{pt.project_role?.name ?? '—'}</td>
+                  <td><input type="number" min="0" step="0.5" bind:value={sWeight[pt.member_id]} style="width:90px;" /></td>
+                  <td><input type="checkbox" bind:checked={sAuthor[pt.member_id]} /></td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+          <label class="stack" style="gap:.2rem; margin-top:.5rem;"><span class="muted" style="font-size:.75rem;">Meeting notes (optional)</span>
+            <textarea bind:value={sNotes} rows="2" placeholder="Rationale / meeting decision"></textarea></label>
+          <div class="row"><button onclick={submitSettlement} disabled={submitting}>{submitting ? 'Submitting…' : 'Submit settlement'}</button></div>
+        {:else}
+          <p class="muted">No settlement submitted yet.</p>
+        {/if}
+      {:else}
+        <div class="row" style="justify-content:space-between; align-items:center;">
+          <span class="badge">{settlement.status}</span>
+          {#if settlement.review_window_ends_at && settlement.status !== 'paid'}
+            <span class="muted" style="font-size:.8rem;">Review window ends {new Date(settlement.review_window_ends_at).toLocaleString()}</span>
+          {/if}
+        </div>
+        {#if settlement.meeting_notes}<p style="margin:.5rem 0;">{settlement.meeting_notes}</p>{/if}
+        <table>
+          <thead><tr><th>Member</th><th>Role</th><th>Weight</th><th>Author</th><th>Order</th></tr></thead>
+          <tbody>
+            {#each settlementItems as it}
+              <tr>
+                <td>{it.member?.full_name ?? '—'}</td>
+                <td>{it.role ?? '—'}</td>
+                <td>{it.final_payout_weight}</td>
+                <td>{it.is_author ? '✓' : '—'}</td>
+                <td>{it.author_order ?? '—'}</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+        {#if canApprove && (settlement.status === 'submitted' || settlement.status === 'under_review')}
+          <div class="row" style="margin-top:.5rem;">
+            <button onclick={approveSettlement}>Approve & pay out</button>
+            <button class="danger" onclick={rejectSettlement}>Reject</button>
+          </div>
+        {/if}
       {/if}
     </div>
 

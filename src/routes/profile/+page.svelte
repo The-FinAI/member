@@ -8,7 +8,7 @@
   type Skill = { id: string; name: string; parent_id: string | null };
   type MySkill = { skill_id: string; self_level: string };
   type LedgerRow = {
-    id: string; amount: number; kind: string; reason: string;
+    id: string; amount: number; entry_type: string; reason: string;
     from_account: string | null; to_account: string | null; created_at: string;
   };
   type ResType = { id: string; name: string };
@@ -50,13 +50,13 @@
     const [{ data: tree }, { data: ms }, { data: cr }, { data: rt }, { data: mr }, { data: bal }, { data: pol }] = await Promise.all([
       supabase.from('skill').select('id, name, parent_id').order('name'),
       supabase.from('member_skill').select('skill_id, self_level').eq('member_id', memberId),
-      supabase.from('skill_credit').select('skill_id, credit, endorsements').eq('member_id', memberId),
+      supabase.from('stater_skill_credit').select('skill_id, credit, endorsements').eq('member_id', memberId),
       supabase.from('resource_type').select('id, name').order('rank'),
       supabase.from('resource')
         .select('id, name, description, capacity, availability, resource_type(name)')
         .eq('scope', 'member').eq('holder_member_id', memberId).order('name'),
-      supabase.from('token_balance').select('account_id, balance').eq('member_id', memberId).maybeSingle(),
-      supabase.from('token_policy').select('value').eq('key', 'join_stake').maybeSingle()
+      supabase.from('stater_balance').select('account_id, balance').eq('owner_member_id', memberId).maybeSingle(),
+      supabase.from('stater_policy').select('value').eq('key', 'join_stake_normal').maybeSingle()
     ]);
     skills = (tree as Skill[]) ?? [];
     mySkills = (ms as MySkill[]) ?? [];
@@ -71,8 +71,8 @@
     joinStake = Number((pol as { value: number } | null)?.value ?? 20);
     if (accountId) {
       const { data: lg } = await supabase
-        .from('token_ledger')
-        .select('id, amount, kind, reason, from_account, to_account, created_at')
+        .from('stater_ledger')
+        .select('id, amount, entry_type, reason, from_account, to_account, created_at')
         .or(`from_account.eq.${accountId},to_account.eq.${accountId}`)
         .order('created_at', { ascending: false })
         .limit(12);
@@ -158,7 +158,7 @@
 
     <div class="card stack">
       <div class="row" style="justify-content:space-between; align-items:baseline;">
-        <h2 style="margin:0;">Fin Credit</h2>
+        <h2 style="margin:0;">Stater (STR)</h2>
         <strong style="font-size:1.4rem;">{balance.toLocaleString()} <span class="muted" style="font-size:.7rem;">tokens</span></strong>
       </div>
       <p class="muted" style="font-size:.82rem; margin-top:-.4rem;">
@@ -171,7 +171,7 @@
             {#each ledger as e}
               <tr>
                 <td class="muted" style="font-size:.78rem;">{new Date(e.created_at).toLocaleDateString()}</td>
-                <td><span class="badge">{e.kind}</span></td>
+                <td><span class="badge">{e.entry_type}</span></td>
                 <td>{e.reason}</td>
                 <td style="text-align:right; color:{e.to_account === accountId ? '#15803d' : '#b91c1c'};">
                   {e.to_account === accountId ? '+' : '−'}{Number(e.amount).toLocaleString()}

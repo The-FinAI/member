@@ -32,8 +32,8 @@
   async function loadMyBalance() {
     if (!$member) return;
     const [{ data: bal }, { data: pol }] = await Promise.all([
-      supabase.from('token_balance').select('balance').eq('member_id', $member.id).maybeSingle(),
-      supabase.from('token_policy').select('value').eq('key', 'endorse_min').maybeSingle()
+      supabase.from('stater_balance').select('balance').eq('owner_member_id', $member.id).maybeSingle(),
+      supabase.from('stater_policy').select('value').eq('key', 'endorse_min').maybeSingle()
     ]);
     myBalance = Number((bal as { balance: number } | null)?.balance ?? 0);
     endorseMin = Number((pol as { value: number } | null)?.value ?? 1);
@@ -58,7 +58,7 @@
     panelLoading = true;
     const [{ data: ms }, { data: cr }] = await Promise.all([
       supabase.from('member_skill').select('skill_id, self_level, skill(name)').eq('member_id', id),
-      supabase.from('skill_credit').select('skill_id, credit, endorsements').eq('member_id', id)
+      supabase.from('stater_skill_credit').select('skill_id, credit, endorsements').eq('member_id', id)
     ]);
     openSkills = (ms as MemberSkill[]) ?? [];
     const map: Record<string, Credit> = {};
@@ -70,8 +70,8 @@
   async function endorse(target: string, skillId: string) {
     error = '';
     const amt = Number(amounts[skillId] ?? endorseMin);
-    if (amt < endorseMin) { error = `Minimum is ${endorseMin} token(s).`; return; }
-    if (amt > myBalance) { error = `You only have ${myBalance} tokens.`; return; }
+    if (amt < endorseMin) { error = `Minimum is ${endorseMin} STR.`; return; }
+    if (amt > myBalance) { error = `You only have ${myBalance} STR.`; return; }
     busy = skillId;
     const { error: err } = await supabase.rpc('endorse_skill', {
       target, sk: skillId, amt, note: notes[skillId]?.trim() || null
@@ -84,7 +84,7 @@
 
   async function toggleReload(id: string) {
     const { data: cr } = await supabase
-      .from('skill_credit').select('skill_id, credit, endorsements').eq('member_id', id);
+      .from('stater_skill_credit').select('skill_id, credit, endorsements').eq('member_id', id);
     const map: Record<string, Credit> = {};
     for (const c of (cr as Credit[]) ?? []) map[c.skill_id] = c;
     openCredit = map;
@@ -98,7 +98,7 @@
 <div class="stack">
   <div class="row" style="justify-content:space-between; align-items:baseline;">
     <h1 style="margin:0;">Members</h1>
-    {#if $member}<span class="muted">Your balance: <strong>{myBalance.toLocaleString()}</strong> tokens</span>{/if}
+    {#if $member}<span class="muted">Your balance: <strong>{myBalance.toLocaleString()}</strong> STR</span>{/if}
   </div>
   <input placeholder="Search by name…" bind:value={q} style="max-width:320px;" />
   {#if error}<p style="color:#b91c1c;">{error}</p>{/if}
@@ -134,7 +134,7 @@
                   {:else}
                     <div class="stack" style="gap:.5rem; padding:.25rem 0;">
                       <p class="muted" style="font-size:.82rem; margin:0;">
-                        Endorse a skill by transferring your own tokens — scarce credit means it carries signal.
+                        Endorse a skill by transferring your own STR — scarce credit means it carries signal.
                       </p>
                       {#each openSkills as s}
                         <div class="row" style="align-items:center; flex-wrap:wrap; gap:.5rem;">
