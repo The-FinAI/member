@@ -190,6 +190,42 @@
   // aggregate footer
   const totalEscrow = $derived(rows.reduce((a, r) => a + r.escrow, 0));
   const totalNeeds = $derived(rows.reduce((a, r) => a + r.openNeeds, 0));
+  const maxEscrow = $derived(Math.max(1, ...rows.map((r) => r.escrow)));
+
+  // pipeline (rank order, Hold excluded) for the mini progress indicator
+  const pipeline = $derived(statuses.filter((s) => s.name !== 'Hold').sort((a, b) => a.rank - b.rank).map((s) => s.name));
+  function pipeIndex(name: string) { return pipeline.indexOf(name); }
+
+  // status counts over the *unfiltered* grid, in pipeline order
+  const statusCounts = $derived.by(() => {
+    const m = new Map<string, number>();
+    for (const r of grid) m.set(r.status, (m.get(r.status) ?? 0) + 1);
+    const ordered = statusNames.map((n) => ({ name: n, count: m.get(n) ?? 0 }));
+    return ordered;
+  });
+
+  // KPI summary (whole portfolio, not just filtered rows)
+  const kActive = $derived(grid.filter((r) => r.status !== 'Finished').length);
+  const kFinished = $derived(grid.filter((r) => r.status === 'Finished').length);
+  const kEscrow = $derived(grid.reduce((a, r) => a + r.escrow, 0));
+  const kNeeds = $derived(grid.reduce((a, r) => a + r.openNeeds, 0));
+  const kUpcoming = $derived(grid.filter((r) => {
+    if (!r.deadline) return false;
+    const days = (new Date(r.deadline + 'T00:00:00').getTime() - Date.now()) / 86400000;
+    return days >= 0 && days <= 60;
+  }).length);
+
+  function initials(name: string) {
+    const p = name.trim().split(/\s+/);
+    return ((p[0]?.[0] ?? '') + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase() || '·';
+  }
+  function relDays(d: string | null) {
+    if (!d) return '';
+    const days = Math.round((new Date(d + 'T00:00:00').getTime() - Date.now()) / 86400000);
+    if (days === 0) return 'today';
+    if (days > 0) return days <= 365 ? `in ${days}d` : '';
+    return `${-days}d ago`;
+  }
 </script>
 
 <div class="stack">
@@ -245,7 +281,53 @@
     </div>
   {/if}
 
-  <!-- toolbar: search + filters -->
+  <!-- KPI summary -->
+  <div class="kpis">
+    <div class="kpi">
+      <span class="k-label">Projects</span>
+      <span class="k-value">{grid.length}</span>
+      <span class="k-sub">{kActive} active · {kFinished} finished</span>
+    </div>
+    <div class="kpi">
+      <span class="k-label">Total escrow</span>
+      <span class="k-value accent">{kEscrow.toLocaleString()}</span>
+      <span class="k-sub">STR bonded across projects</span>
+    </div>
+    <div class="kpi">
+      <span class="k-label">Open needs</span>
+      <span class="k-value">{kNeeds}</span>
+      <span class="k-sub">roles seeking contributors</span>
+    </div>
+    <div class="kpi">
+      <span class="k-label">Deadlines ≤ 60d</span>
+      <span class="k-value">{kUpcoming}</span>
+      <span class="k-sub">venues approaching</span>
+    </div>
+  </div>
+
+  <!-- status filter chips -->
+  <div class="row" style="gap:.4rem;">
+    <span
+      class="chip toggle {statusFilter === '' ? 'on' : ''}"
+      role="button" tabindex="0"
+      onclick={() => (statusFilter = '')}
+      onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') statusFilter = ''; }}
+    >All <span class="ct">{grid.length}</span></span>
+    {#each statusCounts as s}
+      <span
+        class="chip toggle {statusFilter === s.name ? 'on' : ''}"
+        role="button" tabindex="0"
+        onclick={() => (statusFilter = statusFilter === s.name ? '' : s.name)}
+        onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') statusFilter = statusFilter === s.name ? '' : s.name; }}
+      >
+        <span class="cdot {statusClass(s.name)}"></span>
+        <span>{s.name}</span>
+        <span class="ct">{s.count}</span>
+      </span>
+    {/each}
+  </div>
+
+  <!-- toolbar: search + type filter -->
   <div class="row" style="gap:.6rem;">
     <div class="search" style="flex:1; min-width:220px;">
       <span class="ico">⌕</span>
@@ -254,10 +336,6 @@
     <select bind:value={typeFilter}>
       <option value="">All types</option>
       {#each typeNames as t}<option value={t}>{t}</option>{/each}
-    </select>
-    <select bind:value={statusFilter}>
-      <option value="">All statuses</option>
-      {#each statusNames as s}<option value={s}>{s}</option>{/each}
     </select>
     {#if q || typeFilter || statusFilter}
       <button class="ghost" onclick={() => { q = ''; typeFilter = ''; statusFilter = ''; }}>Reset</button>
@@ -271,47 +349,75 @@
       <p class="muted" style="padding:1rem;">No projects match.</p>
     {:else}
       <table>
-        <thead>
+        <thead class="sticky">
           <tr>
             <th class="sortable" onclick={() => setSort('name')}>Project <span class="arrow">{arrow('name')}</span></th>
-            <th class="sortable" onclick={() => setSort('type')}>Type <span class="arrow">{arrow('type')}</span></th>
             <th class="sortable" onclick={() => setSort('status')}>Status <span class="arrow">{arrow('status')}</span></th>
-            <th class="sortable" onclick={() => setSort('leader')}>Leader <span class="arrow">{arrow('leader')}</span></th>
-            <th class="sortable num" onclick={() => setSort('members')}>Members <span class="arrow">{arrow('members')}</span></th>
+            <th class="sortable" onclick={() => setSort('leader')}>Team <span class="arrow">{arrow('leader')}</span></th>
             <th class="sortable num" onclick={() => setSort('openNeeds')}>Open needs <span class="arrow">{arrow('openNeeds')}</span></th>
             <th class="sortable num" onclick={() => setSort('escrow')}>Escrow <span class="arrow">{arrow('escrow')}</span></th>
-            <th class="sortable" onclick={() => setSort('venue')}>Target <span class="arrow">{arrow('venue')}</span></th>
-            <th class="sortable" onclick={() => setSort('deadline')}>Deadline <span class="arrow">{arrow('deadline')}</span></th>
+            <th class="sortable" onclick={() => setSort('deadline')}>Target deadline <span class="arrow">{arrow('deadline')}</span></th>
           </tr>
         </thead>
         <tbody>
           {#each rows as r}
             <tr>
-              <td><a href={`/projects/${r.id}`} style="font-weight:500;">{r.name}</a></td>
-              <td class="dim">{r.type}</td>
+              <td>
+                <a href={`/projects/${r.id}`} class="proj">
+                  <span class="pname">{r.name}</span>
+                  <span class="psub">
+                    <span>{r.type}</span>
+                    {#if r.venue}<span class="sep">·</span><span>{r.venue}</span>{/if}
+                  </span>
+                </a>
+              </td>
               <td>
                 <span class="status {statusClass(r.status)}">
                   <span class="sdot" style="background:currentColor;"></span>{r.status}
                 </span>
+                {#if pipeIndex(r.status) >= 0 && r.status !== 'Hold'}
+                  <span class="pipe {statusClass(r.status)}" title={`Step ${pipeIndex(r.status) + 1} of ${pipeline.length}`}>
+                    {#each pipeline as _, i}<i class:fill={i <= pipeIndex(r.status)}></i>{/each}
+                  </span>
+                {/if}
               </td>
-              <td class="dim">{r.leader || '—'}</td>
-              <td class="num mono">{r.members}</td>
+              <td>
+                {#if r.leader}
+                  <span class="team">
+                    <span class="ava" title={r.leader}>{initials(r.leader)}</span>
+                    <span class="proj" style="gap:0;">
+                      <span class="dim" style="font-size:.82rem;">{r.leader}</span>
+                      <span class="psub">{r.members} member{r.members === 1 ? '' : 's'}</span>
+                    </span>
+                  </span>
+                {:else}
+                  <span class="muted">{r.members} member{r.members === 1 ? '' : 's'}</span>
+                {/if}
+              </td>
               <td class="num mono">
-                {#if r.openNeeds > 0}<span class="badge info">{r.openNeeds}</span>{:else}<span class="muted">0</span>{/if}
+                {#if r.openNeeds > 0}<span class="badge info">{r.openNeeds} open</span>{:else}<span class="muted">—</span>{/if}
               </td>
-              <td class="num mono">{r.escrow.toLocaleString()}</td>
-              <td class="dim">{r.venue || '—'}</td>
-              <td class="mono {ddlClass(r.deadline)}" style="font-size:.82rem; white-space:nowrap;">{r.deadline ? fmtDate(r.deadline) : '—'}</td>
+              <td class="num">
+                <span class="mono">{r.escrow.toLocaleString()}</span>
+                {#if r.escrow > 0}<span class="bar"><i style={`width:${Math.round((r.escrow / maxEscrow) * 100)}%`}></i></span>{/if}
+              </td>
+              <td>
+                {#if r.deadline}
+                  <span class="mono {ddlClass(r.deadline)}" style="font-size:.82rem; white-space:nowrap;">{fmtDate(r.deadline)}</span>
+                  <span class="rel {ddlClass(r.deadline)}" style="display:block;">{relDays(r.deadline)}</span>
+                {:else}
+                  <span class="muted">—</span>
+                {/if}
+              </td>
             </tr>
           {/each}
         </tbody>
         <tfoot>
           <tr style="border-top:1px solid var(--border-2);">
             <td class="muted" style="font-size:.78rem;">{rows.length} shown</td>
-            <td></td><td></td><td></td><td></td>
+            <td></td><td></td>
             <td class="num mono muted" style="font-size:.78rem;">{totalNeeds}</td>
             <td class="num mono muted" style="font-size:.78rem;">{totalEscrow.toLocaleString()}</td>
-            <td></td>
             <td></td>
           </tr>
         </tfoot>
