@@ -32,7 +32,7 @@
   let typeFilter = $state('');
   let statusFilter = $state('');
   type SortKey = 'name' | 'type' | 'status' | 'leader' | 'members' | 'openNeeds' | 'escrow' | 'venue' | 'deadline';
-  let sortKey = $state<SortKey>('status');
+  let sortKey = $state<SortKey>('deadline');
   let sortDir = $state<1 | -1>(1);
 
   // create form
@@ -177,6 +177,13 @@
     );
     const key = sortKey;
     out = [...out].sort((a, b) => {
+      // deadline: chronological, but projects without a deadline always sink to the bottom
+      if (key === 'deadline') {
+        if (!a.deadline && !b.deadline) return 0;
+        if (!a.deadline) return 1;
+        if (!b.deadline) return -1;
+        return a.deadline.localeCompare(b.deadline) * sortDir;
+      }
       let av: string | number = key === 'status' ? a.statusRank : ((a as any)[key] ?? '');
       let bv: string | number = key === 'status' ? b.statusRank : ((b as any)[key] ?? '');
       if (typeof av === 'string' && typeof bv === 'string') {
