@@ -353,6 +353,149 @@ thead.sticky th { position: sticky; top: 0; background: var(--card); z-index: 2;
 .rank.r2 { color: var(--text-dim); background: var(--elevate); }
 .rank.r3 { color: #b06a2c; background: rgba(176,106,44,.16); }
 
+/* ============================================================
+   Motion + exchange-grade components (wallet / leaderboard / staking)
+   ============================================================ */
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes popIn { 0% { opacity: 0; transform: scale(.9); } 60% { transform: scale(1.03); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes shimmer { 0% { background-position: -360px 0; } 100% { background-position: 360px 0; } }
+@keyframes growW { from { width: 0; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes pulseRing { 0% { box-shadow: 0 0 0 0 var(--accent-soft); } 70% { box-shadow: 0 0 0 12px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+@keyframes floatUp { 0% { opacity: 0; transform: translateY(6px) scale(.8); } 20% { opacity: 1; transform: translateY(0) scale(1); } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-22px); } }
+
+.rise { animation: fadeInUp .42s cubic-bezier(.21,.61,.35,1) both; }
+.rise-stagger > * { animation: fadeInUp .42s cubic-bezier(.21,.61,.35,1) both; }
+.rise-stagger > *:nth-child(1) { animation-delay: .02s; }
+.rise-stagger > *:nth-child(2) { animation-delay: .06s; }
+.rise-stagger > *:nth-child(3) { animation-delay: .10s; }
+.rise-stagger > *:nth-child(4) { animation-delay: .14s; }
+.rise-stagger > *:nth-child(5) { animation-delay: .18s; }
+.rise-stagger > *:nth-child(6) { animation-delay: .22s; }
+.rise-stagger > *:nth-child(7) { animation-delay: .26s; }
+.rise-stagger > *:nth-child(8) { animation-delay: .30s; }
+
+/* spinner inside buttons */
+.spin { display: inline-block; width: 13px; height: 13px; border-radius: 50%;
+  border: 2px solid currentColor; border-top-color: transparent; animation: spin .6s linear infinite;
+  vertical-align: -2px; }
+
+/* skeleton loaders */
+.sk { position: relative; overflow: hidden; background: var(--card-2); border-radius: 8px; }
+.sk::after { content: ""; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--text) 7%, transparent), transparent);
+  background-size: 360px 100%; animation: shimmer 1.2s infinite; }
+.sk-line { height: 12px; margin: .35rem 0; }
+.sk-row { height: 40px; margin: .4rem 0; }
+
+/* ---------- wallet hero ---------- */
+.hero {
+  position: relative; overflow: hidden;
+  background:
+    radial-gradient(120% 140% at 0% 0%, var(--accent-soft), transparent 55%),
+    linear-gradient(180deg, var(--card-2), var(--card));
+  border: 1px solid var(--border); border-radius: 18px; padding: 1.4rem 1.5rem;
+  box-shadow: var(--shadow);
+}
+.hero .h-label { font-size: .74rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.hero .h-balance {
+  font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  font-size: 2.9rem; font-weight: 700; line-height: 1.05; color: var(--text);
+  display: flex; align-items: baseline; gap: .5rem; margin-top: .15rem;
+}
+.hero .h-balance .unit { font-size: 1.1rem; color: var(--accent); font-weight: 600; }
+.hero .h-glow {
+  position: absolute; right: -40px; top: -40px; width: 180px; height: 180px; border-radius: 50%;
+  background: radial-gradient(circle, var(--accent-soft), transparent 70%); pointer-events: none;
+}
+
+/* allocation bar: liquid vs staked */
+.alloc { display: flex; height: 10px; border-radius: 999px; overflow: hidden; background: var(--border); margin-top: 1rem; }
+.alloc > i { display: block; height: 100%; animation: growW .9s cubic-bezier(.21,.61,.35,1) both; }
+.alloc .liquid { background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
+.alloc .bonded { background: var(--info); }
+.alloc-legend { display: flex; gap: 1.1rem; margin-top: .55rem; font-size: .78rem; color: var(--muted); }
+.alloc-legend .lg { display: inline-flex; align-items: center; gap: .4rem; }
+.alloc-legend .sw { width: 9px; height: 9px; border-radius: 3px; }
+.alloc-legend .sw.l { background: var(--accent); }
+.alloc-legend .sw.b { background: var(--info); }
+
+/* ---------- transaction feed ---------- */
+.txn { display: flex; align-items: center; gap: .8rem; padding: .65rem .2rem; border-bottom: 1px solid var(--border); }
+.txn:last-child { border-bottom: 0; }
+.txn .t-ico {
+  flex: none; width: 34px; height: 34px; border-radius: 10px;
+  display: inline-flex; align-items: center; justify-content: center; font-size: .95rem; font-weight: 700;
+}
+.txn .t-ico.in  { background: var(--up-soft);   color: var(--up); }
+.txn .t-ico.out { background: var(--down-soft); color: var(--down); }
+.txn .t-main { min-width: 0; flex: 1; display: flex; flex-direction: column; gap: .1rem; }
+.txn .t-reason { font-size: .9rem; color: var(--text); font-weight: 500; }
+.txn .t-meta { font-size: .73rem; color: var(--muted); display: flex; gap: .5rem; align-items: center; }
+.txn .t-amt { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 700; font-size: .98rem; white-space: nowrap; }
+.txn .t-amt.in  { color: var(--up); }
+.txn .t-amt.out { color: var(--down); }
+
+/* ---------- leaderboard podium ---------- */
+.podium { display: grid; grid-template-columns: 1fr 1.15fr 1fr; gap: .8rem; align-items: end; }
+.pod {
+  position: relative; border: 1px solid var(--border); border-radius: 14px; padding: 1rem .9rem .9rem;
+  background: linear-gradient(180deg, var(--card-2), var(--card)); text-align: center;
+  animation: popIn .5s cubic-bezier(.21,.61,.35,1) both;
+}
+.pod.p1 { background: linear-gradient(180deg, rgba(240,185,11,.12), var(--card)); border-color: rgba(240,185,11,.3); animation-delay: .12s; }
+.pod.p2 { animation-delay: .04s; }
+.pod.p3 { animation-delay: .2s; }
+.pod .medal { font-size: 1.3rem; line-height: 1; }
+.pod .pod-ava {
+  width: 46px; height: 46px; border-radius: 50%; margin: .4rem auto .45rem;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 1rem; color: var(--accent-ink); background: var(--accent);
+}
+.pod.p1 .pod-ava { width: 56px; height: 56px; font-size: 1.15rem;
+  background: linear-gradient(135deg, #f0b90b, #e0992c); animation: pulseRing 2.4s ease-out infinite; }
+.pod .pod-name { font-weight: 600; font-size: .92rem; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pod .pod-sub { font-size: .72rem; color: var(--muted); margin-top: .05rem; }
+.pod .pod-str { font-family: var(--font-mono); font-variant-numeric: tabular-nums;
+  font-weight: 700; font-size: 1.15rem; color: var(--accent); margin-top: .5rem; }
+.pod .pod-str .u { font-size: .7rem; color: var(--muted); margin-left: .15rem; }
+@media (max-width: 640px) { .podium { grid-template-columns: 1fr; } .pod { animation-delay: 0s !important; } }
+
+/* relative-balance bar inside leaderboard rows */
+.lb-bar { height: 5px; border-radius: 3px; background: var(--border); overflow: hidden; min-width: 60px; max-width: 120px; }
+.lb-bar > i { display: block; height: 100%; border-radius: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2)); animation: growW 1s cubic-bezier(.21,.61,.35,1) both; }
+
+/* you-row highlight */
+tr.me-row > td { background: var(--accent-soft); }
+
+/* ---------- staking emphasis ---------- */
+.stake-cta {
+  position: relative; overflow: hidden;
+  background:
+    radial-gradient(120% 160% at 100% 0%, var(--up-soft), transparent 60%),
+    var(--card);
+  border: 1px solid color-mix(in srgb, var(--up) 30%, var(--border));
+  border-radius: 14px; padding: .9rem 1.1rem;
+}
+button.stake { background: linear-gradient(135deg, var(--accent), var(--accent-2)); }
+button.stake:not(:disabled) { animation: pulseRing 2.6s ease-out infinite; }
+.escrow-meter { height: 8px; border-radius: 999px; background: var(--border); overflow: hidden; }
+.escrow-meter > i { display: block; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--accent-2)); animation: growW .9s cubic-bezier(.21,.61,.35,1) both; }
+
+/* floating +amount confetti on a value */
+.float-gain { position: absolute; font-family: var(--font-mono); font-weight: 700; font-size: .9rem;
+  color: var(--up); pointer-events: none; animation: floatUp 1.4s ease-out forwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rise, .rise-stagger > *, .pod, .alloc > i, .lb-bar > i, .escrow-meter > i,
+  button.stake, .pod.p1 .pod-ava { animation: none !important; }
+  .sk::after { animation: none; }
+}
+
 /* ---------- top bar ---------- */
 .topbar {
   position: sticky; top: 0; z-index: 40;

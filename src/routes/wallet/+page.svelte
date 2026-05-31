@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { member } from '$lib/session';
   import { supabase, supabaseConfigured } from '$lib/supabase';
+  import CountUp from '$lib/CountUp.svelte';
 
   type LedgerRow = {
     id: string; amount: number; entry_type: string; reason: string;
@@ -14,6 +15,22 @@
   let staked = $state(0);
   let joinStake = $state(20);
   let loading = $state(true);
+
+  const netWorth = $derived(balance + staked);
+  const liquidPct = $derived(netWorth > 0 ? (balance / netWorth) * 100 : 100);
+  const bondedPct = $derived(netWorth > 0 ? (staked / netWorth) * 100 : 0);
+
+  function txnIcon(e: LedgerRow, incoming: boolean) {
+    const r = (e.reason || '').toLowerCase();
+    if (r.includes('stake')) return '🔒';
+    if (r.includes('grant') || r.includes('welcome')) return '🎁';
+    if (r.includes('endorse')) return '★';
+    if (r.includes('payout') || r.includes('settle') || r.includes('bonus')) return '🏆';
+    return incoming ? '↓' : '↑';
+  }
+  function fmtWhen(ts: string) {
+    return new Date(ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
 
   async function load(memberId: string) {
     loading = true;
@@ -58,49 +75,66 @@
   {#if !$member}
     <div class="card"><p class="muted">No member record linked to this account yet.</p></div>
   {:else}
-    <div class="row" style="align-items:stretch;">
-      <div class="tile" style="flex:1; min-width:170px;">
-        <span class="label">STR balance</span>
-        <span class="value accent">{balance.toLocaleString()}</span>
-        <span class="sub">liquid, spendable</span>
+    <!-- HERO BALANCE -->
+    <div class="hero rise">
+      <span class="h-glow"></span>
+      <span class="h-label">Net worth</span>
+      <div class="h-balance">
+        {#if loading}<span class="sk sk-line" style="width:200px; height:42px;"></span>
+        {:else}<CountUp value={netWorth} /><span class="unit">STR</span>{/if}
       </div>
-      <div class="tile" style="flex:1; min-width:170px;">
+
+      <div class="alloc">
+        <i class="liquid" style="width:{liquidPct}%"></i>
+        <i class="bonded" style="width:{bondedPct}%"></i>
+      </div>
+      <div class="alloc-legend">
+        <span class="lg"><span class="sw l"></span> Liquid <strong class="mono" style="color:var(--text);">{balance.toLocaleString()}</strong></span>
+        <span class="lg"><span class="sw b"></span> Staked <strong class="mono" style="color:var(--text);">{staked.toLocaleString()}</strong></span>
+      </div>
+    </div>
+
+    <div class="row rise-stagger" style="align-items:stretch;">
+      <div class="tile" style="flex:1; min-width:160px;">
+        <span class="label">Liquid balance</span>
+        <span class="value accent"><CountUp value={balance} /></span>
+        <span class="sub">spendable now</span>
+      </div>
+      <div class="tile" style="flex:1; min-width:160px;">
         <span class="label">Staked</span>
-        <span class="value">{staked.toLocaleString()}</span>
+        <span class="value"><CountUp value={staked} /></span>
         <span class="sub">bonded in projects</span>
       </div>
-      <div class="tile" style="flex:1; min-width:170px;">
-        <span class="label">Net worth</span>
-        <span class="value">{(balance + staked).toLocaleString()}</span>
-        <span class="sub">liquid + bonded</span>
+      <div class="tile" style="flex:1; min-width:160px;">
+        <span class="label">Bonded ratio</span>
+        <span class="value"><CountUp value={netWorth > 0 ? bondedPct : 0} decimals={0} suffix="%" /></span>
+        <span class="sub">of net worth at work</span>
       </div>
     </div>
 
     <div class="card stack">
-      <h2 style="margin:0;">Transactions</h2>
+      <h2 style="margin:0;">Activity</h2>
       <p class="muted" style="font-size:.82rem; margin-top:-.4rem;">
-        Earned by finishing projects; spent to join projects ({joinStake}/join) and endorse peers.
+        Earned by finishing projects; spent to join ({joinStake}/join), stake, and endorse peers.
       </p>
       {#if loading}
-        <p class="muted">Loading…</p>
+        <div>{#each Array(5) as _}<div class="sk sk-row"></div>{/each}</div>
       {:else if ledger.length === 0}
         <p class="muted">No transactions yet.</p>
       {:else}
-        <table>
-          <thead><tr><th>When</th><th>Type</th><th>Reason</th><th class="num">Amount</th></tr></thead>
-          <tbody>
-            {#each ledger as e}
-              <tr>
-                <td class="muted" style="font-size:.78rem; white-space:nowrap;">{new Date(e.created_at).toLocaleDateString()}</td>
-                <td><span class="badge dim">{e.entry_type}</span></td>
-                <td>{e.reason}</td>
-                <td class="num mono" style="color:{e.to_account === accountId ? 'var(--up)' : 'var(--down)'};">
-                  {e.to_account === accountId ? '+' : '−'}{Number(e.amount).toLocaleString()}
-                </td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
+        <div class="rise-stagger">
+          {#each ledger as e}
+            {@const incoming = e.to_account === accountId}
+            <div class="txn">
+              <span class="t-ico {incoming ? 'in' : 'out'}">{txnIcon(e, incoming)}</span>
+              <span class="t-main">
+                <span class="t-reason">{e.reason}</span>
+                <span class="t-meta"><span class="badge dim">{e.entry_type}</span> {fmtWhen(e.created_at)}</span>
+              </span>
+              <span class="t-amt {incoming ? 'in' : 'out'}">{incoming ? '+' : '−'}{Number(e.amount).toLocaleString()}</span>
+            </div>
+          {/each}
+        </div>
       {/if}
     </div>
   {/if}

@@ -2,6 +2,11 @@
   import { onMount } from 'svelte';
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { member } from '$lib/session';
+  import CountUp from '$lib/CountUp.svelte';
+
+  function initials(name: string) {
+    return name.split(' ').filter(Boolean).slice(0, 2).map((s) => s[0]?.toUpperCase() ?? '').join('') || '?';
+  }
 
   type Row = {
     id: string;
@@ -117,6 +122,15 @@
       .map((r, i) => ({ row: r, rank: i + 1 }))
       .filter(({ row }) => row.full_name.toLowerCase().includes(q.toLowerCase()))
   );
+
+  const maxBalance = $derived(Math.max(1, ...ranked.map((r) => balanceOf[r.id] ?? 0)));
+  // podium order: 2nd · 1st · 3rd
+  const podium = $derived(
+    ranked.length >= 3
+      ? [{ r: ranked[1], rank: 2, cls: 'p2' }, { r: ranked[0], rank: 1, cls: 'p1' }, { r: ranked[2], rank: 3, cls: 'p3' }]
+      : []
+  );
+  const MEDAL = ['🥇', '🥈', '🥉'];
 </script>
 
 <div class="stack">
@@ -125,8 +139,23 @@
       <h1 style="margin-bottom:.15rem;">Leaderboard</h1>
       <span class="muted" style="font-size:.85rem;">Members ranked by STR balance across the research economy.</span>
     </div>
-    {#if $member}<span class="muted">Your balance: <strong>{myBalance.toLocaleString()}</strong> STR</span>{/if}
+    {#if $member}<span class="chip"><span class="amt"><CountUp value={myBalance} /></span> STR</span>{/if}
   </div>
+
+  {#if !loading && podium.length === 3 && !q}
+    <div class="podium">
+      {#each podium as p}
+        <div class="pod {p.cls}">
+          <div class="medal">{MEDAL[p.rank - 1]}</div>
+          <div class="pod-ava">{initials(p.r.full_name)}</div>
+          <div class="pod-name">{p.r.full_name}{#if $member && p.r.id === $member.id}<span class="badge dim" style="margin-left:.3rem;">you</span>{/if}</div>
+          <div class="pod-sub">{p.r.affiliation ?? '—'}</div>
+          <div class="pod-str"><CountUp value={balanceOf[p.r.id] ?? 0} /><span class="u">STR</span></div>
+        </div>
+      {/each}
+    </div>
+  {/if}
+
   <input placeholder="Search by name…" bind:value={q} style="max-width:320px;" />
   {#if error}<p style="color:var(--down);">{error}</p>{/if}
 
@@ -137,10 +166,10 @@
       <p class="muted" style="padding:1rem;">No members.</p>
     {:else}
       <table>
-        <thead><tr><th class="num">#</th><th>Member</th><th>Position</th><th class="num">STR</th><th class="num">Reputation</th><th></th></tr></thead>
+        <thead><tr><th class="num">#</th><th>Member</th><th>Position</th><th>Share</th><th class="num">STR</th><th class="num">Reputation</th><th></th></tr></thead>
         <tbody>
-          {#each filtered as { row: r, rank }}
-            <tr>
+          {#each filtered as { row: r, rank } (r.id)}
+            <tr class={$member && r.id === $member.id ? 'me-row' : ''}>
               <td class="num"><span class="rank {rank <= 3 ? 'r' + rank : ''}">{rank}</span></td>
               <td>
                 <span class="proj">
@@ -149,6 +178,7 @@
                 </span>
               </td>
               <td class="dim">{r.member_position?.map((p) => p.position?.name).filter(Boolean).join(', ') || '—'}</td>
+              <td><span class="lb-bar"><i style="width:{Math.max(3, ((balanceOf[r.id] ?? 0) / maxBalance) * 100)}%"></i></span></td>
               <td class="num mono accent" style="color:var(--accent);">{(balanceOf[r.id] ?? 0).toLocaleString()}</td>
               <td class="num mono">{(creditOf[r.id] ?? 0).toLocaleString()}</td>
               <td>
@@ -159,7 +189,7 @@
             </tr>
             {#if openId === r.id}
               <tr>
-                <td colspan="6" style="background:var(--card-2);">
+                <td colspan="7" style="background:var(--card-2);">
                   {#if panelLoading}
                     <p class="muted">Loading skills…</p>
                   {:else if openSkills.length === 0}

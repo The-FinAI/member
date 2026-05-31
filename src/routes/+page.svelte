@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { member } from '$lib/session';
+  import CountUp from '$lib/CountUp.svelte';
 
   type MyProject = { project: { id: string; name: string; project_status: { name: string } | null } | null; project_role: { name: string } | null };
   type MyApp = { id: string; status: string; open_need: { project: { id: string; name: string } | null } | null };
@@ -63,15 +64,15 @@
     <a href="/projects"><button>Start a project</button></a>
   </div>
 
-  <div class="row" style="align-items:stretch;">
+  <div class="row rise-stagger" style="align-items:stretch;">
     <div class="tile" style="flex:1; min-width:170px;">
       <span class="label">STR balance</span>
-      <span class="value accent">{balance.toLocaleString()}</span>
+      <span class="value accent"><CountUp value={balance} /></span>
       <span class="sub">liquid, spendable</span>
     </div>
     <div class="tile" style="flex:1; min-width:170px;">
       <span class="label">Staked</span>
-      <span class="value">{staked.toLocaleString()}</span>
+      <span class="value"><CountUp value={staked} /></span>
       <span class="sub">bonded in projects</span>
     </div>
     <a class="tile" href="/projects" style="flex:1; min-width:170px;">

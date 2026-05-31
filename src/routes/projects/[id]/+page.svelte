@@ -3,6 +3,7 @@
   import { page } from '$app/stores';
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { member, capabilities } from '$lib/session';
+  import CountUp from '$lib/CountUp.svelte';
 
   const id = $derived($page.params.id);
 
@@ -606,26 +607,30 @@
       </div>
     </div>
 
-    <div class="card row" style="justify-content:space-between; align-items:center;">
-      <div>
-        <span class="muted" style="font-size:.8rem;">Escrow</span>
-        <strong style="font-size:1.2rem; margin-left:.4rem;">{escrow.toLocaleString()}</strong>
-        <span class="muted" style="font-size:.8rem;"> STR · staked by leader + members ({joinStake}/join)</span>
+    <div class="card stack" style="gap:.6rem;">
+      <div class="row" style="justify-content:space-between; align-items:baseline;">
+        <div>
+          <span class="muted" style="font-size:.8rem;">Escrow</span>
+          <strong class="mono" style="font-size:1.4rem; margin-left:.45rem; color:var(--accent);"><CountUp value={escrow} /></strong>
+          <span class="muted" style="font-size:.8rem;"> STR bonded</span>
+        </div>
+        <span class="muted" style="font-size:.78rem;">{participants.length} contributor(s) · {joinStake}/join</span>
       </div>
+      <div class="escrow-meter"><i style="width:{Math.min(100, escrow > 0 ? 100 : 0)}%"></i></div>
     </div>
 
     {#if !hasLeader && $member}
-      <div class="card" style="background:var(--up-soft); border-color:transparent;">
+      <div class="stake-cta rise">
         <div class="row" style="justify-content:space-between; align-items:center; gap:.8rem; flex-wrap:wrap;">
           <div>
             <strong>This project has no leader.</strong>
             <div class="muted" style="font-size:.84rem; margin-top:.15rem;">
-              Stake <strong class="mono">{leaderStake}</strong> STR to take the lead — you'll be able to post needs, accept applicants, and steer the project.
+              Stake <strong class="mono" style="color:var(--accent);">{leaderStake}</strong> STR to take the lead — you'll post needs, accept applicants, and steer the project.
             </div>
           </div>
           <div class="stack" style="gap:.2rem; align-items:flex-end;">
-            <button onclick={claimLeadership} disabled={claiming || leaderStake > myBalance}>
-              {claiming ? 'Staking…' : `Claim leadership · ${leaderStake} STR`}</button>
+            <button class="stake" onclick={claimLeadership} disabled={claiming || leaderStake > myBalance}>
+              {#if claiming}<span class="spin"></span> Staking…{:else}Claim leadership · {leaderStake} STR{/if}</button>
             {#if leaderStake > myBalance}<span class="neg" style="font-size:.78rem;">Insufficient balance ({myBalance} STR).</span>{/if}
           </div>
         </div>
@@ -846,11 +851,11 @@
                 {:else if myApps[n.id]?.status === 'joined'}
                   <span class="badge pos">Joined</span>
                 {:else if myApps[n.id]?.status === 'accepted'}
-                  <div class="card" style="background:var(--up-soft); border-color:transparent; padding:.6rem .8rem;">
+                  <div class="stake-cta" style="padding:.6rem .8rem;">
                     <div class="row" style="justify-content:space-between; align-items:center; gap:.6rem;">
-                      <span style="font-size:.85rem;">You've been <strong>accepted</strong>. Stake <strong class="mono">{joinStake}</strong> STR to take your seat.</span>
-                      <button onclick={() => confirmJoin(n.id)} disabled={confirming === n.id}>
-                        {confirming === n.id ? 'Joining…' : `Confirm join · ${joinStake} STR`}</button>
+                      <span style="font-size:.85rem;">You've been <strong>accepted</strong>. Stake <strong class="mono" style="color:var(--accent);">{joinStake}</strong> STR to take your seat.</span>
+                      <button class="stake" onclick={() => confirmJoin(n.id)} disabled={confirming === n.id}>
+                        {#if confirming === n.id}<span class="spin"></span> Joining…{:else}Confirm join · {joinStake} STR{/if}</button>
                     </div>
                   </div>
                 {:else if myApps[n.id]?.status === 'declined'}

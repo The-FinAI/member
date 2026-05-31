@@ -157,11 +157,11 @@
             {:else if mine === 'joined'}
               <span class="badge pos">Joined</span>
             {:else if mine === 'accepted'}
-              <div class="card" style="background:var(--up-soft); border-color:transparent; padding:.55rem .8rem;">
+              <div class="stake-cta" style="padding:.55rem .8rem;">
                 <div class="row" style="justify-content:space-between; align-items:center; gap:.6rem;">
-                  <span style="font-size:.85rem;">You've been <strong>accepted</strong> — stake <strong class="mono">{stakeOf(r)}</strong> STR to take your seat.</span>
-                  <button onclick={() => confirmJoin(r)} disabled={busy === r.id || stakeOf(r) > myBalance}>
-                    {busy === r.id ? 'Joining…' : `Confirm join · ${stakeOf(r)} STR`}</button>
+                  <span style="font-size:.85rem;">You've been <strong>accepted</strong> — stake <strong class="mono" style="color:var(--accent);">{stakeOf(r)}</strong> STR to take your seat.</span>
+                  <button class="stake" onclick={() => confirmJoin(r)} disabled={busy === r.id || stakeOf(r) > myBalance}>
+                    {#if busy === r.id}<span class="spin"></span> Joining…{:else}Confirm join · {stakeOf(r)} STR{/if}</button>
                 </div>
                 {#if stakeOf(r) > myBalance}<span class="neg" style="font-size:.78rem;">Insufficient balance ({myBalance} STR).</span>{/if}
               </div>
