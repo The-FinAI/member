@@ -18,6 +18,10 @@
   type Application = { id: string; status: string; message: string | null; open_need_id: string; member: { full_name: string } | null };
   type Role = { id: string; name: string };
   type Skill = { id: string; name: string; parent_id: string | null };
+  type ResType = { id: string; name: string };
+  type ResRequest = { id: string; description: string | null; quantity: string | null; status: string; type_id: string | null; resource_type: { name: string } | null };
+  type ResOffer = { id: string; status: string; message: string | null; request_id: string; member: { full_name: string } | null; resource: { name: string } | null };
+  type OfferableResource = { id: string; name: string; scope: string };
 
   let project = $state<Project | null>(null);
   let participants = $state<Participant[]>([]);
@@ -32,6 +36,20 @@
 
   // new-need form
   let nRole = $state(''); let nSkill = $state(''); let nLevel = $state(''); let nCount = $state(1); let nDesc = $state('');
+
+  // resources
+  let resTypes = $state<ResType[]>([]);
+  let resRequests = $state<ResRequest[]>([]);
+  let resOffers = $state<ResOffer[]>([]);
+  let myResources = $state<OfferableResource[]>([]);
+  let offeredRequestIds = $state<Set<string>>(new Set());
+  // new resource-request form
+  let rrType = $state(''); let rrQty = $state(''); let rrDesc = $state('');
+  // offer form state, keyed by request id
+  let offerResourceId = $state<Record<string, string>>({});
+  let offerMessage = $state<Record<string, string>>({});
+
+  const contributorRoleId = $derived(roles.find((r) => r.name === 'Contributor')?.id ?? roles[0]?.id ?? null);
 
   async function load() {
     if (!supabaseConfigured || !id) { loading = false; return; }
@@ -65,7 +83,74 @@
         .from('need_application').select('id, status, message, open_need_id, member(full_name)').in('open_need_id', needIds);
       applications = (apps as Application[]) ?? [];
     }
+
+    // resources
+    const [{ data: rt }, { data: rr }] = await Promise.all([
+      supabase.from('resource_type').select('id, name').order('rank'),
+      supabase.from('resource_request').select('id, description, quantity, status, type_id, resource_type(name)').eq('project_id', id).order('created_at')
+    ]);
+    resTypes = (rt as ResType[]) ?? [];
+    resRequests = (rr as ResRequest[]) ?? [];
+
+    if (me) {
+      const { data: mine } = await supabase
+        .from('resource').select('id, name, scope').eq('holder_member_id', me).order('name');
+      myResources = (mine as OfferableResource[]) ?? [];
+    }
+    const reqIds = resRequests.map((r) => r.id);
+    if (me && reqIds.length) {
+      const { data: myOffers } = await supabase
+        .from('resource_offer').select('request_id').eq('offered_by', me).in('request_id', reqIds);
+      offeredRequestIds = new Set((myOffers ?? []).map((r: any) => r.request_id));
+    }
+    if (iManage && reqIds.length) {
+      const { data: offers } = await supabase
+        .from('resource_offer').select('id, status, message, request_id, member:offered_by(full_name), resource(name)').in('request_id', reqIds);
+      resOffers = (offers as ResOffer[]) ?? [];
+    }
     loading = false;
+  }
+
+  async function postResourceRequest() {
+    error = '';
+    const { error: err } = await supabase.from('resource_request').insert({
+      project_id: id, type_id: rrType || null, quantity: rrQty || null, description: rrDesc || null
+    });
+    if (err) { error = err.message; return; }
+    rrType = ''; rrQty = ''; rrDesc = '';
+    await load();
+  }
+
+  async function offerResource(requestId: string) {
+    error = '';
+    if (!$member) return;
+    const { error: err } = await supabase.from('resource_offer').insert({
+      request_id: requestId,
+      resource_id: offerResourceId[requestId] || null,
+      offered_by: $member.id,
+      message: offerMessage[requestId] || null
+    });
+    if (err) { error = err.message; return; }
+    offeredRequestIds = new Set([...offeredRequestIds, requestId]);
+  }
+
+  async function acceptOffer(offerId: string) {
+    error = '';
+    if (!contributorRoleId) { error = 'No project role available to assign.'; return; }
+    const { error: err } = await supabase.rpc('accept_resource_offer', { offer_id: offerId, role_id: contributorRoleId });
+    if (err) { error = err.message; return; }
+    await load();
+  }
+
+  async function declineOffer(offerId: string) {
+    error = '';
+    const { error: err } = await supabase.from('resource_offer').update({ status: 'declined' }).eq('id', offerId);
+    if (err) { error = err.message; return; }
+    await load();
+  }
+
+  function offersFor(requestId: string) {
+    return resOffers.filter((o) => o.request_id === requestId);
   }
 
   onMount(load);
@@ -215,6 +300,82 @@
             <button onclick={postNeed}>Post</button>
           </div>
           <input placeholder="Description (optional)" bind:value={nDesc} style="margin-top:.5rem; width:100%;" />
+        </div>
+      {/if}
+    </div>
+
+    <div class="card">
+      <h2>Resource needs</h2>
+      {#if resRequests.length === 0}
+        <p class="muted">No resource requests.</p>
+      {:else}
+        <div class="stack">
+          {#each resRequests as rr}
+            <div style="border:1px solid var(--border); border-radius:8px; padding:.75rem;">
+              <div class="row" style="justify-content:space-between;">
+                <strong>{rr.resource_type?.name ?? 'Resource'}</strong>
+                <span class="muted" style="font-size:.8rem;">{rr.status}{rr.quantity ? ` · ${rr.quantity}` : ''}</span>
+              </div>
+              {#if rr.description}<p style="margin:.4rem 0;">{rr.description}</p>{/if}
+
+              {#if !iManage}
+                {#if offeredRequestIds.has(rr.id)}
+                  <span class="badge">Offered</span>
+                {:else}
+                  <div class="row" style="align-items:flex-end; flex-wrap:wrap;">
+                    <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">Resource (optional)</span>
+                      <select bind:value={offerResourceId[rr.id]}>
+                        <option value="">— none / describe below —</option>
+                        {#each myResources as mr}<option value={mr.id}>{mr.name}{mr.scope === 'community' ? ' (community)' : ''}</option>{/each}
+                      </select>
+                    </label>
+                    <input placeholder="Message (optional)" bind:value={offerMessage[rr.id]} style="flex:1; min-width:160px;" />
+                    <button onclick={() => offerResource(rr.id)}>I can provide</button>
+                  </div>
+                {/if}
+              {:else}
+                {#if offersFor(rr.id).length === 0}
+                  <p class="muted" style="font-size:.82rem;">No offers yet.</p>
+                {:else}
+                  <table>
+                    <thead><tr><th>From</th><th>Resource</th><th>Message</th><th>Status</th><th></th></tr></thead>
+                    <tbody>
+                      {#each offersFor(rr.id) as o}
+                        <tr>
+                          <td>{o.member?.full_name ?? '—'}</td>
+                          <td>{o.resource?.name ?? '—'}</td>
+                          <td>{o.message ?? '—'}</td>
+                          <td><span class="badge">{o.status}</span></td>
+                          <td class="row">
+                            {#if o.status === 'pending'}
+                              <button class="ghost" onclick={() => acceptOffer(o.id)}>Accept</button>
+                              <button class="danger" onclick={() => declineOffer(o.id)}>Decline</button>
+                            {/if}
+                          </td>
+                        </tr>
+                      {/each}
+                    </tbody>
+                  </table>
+                {/if}
+              {/if}
+            </div>
+          {/each}
+        </div>
+      {/if}
+
+      {#if iManage}
+        <div style="margin-top:1rem; border-top:1px dashed var(--border); padding-top:1rem;">
+          <h3 style="margin:0 0 .5rem;">Ask for a resource</h3>
+          <div class="row" style="align-items:flex-end; flex-wrap:wrap;">
+            <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Type</span>
+              <select bind:value={rrType}><option value="">—</option>{#each resTypes as t}<option value={t.id}>{t.name}</option>{/each}</select>
+            </label>
+            <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Quantity</span>
+              <input bind:value={rrQty} placeholder="e.g. 500 GPU-hrs" style="width:140px;" />
+            </label>
+            <button onclick={postResourceRequest}>Post</button>
+          </div>
+          <input placeholder="Description (optional)" bind:value={rrDesc} style="margin-top:.5rem; width:100%;" />
         </div>
       {/if}
     </div>
