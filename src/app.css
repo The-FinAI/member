@@ -313,6 +313,46 @@ a.tile:hover { border-color: var(--border-2); }
 /* sticky table header inside scroll card */
 thead.sticky th { position: sticky; top: 0; background: var(--card); z-index: 2; }
 
+/* ---------- user avatar + dropdown ---------- */
+.usermenu { position: relative; }
+.avatar-btn {
+  width: 34px; height: 34px; padding: 0; border-radius: 50%;
+  background: var(--accent); color: var(--accent-ink);
+  border: 1px solid transparent; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: .82rem; letter-spacing: .02em;
+}
+.avatar-btn:hover { filter: brightness(1.06); }
+.avatar-btn:focus-visible { outline: none; box-shadow: var(--ring); }
+.menu-backdrop { position: fixed; inset: 0; z-index: 50; }
+.menu {
+  position: absolute; right: 0; top: calc(100% + .5rem); z-index: 60;
+  min-width: 220px; background: var(--card); border: 1px solid var(--border-2);
+  border-radius: 12px; box-shadow: var(--shadow); padding: .4rem; overflow: hidden;
+}
+.menu .menu-head { padding: .5rem .6rem .55rem; }
+.menu .menu-head .mh-name { font-weight: 600; color: var(--text); font-size: .9rem; }
+.menu .menu-head .mh-mail { color: var(--muted); font-size: .76rem; word-break: break-all; }
+.menu .menu-sep { height: 1px; background: var(--border); margin: .3rem 0; }
+.menu .menu-item {
+  display: flex; align-items: center; gap: .55rem; width: 100%;
+  padding: .5rem .6rem; border-radius: 8px; font-size: .88rem;
+  color: var(--text-dim); background: transparent; border: 0; cursor: pointer;
+  text-align: left; font-weight: 500;
+}
+.menu .menu-item:hover { background: var(--card-2); color: var(--text); filter: none; }
+.menu .menu-item .mi-ico { width: 16px; text-align: center; opacity: .8; }
+
+/* ---------- leaderboard ---------- */
+.rank {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; border-radius: 7px; font-family: var(--font-mono);
+  font-size: .8rem; font-weight: 700; color: var(--muted); background: var(--card-2);
+}
+.rank.r1 { color: #b58a00; background: rgba(240,185,11,.16); }
+.rank.r2 { color: var(--text-dim); background: var(--elevate); }
+.rank.r3 { color: #b06a2c; background: rgba(176,106,44,.16); }
+
 /* ---------- top bar ---------- */
 .topbar {
   position: sticky; top: 0; z-index: 40;

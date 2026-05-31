@@ -14,6 +14,8 @@
   type Credit = { skill_id: string; credit: number; endorsements: number };
 
   let rows = $state<Row[]>([]);
+  let balanceOf = $state<Record<string, number>>({});
+  let creditOf = $state<Record<string, number>>({});
   let loading = $state(true);
   let q = $state('');
   let myBalance = $state(0);
@@ -41,11 +43,22 @@
 
   onMount(async () => {
     if (!supabaseConfigured) { loading = false; return; }
-    const { data } = await supabase
-      .from('member')
-      .select('id, full_name, affiliation, status, member_position(position(name))')
-      .order('full_name');
+    const [{ data }, { data: bals }, { data: cr }] = await Promise.all([
+      supabase.from('member')
+        .select('id, full_name, affiliation, status, member_position(position(name))')
+        .order('full_name'),
+      supabase.from('stater_balance').select('owner_member_id, balance').not('owner_member_id', 'is', null),
+      supabase.from('stater_skill_credit').select('member_id, credit')
+    ]);
     rows = (data as Row[]) ?? [];
+    const bmap: Record<string, number> = {};
+    for (const b of (bals as { owner_member_id: string; balance: number }[]) ?? [])
+      bmap[b.owner_member_id] = Number(b.balance) || 0;
+    balanceOf = bmap;
+    const cmap: Record<string, number> = {};
+    for (const c of (cr as { member_id: string; credit: number }[]) ?? [])
+      cmap[c.member_id] = (cmap[c.member_id] ?? 0) + (Number(c.credit) || 0);
+    creditOf = cmap;
     loading = false;
     const unsub = member.subscribe((m) => { if (m) loadMyBalance(); });
     return unsub;
@@ -90,34 +103,54 @@
     openCredit = map;
   }
 
+  // leaderboard: rank by STR balance (desc), then by reputation credit
+  const ranked = $derived(
+    [...rows].sort((a, b) =>
+      (balanceOf[b.id] ?? 0) - (balanceOf[a.id] ?? 0) ||
+      (creditOf[b.id] ?? 0) - (creditOf[a.id] ?? 0) ||
+      a.full_name.localeCompare(b.full_name)
+    )
+  );
+  // rank number is assigned on the full ranking, then we filter for display
   const filtered = $derived(
-    rows.filter((r) => r.full_name.toLowerCase().includes(q.toLowerCase()))
+    ranked
+      .map((r, i) => ({ row: r, rank: i + 1 }))
+      .filter(({ row }) => row.full_name.toLowerCase().includes(q.toLowerCase()))
   );
 </script>
 
 <div class="stack">
-  <div class="row" style="justify-content:space-between; align-items:baseline;">
-    <h1 style="margin:0;">Members</h1>
+  <div class="row" style="justify-content:space-between; align-items:flex-end;">
+    <div>
+      <h1 style="margin-bottom:.15rem;">Leaderboard</h1>
+      <span class="muted" style="font-size:.85rem;">Members ranked by STR balance across the research economy.</span>
+    </div>
     {#if $member}<span class="muted">Your balance: <strong>{myBalance.toLocaleString()}</strong> STR</span>{/if}
   </div>
   <input placeholder="Search by name…" bind:value={q} style="max-width:320px;" />
   {#if error}<p style="color:var(--down);">{error}</p>{/if}
 
-  <div class="card">
+  <div class="card" style="padding:0; overflow-x:auto;">
     {#if loading}
-      <p class="muted">Loading…</p>
+      <p class="muted" style="padding:1rem;">Loading…</p>
     {:else if filtered.length === 0}
-      <p class="muted">No members.</p>
+      <p class="muted" style="padding:1rem;">No members.</p>
     {:else}
       <table>
-        <thead><tr><th>Name</th><th>Affiliation</th><th>Position</th><th>Status</th><th></th></tr></thead>
+        <thead><tr><th class="num">#</th><th>Member</th><th>Position</th><th class="num">STR</th><th class="num">Reputation</th><th></th></tr></thead>
         <tbody>
-          {#each filtered as r}
+          {#each filtered as { row: r, rank }}
             <tr>
-              <td>{r.full_name}</td>
-              <td>{r.affiliation ?? '—'}</td>
-              <td>{r.member_position?.map((p) => p.position?.name).filter(Boolean).join(', ') || '—'}</td>
-              <td><span class="badge">{r.status}</span></td>
+              <td class="num"><span class="rank {rank <= 3 ? 'r' + rank : ''}">{rank}</span></td>
+              <td>
+                <span class="proj">
+                  <span class="pname">{r.full_name}{#if $member && r.id === $member.id}<span class="badge dim" style="margin-left:.4rem;">you</span>{/if}</span>
+                  <span class="psub">{r.affiliation ?? '—'}</span>
+                </span>
+              </td>
+              <td class="dim">{r.member_position?.map((p) => p.position?.name).filter(Boolean).join(', ') || '—'}</td>
+              <td class="num mono accent" style="color:var(--accent);">{(balanceOf[r.id] ?? 0).toLocaleString()}</td>
+              <td class="num mono">{(creditOf[r.id] ?? 0).toLocaleString()}</td>
               <td>
                 {#if $member && r.id !== $member.id}
                   <button onclick={() => toggle(r.id)}>{openId === r.id ? 'Close' : 'Endorse'}</button>
@@ -126,7 +159,7 @@
             </tr>
             {#if openId === r.id}
               <tr>
-                <td colspan="5" style="background:var(--card-2);">
+                <td colspan="6" style="background:var(--card-2);">
                   {#if panelLoading}
                     <p class="muted">Loading skills…</p>
                   {:else if openSkills.length === 0}

@@ -156,33 +156,12 @@
       </div>
     </div>
 
-    <div class="card stack">
-      <div class="row" style="justify-content:space-between; align-items:baseline;">
-        <h2 style="margin:0;">Stater (STR)</h2>
-        <strong style="font-size:1.4rem;">{balance.toLocaleString()} <span class="muted" style="font-size:.7rem;">tokens</span></strong>
+    <div class="card row" style="justify-content:space-between; align-items:center;">
+      <div>
+        <span class="muted" style="font-size:.8rem;">STR balance</span>
+        <strong style="font-size:1.2rem; margin-left:.4rem;">{balance.toLocaleString()}</strong>
       </div>
-      <p class="muted" style="font-size:.82rem; margin-top:-.4rem;">
-        Earned by finishing projects; spent to join projects ({joinStake}/join) and endorse peers.
-      </p>
-      {#if ledger.length > 0}
-        <table>
-          <thead><tr><th>When</th><th>Type</th><th>Reason</th><th style="text-align:right;">Amount</th></tr></thead>
-          <tbody>
-            {#each ledger as e}
-              <tr>
-                <td class="muted" style="font-size:.78rem;">{new Date(e.created_at).toLocaleDateString()}</td>
-                <td><span class="badge">{e.entry_type}</span></td>
-                <td>{e.reason}</td>
-                <td style="text-align:right; color:{e.to_account === accountId ? 'var(--up)' : 'var(--down)'};">
-                  {e.to_account === accountId ? '+' : '−'}{Number(e.amount).toLocaleString()}
-                </td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
-      {:else}
-        <p class="muted">No transactions yet.</p>
-      {/if}
+      <a href="/wallet"><button class="ghost">Open wallet →</button></a>
     </div>
 
     <div class="card stack">

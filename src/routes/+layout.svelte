@@ -25,12 +25,19 @@
   const navItems = [
     { href: '/projects', label: 'Projects' },
     { href: '/opportunities', label: 'Opportunities' },
-    { href: '/members', label: 'Members' },
-    { href: '/profile', label: 'Wallet' }
+    { href: '/members', label: 'Leaderboard' }
   ];
   function isActive(href: string, path: string) {
     return href === '/' ? path === '/' : path.startsWith(href);
   }
+
+  let menuOpen = $state(false);
+  function initials(name: string | undefined) {
+    if (!name) return '·';
+    const p = name.trim().split(/\s+/);
+    return ((p[0]?.[0] ?? '') + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase() || '·';
+  }
+  function go(href: string) { menuOpen = false; goto(href); }
 
   onMount(() => {
     if (!supabaseConfigured) {
@@ -97,7 +104,7 @@
         </nav>
 
         {#if balance !== null}
-          <a href="/profile" class="chip" title="Your STR balance">
+          <a href="/wallet" class="chip" title="Open your wallet">
             <span class="amt">{balance.toLocaleString()}</span> STR
           </a>
         {/if}
@@ -108,7 +115,24 @@
       </button>
 
       {#if $session}
-        <button class="ghost" onclick={signOut}>Sign out</button>
+        <div class="usermenu">
+          <button class="avatar-btn" onclick={() => (menuOpen = !menuOpen)} title="Account" aria-label="Account menu" aria-haspopup="true" aria-expanded={menuOpen}>
+            {initials($member?.full_name)}
+          </button>
+          {#if menuOpen}
+            <div class="menu-backdrop" onclick={() => (menuOpen = false)} role="presentation"></div>
+            <div class="menu">
+              <div class="menu-head">
+                <div class="mh-name">{$member?.full_name ?? 'Account'}</div>
+                <div class="mh-mail">{$session.user.email}</div>
+              </div>
+              <div class="menu-sep"></div>
+              <button class="menu-item" onclick={() => go('/profile')}><span class="mi-ico">⚙</span> Profile &amp; skills</button>
+              <div class="menu-sep"></div>
+              <button class="menu-item" onclick={signOut}><span class="mi-ico">⏻</span> Sign out</button>
+            </div>
+          {/if}
+        </div>
       {/if}
     </div>
   </div>
