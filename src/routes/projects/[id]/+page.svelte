@@ -101,7 +101,7 @@
     if (!supabaseConfigured || !id) { loading = false; return; }
     loading = true;
     const [{ data: p }, { data: pm }, { data: nd }, { data: rl }, { data: sk }, { data: ps }] = await Promise.all([
-      supabase.from('project').select('id, name, target_venue, summary, status_id, held_from_status_id, project_type(name), project_status(id, name, rank), venue:venue_id(name, kind, url, deadline)').eq('id', id).maybeSingle(),
+      supabase.from('project').select('id, name, target_venue, summary, status_id, held_from_status_id, project_type(name), project_status!project_status_id_fkey(id, name, rank), venue:venue_id(name, kind, url, deadline)').eq('id', id).maybeSingle(),
       supabase.from('project_member').select('member_id, member(full_name), project_role(name, can_manage)').eq('project_id', id),
       supabase.from('open_need').select('id, description, headcount, min_level, status, project_role_id, project_role(name), skill(name)').eq('project_id', id),
       supabase.from('project_role').select('id, name, payout_weight').order('name'),

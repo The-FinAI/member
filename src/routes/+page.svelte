@@ -18,7 +18,7 @@
     loading = true;
     const [{ data: mp }, { data: ma }, { count: oc }, { count: pc }, { data: bal }, { data: cm }] = await Promise.all([
       supabase.from('project_member')
-        .select('project(id, name, project_status(name)), project_role(name)')
+        .select('project(id, name, project_status!project_status_id_fkey(name)), project_role(name)')
         .eq('member_id', memberId),
       supabase.from('need_application')
         .select('id, status, open_need(project(name))')

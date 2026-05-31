@@ -49,7 +49,7 @@
   async function loadGrid() {
     const [{ data: pr }, { data: pm }, { data: nd }, { data: esc }] = await Promise.all([
       supabase.from('project')
-        .select('id, name, target_venue, venue:venue_id(name, deadline), project_type(name), project_status(name, rank)'),
+        .select('id, name, target_venue, venue:venue_id(name, deadline), project_type(name), project_status!project_status_id_fkey(name, rank)'),
       supabase.from('project_member')
         .select('project_id, member(full_name), project_role(name, can_manage)'),
       supabase.from('open_need').select('project_id, status'),
