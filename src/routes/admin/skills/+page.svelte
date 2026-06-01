@@ -7,27 +7,43 @@
 
   type Skill = { id: string; parent_id: string | null; name: string; master_member_id: string | null };
   type Mem = { id: string; full_name: string };
+  type LeaderReq = { skill_id: string; min_level: string; rank: number; skill: { name: string } | null };
 
   let skills = $state<Skill[]>([]);
   let members = $state<Mem[]>([]);
+  let leaderReqs = $state<LeaderReq[]>([]);
   let loading = $state(true);
   let error = $state('');
   let newName = $state('');
   let newParent = $state('');
   let busy = $state('');
 
+  const GUILD_LADDER = ['apprentice', 'journeyman', 'craftsman', 'master'];
+  const GUILD_LABEL: Record<string, string> = {
+    apprentice: 'Apprentice', journeyman: 'Journeyman', craftsman: 'Craftsman', master: 'Master'
+  };
+
+  // add-requirement form
+  let reqSkill = $state(''); let reqLevel = $state('journeyman');
+  // admin-certify form
+  let certMember = $state(''); let certSkill = $state(''); let certLevel = $state('journeyman'); let certMsg = $state('');
+
   const canGuild = $derived($capabilities.has('manage_guild'));
+  // examinable leaves (skills that have no children) for requirement / certify pickers
+  const leaves = $derived(skills.filter((s) => !skills.some((c) => c.parent_id === s.id)));
 
   async function load() {
     if (!supabaseConfigured) { loading = false; return; }
     loading = true;
-    const [{ data, error: err }, { data: mem }] = await Promise.all([
+    const [{ data, error: err }, { data: mem }, { data: lr }] = await Promise.all([
       supabase.from('skill').select('id, parent_id, name, master_member_id').order('name'),
-      supabase.from('member').select('id, full_name').eq('status', 'active').order('full_name')
+      supabase.from('member').select('id, full_name').eq('status', 'active').order('full_name'),
+      supabase.from('leader_skill_requirement').select('skill_id, min_level, rank, skill(name)').order('rank')
     ]);
     if (err) error = err.message;
     skills = (data as Skill[]) ?? [];
     members = (mem as Mem[]) ?? [];
+    leaderReqs = (lr as LeaderReq[]) ?? [];
     loading = false;
   }
 
@@ -64,6 +80,44 @@
     busy = '';
     if (err) { error = err.message; return; }
     await load();
+  }
+
+  // ---- leader requirements ----
+  async function addRequirement() {
+    error = '';
+    if (!reqSkill) return;
+    const nextRank = (leaderReqs.reduce((m, r) => Math.max(m, r.rank), 0) || 0) + 10;
+    const { error: err } = await supabase
+      .from('leader_skill_requirement')
+      .upsert({ skill_id: reqSkill, min_level: reqLevel, rank: nextRank }, { onConflict: 'skill_id' });
+    if (err) { error = err.message; return; }
+    reqSkill = '';
+    await load();
+  }
+  async function setReqLevel(skillId: string, level: string) {
+    error = '';
+    const { error: err } = await supabase.from('leader_skill_requirement').update({ min_level: level }).eq('skill_id', skillId);
+    if (err) { error = err.message; return; }
+    await load();
+  }
+  async function removeRequirement(skillId: string) {
+    error = '';
+    const { error: err } = await supabase.from('leader_skill_requirement').delete().eq('skill_id', skillId);
+    if (err) { error = err.message; return; }
+    await load();
+  }
+
+  // ---- admin certify (bootstrap / waiver, no exam) ----
+  async function certify() {
+    error = ''; certMsg = '';
+    if (!certMember || !certSkill) return;
+    busy = 'certify';
+    const { error: err } = await supabase.rpc('admin_certify_skill', { p_member: certMember, p_skill: certSkill, p_level: certLevel });
+    busy = '';
+    if (err) { error = err.message; return; }
+    const mn = members.find((m) => m.id === certMember)?.full_name ?? '';
+    const sn = skills.find((s) => s.id === certSkill)?.name ?? '';
+    certMsg = get(t)('Certified {member} in {skill} at {level}.', { member: mn, skill: sn, level: get(t)(GUILD_LABEL[certLevel]) });
   }
 </script>
 
@@ -125,4 +179,62 @@
       {/each}
     {/if}
   </div>
+
+  {#if canGuild}
+    <!-- leader skill requirements (hard gate) -->
+    <div class="card stack">
+      <h2 style="margin:0;">{$t('Leader requirements')}</h2>
+      <p class="muted" style="font-size:.85rem; margin:0;">
+        {$t('To create or claim a project a member must hold every skill below at or above its certified guild level. Enforced server-side.')}
+      </p>
+      {#if leaderReqs.length === 0}
+        <p class="muted">{$t('No leader requirements set.')}</p>
+      {:else}
+        <ul style="margin:0; padding:0; list-style:none;">
+          {#each leaderReqs as r}
+            <li class="row" style="justify-content:space-between; align-items:center; gap:.6rem; max-width:560px; padding:.25rem 0;">
+              <span style="flex:1;">{$t(r.skill?.name ?? '—')}</span>
+              <select value={r.min_level} onchange={(e) => setReqLevel(r.skill_id, e.currentTarget.value)} style="max-width:160px;">
+                {#each GUILD_LADDER as g}<option value={g}>{$t(GUILD_LABEL[g])}</option>{/each}
+              </select>
+              <button class="danger" onclick={() => removeRequirement(r.skill_id)}>{$t('Remove')}</button>
+            </li>
+          {/each}
+        </ul>
+      {/if}
+      <div class="row" style="align-items:flex-end; flex-wrap:wrap; gap:.6rem; border-top:1px dashed var(--border); padding-top:.75rem;">
+        <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Add skill')}</span>
+          <select bind:value={reqSkill} style="max-width:220px;">
+            <option value="">—</option>
+            {#each leaves.filter((s) => !leaderReqs.some((r) => r.skill_id === s.id)) as s}<option value={s.id}>{s.name}</option>{/each}
+          </select>
+        </label>
+        <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Min guild level')}</span>
+          <select bind:value={reqLevel}>{#each GUILD_LADDER as g}<option value={g}>{$t(GUILD_LABEL[g])}</option>{/each}</select>
+        </label>
+        <button onclick={addRequirement} disabled={!reqSkill}>{$t('Add requirement')}</button>
+      </div>
+    </div>
+
+    <!-- admin certify (bootstrap / waiver) -->
+    <div class="card stack">
+      <h2 style="margin:0;">{$t('Certify a member')}</h2>
+      <p class="muted" style="font-size:.85rem; margin:0;">
+        {$t('Directly certify a member at a guild level — bootstrap or waiver, no exam. Use to unblock leaders.')}
+      </p>
+      <div class="row" style="align-items:flex-end; flex-wrap:wrap; gap:.6rem;">
+        <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Member')}</span>
+          <select bind:value={certMember} style="max-width:200px;"><option value="">—</option>{#each members as m}<option value={m.id}>{m.full_name}</option>{/each}</select>
+        </label>
+        <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Skill')}</span>
+          <select bind:value={certSkill} style="max-width:200px;"><option value="">—</option>{#each leaves as s}<option value={s.id}>{s.name}</option>{/each}</select>
+        </label>
+        <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Guild level')}</span>
+          <select bind:value={certLevel}>{#each GUILD_LADDER as g}<option value={g}>{$t(GUILD_LABEL[g])}</option>{/each}</select>
+        </label>
+        <button onclick={certify} disabled={!certMember || !certSkill || busy === 'certify'}>{$t('Certify')}</button>
+      </div>
+      {#if certMsg}<p class="pos" style="font-size:.82rem; margin:0;">{certMsg}</p>{/if}
+    </div>
+  {/if}
 </div>

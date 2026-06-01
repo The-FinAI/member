@@ -20,7 +20,8 @@
   type PStatus = { id: string; name: string; rank: number };
   type Participant = { member_id: string; member: { full_name: string } | null; project_role: { name: string; can_manage: boolean } | null };
   type Need = {
-    id: string; description: string | null; headcount: number; min_level: string | null; status: string;
+    id: string; description: string | null; headcount: number; min_level: string | null;
+    min_guild_level: string | null; skill_id: string | null; status: string;
     contribution_kind: string; hours_per_month: number | null;
     project_role_id: string | null; project_role: { name: string } | null; skill: { name: string } | null;
   };
@@ -34,7 +35,7 @@
   type Settlement = { id: string; status: string; meeting_notes: string | null; submitted_by: string | null; review_window_ends_at: string | null; approved_at: string | null };
   type SettlementItem = { id: string; member_id: string; role: string | null; final_payout_weight: number; is_author: boolean; author_order: number | null; member?: { full_name: string } | null };
   type Skill = { id: string; name: string; parent_id: string | null };
-  type ResType = { id: string; name: string };
+  type ResType = { id: string; name: string; valuation_method: string; unit: string | null; usd_per_unit: number | null };
   type ResRequest = { id: string; description: string | null; quantity: string | null; status: string; type_id: string | null; resource_type: { name: string } | null };
   type ResOffer = { id: string; status: string; message: string | null; request_id: string; member: { full_name: string } | null; resource: { name: string } | null };
   type OfferableResource = { id: string; name: string; scope: string;
@@ -110,6 +111,23 @@
   let nRole = $state(''); let nSkill = $state(''); let nLevel = $state(''); let nCount = $state(1); let nDesc = $state('');
   let nKind = $state('seat'); let nHours = $state(20);
 
+  // leader skill gate (mirrors the server-side hard gate)
+  type LeaderReq = { skill_id: string; skill_name: string; min_level: string; have: string | null };
+  let leaderMissing = $state<LeaderReq[]>([]);
+  const leaderReady = $derived(leaderMissing.length === 0);
+  const GUILD_LABEL: Record<string, string> = {
+    apprentice: 'Apprentice', journeyman: 'Journeyman', craftsman: 'Craftsman', master: 'Master'
+  };
+  const GUILD_LADDER = ['apprentice', 'journeyman', 'craftsman', 'master'];
+  function guildRank(g: string | null | undefined) { return g ? GUILD_LADDER.indexOf(g) + 1 : 0; }
+  // my certified guild level per skill_id (drives "you qualify" on needs)
+  let myCertified = $state<Record<string, string>>({});
+  // does the current member meet a recruiting need's guild-skill bar?
+  function qualifiesFor(n: Need) {
+    if (!n.min_guild_level || !n.skill_id) return true;
+    return guildRank(myCertified[n.skill_id]) >= guildRank(n.min_guild_level);
+  }
+
   // ---- records / meetings / history ----
   type Link = { id: string; kind: string; title: string; url: string; notes: string | null; created_at: string; member: { full_name: string } | null };
   type Meeting = { id: string; title: string; scheduled_at: string; ends_at: string | null; location: string | null; agenda: string | null; member: { full_name: string } | null };
@@ -145,6 +163,16 @@
   let strPerUsd = $state(0.24); let usdPerTflopHour = $state(0.005);
   // new resource-request form
   let rrType = $state(''); let rrQty = $state(''); let rrDesc = $state('');
+  const rrSelected = $derived(resTypes.find((r) => r.id === rrType) ?? null);
+  const rrUnit = $derived(rrSelected?.unit ?? '');
+  // est. STR for the request, when the type prices a flat USD/unit and qty is numeric
+  const rrEstStr = $derived.by(() => {
+    const t = rrSelected;
+    if (!t || !(t.valuation_method === 'flat' || t.valuation_method === 'usd') || t.usd_per_unit == null) return null;
+    const qty = parseFloat(String(rrQty).replace(/[^0-9.]/g, ''));
+    if (!isFinite(qty) || qty <= 0) return null;
+    return Math.round(qty * Number(t.usd_per_unit) * strPerUsd);
+  });
   // offer form state, keyed by request id
   let offerResourceId = $state<Record<string, string>>({});
   let offerMessage = $state<Record<string, string>>({});
@@ -157,7 +185,7 @@
     const [{ data: p }, { data: pm }, { data: nd }, { data: rl }, { data: sk }, { data: ps }] = await Promise.all([
       supabase.from('project').select('id, name, target_venue, summary, status_id, held_from_status_id, venue_id, project_type(name, join_stake, leader_stake), project_status!project_status_id_fkey(id, name, rank), venue:venue_id(name, kind, url, deadline)').eq('id', id).maybeSingle(),
       supabase.from('project_member').select('member_id, member(full_name), project_role(name, can_manage)').eq('project_id', id),
-      supabase.from('open_need').select('id, description, headcount, min_level, status, contribution_kind, hours_per_month, project_role_id, project_role(name), skill(name)').eq('project_id', id),
+      supabase.from('open_need').select('id, description, headcount, min_level, min_guild_level, skill_id, status, contribution_kind, hours_per_month, project_role_id, project_role(name), skill(name)').eq('project_id', id),
       supabase.from('project_role').select('id, name, payout_weight').order('name'),
       supabase.from('skill').select('id, name, parent_id').order('name'),
       supabase.from('project_status').select('id, name, rank').order('rank')
@@ -185,6 +213,15 @@
     if (me) {
       const { data: bal } = await supabase.from('stater_balance').select('balance').eq('owner_member_id', me).maybeSingle();
       myBalance = Number((bal as { balance: number } | null)?.balance ?? 0);
+      if (!hasLeader) {
+        const { data: lm } = await supabase.rpc('leader_reqs_missing', { mid: me });
+        leaderMissing = (lm as LeaderReq[]) ?? [];
+      }
+      const { data: cert } = await supabase
+        .from('member_skill').select('skill_id, certified_level').eq('member_id', me).not('certified_level', 'is', null);
+      const cmap: Record<string, string> = {};
+      for (const r of (cert as { skill_id: string; certified_level: string }[]) ?? []) cmap[r.skill_id] = r.certified_level;
+      myCertified = cmap;
     }
 
     const needIds = needs.map((n) => n.id);
@@ -205,7 +242,7 @@
 
     // resources
     const [{ data: rt }, { data: rr }, { data: pol }] = await Promise.all([
-      supabase.from('resource_type').select('id, name').order('rank'),
+      supabase.from('resource_type').select('id, name, valuation_method, unit, usd_per_unit').order('rank'),
       supabase.from('resource_request').select('id, description, quantity, status, type_id, resource_type(name)').eq('project_id', id).order('created_at'),
       supabase.from('stater_policy').select('key, value').in('key', ['str_per_usd', 'usd_per_tflop_hour'])
     ]);
@@ -713,6 +750,7 @@
   async function claimLeadership() {
     error = '';
     if (!$member) return;
+    if (!leaderReady) { error = get(t)('You don’t yet meet the leader skill requirements.'); return; }
     if (!confirm(get(t)('Take the lead on this project? This stakes {n} STR from your balance into the project escrow and seats you as Leader.', { n: leaderStake }))) return;
     claiming = true;
     const { error: err } = await supabase.rpc('claim_leadership', { p: id });
@@ -733,7 +771,7 @@
     if (!nRole) { error = get(t)('Pick a role.'); return; }
     const { error: err } = await supabase.from('open_need').insert({
       project_id: id, project_role_id: nRole, skill_id: nSkill || null,
-      min_level: nLevel || null, headcount: nCount, description: nDesc || null,
+      min_guild_level: nSkill && nLevel ? nLevel : null, headcount: nCount, description: nDesc || null,
       contribution_kind: nKind, hours_per_month: nKind === 'labor' ? Number(nHours) : null
     });
     if (err) { error = err.message; return; }
@@ -857,11 +895,22 @@
             </div>
           </div>
           <div class="stack" style="gap:.2rem; align-items:flex-end;">
-            <button class="stake" onclick={claimLeadership} disabled={claiming || leaderStake > myBalance}>
+            <button class="stake" onclick={claimLeadership} disabled={claiming || leaderStake > myBalance || !leaderReady}>
               {#if claiming}<span class="spin"></span> {$t('Staking…')}{:else}{$t('Claim leadership · {n} STR', { n: leaderStake })}{/if}</button>
-            {#if leaderStake > myBalance}<span class="neg" style="font-size:.78rem;">{$t('Insufficient balance ({n} STR).', { n: myBalance })}</span>{/if}
+            {#if !leaderReady}<span class="neg" style="font-size:.78rem;">{$t('Leader skill requirements not met.')}</span>
+            {:else if leaderStake > myBalance}<span class="neg" style="font-size:.78rem;">{$t('Insufficient balance ({n} STR).', { n: myBalance })}</span>{/if}
           </div>
         </div>
+        {#if !leaderReady}
+          <div class="row" style="flex-wrap:wrap; gap:.4rem; margin-top:.6rem;">
+            <span class="muted" style="font-size:.78rem;">{$t('Leading requires:')}</span>
+            {#each leaderMissing as r}
+              <span class="badge warn" title={$t('You have {have}', { have: r.have ? $t(GUILD_LABEL[r.have]) : $t('none') })}>
+                {$t(r.skill_name)} · {$t('needs {lvl}', { lvl: $t(GUILD_LABEL[r.min_level]) })}
+              </span>
+            {/each}
+          </div>
+        {/if}
       </div>
     {/if}
 
@@ -1257,7 +1306,15 @@
                   {/if}
                 </span>
               </div>
-              {#if n.skill}<div class="muted" style="font-size:.82rem;">{$t('Skill:')} {n.skill.name}{n.min_level ? ` (≥ ${$t(n.min_level)})` : ''}</div>{/if}
+              {#if n.skill}
+                <div class="row" style="gap:.4rem; align-items:center; font-size:.82rem;">
+                  <span class="muted">{$t('Skill:')} {$t(n.skill.name)}{n.min_guild_level ? ` · ${$t('needs {lvl}', { lvl: $t(GUILD_LABEL[n.min_guild_level]) })}` : ''}</span>
+                  {#if n.min_guild_level && $member && !iManage && !iParticipate}
+                    {#if qualifiesFor(n)}<span class="badge pos">{$t('You qualify')}</span>
+                    {:else}<span class="badge warn" title={$t('You have {have}', { have: myCertified[n.skill_id ?? ''] ? $t(GUILD_LABEL[myCertified[n.skill_id ?? '']]) : $t('none') })}>{$t('Below required level')}</span>{/if}
+                  {/if}
+                </div>
+              {/if}
               <div class="muted" style="font-size:.78rem;">{@html $t('Joining stakes <strong class="mono">{n}</strong> STR into escrow.', { n: joinStake })}</div>
               {#if n.description}<p style="margin:.4rem 0;">{n.description}</p>{/if}
 
@@ -1333,8 +1390,11 @@
             <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Skill (opt.)')}</span>
               <select bind:value={nSkill}><option value="">—</option>{#each skills as s}<option value={s.id}>{s.name}</option>{/each}</select>
             </label>
-            <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Min level')}</span>
-              <select bind:value={nLevel}><option value="">—</option><option value="Beginner">{$t('Beginner')}</option><option value="Intermediate">{$t('Intermediate')}</option><option value="Advanced">{$t('Advanced')}</option><option value="Expert">{$t('Expert')}</option></select>
+            <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Min guild level')}</span>
+              <select bind:value={nLevel} disabled={!nSkill}>
+                <option value="">{$t('— any —')}</option>
+                {#each GUILD_LADDER as g}<option value={g}>{$t(GUILD_LABEL[g])}</option>{/each}
+              </select>
             </label>
             {#if nKind === 'labor'}
               <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Hrs / mo')}</span>
@@ -1415,13 +1475,18 @@
           <h3 style="margin:0 0 .5rem;">{$t('Ask for a resource')}</h3>
           <div class="row" style="align-items:flex-end; flex-wrap:wrap;">
             <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Type')}</span>
-              <select bind:value={rrType}><option value="">—</option>{#each resTypes as rt}<option value={rt.id}>{rt.name}</option>{/each}</select>
+              <select bind:value={rrType}><option value="">—</option>{#each resTypes as rt}<option value={rt.id}>{$t(rt.name)}{rt.unit ? ` · ${rt.unit}` : ''}</option>{/each}</select>
             </label>
-            <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Quantity')}</span>
-              <input bind:value={rrQty} placeholder={$t('e.g. 500 GPU-hrs')} style="width:140px;" />
+            <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{rrUnit ? $t('Quantity ({u})', { u: rrUnit }) : $t('Quantity')}</span>
+              <input bind:value={rrQty} placeholder={rrUnit ? $t('e.g. 500 {u}', { u: rrUnit }) : $t('e.g. 500 GPU-hrs')} style="width:140px;" />
             </label>
             <button onclick={postResourceRequest}>{$t('Post')}</button>
           </div>
+          {#if rrEstStr != null}
+            <p class="muted" style="font-size:.78rem; margin:.4rem 0 0;">
+              {@html $t('At the current anchor this is worth <strong style="color:var(--accent);">≈ {n} STR</strong> when contributed.', { n: rrEstStr.toLocaleString() })}
+            </p>
+          {/if}
           <input placeholder={$t('Description (optional)')} bind:value={rrDesc} style="margin-top:.5rem; width:100%;" />
         </div>
       {/if}

@@ -10,7 +10,8 @@
     id: string;
     description: string | null;
     headcount: number;
-    min_level: string | null;
+    min_guild_level: string | null;
+    skill_id: string | null;
     status: string;
     contribution_kind: string;          // seat | labor | resource
     hours_per_month: number | null;
@@ -40,26 +41,39 @@
   let skillFilter = $state('');
   let levelFilter = $state('');
 
-  const LEVELS = ['Beginner', 'Intermediate', 'Advanced', 'Expert'];
-  const levelRank = (l: string | null) => (l ? LEVELS.indexOf(l) : -1);
+  const GUILD_LADDER = ['apprentice', 'journeyman', 'craftsman', 'master'];
+  const GUILD_LABEL: Record<string, string> = {
+    apprentice: 'Apprentice', journeyman: 'Journeyman', craftsman: 'Craftsman', master: 'Master'
+  };
+  const levelRank = (l: string | null) => (l ? GUILD_LADDER.indexOf(l) + 1 : 0);
+  // my certified guild level per skill_id (drives "you qualify")
+  let myCertified = $state<Record<string, string>>({});
+  function qualifiesFor(r: Row) {
+    if (!r.min_guild_level || !r.skill_id) return true;
+    return levelRank(myCertified[r.skill_id]) >= levelRank(r.min_guild_level);
+  }
 
   async function loadMine(memberId: string) {
-    const [{ data: apps }, { data: pm }, { data: bal }] = await Promise.all([
+    const [{ data: apps }, { data: pm }, { data: bal }, { data: cert }] = await Promise.all([
       supabase.from('need_application').select('id, status, open_need_id').eq('member_id', memberId),
       supabase.from('project_member').select('project_id').eq('member_id', memberId),
-      supabase.from('stater_balance').select('balance').eq('owner_member_id', memberId).maybeSingle()
+      supabase.from('stater_balance').select('balance').eq('owner_member_id', memberId).maybeSingle(),
+      supabase.from('member_skill').select('skill_id, certified_level').eq('member_id', memberId).not('certified_level', 'is', null)
     ]);
     const m: Record<string, { id: string; status: string }> = {};
     for (const a of (apps as any[]) ?? []) m[a.open_need_id] = { id: a.id, status: a.status };
     myApps = m;
     myProjectIds = new Set(((pm as any[]) ?? []).map((r) => r.project_id));
     myBalance = Number((bal as { balance: number } | null)?.balance ?? 0);
+    const cmap: Record<string, string> = {};
+    for (const c of (cert as { skill_id: string; certified_level: string }[]) ?? []) cmap[c.skill_id] = c.certified_level;
+    myCertified = cmap;
   }
 
   async function loadNeeds() {
     const { data } = await supabase
       .from('open_need')
-      .select('id, description, headcount, min_level, status, contribution_kind, hours_per_month, project:project_id(id, name, project_type(join_stake)), project_role(name), skill(name)')
+      .select('id, description, headcount, min_guild_level, skill_id, status, contribution_kind, hours_per_month, project:project_id(id, name, project_type(join_stake)), project_role(name), skill(name)')
       .eq('status', 'open')
       .order('created_at', { ascending: false });
     rows = (data as Row[]) ?? [];
@@ -161,7 +175,7 @@
       (!kindFilter || (r.contribution_kind ?? 'seat') === kindFilter) &&
       (!roleFilter || r.project_role?.name === roleFilter) &&
       (!skillFilter || r.skill?.name === skillFilter) &&
-      (!levelFilter || levelRank(r.min_level) <= levelRank(levelFilter)) &&
+      (!levelFilter || levelRank(r.min_guild_level) <= levelRank(levelFilter)) &&
       (!needle ||
         (r.project?.name ?? '').toLowerCase().includes(needle) ||
         (r.description ?? '').toLowerCase().includes(needle) ||
@@ -238,7 +252,7 @@
     </select>
     <select bind:value={levelFilter} title={$t("Show needs I'd qualify for at this level or below")}>
       <option value="">{$t('Any level')}</option>
-      {#each LEVELS as l}<option value={l}>≤ {l}</option>{/each}
+      {#each GUILD_LADDER as l}<option value={l}>≤ {$t(GUILD_LABEL[l])}</option>{/each}
     </select>
     {#if q || kindFilter || roleFilter || skillFilter || levelFilter}
       <button class="ghost" onclick={() => { q = ''; kindFilter = ''; roleFilter = ''; skillFilter = ''; levelFilter = ''; }}>{$t('Reset')}</button>
@@ -260,7 +274,8 @@
             <div>
               <a href={`/projects/${r.project?.id}`}><h2 style="margin:0;">{r.project?.name ?? $t('Project')}</h2></a>
               <div class="row muted" style="font-size:.82rem; margin-top:.2rem; flex-wrap:wrap;">
-                {#if r.skill}<span>{$t('Skill:')} {r.skill.name}{r.min_level ? ` (≥ ${r.min_level})` : ''}</span>{/if}
+                {#if r.skill}<span>{$t('Skill:')} {$t(r.skill.name)}{r.min_guild_level ? ` · ${$t('needs {lvl}', { lvl: $t(GUILD_LABEL[r.min_guild_level]) })}` : ''}</span>
+                  {#if r.min_guild_level && $member}{#if qualifiesFor(r)}<span class="badge pos" style="font-size:.7rem;">{$t('You qualify')}</span>{:else}<span class="badge warn" style="font-size:.7rem;">{$t('Below required level')}</span>{/if}{/if}{/if}
                 <span>· {$t('{n} opening(s)', { n: r.headcount })}</span>
                 {#if kind === 'labor'}
                   <span>· <strong class="mono">{r.hours_per_month ?? '—'}</strong> {$t('hrs/mo')}</span>

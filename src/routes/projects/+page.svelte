@@ -48,6 +48,12 @@
 
   // create form
   let myBalance = $state(0);
+  type LeaderReq = { skill_id: string; skill_name: string; min_level: string; have: string | null };
+  let leaderMissing = $state<LeaderReq[]>([]);
+  const leaderReady = $derived(leaderMissing.length === 0);
+  const GUILD_LABEL: Record<string, string> = {
+    apprentice: 'Apprentice', journeyman: 'Journeyman', craftsman: 'Craftsman', master: 'Master'
+  };
   let showForm = $state(false);
   let cName = $state(''); let cType = $state(''); let cStatus = $state('');
   let cVenueId = $state(''); let cSummary = $state(''); let cProposal = $state('');
@@ -136,6 +142,12 @@
     myBalance = Number((data as { balance: number } | null)?.balance ?? 0);
   }
 
+  async function loadLeaderReadiness() {
+    if (!$member) { leaderMissing = []; return; }
+    const { data } = await supabase.rpc('leader_reqs_missing', { mid: $member.id });
+    leaderMissing = (data as LeaderReq[]) ?? [];
+  }
+
   onMount(async () => {
     if (!supabaseConfigured) { loading = false; return; }
     const [, { data: ty }, { data: st }, { data: vn }] = await Promise.all([
@@ -149,13 +161,14 @@
     venues = (vn as Venue[]) ?? [];
     cStatus = statuses.find((s) => s.name === 'Proposal')?.id ?? statuses[0]?.id ?? '';
     loading = false;
-    const unsub = member.subscribe((m) => { if (m) loadMyBalance(); });
+    const unsub = member.subscribe((m) => { if (m) { loadMyBalance(); loadLeaderReadiness(); } });
     return unsub;
   });
 
   async function createProject() {
     error = '';
     if (!cName.trim() || !cType) { error = get(t)('Name and type are required.'); return; }
+    if (!leaderReady) { error = get(t)('You don’t yet meet the leader skill requirements.'); return; }
     if (!cProposal.trim()) { error = get(t)('A proposal link is required to start a project.'); return; }
     if (leaderStake > myBalance) { error = get(t)('Leader stake is {n} STR but you only have {bal}.', { n: leaderStake, bal: myBalance }); return; }
     let proposal = cProposal.trim();
@@ -377,6 +390,19 @@
         <input bind:value={cProposal} placeholder="https://…" /></label>
       <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Summary')}</span>
         <textarea bind:value={cSummary} rows="2" placeholder={$t('One-line description')}></textarea></label>
+      {#if !leaderReady}
+        <div class="card" style="background:color-mix(in srgb, var(--neg) 9%, transparent); border-color:color-mix(in srgb, var(--neg) 35%, transparent); padding:.6rem .8rem;">
+          <span class="muted" style="font-size:.8rem;">{$t('Leading a project requires these certified guild skills:')}</span>
+          <div class="row" style="flex-wrap:wrap; gap:.4rem; margin-top:.4rem;">
+            {#each leaderMissing as r}
+              <span class="badge warn" title={$t('You have {have}', { have: r.have ? $t(GUILD_LABEL[r.have]) : $t('none') })}>
+                {$t(r.skill_name)} · {$t('needs {lvl}', { lvl: $t(GUILD_LABEL[r.min_level]) })}
+              </span>
+            {/each}
+          </div>
+          <span class="dim" style="font-size:.76rem; display:block; margin-top:.4rem;">{$t('Pass the guild exams or ask an admin to certify you, then come back.')}</span>
+        </div>
+      {/if}
       <div class="card" style="background:var(--accent-soft); border-color:transparent; padding:.6rem .8rem;">
         <div class="row" style="justify-content:space-between;">
           <span class="muted" style="font-size:.8rem;">{$t('Leader initiation stake')}</span>
@@ -388,9 +414,10 @@
         </div>
       </div>
       <div class="row">
-        <button onclick={createProject} disabled={creating || leaderStake > myBalance}>
+        <button onclick={createProject} disabled={creating || leaderStake > myBalance || !leaderReady}>
           {creating ? $t('Creating…') : $t('Stake {n} STR & create', { n: leaderStake })}</button>
-        {#if leaderStake > myBalance}<span class="neg" style="font-size:.8rem;">{$t('Insufficient balance to stake.')}</span>{/if}
+        {#if !leaderReady}<span class="neg" style="font-size:.8rem;">{$t('Leader skill requirements not met.')}</span>
+        {:else if leaderStake > myBalance}<span class="neg" style="font-size:.8rem;">{$t('Insufficient balance to stake.')}</span>{/if}
       </div>
     </div>
   {/if}
