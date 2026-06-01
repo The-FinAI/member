@@ -1,5 +1,5 @@
 import { supabase, supabaseConfigured } from './supabase';
-import { member, capabilities, type Member } from './session';
+import { member, capabilities, officerUnits, actingAs, type Member, type OfficerUnit } from './session';
 
 /** Bind a pre-created (invited) member row to the just-authenticated user. */
 export async function claimMembership(): Promise<void> {
@@ -20,8 +20,24 @@ export async function loadProfile(authUserId: string): Promise<void> {
   member.set((m as Member) ?? null);
   if (!m) {
     capabilities.set(new Set());
+    officerUnits.set([]);
     return;
   }
+
+  // org-unit officer roles the member currently serves (drives "My chapter")
+  const { data: off } = await supabase
+    .from('org_unit_officer')
+    .select('role, org_unit:org_unit_id(id, code, name, kind)')
+    .eq('member_id', (m as Member).id)
+    .is('ended_on', null);
+  officerUnits.set(
+    ((off ?? []) as any[])
+      .filter((r) => r.org_unit)
+      .map((r) => ({
+        unit_id: r.org_unit.id, code: r.org_unit.code, name: r.org_unit.name,
+        kind: r.org_unit.kind, role: r.role
+      })) as OfficerUnit[]
+  );
 
   // capabilities = union of capability_key across the member's positions
   const { data: caps } = await supabase
@@ -42,4 +58,6 @@ export async function loadProfile(authUserId: string): Promise<void> {
 export function clearProfile(): void {
   member.set(null);
   capabilities.set(new Set());
+  officerUnits.set([]);
+  actingAs.set(null);
 }

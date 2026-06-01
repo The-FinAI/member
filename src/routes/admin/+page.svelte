@@ -5,6 +5,7 @@
 
   const sections = [
     { href: '/admin/invites', title: 'Invite Members', desc: 'Pre-create members by email (invite-only)' },
+    { href: '/admin/org-units', title: 'Chapters & Working Groups', desc: 'Assign chairs, secretaries & leaders to the 3 chapters + 3 working groups' },
     { href: '/admin/positions', title: 'Positions', desc: 'Community-level titles + ordering' },
     { href: '/admin/capabilities', title: 'Capabilities', desc: 'Grant capabilities to positions (permission matrix)' },
     { href: '/admin/roles', title: 'Project Roles', desc: 'Roles members hold within a project' },

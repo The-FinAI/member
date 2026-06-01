@@ -8,7 +8,7 @@
   // balance or the ledger — only contribution (nominal), skills & projects.
   type Mem = {
     id: string; full_name: string; affiliation: string | null;
-    avatar_url: string | null; bio: string | null; status: string;
+    avatar_url: string | null; bio: string | null; status: string; kind: string;
     links: Record<string, string> | null;
     member_position: { position: { name: string } | null }[];
   };
@@ -45,7 +45,7 @@
     if (!supabaseConfigured) { loading = false; return; }
     loading = true; notFound = false;
     const { data: m } = await supabase.from('member')
-      .select('id, full_name, affiliation, avatar_url, bio, status, links, member_position(position(name))')
+      .select('id, full_name, affiliation, avatar_url, bio, status, kind, links, member_position(position(name))')
       .eq('id', memberId).maybeSingle();
     if (!m) { mem = null; notFound = true; loading = false; return; }
     mem = m as Mem;
@@ -114,6 +114,7 @@
         <div style="flex:1; min-width:200px;">
           <div class="row" style="align-items:center; gap:.5rem;">
             <h1 style="margin:0;">{mem.full_name}</h1>
+            {#if mem.kind === 'card'}<span class="badge dim" title={$t('A member-card: managed by a chapter officer; value is custodial until the person signs up and claims it.')}>{$t('card')}</span>{/if}
             {#if mem.status !== 'active'}<span class="badge dim">{mem.status}</span>{/if}
           </div>
           <p class="muted" style="margin:.2rem 0 0;">{mem.affiliation ?? '—'}</p>

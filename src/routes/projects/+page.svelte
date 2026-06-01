@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { supabase, supabaseConfigured } from '$lib/supabase';
-  import { member } from '$lib/session';
+  import { member, actingAs } from '$lib/session';
   import { t } from '$lib/i18n';
   import { get } from 'svelte/store';
 
@@ -136,15 +136,17 @@
     }));
   }
 
-  async function loadMyBalance() {
-    if (!$member) return;
-    const { data } = await supabase.from('stater_balance').select('balance').eq('owner_member_id', $member.id).maybeSingle();
+  // act on behalf of a card (officer proxy) when one is selected
+  const effId = $derived($actingAs?.id ?? $member?.id ?? null);
+  const asArg = $derived($actingAs?.id ?? null);
+
+  async function loadMyBalance(id: string) {
+    const { data } = await supabase.from('stater_balance').select('balance').eq('owner_member_id', id).maybeSingle();
     myBalance = Number((data as { balance: number } | null)?.balance ?? 0);
   }
 
-  async function loadLeaderReadiness() {
-    if (!$member) { leaderMissing = []; return; }
-    const { data } = await supabase.rpc('leader_reqs_missing', { mid: $member.id });
+  async function loadLeaderReadiness(id: string) {
+    const { data } = await supabase.rpc('leader_reqs_missing', { mid: id });
     leaderMissing = (data as LeaderReq[]) ?? [];
   }
 
@@ -161,9 +163,9 @@
     venues = (vn as Venue[]) ?? [];
     cStatus = statuses.find((s) => s.name === 'Proposal')?.id ?? statuses[0]?.id ?? '';
     loading = false;
-    const unsub = member.subscribe((m) => { if (m) { loadMyBalance(); loadLeaderReadiness(); } });
-    return unsub;
   });
+  // balance + leader readiness follow the effective identity (self or acting card)
+  $effect(() => { if (effId) { loadMyBalance(effId); loadLeaderReadiness(effId); } });
 
   async function createProject() {
     error = '';
@@ -177,12 +179,12 @@
     const { data, error: err } = await supabase.rpc('create_project_with_leader_stake', {
       p_name: cName.trim(), p_type_id: cType, p_status_id: cStatus,
       p_venue: null, p_summary: cSummary.trim() || null,
-      p_venue_id: cVenueId || null, p_proposal_url: proposal
+      p_venue_id: cVenueId || null, p_proposal_url: proposal, p_as: asArg
     });
     creating = false;
     if (err) { error = err.message; return; }
     cName = ''; cVenueId = ''; cSummary = ''; cProposal = ''; showForm = false;
-    await Promise.all([loadGrid(), loadMyBalance()]);
+    await Promise.all([loadGrid(), effId ? loadMyBalance(effId) : Promise.resolve()]);
     if (data) window.location.href = `/projects/${data}`;
   }
 

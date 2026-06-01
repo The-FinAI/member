@@ -209,6 +209,13 @@ th .arrow { opacity: .55; font-size: .7em; margin-left: .2rem; }
   background: var(--warn-soft); border: 1px solid transparent; color: var(--warn);
   padding: .65rem 1rem; border-radius: 10px; font-size: .85rem;
 }
+.acting-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  background: var(--accent-soft, var(--warn-soft)); color: var(--accent, var(--warn));
+  border: 1px solid var(--accent, transparent);
+  padding: .55rem 1rem; border-radius: 10px; font-size: .85rem; margin-bottom: 1rem;
+}
+.acting-banner button { white-space: nowrap; }
 
 /* ---------- stat tiles (portfolio / ticker) ---------- */
 .tile {

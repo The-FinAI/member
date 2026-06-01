@@ -1,9 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { supabase, supabaseConfigured } from '$lib/supabase';
-  import { member } from '$lib/session';
+  import { member, capabilities, actingAs } from '$lib/session';
   import Hint from '$lib/Hint.svelte';
   import { t } from '$lib/i18n';
+  import { get } from 'svelte/store';
 
   type Skill = { id: string; name: string; parent_id: string | null; master_member_id: string | null };
   type Rubric = { skill_id: string; level: string; requirements: string };
@@ -11,6 +12,11 @@
     id: string; skill_id: string; target_level: string; status: string; fee: number;
     applicant_member_id: string;
     skill: { name: string } | null; applicant: { full_name: string } | null;
+  };
+  type CardReq = {
+    id: string; skill_id: string; member_id: string; target_level: string; kind: string;
+    fee: number; status: string;
+    skill: { name: string } | null; member: { full_name: string } | null;
   };
 
   const LEVELS = ['apprentice', 'journeyman', 'craftsman', 'master'];
@@ -29,11 +35,23 @@
   let myBalance = $state(0);
   let reviewerQueue = $state<ExamRow[]>([]);
   let myExams = $state<ExamRow[]>([]);
+  // role-card (mint/review) flow
+  let cardQueue = $state<CardReq[]>([]);   // requests awaiting my review (审)
+  let myCardReqs = $state<CardReq[]>([]);  // my own / acting-card's requests
+  let mintFee = $state(10);
+  let updateFee = $state(5);
   let loading = $state(true);
   let error = $state('');
   let busy = $state('');
 
+  const canReview = $derived($capabilities.has('review_skillcard'));
+  // effective identity: act for a card (officer proxy) when one is selected
+  const effId = $derived($actingAs?.id ?? $member?.id ?? null);
+  const asArg = $derived($actingAs?.id ?? null);
+
   let selected = $state(''); // selected leaf skill id
+  let cardLevel = $state('apprentice');
+  let cardNote = $state<Record<string, string>>({});
   let examLevel = $state('apprentice');
   let rubricLevel = $state('apprentice');
   let rubricText = $state('');
@@ -41,14 +59,19 @@
 
   async function load() {
     if (!supabaseConfigured) { loading = false; return; }
-    const me = $member?.id ?? null;
-    const [{ data: sk }, { data: ms }, { data: ru }, { data: pol }, { data: mineCert }] = await Promise.all([
+    const me = effId;
+    const [{ data: sk }, { data: ms }, { data: ru }, { data: pol }, { data: cardPol }, { data: mineCert }] = await Promise.all([
       supabase.from('skill').select('id, name, parent_id, master_member_id, master:master_member_id(full_name)').order('name'),
       supabase.from('member_skill').select('skill_id, certified_level').not('certified_level', 'is', null),
       supabase.from('skill_exam_rubric').select('skill_id, level, requirements'),
       supabase.from('stater_policy').select('key, value').like('key', 'skill_exam_fee_%'),
+      supabase.from('stater_policy').select('key, value').in('key', ['skillcard_mint_fee', 'skillcard_update_fee']),
       me ? supabase.from('member_skill').select('skill_id, certified_level').eq('member_id', me) : Promise.resolve({ data: [] })
     ]);
+    for (const p of (cardPol as { key: string; value: number }[]) ?? []) {
+      if (p.key === 'skillcard_mint_fee') mintFee = Number(p.value);
+      if (p.key === 'skillcard_update_fee') updateFee = Number(p.value);
+    }
 
     skills = ((sk as any[]) ?? []).map((s) => ({ id: s.id, name: s.name, parent_id: s.parent_id, master_member_id: s.master_member_id }));
     const mn: Record<string, string> = {};
@@ -85,15 +108,59 @@
       reviewerQueue = ((q as any[]) ?? []).map((r) => r.exam).filter((e) => e && e.status === 'in_review');
       myExams = (mx as ExamRow[]) ?? [];
       myBalance = Number((bal as { balance: number } | null)?.balance ?? 0);
+
+      // my (or acting card's) role-card requests
+      const { data: mr } = await supabase
+        .from('skillcard_request')
+        .select('id, skill_id, member_id, target_level, kind, fee, status, skill:skill_id(name), member:member_id(full_name)')
+        .eq('member_id', me).order('created_at', { ascending: false });
+      myCardReqs = (mr as CardReq[]) ?? [];
+    }
+
+    // 审 review queue — all open requests (reviewer acts as the current operator)
+    if ($capabilities.has('review_skillcard')) {
+      const { data: cq } = await supabase
+        .from('skillcard_request')
+        .select('id, skill_id, member_id, target_level, kind, fee, status, skill:skill_id(name), member:member_id(full_name)')
+        .eq('status', 'submitted').order('created_at');
+      cardQueue = (cq as CardReq[]) ?? [];
+    } else {
+      cardQueue = [];
     }
     loading = false;
   }
 
-  onMount(() => {
-    load();
-    const unsub = member.subscribe((m) => { if (m) load(); });
-    return unsub;
-  });
+  onMount(load);
+  // reload when the signed-in member or the acting card changes
+  $effect(() => { const _ = effId; if (supabaseConfigured) load(); });
+
+  // mint when first certifying this skill, otherwise an update (level-up)
+  function cardFeeFor(skillId: string | null) {
+    return skillId && myCert[skillId] ? updateFee : mintFee;
+  }
+  async function submitCard() {
+    if (!sel || !effId) return;
+    error = ''; busy = 'card';
+    const { error: err } = await supabase.rpc('submit_skillcard_request', { p_skill: sel.id, p_level: cardLevel, p_as: asArg });
+    busy = '';
+    if (err) { error = err.message; return; }
+    await load();
+  }
+  async function cancelCard(req: CardReq) {
+    error = ''; busy = req.id;
+    const { error: err } = await supabase.rpc('cancel_skillcard_request', { p_request: req.id, p_as: asArg });
+    busy = '';
+    if (err) { error = err.message; return; }
+    await load();
+  }
+  async function reviewCard(req: CardReq, approve: boolean) {
+    error = ''; busy = req.id;
+    const { error: err } = await supabase.rpc('review_skillcard_request', { p_request: req.id, p_approve: approve, p_note: cardNote[req.id] ?? null });
+    busy = '';
+    if (err) { error = err.message; return; }
+    cardNote[req.id] = '';
+    await load();
+  }
 
   const domains = $derived(skills.filter((s) => !s.parent_id).sort((a, b) => a.name.localeCompare(b.name)));
   function leavesOf(domainId: string) {
@@ -145,11 +212,59 @@
   <div>
     <h1 style="margin-bottom:.15rem;">{$t('The Guild')} <Hint term="certification" text={$t('Certification turns a self-declared skill into a hard, peer-reviewed credential — and sets your labor rate, which is how much your monthly hours mint.')} /></h1>
     <span class="muted" style="font-size:.85rem;">
-      {$t("Skills are a craft ladder — Apprentice → Journeyman → Craftsman → Master. Certification is earned by paid, peer-reviewed exam. Each craft's master is appointed by an admin; the master owns its rubric and seeds the reviewer pool.")}
+      {$t("Skills are a craft ladder — Apprentice → Journeyman → Craftsman → Master. A certified skill is a role card: request one (paying the mint or update fee) and a reviewer approves it. A paid peer exam is also available where a craft has a master.")}
     </span>
   </div>
 
   {#if error}<p class="neg" style="font-size:.85rem;">{error}</p>{/if}
+
+  {#if $actingAs}
+    <p class="muted" style="font-size:.82rem; margin:0;">{$t('Requesting role cards for card {name}; the fee is paid from the card’s balance.', { name: $actingAs.full_name })}</p>
+  {/if}
+
+  <!-- 审 role-card review queue -->
+  {#if canReview && cardQueue.length > 0}
+    <div class="card stack" style="gap:.5rem;">
+      <div class="row" style="justify-content:space-between; align-items:center;">
+        <h2 style="margin:0;">{$t('Role cards awaiting your review')}</h2>
+        <span class="badge warn">{cardQueue.length}</span>
+      </div>
+      {#each cardQueue as r}
+        <div class="stack" style="gap:.35rem; padding:.5rem .2rem; border-top:1px solid var(--border-2);">
+          <div class="row" style="justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.4rem;">
+            <span>{@html $t('<strong>{name}</strong> requests <strong>{skill}</strong>', { name: r.member?.full_name ?? $t('A member'), skill: r.skill?.name ?? '' })}
+              · <span class="badge dim">{$t(LEVEL_LABEL[r.target_level])}</span>
+              · <span class="badge {r.kind === 'mint' ? 'pos' : 'dim'}">{r.kind === 'mint' ? $t('mint') : $t('update')}</span>
+              · <span class="muted" style="font-size:.78rem;">{r.fee} STR</span></span>
+            <div class="row" style="gap:.4rem;">
+              <button class="up" disabled={busy === r.id} onclick={() => reviewCard(r, true)}>{$t('Approve')}</button>
+              <button class="danger" disabled={busy === r.id} onclick={() => reviewCard(r, false)}>{$t('Reject')}</button>
+            </div>
+          </div>
+          {#if rubrics[r.skill_id]?.[r.target_level]}
+            <p class="muted" style="font-size:.8rem; margin:0;"><strong>{$t('Rubric:')}</strong> {rubrics[r.skill_id][r.target_level]}</p>
+          {/if}
+          <input bind:value={cardNote[r.id]} placeholder={$t('Note (optional; shown on the record)')} style="max-width:380px;" />
+        </div>
+      {/each}
+    </div>
+  {/if}
+
+  <!-- my role-card requests -->
+  {#if myCardReqs.length > 0}
+    <div class="card stack" style="gap:.4rem;">
+      <h2 style="margin:0;">{$actingAs ? $t('{name}’s role-card requests', { name: $actingAs.full_name }) : $t('My role-card requests')}</h2>
+      {#each myCardReqs as r}
+        <div class="row" style="justify-content:space-between; align-items:center; padding:.35rem .2rem; border-top:1px solid var(--border-2);">
+          <span>{r.skill?.name} · {$t(LEVEL_LABEL[r.target_level])} · <span class="muted" style="font-size:.78rem;">{r.fee} STR</span></span>
+          <div class="row" style="gap:.4rem;">
+            <span class="badge {r.status === 'approved' ? 'pos' : r.status === 'rejected' ? 'neg' : r.status === 'cancelled' ? 'dim' : 'warn'}">{$t(r.status)}</span>
+            {#if r.status === 'submitted'}<button disabled={busy === r.id} onclick={() => cancelCard(r)}>{$t('Cancel')}</button>{/if}
+          </div>
+        </div>
+      {/each}
+    </div>
+  {/if}
 
   <!-- reviewer queue -->
   {#if reviewerQueue.length > 0}
@@ -248,6 +363,25 @@
           <div class="card" style="background:var(--card-2); border-color:transparent; padding:.6rem .8rem;">
             <p class="muted" style="font-size:.8rem; margin:0;">
               {$t('No master appointed yet. An admin appoints a master in')} <a href="/admin/skills">{$t('the skill tree')}</a>{$t('; certification opens once a master seeds the reviewer pool.')}
+            </p>
+          </div>
+        {/if}
+
+        <!-- request a role card (mint / update) — the primary certification path -->
+        {#if effId && !iAmMaster}
+          <div class="card" style="background:var(--card-2); border-color:transparent; padding:.6rem .8rem;">
+            <div class="row" style="align-items:flex-end; gap:.5rem; flex-wrap:wrap;">
+              <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">{$t('Request role card at')}</span>
+                <select bind:value={cardLevel}>
+                  {#each LEVELS as lv}<option value={lv} disabled={levelRank(myLevelHere) >= levelRank(lv)}>{$t(LEVEL_LABEL[lv])}</option>{/each}
+                </select></label>
+              <button class="stake" onclick={submitCard} disabled={busy === 'card' || cardFeeFor(sel.id) > myBalance}>
+                {busy === 'card' ? $t('Submitting…') : $t('Request · {n} STR', { n: cardFeeFor(sel.id) })}</button>
+            </div>
+            {#if cardFeeFor(sel.id) > myBalance}<span class="neg" style="font-size:.75rem;">{$t('Insufficient balance ({bal} STR).', { bal: myBalance })}</span>{/if}
+            <p class="muted" style="font-size:.74rem; margin:.4rem 0 0;">
+              {myLevelHere ? $t('Update fee {n} STR — escrowed and refunded if rejected.', { n: updateFee }) : $t('Mint fee {n} STR — escrowed and refunded if rejected.', { n: mintFee })}
+              {$t('A reviewer approves or rejects your request.')}
             </p>
           </div>
         {/if}

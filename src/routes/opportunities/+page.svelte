@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { supabase, supabaseConfigured } from '$lib/supabase';
-  import { member } from '$lib/session';
+  import { member, actingAs } from '$lib/session';
   import Hint from '$lib/Hint.svelte';
   import { t } from '$lib/i18n';
   import { get } from 'svelte/store';
@@ -104,50 +104,54 @@
       }));
   }
 
+  // act on behalf of a card (officer proxy) when one is selected
+  const effId = $derived($actingAs?.id ?? $member?.id ?? null);
+  const asArg = $derived($actingAs?.id ?? null);
+
   onMount(() => {
     if (!supabaseConfigured) { loading = false; return; }
     (async () => { await Promise.all([loadNeeds(), loadLeaderless()]); loading = false; })();
-    const unsub = member.subscribe((m) => { if (m) loadMine(m.id); });
-    return unsub;
   });
+  // reload "my" state whenever the effective identity (self or acting card) changes
+  $effect(() => { if (effId) loadMine(effId); });
 
   function stakeOf(r: Row) { return Number(r.project?.project_type?.join_stake ?? 20); }
 
   async function apply(r: Row, msg: string) {
     error = '';
-    if (!$member) return;
+    if (!effId) return;
     busy = r.id;
-    const { error: err } = await supabase.from('need_application').insert({
-      open_need_id: r.id, member_id: $member.id, message: msg.trim() || null
+    const { error: err } = await supabase.rpc('apply_to_need', {
+      p_need: r.id, p_message: msg.trim() || null, p_as: asArg
     });
     busy = '';
     if (err) { error = err.message; return; }
     pitch[r.id] = '';
-    await loadMine($member.id);
+    await loadMine(effId);
   }
 
   async function confirmJoin(r: Row) {
     error = '';
     const app = myApps[r.id];
-    if (!app || !$member) return;
+    if (!app || !effId) return;
     if (!confirm(get(t)('Confirm joining {name}? This stakes {n} STR into the project escrow.', { name: r.project?.name ?? get(t)('this project'), n: stakeOf(r) }))) return;
     busy = r.id;
-    const { error: err } = await supabase.rpc('confirm_join', { app_id: app.id });
+    const { error: err } = await supabase.rpc('confirm_join', { app_id: app.id, p_as: asArg });
     busy = '';
     if (err) { error = err.message; return; }
-    await Promise.all([loadMine($member.id), loadNeeds()]);
+    await Promise.all([loadMine(effId), loadNeeds()]);
   }
 
   async function claimLead(l: Lead) {
     error = '';
-    if (!$member) return;
+    if (!effId) return;
     if (l.leaderStake > myBalance) { error = get(t)('Leading {name} stakes {n} STR but you only have {bal}.', { name: l.name, n: l.leaderStake, bal: myBalance }); return; }
     if (!confirm(get(t)('Take the lead on {name}? This stakes {n} STR (the leader bond) into its escrow and makes you the managing leader.', { name: l.name, n: l.leaderStake }))) return;
     busy = l.id;
-    const { error: err } = await supabase.rpc('claim_leadership', { p: l.id });
+    const { error: err } = await supabase.rpc('claim_leadership', { p: l.id, p_as: asArg });
     busy = '';
     if (err) { error = err.message; return; }
-    await Promise.all([loadLeaderless(), loadNeeds(), $member ? loadMine($member.id) : Promise.resolve()]);
+    await Promise.all([loadLeaderless(), loadNeeds(), loadMine(effId)]);
   }
 
   let pitch = $state<Record<string, string>>({});

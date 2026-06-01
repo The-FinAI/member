@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { supabase, supabaseConfigured } from '$lib/supabase';
-  import { member, capabilities } from '$lib/session';
+  import { member, capabilities, actingAs } from '$lib/session';
   import CountUp from '$lib/CountUp.svelte';
   import Hint from '$lib/Hint.svelte';
   import { t } from '$lib/i18n';
@@ -202,7 +202,8 @@
       venueOpts = (vn as VenueOpt[]) ?? [];
     }
 
-    const me = $member?.id;
+    // act on behalf of a card (officer proxy) when one is selected
+    const me = $actingAs?.id ?? $member?.id;
     iManage =
       $capabilities.has('edit_any_project') ||
       participants.some((x) => x.member_id === me && x.project_role?.can_manage);
@@ -625,6 +626,15 @@
 
   onMount(load);
 
+  // p_as for member-scoped RPCs; reload me-relative state when the acting card changes
+  const asArg = $derived($actingAs?.id ?? null);
+  let actingMounted = false;
+  $effect(() => {
+    const _ = $actingAs?.id; // track
+    if (actingMounted) load();
+    actingMounted = true;
+  });
+
   function currentMonth() { return new Date().toISOString().slice(0, 7); }
   function fmtMonth(ym: string) {
     const [y, m] = ym.split('-').map(Number);
@@ -646,7 +656,7 @@
     if (!/^\d{4}-\d{2}$/.test(clMonth)) { error = get(t)('Month must be YYYY-MM.'); return; }
     settingLabor = true;
     const { error: err } = await supabase.rpc('set_labor_commitment',
-      { p: id, sk: clSkill, ym: clMonth, hours: Number(clHours) });
+      { p: id, sk: clSkill, ym: clMonth, hours: Number(clHours), p_as: asArg });
     settingLabor = false;
     if (err) { error = err.message; return; }
     await load();
@@ -694,7 +704,7 @@
     if (!/^\d{4}-\d{2}$/.test(rcMonth)) { error = get(t)('Month must be YYYY-MM.'); return; }
     settingRes = true;
     const { error: err } = await supabase.rpc('set_resource_commitment',
-      { p: id, res: rcRes, ym: rcMonth, qty: Number(rcQty) });
+      { p: id, res: rcRes, ym: rcMonth, qty: Number(rcQty), p_as: asArg });
     settingRes = false;
     if (err) { error = err.message; return; }
     await load();
@@ -726,9 +736,9 @@
 
   async function apply(needId: string) {
     error = '';
-    if (!$member) return;
-    const { error: err } = await supabase.from('need_application').insert({
-      open_need_id: needId, member_id: $member.id, message: applyMsg[needId]?.trim() || null
+    if (!$member && !$actingAs) return;
+    const { error: err } = await supabase.rpc('apply_to_need', {
+      p_need: needId, p_message: applyMsg[needId]?.trim() || null, p_as: asArg
     });
     if (err) { error = err.message; return; }
     applyMsg[needId] = '';
@@ -741,7 +751,7 @@
     if (!app) return;
     if (!confirm(get(t)('Confirm joining this project? This stakes {n} STR from your balance into the project escrow.', { n: joinStake }))) return;
     confirming = needId;
-    const { error: err } = await supabase.rpc('confirm_join', { app_id: app.id });
+    const { error: err } = await supabase.rpc('confirm_join', { app_id: app.id, p_as: asArg });
     confirming = '';
     if (err) { error = err.message; return; }
     await load();
@@ -749,11 +759,11 @@
 
   async function claimLeadership() {
     error = '';
-    if (!$member) return;
+    if (!$member && !$actingAs) return;
     if (!leaderReady) { error = get(t)('You don’t yet meet the leader skill requirements.'); return; }
     if (!confirm(get(t)('Take the lead on this project? This stakes {n} STR from your balance into the project escrow and seats you as Leader.', { n: leaderStake }))) return;
     claiming = true;
-    const { error: err } = await supabase.rpc('claim_leadership', { p: id });
+    const { error: err } = await supabase.rpc('claim_leadership', { p: id, p_as: asArg });
     claiming = false;
     if (err) { error = err.message; return; }
     await load();

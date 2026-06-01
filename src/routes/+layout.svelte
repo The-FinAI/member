@@ -4,7 +4,7 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { supabase, supabaseConfigured } from '$lib/supabase';
-  import { session, member, capabilities, authReady } from '$lib/session';
+  import { session, member, capabilities, officerUnits, actingAs, authReady } from '$lib/session';
   import { loadProfile, clearProfile, claimMembership } from '$lib/profile';
   import { theme, toggleTheme } from '$lib/theme';
   import { t } from '$lib/i18n';
@@ -92,6 +92,8 @@
       $capabilities.has('manage_members') ||
       $capabilities.has('edit_any_project')
   );
+  // chapter officers get a "My chapter" entry (cards belong to chapters)
+  const isChapterOfficer = $derived($officerUnits.some((u) => u.kind === 'chapter'));
 </script>
 
 <header class="topbar">
@@ -107,6 +109,9 @@
           {#each navItems as n}
             <a href={n.href} class="navlink" class:active={isActive(n.href, $page.url.pathname)}>{$t(n.label)}</a>
           {/each}
+          {#if isChapterOfficer}
+            <a href="/my-chapter" class="navlink" class:active={isActive('/my-chapter', $page.url.pathname)}>{$t('My Chapter')}</a>
+          {/if}
           {#if canAdmin}
             <a href="/admin" class="navlink" class:active={isActive('/admin', $page.url.pathname)}>{$t('Admin')}</a>
           {/if}
@@ -150,6 +155,12 @@
 </header>
 
 <main class="container">
+  {#if $actingAs}
+    <div class="acting-banner">
+      <span>{$t('Acting as card')} <strong>{$actingAs.full_name}</strong> — {$t('actions and STR apply to this card.')}</span>
+      <button class="icon-btn" onclick={() => actingAs.set(null)}>{$t('Stop acting')}</button>
+    </div>
+  {/if}
   {#if !supabaseConfigured}
     <p class="banner">
       Supabase is not configured. Copy <code>.env.example</code> to <code>.env</code> and add your

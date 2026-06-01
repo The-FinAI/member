@@ -29,6 +29,9 @@
   let certMember = $state(''); let certSkill = $state(''); let certLevel = $state('journeyman'); let certMsg = $state('');
 
   const canGuild = $derived($capabilities.has('manage_guild'));
+  const canMint = $derived($capabilities.has('mint_skillcard'));
+  // direct role-card mint (铸)
+  let mintMember = $state(''); let mintSkill = $state(''); let mintLevel = $state('journeyman'); let mintMsg = $state('');
   // examinable leaves (skills that have no children) for requirement / certify pickers
   const leaves = $derived(skills.filter((s) => !skills.some((c) => c.parent_id === s.id)));
 
@@ -118,6 +121,19 @@
     const mn = members.find((m) => m.id === certMember)?.full_name ?? '';
     const sn = skills.find((s) => s.id === certSkill)?.name ?? '';
     certMsg = get(t)('Certified {member} in {skill} at {level}.', { member: mn, skill: sn, level: get(t)(GUILD_LABEL[certLevel]) });
+  }
+
+  // ---- direct role-card mint (铸 — mint_skillcard capability, no fee/review) ----
+  async function mintCard() {
+    error = ''; mintMsg = '';
+    if (!mintMember || !mintSkill) return;
+    busy = 'mint';
+    const { error: err } = await supabase.rpc('mint_skillcard', { p_member: mintMember, p_skill: mintSkill, p_level: mintLevel });
+    busy = '';
+    if (err) { error = err.message; return; }
+    const mn = members.find((m) => m.id === mintMember)?.full_name ?? '';
+    const sn = skills.find((s) => s.id === mintSkill)?.name ?? '';
+    mintMsg = get(t)('Minted a {level} role card for {member} in {skill}.', { member: mn, skill: sn, level: get(t)(GUILD_LABEL[mintLevel]) });
   }
 </script>
 
@@ -235,6 +251,29 @@
         <button onclick={certify} disabled={!certMember || !certSkill || busy === 'certify'}>{$t('Certify')}</button>
       </div>
       {#if certMsg}<p class="pos" style="font-size:.82rem; margin:0;">{certMsg}</p>{/if}
+    </div>
+  {/if}
+
+  {#if canMint}
+    <!-- direct role-card mint (铸) -->
+    <div class="card stack">
+      <h2 style="margin:0;">{$t('Mint a role card')}</h2>
+      <p class="muted" style="font-size:.85rem; margin:0;">
+        {$t('Mint a skill credential directly onto any member — genesis, first cards, or a waiver. No fee, no review. Recorded as a direct mint.')}
+      </p>
+      <div class="row" style="align-items:flex-end; flex-wrap:wrap; gap:.6rem;">
+        <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Member')}</span>
+          <select bind:value={mintMember} style="max-width:200px;"><option value="">—</option>{#each members as m}<option value={m.id}>{m.full_name}</option>{/each}</select>
+        </label>
+        <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Skill')}</span>
+          <select bind:value={mintSkill} style="max-width:200px;"><option value="">—</option>{#each leaves as s}<option value={s.id}>{s.name}</option>{/each}</select>
+        </label>
+        <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Guild level')}</span>
+          <select bind:value={mintLevel}>{#each GUILD_LADDER as g}<option value={g}>{$t(GUILD_LABEL[g])}</option>{/each}</select>
+        </label>
+        <button onclick={mintCard} disabled={!mintMember || !mintSkill || busy === 'mint'}>{$t('Mint card')}</button>
+      </div>
+      {#if mintMsg}<p class="pos" style="font-size:.82rem; margin:0;">{mintMsg}</p>{/if}
     </div>
   {/if}
 </div>

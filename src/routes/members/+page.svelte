@@ -15,6 +15,7 @@
     full_name: string;
     affiliation: string | null;
     status: string;
+    kind: string;
     member_position: { position: { name: string } }[];
   };
   type MemberSkill = { skill_id: string; self_level: string; skill: { name: string } | null };
@@ -73,7 +74,7 @@
     if (!supabaseConfigured) { loading = false; return; }
     const [{ data }, { data: bals }, { data: cr }, { data: nom }] = await Promise.all([
       supabase.from('member')
-        .select('id, full_name, affiliation, status, member_position(position(name))')
+        .select('id, full_name, affiliation, status, kind, member_position(position(name))')
         .order('full_name'),
       supabase.from('stater_balance').select('owner_member_id, balance').not('owner_member_id', 'is', null),
       supabase.from('stater_skill_credit').select('member_id, credit'),
@@ -218,7 +219,7 @@
               <td class="num"><span class="rank {rank <= 3 ? 'r' + rank : ''}">{rank}</span></td>
               <td>
                 <a href={`/members/${r.id}`} class="proj">
-                  <span class="pname">{r.full_name}{#if $member && r.id === $member.id}<span class="badge dim" style="margin-left:.4rem;">{$t('you')}</span>{/if}</span>
+                  <span class="pname">{r.full_name}{#if $member && r.id === $member.id}<span class="badge dim" style="margin-left:.4rem;">{$t('you')}</span>{/if}{#if r.kind === 'card'}<span class="badge dim" style="margin-left:.4rem;" title={$t('A member-card: managed by a chapter officer; value is custodial until the person signs up.')}>{$t('card')}</span>{/if}</span>
                   <span class="psub">{r.affiliation ?? '—'}</span>
                 </a>
               </td>
