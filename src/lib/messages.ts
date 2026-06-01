@@ -199,7 +199,50 @@ const zh: Table = {
   'Saving…': '保存中…',
   'Save rubric': '保存评分标准',
   'You were appointed master of this craft — define how each level is tested. The tree itself (adding or branching skills) is managed by admins in':
-    '你被任命为该技艺的大师——定义每个等级如何考核。技能树本身(新增或分支技能)由管理员在'
+    '你被任命为该技艺的大师——定义每个等级如何考核。技能树本身(新增或分支技能)由管理员在',
+
+  // ── leaderboard / members ──
+  'Contribution': '贡献',
+  'Wealth': '财富',
+  'Masters': '大师榜',
+  'Lifetime nominal STR minted through declared work & verified milestones.': '通过申报工作与已验证里程碑累计铸造的名义 STR。',
+  'Liquid STR plus nominal STR still accruing in live projects.': '流动 STR 加上仍在进行中项目累积的名义 STR。',
+  'Liquid, spendable STR held right now.': '当前持有的流动、可花费 STR。',
+  'Peer-endorsed skill reputation across the guild.': '行会中经同行背书的技能声誉。',
+  'rep': '声誉',
+  'you': '你',
+  'Search by name…': '按姓名搜索…',
+  'No members.': '暂无成员。',
+  'Member': '成员',
+  'Position': '职位',
+  'Share': '占比',
+  'Nominal': '名义',
+  'Rep': '声誉',
+  'Close': '关闭',
+  'Endorse': '背书',
+  'Loading skills…': '加载技能中…',
+  '{name} has no skills listed yet.': '{name} 尚未列出任何技能。',
+  'Endorse a skill by transferring your own STR — scarce credit means it carries signal.':
+    '通过转出你自己的 STR 来为某项技能背书——稀缺的积分意味着它具有信号价值。',
+  'credit {c} · {n} endorsers': '积分 {c} · {n} 名背书者',
+  'note (optional)': '备注(可选)',
+  'Minimum is {n} STR.': '最低为 {n} STR。',
+  'You only have {n} STR.': '你只有 {n} STR。',
+
+  // ── public member page ──
+  'No such member.': '查无此成员。',
+  'nominal STR minted through work': '通过工作铸造的名义 STR',
+  'Reputation': '声誉',
+  '{n} endorsements across skills': '跨技能共 {n} 次背书',
+  'Milestones': '里程碑',
+  'verified outcomes claimed': '已认领的已验证成果',
+  'collaborations on record': '在册协作',
+  'Skills & reputation': '技能与声誉',
+  'No skills listed yet.': '尚未列出技能。',
+  'Skill': '技能',
+  'Self-rating': '自评',
+  'Endorsers': '背书者',
+  'Not on any project yet.': '尚未参与任何项目。'
 };
 
 const ja: Table = {
@@ -395,7 +438,50 @@ const ja: Table = {
   'Saving…': '保存中…',
   'Save rubric': '評価基準を保存',
   'You were appointed master of this craft — define how each level is tested. The tree itself (adding or branching skills) is managed by admins in':
-    'あなたはこの技のマスターに任命されました——各レベルの試験方法を定義してください。ツリー自体(スキルの追加や分岐)は管理者が'
+    'あなたはこの技のマスターに任命されました——各レベルの試験方法を定義してください。ツリー自体(スキルの追加や分岐)は管理者が',
+
+  // ── leaderboard / members ──
+  'Contribution': '貢献',
+  'Wealth': '資産',
+  'Masters': 'マスター',
+  'Lifetime nominal STR minted through declared work & verified milestones.': '申告した作業と検証済みマイルストーンで累計鋳造した名目 STR。',
+  'Liquid STR plus nominal STR still accruing in live projects.': '流動 STR と、進行中プロジェクトで積み上がる名目 STR の合計。',
+  'Liquid, spendable STR held right now.': '現在保有する流動・使用可能な STR。',
+  'Peer-endorsed skill reputation across the guild.': 'ギルド全体で同僚に推薦されたスキルの評判。',
+  'rep': '評判',
+  'you': 'あなた',
+  'Search by name…': '名前で検索…',
+  'No members.': 'メンバーがいません。',
+  'Member': 'メンバー',
+  'Position': '職位',
+  'Share': 'シェア',
+  'Nominal': '名目',
+  'Rep': '評判',
+  'Close': '閉じる',
+  'Endorse': '推薦',
+  'Loading skills…': 'スキルを読み込み中…',
+  '{name} has no skills listed yet.': '{name} はまだスキルを登録していません。',
+  'Endorse a skill by transferring your own STR — scarce credit means it carries signal.':
+    '自分の STR を送ってスキルを推薦——希少なクレジットだからこそシグナルになります。',
+  'credit {c} · {n} endorsers': 'クレジット {c} · 推薦者 {n} 名',
+  'note (optional)': 'メモ(任意)',
+  'Minimum is {n} STR.': '最低 {n} STR です。',
+  'You only have {n} STR.': '残高は {n} STR しかありません。',
+
+  // ── public member page ──
+  'No such member.': 'そのメンバーは存在しません。',
+  'nominal STR minted through work': '作業で鋳造した名目 STR',
+  'Reputation': '評判',
+  '{n} endorsements across skills': 'スキル全体で {n} 件の推薦',
+  'Milestones': 'マイルストーン',
+  'verified outcomes claimed': '請求した検証済み成果',
+  'collaborations on record': '記録された協働',
+  'Skills & reputation': 'スキルと評判',
+  'No skills listed yet.': 'まだスキルがありません。',
+  'Skill': 'スキル',
+  'Self-rating': '自己評価',
+  'Endorsers': '推薦者',
+  'Not on any project yet.': 'まだどのプロジェクトにも参加していません。'
 };
 
 const fr: Table = {
@@ -591,7 +677,50 @@ const fr: Table = {
   'Saving…': 'Enregistrement…',
   'Save rubric': 'Enregistrer le barème',
   'You were appointed master of this craft — define how each level is tested. The tree itself (adding or branching skills) is managed by admins in':
-    'Vous avez été nommé maître de ce métier — définissez comment chaque niveau est évalué. L’arbre lui-même (ajout ou ramification des compétences) est géré par les admins dans'
+    'Vous avez été nommé maître de ce métier — définissez comment chaque niveau est évalué. L’arbre lui-même (ajout ou ramification des compétences) est géré par les admins dans',
+
+  // ── leaderboard / members ──
+  'Contribution': 'Contribution',
+  'Wealth': 'Richesse',
+  'Masters': 'Maîtres',
+  'Lifetime nominal STR minted through declared work & verified milestones.': 'STR nominal cumulé, frappé par le travail déclaré et les jalons vérifiés.',
+  'Liquid STR plus nominal STR still accruing in live projects.': 'STR liquide plus le STR nominal encore en cours dans les projets actifs.',
+  'Liquid, spendable STR held right now.': 'STR liquide et dépensable détenu actuellement.',
+  'Peer-endorsed skill reputation across the guild.': 'Réputation des compétences recommandées par les pairs dans la guilde.',
+  'rep': 'rép',
+  'you': 'vous',
+  'Search by name…': 'Rechercher par nom…',
+  'No members.': 'Aucun membre.',
+  'Member': 'Membre',
+  'Position': 'Poste',
+  'Share': 'Part',
+  'Nominal': 'Nominal',
+  'Rep': 'Rép',
+  'Close': 'Fermer',
+  'Endorse': 'Recommander',
+  'Loading skills…': 'Chargement des compétences…',
+  '{name} has no skills listed yet.': '{name} n’a pas encore de compétences listées.',
+  'Endorse a skill by transferring your own STR — scarce credit means it carries signal.':
+    'Recommandez une compétence en transférant votre propre STR — un crédit rare porte un signal.',
+  'credit {c} · {n} endorsers': 'crédit {c} · {n} recommandeurs',
+  'note (optional)': 'note (facultatif)',
+  'Minimum is {n} STR.': 'Le minimum est {n} STR.',
+  'You only have {n} STR.': 'Vous n’avez que {n} STR.',
+
+  // ── public member page ──
+  'No such member.': 'Aucun membre de ce nom.',
+  'nominal STR minted through work': 'STR nominal frappé par le travail',
+  'Reputation': 'Réputation',
+  '{n} endorsements across skills': '{n} recommandations sur l’ensemble des compétences',
+  'Milestones': 'Jalons',
+  'verified outcomes claimed': 'résultats vérifiés revendiqués',
+  'collaborations on record': 'collaborations enregistrées',
+  'Skills & reputation': 'Compétences et réputation',
+  'No skills listed yet.': 'Aucune compétence listée.',
+  'Skill': 'Compétence',
+  'Self-rating': 'Auto-évaluation',
+  'Endorsers': 'Recommandeurs',
+  'Not on any project yet.': 'Sur aucun projet pour l’instant.'
 };
 
 export const dict: Record<Exclude<Locale, 'en'>, Table> = { zh, ja, fr };

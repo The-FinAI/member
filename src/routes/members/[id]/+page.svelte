@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { supabase, supabaseConfigured } from '$lib/supabase';
+  import { t } from '$lib/i18n';
 
   // PUBLIC reputation page. By design this NEVER reads or shows liquid STR
   // balance or the ledger — only contribution (nominal), skills & projects.
@@ -97,12 +98,12 @@
 </script>
 
 <div class="stack">
-  <p><a href="/members">← Leaderboard</a></p>
+  <p><a href="/members">← {$t('Leaderboard')}</a></p>
 
   {#if loading}
-    <p class="muted">Loading…</p>
+    <p class="muted">{$t('Loading…')}</p>
   {:else if notFound || !mem}
-    <div class="card"><p class="muted">No such member.</p></div>
+    <div class="card"><p class="muted">{$t('No such member.')}</p></div>
   {:else}
     <!-- header -->
     <div class="card">
@@ -136,35 +137,35 @@
     <!-- reputation stats (no liquid balance, by design) -->
     <div class="kpis">
       <div class="kpi">
-        <span class="k-label">Contribution</span>
+        <span class="k-label">{$t('Contribution')}</span>
         <span class="k-value accent">{totalNominal.toLocaleString()}</span>
-        <span class="k-sub">nominal STR minted through work</span>
+        <span class="k-sub">{$t('nominal STR minted through work')}</span>
       </div>
       <div class="kpi">
-        <span class="k-label">Reputation</span>
+        <span class="k-label">{$t('Reputation')}</span>
         <span class="k-value">{totalCredit.toLocaleString()}</span>
-        <span class="k-sub">{totalEndorsers} endorsement{totalEndorsers === 1 ? '' : 's'} across skills</span>
+        <span class="k-sub">{$t('{n} endorsements across skills', { n: totalEndorsers })}</span>
       </div>
       <div class="kpi">
-        <span class="k-label">Milestones</span>
+        <span class="k-label">{$t('Milestones')}</span>
         <span class="k-value">{msVerified}</span>
-        <span class="k-sub">verified outcomes claimed</span>
+        <span class="k-sub">{$t('verified outcomes claimed')}</span>
       </div>
       <div class="kpi">
-        <span class="k-label">Projects</span>
+        <span class="k-label">{$t('Projects')}</span>
         <span class="k-value">{projects.length}</span>
-        <span class="k-sub">collaborations on record</span>
+        <span class="k-sub">{$t('collaborations on record')}</span>
       </div>
     </div>
 
     <!-- skills -->
     <div class="card stack">
-      <h2 style="margin:0;">Skills &amp; reputation</h2>
+      <h2 style="margin:0;">{$t('Skills & reputation')}</h2>
       {#if skills.length === 0}
-        <p class="muted">No skills listed yet.</p>
+        <p class="muted">{$t('No skills listed yet.')}</p>
       {:else}
         <table>
-          <thead><tr><th>Skill</th><th>Self-rating</th><th class="num">Reputation</th><th class="num">Endorsers</th></tr></thead>
+          <thead><tr><th>{$t('Skill')}</th><th>{$t('Self-rating')}</th><th class="num">{$t('Reputation')}</th><th class="num">{$t('Endorsers')}</th></tr></thead>
           <tbody>
             {#each skills as s}
               <tr>
@@ -181,12 +182,12 @@
 
     <!-- projects -->
     <div class="card stack">
-      <h2 style="margin:0;">Projects</h2>
+      <h2 style="margin:0;">{$t('Projects')}</h2>
       {#if projects.length === 0}
-        <p class="muted">Not on any project yet.</p>
+        <p class="muted">{$t('Not on any project yet.')}</p>
       {:else}
         <table>
-          <thead><tr><th>Project</th><th>Role</th><th>Status</th><th class="num">Contribution</th></tr></thead>
+          <thead><tr><th>{$t('Project')}</th><th>{$t('Role')}</th><th>{$t('Status')}</th><th class="num">{$t('Contribution')}</th></tr></thead>
           <tbody>
             {#each projects as p}
               <tr>

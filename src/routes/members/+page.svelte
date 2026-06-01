@@ -3,6 +3,8 @@
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { member } from '$lib/session';
   import CountUp from '$lib/CountUp.svelte';
+  import { t } from '$lib/i18n';
+  import { get } from 'svelte/store';
 
   function initials(name: string) {
     return name.split(' ').filter(Boolean).slice(0, 2).map((s) => s[0]?.toUpperCase() ?? '').join('') || '?';
@@ -114,8 +116,8 @@
   async function endorse(target: string, skillId: string) {
     error = '';
     const amt = Number(amounts[skillId] ?? endorseMin);
-    if (amt < endorseMin) { error = `Minimum is ${endorseMin} STR.`; return; }
-    if (amt > myBalance) { error = `You only have ${myBalance} STR.`; return; }
+    if (amt < endorseMin) { error = get(t)('Minimum is {n} STR.', { n: endorseMin }); return; }
+    if (amt > myBalance) { error = get(t)('You only have {n} STR.', { n: myBalance }); return; }
     busy = skillId;
     const { error: err } = await supabase.rpc('endorse_skill', {
       target, sk: skillId, amt, note: notes[skillId]?.trim() || null
@@ -162,8 +164,8 @@
 <div class="stack">
   <div class="row" style="justify-content:space-between; align-items:flex-end;">
     <div>
-      <h1 style="margin-bottom:.15rem;">Leaderboard</h1>
-      <span class="muted" style="font-size:.85rem;">{BOARDS.find((b) => b.key === board)?.blurb}</span>
+      <h1 style="margin-bottom:.15rem;">{$t('Leaderboard')}</h1>
+      <span class="muted" style="font-size:.85rem;">{$t(BOARDS.find((b) => b.key === board)?.blurb ?? '')}</span>
     </div>
     {#if $member}<span class="chip"><span class="amt"><CountUp value={myBalance} /></span> STR</span>{/if}
   </div>
@@ -174,7 +176,7 @@
       <span class="chip toggle {board === b.key ? 'on' : ''}" role="button" tabindex="0"
         onclick={() => (board = b.key)}
         onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') board = b.key; }}
-      >{b.label}</span>
+      >{$t(b.label)}</span>
     {/each}
   </div>
 
@@ -184,30 +186,30 @@
         <div class="pod {p.cls}">
           <div class="medal">{MEDAL[p.rank - 1]}</div>
           <div class="pod-ava">{initials(p.r.full_name)}</div>
-          <div class="pod-name">{p.r.full_name}{#if $member && p.r.id === $member.id}<span class="badge dim" style="margin-left:.3rem;">you</span>{/if}</div>
+          <div class="pod-name">{p.r.full_name}{#if $member && p.r.id === $member.id}<span class="badge dim" style="margin-left:.3rem;">{$t('you')}</span>{/if}</div>
           <div class="pod-sub">{p.r.affiliation ?? '—'}</div>
-          <div class="pod-str"><CountUp value={metricOf(p.r.id)} /><span class="u">{metricUnit}</span></div>
+          <div class="pod-str"><CountUp value={metricOf(p.r.id)} /><span class="u">{$t(metricUnit)}</span></div>
         </div>
       {/each}
     </div>
   {/if}
 
-  <input placeholder="Search by name…" bind:value={q} style="max-width:320px;" />
+  <input placeholder={$t('Search by name…')} bind:value={q} style="max-width:320px;" />
   {#if error}<p style="color:var(--down);">{error}</p>{/if}
 
   <div class="card" style="padding:0; overflow-x:auto;">
     {#if loading}
-      <p class="muted" style="padding:1rem;">Loading…</p>
+      <p class="muted" style="padding:1rem;">{$t('Loading…')}</p>
     {:else if filtered.length === 0}
-      <p class="muted" style="padding:1rem;">No members.</p>
+      <p class="muted" style="padding:1rem;">{$t('No members.')}</p>
     {:else}
       <table>
         <thead><tr>
-          <th class="num">#</th><th>Member</th><th>Position</th><th style="min-width:90px;">Share</th>
-          <th class="num" class:accent={board === 'wealth'}>Liquid</th>
-          <th class="num" class:accent={board === 'contribution'}>Nominal</th>
-          <th class="num" class:accent={board === 'networth'}>Net worth</th>
-          <th class="num" class:accent={board === 'masters'}>Rep</th>
+          <th class="num">#</th><th>{$t('Member')}</th><th>{$t('Position')}</th><th style="min-width:90px;">{$t('Share')}</th>
+          <th class="num" class:accent={board === 'wealth'}>{$t('Liquid')}</th>
+          <th class="num" class:accent={board === 'contribution'}>{$t('Nominal')}</th>
+          <th class="num" class:accent={board === 'networth'}>{$t('Net worth')}</th>
+          <th class="num" class:accent={board === 'masters'}>{$t('Rep')}</th>
           <th></th>
         </tr></thead>
         <tbody>
@@ -216,7 +218,7 @@
               <td class="num"><span class="rank {rank <= 3 ? 'r' + rank : ''}">{rank}</span></td>
               <td>
                 <a href={`/members/${r.id}`} class="proj">
-                  <span class="pname">{r.full_name}{#if $member && r.id === $member.id}<span class="badge dim" style="margin-left:.4rem;">you</span>{/if}</span>
+                  <span class="pname">{r.full_name}{#if $member && r.id === $member.id}<span class="badge dim" style="margin-left:.4rem;">{$t('you')}</span>{/if}</span>
                   <span class="psub">{r.affiliation ?? '—'}</span>
                 </a>
               </td>
@@ -228,7 +230,7 @@
               <td class="num mono" class:accent={board === 'masters'} style={board === 'masters' ? 'color:var(--accent);' : ''}>{(creditOf[r.id] ?? 0).toLocaleString()}</td>
               <td>
                 {#if $member && r.id !== $member.id}
-                  <button onclick={() => toggle(r.id)}>{openId === r.id ? 'Close' : 'Endorse'}</button>
+                  <button onclick={() => toggle(r.id)}>{openId === r.id ? $t('Close') : $t('Endorse')}</button>
                 {/if}
               </td>
             </tr>
@@ -236,25 +238,25 @@
               <tr>
                 <td colspan="9" style="background:var(--card-2);">
                   {#if panelLoading}
-                    <p class="muted">Loading skills…</p>
+                    <p class="muted">{$t('Loading skills…')}</p>
                   {:else if openSkills.length === 0}
-                    <p class="muted">{r.full_name} has no skills listed yet.</p>
+                    <p class="muted">{$t('{name} has no skills listed yet.', { name: r.full_name })}</p>
                   {:else}
                     <div class="stack" style="gap:.5rem; padding:.25rem 0;">
                       <p class="muted" style="font-size:.82rem; margin:0;">
-                        Endorse a skill by transferring your own STR — scarce credit means it carries signal.
+                        {$t('Endorse a skill by transferring your own STR — scarce credit means it carries signal.')}
                       </p>
                       {#each openSkills as s}
                         <div class="row" style="align-items:center; flex-wrap:wrap; gap:.5rem;">
                           <strong style="min-width:160px;">{s.skill?.name ?? s.skill_id}</strong>
                           <span class="badge">{s.self_level}</span>
                           <span class="muted" style="font-size:.8rem;">
-                            credit {openCredit[s.skill_id]?.credit ?? 0} · {openCredit[s.skill_id]?.endorsements ?? 0} endorsers
+                            {$t('credit {c} · {n} endorsers', { c: openCredit[s.skill_id]?.credit ?? 0, n: openCredit[s.skill_id]?.endorsements ?? 0 })}
                           </span>
                           <input type="number" min={endorseMin} bind:value={amounts[s.skill_id]} placeholder={String(endorseMin)} style="width:70px;" />
-                          <input bind:value={notes[s.skill_id]} placeholder="note (optional)" style="width:180px;" />
+                          <input bind:value={notes[s.skill_id]} placeholder={$t('note (optional)')} style="width:180px;" />
                           <button disabled={busy === s.skill_id} onclick={() => endorse(r.id, s.skill_id)}>
-                            {busy === s.skill_id ? '…' : 'Endorse'}
+                            {busy === s.skill_id ? '…' : $t('Endorse')}
                           </button>
                         </div>
                       {/each}
