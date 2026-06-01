@@ -5,6 +5,7 @@
   // and inline Hint dots (which deep-link to the #term-* glossary anchors below).
   const toc = [
     { id: 'mental-model', label: 'The big picture' },
+    { id: 'rollout', label: 'Rollout — where we are now' },
     { id: 'str', label: '1 · STR — the unit' },
     { id: 'contribution', label: '2 · Contribution = stake' },
     { id: 'projects', label: '3 · Projects & their lifecycle' },
@@ -22,6 +23,19 @@
     <p class="muted" style="margin-top:0;">
       {$t('A research community that runs like an economy: you put work in, it mints into a shared pool, and when a project ships the pool pays out. This page explains the whole model — keep it as a reference.')}
     </p>
+  </div>
+
+  <!-- ───────────────────────── Phase 1 launch callout ───────────────────────── -->
+  <div class="launch card">
+    <span class="lbadge">{$t('Phase 1 · live now')}</span>
+    <h2 style="margin:.1rem 0 0;">{$t('The Guild is open — mint & claim your role cards')}</h2>
+    <p style="margin:.2rem 0 0;">
+      {@html $t("We're switching this economy on in stages. <strong>Right now, in Phase 1, every Chapter and Working Group bootstraps the Guild</strong>: officers mint role cards onto their members, and you claim or request your own. This builds the skill graph and sets everyone's labor rate <em>before</em> the project economy opens in Phase 2.")}
+    </p>
+    <div class="row" style="gap:.6rem; flex-wrap:wrap; margin-top:.3rem;">
+      <a class="lbtn" href="/skills">{$t('Open the Guild →')}</a>
+      <a class="llink" href="#rollout">{$t('See the full rollout →')}</a>
+    </div>
   </div>
 
   <nav class="card toc">
@@ -43,6 +57,40 @@
       <span class="step">{$t('Work mints into the pool')}</span><span class="arr">→</span>
       <span class="step">{$t('Project ships')}</span><span class="arr">→</span>
       <span class="step">{$t('Pool pays out in STR')}</span>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── rollout ───────────────────────── -->
+  <section id="rollout" class="card stack">
+    <h2>{$t('Rollout — where we are now')}</h2>
+    <p>
+      {@html $t("Everything on this page is the <em>full</em> picture. We're turning it on in three phases so the community can find its feet before real STR starts moving. Here's the map — and exactly what to do today.")}
+    </p>
+    <div class="roadmap">
+      <div class="pcard now">
+        <span class="pn">{$t('Phase 1 · now')}</span>
+        <h3>{$t('Guild bootstrap')}</h3>
+        <p>{@html $t("<strong>Chapters & Working Groups mint and claim role cards.</strong> Officers mint starter cards onto their members; everyone claims or requests their own. We build the skill graph and set each member's labor rate. No bonds, no project pools yet — this is the foundation.")}</p>
+        <a class="pgo" href="/skills">{$t('Open the Guild →')}</a>
+      </div>
+      <div class="pcard">
+        <span class="pn">{$t('Phase 2 · next')}</span>
+        <h3>{$t('Project economy')}</h3>
+        <p>{$t('Projects open: leaders post bonds, contributors join and declare monthly work, milestones and settlements mint and pay out STR. The full loop described below goes live.')}</p>
+      </div>
+      <div class="pcard">
+        <span class="pn">{$t('Phase 3 · later')}</span>
+        <h3>{$t('Markets')}</h3>
+        <p>{@html $t("A <strong>prediction market</strong> launches, and we explore a two-way <strong>STR ⇄ USD</strong> anchor so STR can flow back out into dollars — not just in.")}</p>
+      </div>
+    </div>
+    <div class="note">
+      <h3 style="margin-top:0;">{$t('What to do in Phase 1')}</h3>
+      <ol class="start" style="margin:.2rem 0 0;">
+        <li>{@html $t("<strong>Officers:</strong> mint role cards onto your Chapter / Working Group members from <a href='/my-chapter'>My Chapter</a> — a batch staged for review.")}</li>
+        <li>{@html $t("<strong>Everyone:</strong> set up your profile and <a href='/skills'>request the role cards</a> that match your skills. A reviewer approves them.")}</li>
+        <li>{@html $t("Watch your Chapter / Working Group climb the <a href='/members'>Leaderboard</a> as cards are forged.")}</li>
+      </ol>
     </div>
   </section>
 
@@ -220,8 +268,30 @@
   .glossary dt { font-weight: 700; color: var(--text); scroll-margin-top: 80px; }
   .glossary dd { margin: 0; color: var(--text-dim); font-size: .9rem; }
   .glossary a { color: var(--accent); text-decoration: none; }
+  /* Phase-1 launch callout */
+  .launch { border: 1px solid var(--accent); border-left: 3px solid var(--accent);
+    background: var(--accent-soft); display: flex; flex-direction: column; gap: .15rem; }
+  .launch p { line-height: 1.55; font-size: .92rem; }
+  .lbadge { align-self: flex-start; font-family: var(--font-mono); font-size: .72rem; font-weight: 700;
+    letter-spacing: .03em; text-transform: uppercase; color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 14%, transparent); padding: .15rem .5rem; border-radius: 6px; }
+  .lbtn { display: inline-block; background: var(--accent); color: #fff; font-weight: 600; font-size: .85rem;
+    padding: .4rem .85rem; border-radius: 8px; text-decoration: none; }
+  .lbtn:hover { filter: brightness(1.08); }
+  .llink { align-self: center; color: var(--accent); font-size: .85rem; text-decoration: none; }
+  .llink:hover { text-decoration: underline; }
+  /* rollout roadmap */
+  .roadmap { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; }
+  .pcard { background: var(--elevate); border: 1px solid var(--border); border-radius: 10px; padding: .8rem .9rem; display: flex; flex-direction: column; gap: .25rem; }
+  .pcard.now { border-color: var(--accent); background: var(--accent-soft); }
+  .pcard h3 { margin: .1rem 0 0; font-size: .98rem; }
+  .pcard p { margin: 0; font-size: .84rem; }
+  .pn { font-family: var(--font-mono); font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
+  .pcard.now .pn { color: var(--accent); }
+  .pgo { margin-top: auto; color: var(--accent); font-size: .82rem; text-decoration: none; font-weight: 600; }
+  .pgo:hover { text-decoration: underline; }
   @media (max-width: 620px) {
-    .two, .phases { grid-template-columns: 1fr; }
+    .two, .phases, .roadmap { grid-template-columns: 1fr; }
     .glossary { grid-template-columns: 1fr; gap: .15rem 0; }
     .glossary dd { margin-bottom: .5rem; }
   }
