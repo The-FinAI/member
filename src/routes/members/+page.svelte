@@ -223,8 +223,10 @@
               <tr>
                 <td class="num"><span class="rank {rank <= 3 ? 'r' + rank : ''}">{rank}</span></td>
                 <td>
-                  <span class="pname">{u.name}</span>
-                  <span class="psub">{u.code}</span>
+                  <a href={`/units/${u.id}`} class="proj">
+                    <span class="pname">{u.name}</span>
+                    <span class="psub">{u.code}</span>
+                  </a>
                 </td>
                 <td class="num dim">{u.count}</td>
                 <td><span class="lb-bar"><i style="width:{Math.max(3, (u.total / maxUnitMetric) * 100)}%"></i></span></td>
