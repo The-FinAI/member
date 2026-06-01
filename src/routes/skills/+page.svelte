@@ -53,9 +53,8 @@
 
   // direct mint (forge / update any member's skill profile — no fee, no review)
   let members = $state<Mem[]>([]);
-  let mintMember = $state(''); let mintSkill = $state(''); let mintLevel = $state('apprentice'); let mintMsg = $state('');
-  // examinable leaves (skills with no children) for the mint picker
-  const leaves = $derived(skills.filter((s) => !skills.some((c) => c.parent_id === s.id)));
+  let mintMember = $state(''); let mintMsg = $state('');
+  let mintCert = $state<Record<string, string>>({}); // selected member's certified levels per skill
 
   let selected = $state(''); // selected leaf skill id
   let cardLevel = $state('apprentice');
@@ -178,19 +177,26 @@
     await load();
   }
 
-  // direct mint (铸 — forge or update a member's skill profile, no fee/review)
-  async function mintCard() {
-    error = ''; mintMsg = '';
-    if (!mintMember || !mintSkill) return;
-    busy = 'mint';
-    const { error: err } = await supabase.rpc('mint_skillcard', { p_member: mintMember, p_skill: mintSkill, p_level: mintLevel });
+  // direct mint (铸 — light up a member's talent tree, no fee/review)
+  async function loadMintCert() {
+    mintMsg = ''; mintCert = {};
+    if (!mintMember) return;
+    const { data } = await supabase.from('member_skill')
+      .select('skill_id, certified_level').eq('member_id', mintMember).not('certified_level', 'is', null);
+    const m: Record<string, string> = {};
+    for (const r of (data as any[]) ?? []) if (r.certified_level) m[r.skill_id] = r.certified_level;
+    mintCert = m;
+  }
+  async function mintAt(skillId: string, level: string) {
+    error = ''; mintMsg = ''; busy = 'mint:' + skillId;
+    const { error: err } = await supabase.rpc('mint_skillcard', { p_member: mintMember, p_skill: skillId, p_level: level });
     busy = '';
     if (err) { error = err.message; return; }
     const mn = members.find((m) => m.id === mintMember)?.full_name ?? '';
-    const sn = skills.find((s) => s.id === mintSkill)?.name ?? '';
-    mintMsg = get(t)('Minted a {level} role card for {member} in {skill}.', { member: mn, skill: sn, level: get(t)(LEVEL_LABEL[mintLevel]) });
-    mintMember = ''; mintSkill = '';
-    await load();
+    const sn = skills.find((s) => s.id === skillId)?.name ?? '';
+    mintMsg = get(t)('Minted a {level} role card for {member} in {skill}.', { member: mn, skill: sn, level: get(t)(LEVEL_LABEL[level]) });
+    await loadMintCert();
+    await load(); // refresh holder counts on the main tree
   }
 
   const domains = $derived(skills.filter((s) => !s.parent_id).sort((a, b) => a.name.localeCompare(b.name)));
@@ -281,26 +287,49 @@
     </div>
   {/if}
 
-  <!-- direct mint (铸) — forge or update any member's skill profile -->
+  <!-- direct mint (铸) — light up a member's talent tree -->
   {#if canMint}
-    <div class="card stack" style="gap:.5rem;">
+    <div class="card stack" style="gap:.6rem;">
       <h2 style="margin:0;">{$t('Mint a role card')}</h2>
       <p class="muted" style="font-size:.85rem; margin:0;">
         {$t('Forge or update a member’s skill profile directly — genesis, first cards, bootstrap or waiver. No fee, no review. Recorded as a direct mint.')}
       </p>
-      <div class="row" style="align-items:flex-end; flex-wrap:wrap; gap:.6rem;">
-        <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Member')}</span>
-          <select bind:value={mintMember} style="max-width:200px;"><option value="">—</option>{#each members as m}<option value={m.id}>{m.full_name}</option>{/each}</select>
-        </label>
-        <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Skill')}</span>
-          <select bind:value={mintSkill} style="max-width:200px;"><option value="">—</option>{#each leaves as s}<option value={s.id}>{s.name}</option>{/each}</select>
-        </label>
-        <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Guild level')}</span>
-          <select bind:value={mintLevel}>{#each LEVELS as lv}<option value={lv}>{$t(LEVEL_LABEL[lv])}</option>{/each}</select>
-        </label>
-        <button onclick={mintCard} disabled={!mintMember || !mintSkill || busy === 'mint'}>{$t('Mint card')}</button>
-      </div>
-      {#if mintMsg}<p class="pos" style="font-size:.82rem; margin:0;">{mintMsg}</p>{/if}
+      <label class="row" style="gap:.5rem; align-items:center; flex-wrap:wrap;">
+        <span class="muted" style="font-size:.78rem;">{$t('Member')}</span>
+        <select bind:value={mintMember} onchange={loadMintCert} style="max-width:260px;">
+          <option value="">{$t('— pick a member —')}</option>
+          {#each members as m}<option value={m.id}>{m.full_name}</option>{/each}
+        </select>
+      </label>
+      {#if mintMember}
+        <p class="muted" style="font-size:.76rem; margin:0;">{$t('Click a node to certify this member at that level — like a talent tree. Filled nodes are already earned.')}</p>
+        {#if mintMsg}<p class="pos" style="font-size:.82rem; margin:0;">{mintMsg}</p>{/if}
+        <div class="talent">
+          {#each domains as d}
+            <div class="stack" style="gap:.3rem;">
+              <h3 style="margin:0; font-size:.9rem;">{d.name}</h3>
+              {#each leavesOf(d.id) as s}
+                {@const cur = levelRank(mintCert[s.id] ?? null)}
+                <div class="talent-row">
+                  <span class="talent-name">{s.name}</span>
+                  <div class="pips">
+                    {#each LEVELS as lv, i}
+                      <button
+                        class="pip {i <= cur ? 'on' : ''}"
+                        title={$t(LEVEL_LABEL[lv])}
+                        disabled={i <= cur || busy === 'mint:' + s.id}
+                        onclick={() => mintAt(s.id, lv)}
+                        aria-label={$t(LEVEL_LABEL[lv])}
+                      ><span class="pip-dot"></span></button>
+                    {/each}
+                  </div>
+                  <span class="talent-cur muted">{cur >= 0 ? $t(LEVEL_LABEL[LEVELS[cur]]) : '—'}</span>
+                </div>
+              {/each}
+            </div>
+          {/each}
+        </div>
+      {/if}
     </div>
   {/if}
 
@@ -483,4 +512,27 @@
   }
   .tree-leaf:hover { background: var(--card-2); }
   .tree-leaf.on { background: var(--accent-soft); border-color: var(--accent); }
+
+  /* talent-tree mint grid */
+  .talent {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: .9rem 1.4rem;
+  }
+  .talent-row {
+    display: flex; align-items: center; gap: .5rem; padding: .15rem 0;
+  }
+  .talent-name { flex: 1; font-size: .85rem; }
+  .talent-cur { font-size: .68rem; min-width: 64px; text-align: right; }
+  .pips { display: flex; gap: .28rem; }
+  .pip {
+    display: inline-flex; align-items: center; justify-content: center;
+    background: transparent; border: none; padding: 2px; cursor: pointer;
+  }
+  .pip:disabled { cursor: default; }
+  .pip-dot {
+    width: 13px; height: 13px; border-radius: 50%;
+    border: 1.5px solid var(--border); background: transparent; transition: all .12s;
+  }
+  .pip.on .pip-dot { background: var(--accent); border-color: var(--accent); }
+  .pip:not(.on):not(:disabled):hover .pip-dot { border-color: var(--accent); background: var(--accent-soft); }
 </style>

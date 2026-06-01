@@ -156,6 +156,8 @@ const zh: Table = {
   'Mint a role card': '铸造角色卡牌',
   'Mint a skill credential directly onto any member — genesis, first cards, or a waiver. No fee, no review. Recorded as a direct mint.': '直接为任意成员铸造技能凭证——用于初始发行、首批卡牌或豁免。无费用、无评审。记录为直接铸造。',
   'Forge or update a member’s skill profile directly — genesis, first cards, bootstrap or waiver. No fee, no review. Recorded as a direct mint.': '直接打造或更新某成员的技能档案——用于初始发行、首批卡牌、引导或豁免。无费用、无评审。记录为直接铸造。',
+  '— pick a member —': '— 选择成员 —',
+  'Click a node to certify this member at that level — like a talent tree. Filled nodes are already earned.': '点击节点即可将该成员认证到对应等级——就像天赋树一样。已点亮的节点表示已获得。',
   'Mint card': '铸造卡牌',
   'Minted a {level} role card for {member} in {skill}.': '已为 {member} 在 {skill} 铸造 {level} 角色卡牌。',
   // ── nav / chrome ──
@@ -1052,6 +1054,8 @@ const ja: Table = {
   'Mint a role card': 'ロールカードを鋳造',
   'Mint a skill credential directly onto any member — genesis, first cards, or a waiver. No fee, no review. Recorded as a direct mint.': 'スキル資格を任意のメンバーに直接鋳造——初期発行、最初のカード、または免除用。手数料なし、レビューなし。直接鋳造として記録されます。',
   'Forge or update a member’s skill profile directly — genesis, first cards, bootstrap or waiver. No fee, no review. Recorded as a direct mint.': 'メンバーのスキルプロフィールを直接作成または更新——初期発行、最初のカード、ブートストラップまたは免除用。手数料なし、レビューなし。直接鋳造として記録されます。',
+  '— pick a member —': '— メンバーを選択 —',
+  'Click a node to certify this member at that level — like a talent tree. Filled nodes are already earned.': 'ノードをクリックすると、そのレベルでメンバーを認定できます——タレントツリーのように。点灯済みのノードは取得済みです。',
   'Mint card': 'カードを鋳造',
   'Minted a {level} role card for {member} in {skill}.': '{member} の {skill} に {level} ロールカードを鋳造しました。',
   // ── nav / chrome ──
@@ -1948,6 +1952,8 @@ const fr: Table = {
   'Mint a role card': 'Frapper une carte de rôle',
   'Mint a skill credential directly onto any member — genesis, first cards, or a waiver. No fee, no review. Recorded as a direct mint.': "Frapper directement un titre de compétence sur n'importe quel membre — genèse, premières cartes ou dérogation. Sans frais, sans examen. Enregistré comme frappe directe.",
   'Forge or update a member’s skill profile directly — genesis, first cards, bootstrap or waiver. No fee, no review. Recorded as a direct mint.': "Forger ou mettre à jour directement le profil de compétences d'un membre — genèse, premières cartes, amorçage ou dérogation. Sans frais, sans examen. Enregistré comme frappe directe.",
+  '— pick a member —': '— choisir un membre —',
+  'Click a node to certify this member at that level — like a talent tree. Filled nodes are already earned.': "Cliquez sur un nœud pour certifier ce membre à ce niveau — comme un arbre de talents. Les nœuds remplis sont déjà acquis.",
   'Mint card': 'Frapper la carte',
   'Minted a {level} role card for {member} in {skill}.': 'Carte de rôle {level} frappée pour {member} en {skill}.',
   // ── nav / chrome ──
