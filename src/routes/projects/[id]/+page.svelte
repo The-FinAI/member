@@ -12,7 +12,7 @@
 
   type Project = {
     id: string; name: string; target_venue: string | null; summary: string | null;
-    status_id: string | null; held_from_status_id: string | null; venue_id: string | null;
+    status_id: string | null; held_from_status_id: string | null; venue_id: string | null; org_unit_id: string | null;
     project_type: { name: string; join_stake: number; leader_stake: number } | null; project_status: { id: string; name: string; rank: number } | null;
     venue: { name: string; kind: string; url: string | null; deadline: string | null } | null;
   };
@@ -64,6 +64,10 @@
   let editingVenue = $state(false);
   let vSel = $state('');
   let savingVenue = $state(false);
+  let workingGroups = $state<{ id: string; code: string; name: string }[]>([]);
+  let editingWG = $state(false);
+  let wgSel = $state('');
+  let savingWG = $state(false);
   let transitioning = $state(false);
   // my application per need: needId -> { id, status }
   let myApps = $state<Record<string, { id: string; status: string }>>({});
@@ -183,7 +187,7 @@
     if (!supabaseConfigured || !id) { loading = false; return; }
     loading = true;
     const [{ data: p }, { data: pm }, { data: nd }, { data: rl }, { data: sk }, { data: ps }] = await Promise.all([
-      supabase.from('project').select('id, name, target_venue, summary, status_id, held_from_status_id, venue_id, project_type(name, join_stake, leader_stake), project_status!project_status_id_fkey(id, name, rank), venue:venue_id(name, kind, url, deadline)').eq('id', id).maybeSingle(),
+      supabase.from('project').select('id, name, target_venue, summary, status_id, held_from_status_id, venue_id, org_unit_id, project_type(name, join_stake, leader_stake), project_status!project_status_id_fkey(id, name, rank), venue:venue_id(name, kind, url, deadline)').eq('id', id).maybeSingle(),
       supabase.from('project_member').select('member_id, member(full_name), project_role(name, can_manage)').eq('project_id', id),
       supabase.from('open_need').select('id, description, headcount, min_level, min_guild_level, skill_id, status, contribution_kind, hours_per_month, project_role_id, project_role(name), skill(name)').eq('project_id', id),
       supabase.from('project_role').select('id, name, payout_weight').order('name'),
@@ -200,6 +204,10 @@
     if (!venueOpts.length) {
       const { data: vn } = await supabase.from('venue').select('id, name, kind, deadline').eq('is_active', true).order('rank');
       venueOpts = (vn as VenueOpt[]) ?? [];
+    }
+    if (!workingGroups.length) {
+      const { data: wg } = await supabase.from('org_unit').select('id, code, name').eq('kind', 'working_group').order('rank');
+      workingGroups = (wg as { id: string; code: string; name: string }[]) ?? [];
     }
 
     // act on behalf of a card (officer proxy) when one is selected
@@ -596,6 +604,30 @@
     editingVenue = false;
     await load();
   }
+  function openWGEdit() {
+    if (!project) return;
+    wgSel = project.org_unit_id ?? '';
+    editingWG = true;
+  }
+  async function changeOrgUnit() {
+    if (!project) return;
+    error = '';
+    const newId = wgSel || null;
+    if (newId === (project.org_unit_id ?? null)) { editingWG = false; return; }
+    savingWG = true;
+    const { error: err } = await supabase.from('project').update({ org_unit_id: newId }).eq('id', id);
+    if (err) { savingWG = false; error = err.message; return; }
+    if ($member) {
+      const target = workingGroups.find((w) => w.id === newId);
+      await supabase.from('project_event').insert({
+        project_id: id, actor_member_id: $member.id, event_type: 'note',
+        summary: `Working Group changed to ${target ? target.name : 'none'}`
+      });
+    }
+    savingWG = false;
+    editingWG = false;
+    await load();
+  }
 
   async function postNote() {
     error = '';
@@ -844,6 +876,21 @@
         {:else if project.target_venue}<span>{$t('Target:')} {project.target_venue}</span>
         {:else}<span>{$t('No target venue')}</span>{/if}
         {#if iManage}<button class="ghost" style="padding:.15rem .5rem; font-size:.78rem;" onclick={openVenueEdit}>{$t('Change')}</button>{/if}
+      {/if}
+      {#if editingWG}
+        <span class="row" style="gap:.4rem;">
+          <span>{$t('Working Group:')}</span>
+          <select bind:value={wgSel}>
+            <option value="">{$t('— unattributed —')}</option>
+            {#each workingGroups as w}<option value={w.id}>{w.name}</option>{/each}
+          </select>
+          <button onclick={changeOrgUnit} disabled={savingWG}>{savingWG ? $t('Saving…') : $t('Save')}</button>
+          <button class="ghost" onclick={() => (editingWG = false)} disabled={savingWG}>{$t('Cancel')}</button>
+        </span>
+      {:else}
+        {@const wg = workingGroups.find((w) => w.id === project.org_unit_id)}
+        {#if wg}<span class="badge dim">{wg.name}</span>{/if}
+        {#if iManage}<button class="ghost" style="padding:.15rem .5rem; font-size:.78rem;" onclick={openWGEdit}>{wg ? $t('Change WG') : $t('Set WG')}</button>{/if}
       {/if}
     </div>
     {#if project.summary}<p>{project.summary}</p>{/if}

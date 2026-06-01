@@ -8,6 +8,7 @@
   type PType = { id: string; name: string; leader_stake: number; join_stake: number; finish_bonus: number };
   type PStatus = { id: string; name: string; rank: number };
   type Venue = { id: string; name: string; kind: string; deadline: string | null };
+  type WGroup = { id: string; code: string; name: string };
   // one fully-denormalised grid row
   type Grid = {
     id: string;
@@ -35,6 +36,7 @@
   let types = $state<PType[]>([]);
   let statuses = $state<PStatus[]>([]);
   let venues = $state<Venue[]>([]);
+  let workingGroups = $state<WGroup[]>([]);
   let loading = $state(true);
 
   // filters / search / sort
@@ -57,6 +59,7 @@
   let showForm = $state(false);
   let cName = $state(''); let cType = $state(''); let cStatus = $state('');
   let cVenueId = $state(''); let cSummary = $state(''); let cProposal = $state('');
+  let cOrgUnit = $state('');
   let creating = $state(false);
   let error = $state('');
 
@@ -152,15 +155,17 @@
 
   onMount(async () => {
     if (!supabaseConfigured) { loading = false; return; }
-    const [, { data: ty }, { data: st }, { data: vn }] = await Promise.all([
+    const [, { data: ty }, { data: st }, { data: vn }, { data: wg }] = await Promise.all([
       loadGrid(),
       supabase.from('project_type').select('id, name, leader_stake, join_stake, finish_bonus').order('rank'),
       supabase.from('project_status').select('id, name, rank').order('rank'),
-      supabase.from('venue').select('id, name, kind, deadline').eq('is_active', true).order('rank')
+      supabase.from('venue').select('id, name, kind, deadline').eq('is_active', true).order('rank'),
+      supabase.from('org_unit').select('id, code, name').eq('kind', 'working_group').order('rank')
     ]);
     types = (ty as PType[]) ?? [];
     statuses = (st as PStatus[]) ?? [];
     venues = (vn as Venue[]) ?? [];
+    workingGroups = (wg as WGroup[]) ?? [];
     cStatus = statuses.find((s) => s.name === 'Proposal')?.id ?? statuses[0]?.id ?? '';
     loading = false;
   });
@@ -183,7 +188,8 @@
     });
     creating = false;
     if (err) { error = err.message; return; }
-    cName = ''; cVenueId = ''; cSummary = ''; cProposal = ''; showForm = false;
+    if (data && cOrgUnit) await supabase.from('project').update({ org_unit_id: cOrgUnit }).eq('id', data);
+    cName = ''; cVenueId = ''; cSummary = ''; cProposal = ''; cOrgUnit = ''; showForm = false;
     await Promise.all([loadGrid(), effId ? loadMyBalance(effId) : Promise.resolve()]);
     if (data) window.location.href = `/projects/${data}`;
   }
@@ -388,6 +394,13 @@
             {#each venues as v}<option value={v.id}>{v.name}{v.deadline ? ` · ${$t('ddl')} ${fmtDate(v.deadline)}` : ''}</option>{/each}
           </select></label>
       </div>
+      {#if workingGroups.length}
+        <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Working Group')}</span>
+          <select bind:value={cOrgUnit}>
+            <option value="">{$t('— unattributed —')}</option>
+            {#each workingGroups as w}<option value={w.id}>{w.name}</option>{/each}
+          </select></label>
+      {/if}
       <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Proposal link *')} <span class="dim">{$t('(PDF on Drive, Overleaf, OpenReview…)')}</span></span>
         <input bind:value={cProposal} placeholder="https://…" /></label>
       <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Summary')}</span>
