@@ -20,11 +20,32 @@
 
   let rows = $state<Row[]>([]);
   let balanceOf = $state<Record<string, number>>({});
+  let nominalOf = $state<Record<string, number>>({});
   let creditOf = $state<Record<string, number>>({});
   let loading = $state(true);
   let q = $state('');
   let myBalance = $state(0);
   let endorseMin = $state(1);
+
+  // multi-board: each board is a different way to rank the same members
+  type Board = 'contribution' | 'networth' | 'wealth' | 'masters';
+  let board = $state<Board>('contribution');
+  const BOARDS: { key: Board; label: string; blurb: string }[] = [
+    { key: 'contribution', label: 'Contribution', blurb: 'Lifetime nominal STR minted through declared work & verified milestones.' },
+    { key: 'networth', label: 'Net worth', blurb: 'Liquid STR plus nominal STR still accruing in live projects.' },
+    { key: 'wealth', label: 'Wealth', blurb: 'Liquid, spendable STR held right now.' },
+    { key: 'masters', label: 'Masters', blurb: 'Peer-endorsed skill reputation across the guild.' }
+  ];
+  const netWorthOf = (id: string) => (balanceOf[id] ?? 0) + (nominalOf[id] ?? 0);
+  function metricOf(id: string): number {
+    switch (board) {
+      case 'contribution': return nominalOf[id] ?? 0;
+      case 'networth': return netWorthOf(id);
+      case 'wealth': return balanceOf[id] ?? 0;
+      case 'masters': return creditOf[id] ?? 0;
+    }
+  }
+  const metricUnit = $derived(board === 'masters' ? 'rep' : 'STR');
 
   // expanded member endorse panel
   let openId = $state('');
@@ -48,12 +69,13 @@
 
   onMount(async () => {
     if (!supabaseConfigured) { loading = false; return; }
-    const [{ data }, { data: bals }, { data: cr }] = await Promise.all([
+    const [{ data }, { data: bals }, { data: cr }, { data: nom }] = await Promise.all([
       supabase.from('member')
         .select('id, full_name, affiliation, status, member_position(position(name))')
         .order('full_name'),
       supabase.from('stater_balance').select('owner_member_id, balance').not('owner_member_id', 'is', null),
-      supabase.from('stater_skill_credit').select('member_id, credit')
+      supabase.from('stater_skill_credit').select('member_id, credit'),
+      supabase.from('stater_project_member_nominal').select('member_id, nominal')
     ]);
     rows = (data as Row[]) ?? [];
     const bmap: Record<string, number> = {};
@@ -64,6 +86,10 @@
     for (const c of (cr as { member_id: string; credit: number }[]) ?? [])
       cmap[c.member_id] = (cmap[c.member_id] ?? 0) + (Number(c.credit) || 0);
     creditOf = cmap;
+    const nmap: Record<string, number> = {};
+    for (const n of (nom as { member_id: string; nominal: number }[]) ?? [])
+      nmap[n.member_id] = (nmap[n.member_id] ?? 0) + (Number(n.nominal) || 0);
+    nominalOf = nmap;
     loading = false;
     const unsub = member.subscribe((m) => { if (m) loadMyBalance(); });
     return unsub;
@@ -108,11 +134,11 @@
     openCredit = map;
   }
 
-  // leaderboard: rank by STR balance (desc), then by reputation credit
+  // leaderboard: rank by the active board's metric (desc), tiebreak by net worth then name
   const ranked = $derived(
     [...rows].sort((a, b) =>
-      (balanceOf[b.id] ?? 0) - (balanceOf[a.id] ?? 0) ||
-      (creditOf[b.id] ?? 0) - (creditOf[a.id] ?? 0) ||
+      metricOf(b.id) - metricOf(a.id) ||
+      netWorthOf(b.id) - netWorthOf(a.id) ||
       a.full_name.localeCompare(b.full_name)
     )
   );
@@ -123,7 +149,7 @@
       .filter(({ row }) => row.full_name.toLowerCase().includes(q.toLowerCase()))
   );
 
-  const maxBalance = $derived(Math.max(1, ...ranked.map((r) => balanceOf[r.id] ?? 0)));
+  const maxMetric = $derived(Math.max(1, ...ranked.map((r) => metricOf(r.id))));
   // podium order: 2nd · 1st · 3rd
   const podium = $derived(
     ranked.length >= 3
@@ -137,9 +163,19 @@
   <div class="row" style="justify-content:space-between; align-items:flex-end;">
     <div>
       <h1 style="margin-bottom:.15rem;">Leaderboard</h1>
-      <span class="muted" style="font-size:.85rem;">Members ranked by STR balance across the research economy.</span>
+      <span class="muted" style="font-size:.85rem;">{BOARDS.find((b) => b.key === board)?.blurb}</span>
     </div>
     {#if $member}<span class="chip"><span class="amt"><CountUp value={myBalance} /></span> STR</span>{/if}
+  </div>
+
+  <!-- board tabs -->
+  <div class="row" style="gap:.4rem; flex-wrap:wrap;">
+    {#each BOARDS as b}
+      <span class="chip toggle {board === b.key ? 'on' : ''}" role="button" tabindex="0"
+        onclick={() => (board = b.key)}
+        onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') board = b.key; }}
+      >{b.label}</span>
+    {/each}
   </div>
 
   {#if !loading && podium.length === 3 && !q}
@@ -150,7 +186,7 @@
           <div class="pod-ava">{initials(p.r.full_name)}</div>
           <div class="pod-name">{p.r.full_name}{#if $member && p.r.id === $member.id}<span class="badge dim" style="margin-left:.3rem;">you</span>{/if}</div>
           <div class="pod-sub">{p.r.affiliation ?? '—'}</div>
-          <div class="pod-str"><CountUp value={balanceOf[p.r.id] ?? 0} /><span class="u">STR</span></div>
+          <div class="pod-str"><CountUp value={metricOf(p.r.id)} /><span class="u">{metricUnit}</span></div>
         </div>
       {/each}
     </div>
@@ -166,21 +202,30 @@
       <p class="muted" style="padding:1rem;">No members.</p>
     {:else}
       <table>
-        <thead><tr><th class="num">#</th><th>Member</th><th>Position</th><th>Share</th><th class="num">STR</th><th class="num">Reputation</th><th></th></tr></thead>
+        <thead><tr>
+          <th class="num">#</th><th>Member</th><th>Position</th><th style="min-width:90px;">Share</th>
+          <th class="num" class:accent={board === 'wealth'}>Liquid</th>
+          <th class="num" class:accent={board === 'contribution'}>Nominal</th>
+          <th class="num" class:accent={board === 'networth'}>Net worth</th>
+          <th class="num" class:accent={board === 'masters'}>Rep</th>
+          <th></th>
+        </tr></thead>
         <tbody>
           {#each filtered as { row: r, rank } (r.id)}
             <tr class={$member && r.id === $member.id ? 'me-row' : ''}>
               <td class="num"><span class="rank {rank <= 3 ? 'r' + rank : ''}">{rank}</span></td>
               <td>
-                <span class="proj">
+                <a href={`/members/${r.id}`} class="proj">
                   <span class="pname">{r.full_name}{#if $member && r.id === $member.id}<span class="badge dim" style="margin-left:.4rem;">you</span>{/if}</span>
                   <span class="psub">{r.affiliation ?? '—'}</span>
-                </span>
+                </a>
               </td>
               <td class="dim">{r.member_position?.map((p) => p.position?.name).filter(Boolean).join(', ') || '—'}</td>
-              <td><span class="lb-bar"><i style="width:{Math.max(3, ((balanceOf[r.id] ?? 0) / maxBalance) * 100)}%"></i></span></td>
-              <td class="num mono accent" style="color:var(--accent);">{(balanceOf[r.id] ?? 0).toLocaleString()}</td>
-              <td class="num mono">{(creditOf[r.id] ?? 0).toLocaleString()}</td>
+              <td><span class="lb-bar"><i style="width:{Math.max(3, (metricOf(r.id) / maxMetric) * 100)}%"></i></span></td>
+              <td class="num mono" class:accent={board === 'wealth'} style={board === 'wealth' ? 'color:var(--accent);' : ''}>{(balanceOf[r.id] ?? 0).toLocaleString()}</td>
+              <td class="num mono" class:accent={board === 'contribution'} style={board === 'contribution' ? 'color:var(--accent);' : ''}>{(nominalOf[r.id] ?? 0).toLocaleString()}</td>
+              <td class="num mono" class:accent={board === 'networth'} style={board === 'networth' ? 'color:var(--accent);' : ''}>{netWorthOf(r.id).toLocaleString()}</td>
+              <td class="num mono" class:accent={board === 'masters'} style={board === 'masters' ? 'color:var(--accent);' : ''}>{(creditOf[r.id] ?? 0).toLocaleString()}</td>
               <td>
                 {#if $member && r.id !== $member.id}
                   <button onclick={() => toggle(r.id)}>{openId === r.id ? 'Close' : 'Endorse'}</button>
@@ -189,7 +234,7 @@
             </tr>
             {#if openId === r.id}
               <tr>
-                <td colspan="7" style="background:var(--card-2);">
+                <td colspan="9" style="background:var(--card-2);">
                   {#if panelLoading}
                     <p class="muted">Loading skills…</p>
                   {:else if openSkills.length === 0}

@@ -18,7 +18,14 @@
     leader: string;
     members: number;
     openNeeds: number;
+    laborNeeds: number;
+    resourceNeeds: number;
     escrow: number;
+    pool: number;          // nominal pool (member nominal + verified milestone nominal)
+    multiplier: number;    // settlement mint multiplier
+    msVerified: number;
+    msTotal: number;
+    claimable: boolean;    // leaderless → anyone can take the lead
   };
 
   let grid = $state<Grid[]>([]);
@@ -31,8 +38,8 @@
   let q = $state('');
   let typeFilter = $state('');
   let statusFilter = $state('');
-  type SortKey = 'name' | 'type' | 'status' | 'leader' | 'members' | 'openNeeds' | 'escrow' | 'venue' | 'deadline';
-  let sortKey = $state<SortKey>('deadline');
+  type SortKey = 'name' | 'type' | 'status' | 'leader' | 'members' | 'openNeeds' | 'escrow' | 'pool' | 'multiplier' | 'msVerified' | 'venue' | 'deadline';
+  let sortKey = $state<SortKey>('pool');
   let sortDir = $state<1 | -1>(1);
 
   // create form
@@ -47,13 +54,15 @@
   const leaderStake = $derived(chosenType?.leader_stake ?? 0);
 
   async function loadGrid() {
-    const [{ data: pr }, { data: pm }, { data: nd }, { data: esc }] = await Promise.all([
+    const [{ data: pr }, { data: pm }, { data: nd }, { data: esc }, { data: mnom }, { data: pms }] = await Promise.all([
       supabase.from('project')
         .select('id, name, target_venue, venue:venue_id(name, deadline), project_type(name), project_status!project_status_id_fkey(name, rank)'),
       supabase.from('project_member')
         .select('project_id, member(full_name), project_role(name, can_manage)'),
-      supabase.from('open_need').select('project_id, status'),
-      supabase.from('stater_balance').select('project_id, balance').not('project_id', 'is', null)
+      supabase.from('open_need').select('project_id, status, contribution_kind'),
+      supabase.from('stater_balance').select('project_id, balance').not('project_id', 'is', null),
+      supabase.from('stater_project_member_nominal').select('project_id, nominal'),
+      supabase.from('project_milestone').select('project_id, status, milestone_catalog(nominal_value, multiplier_bonus)')
     ]);
 
     const memberCount: Record<string, number> = {};
@@ -63,11 +72,36 @@
       if (r.project_role?.name === 'Leader' && r.member?.full_name) leaderName[r.project_id] = r.member.full_name;
       else if (!leaderName[r.project_id] && r.project_role?.can_manage && r.member?.full_name) leaderName[r.project_id] = r.member.full_name;
     }
+    const hasManager: Record<string, boolean> = {};
+    for (const r of (pm as any[]) ?? []) if (r.project_role?.can_manage) hasManager[r.project_id] = true;
+
     const openCount: Record<string, number> = {};
+    const laborCount: Record<string, number> = {};
+    const resCount: Record<string, number> = {};
     for (const r of (nd as any[]) ?? [])
-      if (r.status === 'open') openCount[r.project_id] = (openCount[r.project_id] ?? 0) + 1;
+      if (r.status === 'open') {
+        openCount[r.project_id] = (openCount[r.project_id] ?? 0) + 1;
+        if (r.contribution_kind === 'labor') laborCount[r.project_id] = (laborCount[r.project_id] ?? 0) + 1;
+        else if (r.contribution_kind === 'resource') resCount[r.project_id] = (resCount[r.project_id] ?? 0) + 1;
+      }
     const escrowOf: Record<string, number> = {};
     for (const r of (esc as any[]) ?? []) escrowOf[r.project_id] = Number(r.balance) || 0;
+
+    // nominal pool = Σ member nominal + Σ verified-milestone nominal; multiplier from verified bonuses
+    const memberNomSum: Record<string, number> = {};
+    for (const r of (mnom as any[]) ?? []) memberNomSum[r.project_id] = (memberNomSum[r.project_id] ?? 0) + Number(r.nominal);
+    const msNomSum: Record<string, number> = {};
+    const msBonus: Record<string, number> = {};
+    const msVer: Record<string, number> = {};
+    const msTot: Record<string, number> = {};
+    for (const r of (pms as any[]) ?? []) {
+      msTot[r.project_id] = (msTot[r.project_id] ?? 0) + 1;
+      if (r.status === 'verified') {
+        msVer[r.project_id] = (msVer[r.project_id] ?? 0) + 1;
+        msNomSum[r.project_id] = (msNomSum[r.project_id] ?? 0) + Number(r.milestone_catalog?.nominal_value ?? 0);
+        msBonus[r.project_id] = (msBonus[r.project_id] ?? 0) + Number(r.milestone_catalog?.multiplier_bonus ?? 0);
+      }
+    }
 
     grid = ((pr as any[]) ?? []).map((p) => ({
       id: p.id,
@@ -80,7 +114,14 @@
       leader: leaderName[p.id] ?? '',
       members: memberCount[p.id] ?? 0,
       openNeeds: openCount[p.id] ?? 0,
-      escrow: escrowOf[p.id] ?? 0
+      laborNeeds: laborCount[p.id] ?? 0,
+      resourceNeeds: resCount[p.id] ?? 0,
+      escrow: escrowOf[p.id] ?? 0,
+      pool: (memberNomSum[p.id] ?? 0) + (msNomSum[p.id] ?? 0),
+      multiplier: Math.min(1 + (msBonus[p.id] ?? 0), 3),
+      msVerified: msVer[p.id] ?? 0,
+      msTotal: msTot[p.id] ?? 0,
+      claimable: !hasManager[p.id] && (p.project_status?.name !== 'Finished')
     }));
   }
 
@@ -203,7 +244,9 @@
   // aggregate footer
   const totalEscrow = $derived(rows.reduce((a, r) => a + r.escrow, 0));
   const totalNeeds = $derived(rows.reduce((a, r) => a + r.openNeeds, 0));
+  const totalPool = $derived(rows.reduce((a, r) => a + r.pool, 0));
   const maxEscrow = $derived(Math.max(1, ...rows.map((r) => r.escrow)));
+  const maxPool = $derived(Math.max(1, ...rows.map((r) => r.pool)));
 
   // pagination
   let pageSize = $state(10);
@@ -233,6 +276,8 @@
   const kActive = $derived(grid.filter((r) => r.status !== 'Finished').length);
   const kFinished = $derived(grid.filter((r) => r.status === 'Finished').length);
   const kEscrow = $derived(grid.reduce((a, r) => a + r.escrow, 0));
+  const kPool = $derived(grid.reduce((a, r) => a + r.pool, 0));
+  const kProjected = $derived(grid.reduce((a, r) => a + Math.floor(r.pool * r.multiplier), 0));
   const kNeeds = $derived(grid.reduce((a, r) => a + r.openNeeds, 0));
   const kUpcoming = $derived(grid.filter((r) => {
     if (!r.deadline) return false;
@@ -257,7 +302,7 @@
   <div class="row" style="justify-content:space-between; align-items:center;">
     <div>
       <h1 style="margin:0;">Projects</h1>
-      <span class="muted" style="font-size:.85rem;">{grid.length} research projects · live escrow & staffing</span>
+      <span class="muted" style="font-size:.85rem;">{grid.length} research projects · contribution pools, milestones & open needs</span>
     </div>
     {#if $member}
       <button onclick={() => (showForm = !showForm)}>{showForm ? 'Cancel' : 'Start a project'}</button>
@@ -314,9 +359,14 @@
       <span class="k-sub">{kActive} active · {kFinished} finished</span>
     </div>
     <div class="kpi">
-      <span class="k-label">Total escrow</span>
-      <span class="k-value accent">{kEscrow.toLocaleString()}</span>
-      <span class="k-sub">STR bonded across projects</span>
+      <span class="k-label">Nominal pool</span>
+      <span class="k-value accent">{kPool.toLocaleString()}</span>
+      <span class="k-sub">accrued contribution · {kEscrow.toLocaleString()} STR bonded</span>
+    </div>
+    <div class="kpi">
+      <span class="k-label">Projected mint</span>
+      <span class="k-value">{kProjected.toLocaleString()}</span>
+      <span class="k-sub">at settlement, pool × multiplier</span>
     </div>
     <div class="kpi">
       <span class="k-label">Open needs</span>
@@ -380,7 +430,9 @@
             <th class="sortable" onclick={() => setSort('status')}>Status <span class="arrow">{arrow('status')}</span></th>
             <th class="sortable" onclick={() => setSort('leader')}>Team <span class="arrow">{arrow('leader')}</span></th>
             <th class="sortable num" onclick={() => setSort('openNeeds')}>Open needs <span class="arrow">{arrow('openNeeds')}</span></th>
-            <th class="sortable num" onclick={() => setSort('escrow')}>Escrow <span class="arrow">{arrow('escrow')}</span></th>
+            <th class="sortable num" onclick={() => setSort('pool')}>Nominal pool <span class="arrow">{arrow('pool')}</span></th>
+            <th class="sortable num" onclick={() => setSort('multiplier')}>×Mult <span class="arrow">{arrow('multiplier')}</span></th>
+            <th class="sortable num" onclick={() => setSort('msVerified')}>Milestones <span class="arrow">{arrow('msVerified')}</span></th>
             <th class="sortable" onclick={() => setSort('deadline')}>Target deadline <span class="arrow">{arrow('deadline')}</span></th>
           </tr>
         </thead>
@@ -389,7 +441,7 @@
             <tr>
               <td>
                 <a href={`/projects/${r.id}`} class="proj">
-                  <span class="pname">{r.name}</span>
+                  <span class="pname">{r.name}{#if r.claimable}<span class="badge warn" style="margin-left:.4rem; font-size:.66rem; vertical-align:middle;">lead open</span>{/if}</span>
                   <span class="psub">
                     <span>{r.type}</span>
                     {#if r.venue}<span class="sep">·</span><span>{r.venue}</span>{/if}
@@ -419,12 +471,27 @@
                   <span class="muted">{r.members} member{r.members === 1 ? '' : 's'}</span>
                 {/if}
               </td>
-              <td class="num mono">
-                {#if r.openNeeds > 0}<span class="badge info">{r.openNeeds} open</span>{:else}<span class="muted">—</span>{/if}
+              <td class="num">
+                {#if r.openNeeds > 0}
+                  <span class="row" style="gap:.25rem; justify-content:flex-end;">
+                    {#if r.laborNeeds > 0}<span class="badge info" title="labor needs">{r.laborNeeds}L</span>{/if}
+                    {#if r.resourceNeeds > 0}<span class="badge dim" title="resource needs">{r.resourceNeeds}R</span>{/if}
+                    {#if r.openNeeds - r.laborNeeds - r.resourceNeeds > 0}<span class="badge" title="seat needs">{r.openNeeds - r.laborNeeds - r.resourceNeeds}S</span>{/if}
+                  </span>
+                {:else}<span class="muted">—</span>{/if}
               </td>
               <td class="num">
-                <span class="mono">{r.escrow.toLocaleString()}</span>
-                {#if r.escrow > 0}<span class="bar"><i style={`width:${Math.round((r.escrow / maxEscrow) * 100)}%`}></i></span>{/if}
+                <span class="mono">{r.pool.toLocaleString()}</span>
+                {#if r.pool > 0}<span class="bar"><i style={`width:${Math.round((r.pool / maxPool) * 100)}%`}></i></span>{/if}
+                {#if r.escrow > 0}<span class="rel dim" style="display:block;">{r.escrow.toLocaleString()} bonded</span>{/if}
+              </td>
+              <td class="num mono">
+                {#if r.multiplier > 1}<span class="badge {r.multiplier >= 2 ? 'up' : 'info'}">×{r.multiplier.toFixed(2)}</span>{:else}<span class="muted">×1.00</span>{/if}
+              </td>
+              <td class="num mono">
+                {#if r.msTotal > 0}
+                  <span class="{r.msVerified > 0 ? 'up' : 'muted'}">✓{r.msVerified}</span><span class="dim">/{r.msTotal}</span>
+                {:else}<span class="muted">—</span>{/if}
               </td>
               <td>
                 {#if r.deadline}
@@ -442,7 +509,9 @@
             <td class="muted" style="font-size:.78rem;">{rows.length} total</td>
             <td></td><td></td>
             <td class="num mono muted" style="font-size:.78rem;">{totalNeeds}</td>
-            <td class="num mono muted" style="font-size:.78rem;">{totalEscrow.toLocaleString()}</td>
+            <td class="num mono muted" style="font-size:.78rem;" title={`${totalEscrow.toLocaleString()} STR bonded`}>{totalPool.toLocaleString()}</td>
+            <td></td>
+            <td></td>
             <td></td>
           </tr>
         </tfoot>

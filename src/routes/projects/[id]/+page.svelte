@@ -18,6 +18,7 @@
   type Participant = { member_id: string; member: { full_name: string } | null; project_role: { name: string; can_manage: boolean } | null };
   type Need = {
     id: string; description: string | null; headcount: number; min_level: string | null; status: string;
+    contribution_kind: string; hours_per_month: number | null;
     project_role_id: string | null; project_role: { name: string } | null; skill: { name: string } | null;
   };
   type Application = { id: string; status: string; message: string | null; open_need_id: string; member: { full_name: string } | null };
@@ -34,6 +35,13 @@
   type ResRequest = { id: string; description: string | null; quantity: string | null; status: string; type_id: string | null; resource_type: { name: string } | null };
   type ResOffer = { id: string; status: string; message: string | null; request_id: string; member: { full_name: string } | null; resource: { name: string } | null };
   type OfferableResource = { id: string; name: string; scope: string };
+  type MCatalog = { id: string; category: string; item: string; nominal_value: number; multiplier_bonus: number };
+  type PMilestone = {
+    id: string; catalog_id: string | null; title: string | null; status: string;
+    claimed_by: string | null; verified_by: string | null; verified_at: string | null;
+    milestone_catalog: { category: string; item: string; nominal_value: number; multiplier_bonus: number } | null;
+  };
+  type MyLaborRow = { skill_id: string; skill: string; ym: string; hours: number; equiv: number };
 
   let project = $state<Project | null>(null);
   let participants = $state<Participant[]>([]);
@@ -60,6 +68,19 @@
   let myBalance = $state(0);
   let claiming = $state(false);
 
+  // contribution model: nominal pool, multiplier, milestones, my labor
+  let nominalPool = $state(0);
+  let multiplier = $state(1);
+  let memberNominal = $state<Record<string, number>>({});
+  let catalog = $state<MCatalog[]>([]);
+  let milestones = $state<PMilestone[]>([]);
+  let myLabor = $state<MyLaborRow[]>([]);
+  // my-contribution (set next month's labor)
+  let clSkill = $state(''); let clHours = $state(0); let clMonth = $state(currentMonth());
+  let settingLabor = $state(false);
+  // milestone claim form
+  let msCatalog = $state(''); let msTitle = $state(''); let claimingMs = $state(false);
+
   // stake commitments + settlement
   let commitments = $state<Commitment[]>([]);
   let settlement = $state<Settlement | null>(null);
@@ -73,6 +94,7 @@
 
   // new-need form
   let nRole = $state(''); let nSkill = $state(''); let nLevel = $state(''); let nCount = $state(1); let nDesc = $state('');
+  let nKind = $state('seat'); let nHours = $state(20);
 
   // ---- records / meetings / history ----
   type Link = { id: string; kind: string; title: string; url: string; notes: string | null; created_at: string; member: { full_name: string } | null };
@@ -116,7 +138,7 @@
     const [{ data: p }, { data: pm }, { data: nd }, { data: rl }, { data: sk }, { data: ps }] = await Promise.all([
       supabase.from('project').select('id, name, target_venue, summary, status_id, held_from_status_id, venue_id, project_type(name, join_stake, leader_stake), project_status!project_status_id_fkey(id, name, rank), venue:venue_id(name, kind, url, deadline)').eq('id', id).maybeSingle(),
       supabase.from('project_member').select('member_id, member(full_name), project_role(name, can_manage)').eq('project_id', id),
-      supabase.from('open_need').select('id, description, headcount, min_level, status, project_role_id, project_role(name), skill(name)').eq('project_id', id),
+      supabase.from('open_need').select('id, description, headcount, min_level, status, contribution_kind, hours_per_month, project_role_id, project_role(name), skill(name)').eq('project_id', id),
       supabase.from('project_role').select('id, name, payout_weight').order('name'),
       supabase.from('skill').select('id, name, parent_id').order('name'),
       supabase.from('project_status').select('id, name, rank').order('rank')
@@ -202,6 +224,41 @@
       .eq('project_id', id).order('created_at');
     commitments = (cm as Commitment[]) ?? [];
 
+    // contribution model: nominal pool + multiplier + per-member nominal + milestones
+    const [{ data: np }, { data: mu }, { data: mn }, { data: cat }, { data: ms }] = await Promise.all([
+      supabase.rpc('stater_project_nominal_pool', { p: id }),
+      supabase.rpc('stater_milestone_mult', { p: id }),
+      supabase.from('stater_project_member_nominal').select('member_id, nominal').eq('project_id', id),
+      supabase.from('milestone_catalog').select('id, category, item, nominal_value, multiplier_bonus').order('rank'),
+      supabase.from('project_milestone')
+        .select('id, catalog_id, title, status, claimed_by, verified_by, verified_at, milestone_catalog(category, item, nominal_value, multiplier_bonus)')
+        .eq('project_id', id).order('created_at', { ascending: false })
+    ]);
+    nominalPool = Number((np as number | null) ?? 0);
+    multiplier = Number((mu as number | null) ?? 1);
+    const nmap: Record<string, number> = {};
+    for (const r of (mn as any[]) ?? []) nmap[r.member_id] = Number(r.nominal);
+    memberNominal = nmap;
+    catalog = (cat as MCatalog[]) ?? [];
+    milestones = (ms as PMilestone[]) ?? [];
+
+    // my standing labor commitments on this project, with monthly periods
+    if (me) {
+      const { data: mine } = await supabase
+        .from('stater_project_stake_commitment')
+        .select('id, skill_id, skill(name), stater_commitment_period(year_month, committed_amount, token_equivalent)')
+        .eq('project_id', id).eq('member_id', me).eq('commitment_type', 'labor');
+      const rows: MyLaborRow[] = [];
+      for (const c of (mine as any[]) ?? [])
+        for (const p of c.stater_commitment_period ?? [])
+          rows.push({ skill_id: c.skill_id, skill: c.skill?.name ?? '—', ym: p.year_month,
+                      hours: Number(p.committed_amount), equiv: Number(p.token_equivalent) });
+      rows.sort((a, b) => b.ym.localeCompare(a.ym) || a.skill.localeCompare(b.skill));
+      myLabor = rows;
+    } else {
+      myLabor = [];
+    }
+
     // latest settlement + items
     const { data: stl } = await supabase
       .from('stater_settlement')
@@ -239,7 +296,8 @@
       const w: Record<string, number> = {}; const a: Record<string, boolean> = {};
       for (const pt of participants) {
         const role = roles.find((r) => r.name === pt.project_role?.name);
-        w[pt.member_id] = Number(role?.payout_weight ?? 1);
+        // pre-fill from accrued nominal (bonds + labor + resources); fall back to role weight
+        w[pt.member_id] = Number(memberNominal[pt.member_id]) || Number(role?.payout_weight ?? 1);
         a[pt.member_id] = true;
       }
       sWeight = w; sAuthor = a;
@@ -315,7 +373,7 @@
 
   async function approveSettlement() {
     if (!settlement) return;
-    if (!confirm('Approve this settlement? The finish bonus is minted and the whole escrow is distributed by payout weight. This cannot be undone.')) return;
+    if (!confirm(`Co-sign & approve? The pool mints to ${Math.floor(nominalPool * multiplier).toLocaleString()} STR (nominal ×${multiplier}) and is distributed by the drafted weights. This cannot be undone.`)) return;
     error = '';
     const { error: err } = await supabase.rpc('approve_settlement', { settlement_id: settlement.id });
     if (err) { error = err.message; return; }
@@ -469,6 +527,55 @@
 
   onMount(load);
 
+  function currentMonth() { return new Date().toISOString().slice(0, 7); }
+  function fmtMonth(ym: string) {
+    const [y, m] = ym.split('-').map(Number);
+    return new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+  }
+  const leafSkills = $derived(skills.filter((s) => s.parent_id));
+  const totalNominal = $derived(Object.values(memberNominal).reduce((a, b) => a + b, 0));
+  const canVerifyMs = $derived(iManage || $capabilities.has('manage_stater') || $capabilities.has('manage_resources'));
+  const verifiedBonus = $derived(
+    milestones.filter((m) => m.status === 'verified')
+      .reduce((a, m) => a + Number(m.milestone_catalog?.multiplier_bonus ?? 0), 0)
+  );
+
+  async function setLabor() {
+    error = '';
+    if (!clSkill) { error = 'Pick a skill for your labor.'; return; }
+    if (!/^\d{4}-\d{2}$/.test(clMonth)) { error = 'Month must be YYYY-MM.'; return; }
+    settingLabor = true;
+    const { error: err } = await supabase.rpc('set_labor_commitment',
+      { p: id, sk: clSkill, ym: clMonth, hours: Number(clHours) });
+    settingLabor = false;
+    if (err) { error = err.message; return; }
+    await load();
+  }
+
+  async function claimMilestone() {
+    error = '';
+    if (!msCatalog) { error = 'Pick a milestone.'; return; }
+    claimingMs = true;
+    const { error: err } = await supabase.rpc('claim_milestone',
+      { p: id, p_catalog_id: msCatalog, p_title: msTitle.trim() || null });
+    claimingMs = false;
+    if (err) { error = err.message; return; }
+    msCatalog = ''; msTitle = '';
+    await load();
+  }
+  async function verifyMilestone(mid: string) {
+    error = '';
+    const { error: err } = await supabase.rpc('verify_milestone', { milestone_id: mid });
+    if (err) { error = err.message; return; }
+    await load();
+  }
+  async function rejectMilestone(mid: string) {
+    error = '';
+    const { error: err } = await supabase.rpc('reject_milestone', { milestone_id: mid });
+    if (err) { error = err.message; return; }
+    await load();
+  }
+
   async function apply(needId: string) {
     error = '';
     if (!$member) return;
@@ -515,10 +622,11 @@
     if (!nRole) { error = 'Pick a role.'; return; }
     const { error: err } = await supabase.from('open_need').insert({
       project_id: id, project_role_id: nRole, skill_id: nSkill || null,
-      min_level: nLevel || null, headcount: nCount, description: nDesc || null
+      min_level: nLevel || null, headcount: nCount, description: nDesc || null,
+      contribution_kind: nKind, hours_per_month: nKind === 'labor' ? Number(nHours) : null
     });
     if (err) { error = err.message; return; }
-    nRole = ''; nSkill = ''; nLevel = ''; nCount = 1; nDesc = '';
+    nRole = ''; nSkill = ''; nLevel = ''; nCount = 1; nDesc = ''; nKind = 'seat'; nHours = 20;
     await load();
   }
 
@@ -608,16 +716,24 @@
       </div>
     </div>
 
-    <div class="card stack" style="gap:.6rem;">
-      <div class="row" style="justify-content:space-between; align-items:baseline;">
+    <div class="card stack" style="gap:.7rem;">
+      <div class="row" style="justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
         <div>
-          <span class="muted" style="font-size:.8rem;">Escrow</span>
-          <strong class="mono" style="font-size:1.4rem; margin-left:.45rem; color:var(--accent);"><CountUp value={escrow} /></strong>
-          <span class="muted" style="font-size:.8rem;"> STR bonded</span>
+          <span class="muted" style="font-size:.78rem;">Nominal pool</span>
+          <div><strong class="mono" style="font-size:1.5rem; color:var(--accent);"><CountUp value={nominalPool} /></strong>
+            <span class="muted" style="font-size:.8rem;"> STR (provisional, mints at settlement)</span></div>
         </div>
-        <span class="muted" style="font-size:.78rem;">{participants.length} contributor(s) · {joinStake}/join</span>
+        <div style="text-align:right;">
+          <span class="muted" style="font-size:.78rem;">Mint multiplier</span>
+          <div><strong class="mono" style="font-size:1.5rem; color:{multiplier > 1 ? 'var(--up)' : 'var(--text)'};">×{multiplier.toFixed(3).replace(/0+$/,'').replace(/\.$/,'')}</strong></div>
+        </div>
       </div>
-      <div class="escrow-meter"><i style="width:{Math.min(100, escrow > 0 ? 100 : 0)}%"></i></div>
+      <div class="escrow-meter"><i style="width:{Math.min(100, nominalPool > 0 ? 100 : 0)}%"></i></div>
+      <div class="row" style="justify-content:space-between; flex-wrap:wrap; gap:.6rem; font-size:.8rem;">
+        <span class="muted">Real escrow (bonds): <strong class="mono" style="color:var(--text);">{escrow.toLocaleString()}</strong> STR</span>
+        <span class="muted">Projected settlement pool: <strong class="mono" style="color:var(--accent);">{Math.floor(nominalPool * multiplier).toLocaleString()}</strong> STR</span>
+        <span class="muted">{participants.length} contributor(s) · {joinStake}/join bond</span>
+      </div>
     </div>
 
     {#if !hasLeader && $member}
@@ -637,6 +753,99 @@
         </div>
       </div>
     {/if}
+
+    <!-- MY CONTRIBUTION (rolling monthly labor; declare = mint) -->
+    {#if canContribute}
+      <div class="card stack">
+        <div class="row" style="justify-content:space-between; align-items:baseline;">
+          <h2 style="margin:0;">My contribution</h2>
+          <span class="muted" style="font-size:.8rem;">Accrued nominal:
+            <strong class="mono" style="color:var(--accent);">{Number(memberNominal[$member?.id ?? ''] ?? 0).toLocaleString()}</strong> STR</span>
+        </div>
+        <p class="muted" style="font-size:.82rem; margin:-.3rem 0 0;">
+          Each month set the hours you'll put in. <strong>Declaring mints immediately</strong> into the
+          pool as nominal STR (hours × your skill rate) — adjust up when free, down to 0 when busy.
+        </p>
+        {#if myLabor.length}
+          <table>
+            <thead><tr><th>Month</th><th>Skill</th><th>Hours</th><th>Minted (nominal)</th></tr></thead>
+            <tbody>
+              {#each myLabor as l}
+                <tr>
+                  <td>{fmtMonth(l.ym)}{l.ym === currentMonth() ? ' · now' : ''}</td>
+                  <td>{l.skill}</td>
+                  <td class="mono">{l.hours}h</td>
+                  <td class="mono" style="color:var(--accent);">≈ {l.equiv.toLocaleString()}</td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        {:else}
+          <p class="muted">No labor declared yet on this project.</p>
+        {/if}
+        <div class="row" style="align-items:flex-end; flex-wrap:wrap; border-top:1px dashed var(--border); padding-top:.7rem;">
+          <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">Skill</span>
+            <select bind:value={clSkill}><option value="">— pick —</option>{#each leafSkills as s}<option value={s.id}>{s.name}</option>{/each}</select>
+          </label>
+          <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">Month</span>
+            <input type="month" bind:value={clMonth} /></label>
+          <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">Hours / month</span>
+            <input type="number" min="0" step="1" bind:value={clHours} style="width:110px;" /></label>
+          <button onclick={setLabor} disabled={settingLabor}>{settingLabor ? 'Minting…' : 'Set & mint'}</button>
+        </div>
+      </div>
+    {/if}
+
+    <!-- MILESTONES (outcome minting: nominal + multiplier) -->
+    <div class="card stack">
+      <div class="row" style="justify-content:space-between; align-items:baseline;">
+        <h2 style="margin:0;">Milestones</h2>
+        <span class="muted" style="font-size:.8rem;">Verified bonus: <strong class="mono" style="color:var(--up);">+{verifiedBonus.toFixed(3).replace(/0+$/,'').replace(/\.$/,'')}</strong> to ×mult</span>
+      </div>
+      <p class="muted" style="font-size:.82rem; margin:-.3rem 0 0;">
+        Verified outcomes both <strong>add nominal STR</strong> to the pool and <strong>raise the settlement
+        multiplier</strong> (capped ×3). Only verified milestones count.
+      </p>
+      {#if milestones.length === 0}
+        <p class="muted">No milestones claimed yet.</p>
+      {:else}
+        <table>
+          <thead><tr><th>Milestone</th><th>Nominal</th><th>+Mult</th><th>Status</th>{#if canVerifyMs}<th></th>{/if}</tr></thead>
+          <tbody>
+            {#each milestones as m}
+              <tr>
+                <td><strong>{m.milestone_catalog?.item ?? m.title ?? '—'}</strong>
+                  {#if m.title && m.milestone_catalog}<div class="muted" style="font-size:.78rem;">{m.title}</div>{/if}
+                  <div class="muted" style="font-size:.74rem; text-transform:capitalize;">{m.milestone_catalog?.category ?? ''}</div></td>
+                <td class="mono">{m.milestone_catalog?.nominal_value ?? 0}</td>
+                <td class="mono">+{Number(m.milestone_catalog?.multiplier_bonus ?? 0)}</td>
+                <td><span class="badge {m.status === 'verified' ? 'pos' : m.status === 'rejected' ? 'neg' : 'dim'}">{m.status}</span></td>
+                {#if canVerifyMs}
+                  <td class="row">
+                    {#if m.status === 'claimed' || m.status === 'under_review'}
+                      <button class="ghost" onclick={() => verifyMilestone(m.id)}>Verify</button>
+                      <button class="danger" onclick={() => rejectMilestone(m.id)}>Reject</button>
+                    {/if}
+                  </td>
+                {/if}
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      {/if}
+      {#if canContribute}
+        <div class="row" style="align-items:flex-end; flex-wrap:wrap; border-top:1px dashed var(--border); padding-top:.7rem;">
+          <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">Milestone</span>
+            <select bind:value={msCatalog}><option value="">— pick —</option>
+              {#each catalog as c}<option value={c.id}>{c.item} (+{c.nominal_value} / +{c.multiplier_bonus}×)</option>{/each}
+            </select>
+          </label>
+          <label class="stack" style="gap:.2rem; flex:1; min-width:160px;"><span class="muted" style="font-size:.72rem;">Note / evidence (opt.)</span>
+            <input bind:value={msTitle} placeholder="link or detail" /></label>
+          <button onclick={claimMilestone} disabled={claimingMs}>{claimingMs ? 'Claiming…' : 'Claim milestone'}</button>
+        </div>
+      {/if}
+    </div>
 
     <div class="row" style="align-items:stretch; gap:1rem;">
       <!-- RECORDS / LINKS -->
@@ -754,9 +963,11 @@
       {#if !settlement}
         {#if iManage}
           <p class="muted" style="font-size:.82rem;">
-            Propose a settlement: assign each participant a payout weight (the escrow is split pro-rata)
-            and confirm authorship. After submission, a Stater manager approves it to mint the finish
-            bonus and distribute the escrow.
+            Draft the split. Weights are <strong>pre-filled from each member's accrued nominal</strong>
+            (bonds + labor + resources) — adjust down anyone who declared but didn't deliver. On approval
+            the pool mints to <strong class="mono" style="color:var(--accent);">{Math.floor(nominalPool * multiplier).toLocaleString()}</strong>
+            STR (nominal ×{multiplier.toFixed(3).replace(/0+$/,'').replace(/\.$/,'')}) and splits by these weights.
+            <strong>Both you and a Stater manager must sign</strong> (you submit; they approve).
           </p>
           <table>
             <thead><tr><th>Member</th><th>Role</th><th>Payout weight</th><th>Author</th></tr></thead>
@@ -809,15 +1020,22 @@
     </div>
 
     <div class="card">
-      <h2>Participants</h2>
+      <h2>Roster</h2>
+      <p class="muted" style="font-size:.8rem; margin-top:-.4rem;">Share % is each member's accrued nominal (bonds + labor + resources) over the member total — milestone nominal is added to everyone at settlement.</p>
       {#if participants.length === 0}
         <p class="muted">No participants yet.</p>
       {:else}
         <table>
-          <thead><tr><th>Name</th><th>Role</th></tr></thead>
+          <thead><tr><th>Name</th><th>Role</th><th>Accrued (nominal)</th><th>Share</th></tr></thead>
           <tbody>
             {#each participants as pt}
-              <tr><td>{pt.member?.full_name ?? '—'}</td><td>{pt.project_role?.name ?? '—'}</td></tr>
+              {@const nom = Number(memberNominal[pt.member_id] ?? 0)}
+              <tr>
+                <td><a href={`/members/${pt.member_id}`}>{pt.member?.full_name ?? '—'}</a></td>
+                <td>{pt.project_role?.name ?? '—'}</td>
+                <td class="mono" style="color:var(--accent);">{nom.toLocaleString()}</td>
+                <td class="mono">{totalNominal > 0 ? (100 * nom / totalNominal).toFixed(1) : '0.0'}%</td>
+              </tr>
             {/each}
           </tbody>
         </table>
@@ -833,7 +1051,11 @@
           {#each needs as n}
             <div style="border:1px solid var(--border); border-radius:8px; padding:.75rem;">
               <div class="row" style="justify-content:space-between; align-items:flex-start;">
-                <strong>{n.project_role?.name ?? 'Contributor'}</strong>
+                <span class="row" style="gap:.4rem; align-items:baseline;">
+                  <strong>{n.project_role?.name ?? 'Contributor'}</strong>
+                  {#if n.contribution_kind === 'labor'}<span class="badge info">⚒ Labor{n.hours_per_month ? ` · ${n.hours_per_month} hrs/mo` : ''}</span>
+                  {:else if n.contribution_kind === 'resource'}<span class="badge info">⛁ Resource</span>{/if}
+                </span>
                 <span class="row" style="gap:.4rem;">
                   <span class="badge {n.status === 'open' ? 'info' : 'dim'}" style="text-transform:capitalize;">{n.status}</span>
                   <span class="muted" style="font-size:.8rem;">{n.headcount} opening(s)</span>
@@ -908,7 +1130,10 @@
       {#if iManage}
         <div style="margin-top:1rem; border-top:1px dashed var(--border); padding-top:1rem;">
           <h3 style="margin:0 0 .5rem;">Post a need</h3>
-          <div class="row" style="align-items:flex-end;">
+          <div class="row" style="align-items:flex-end; flex-wrap:wrap;">
+            <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Kind</span>
+              <select bind:value={nKind}><option value="seat">Seat</option><option value="labor">Labor (hrs/mo)</option><option value="resource">Resource</option></select>
+            </label>
             <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Role</span>
               <select bind:value={nRole}><option value="">—</option>{#each roles as r}<option value={r.id}>{r.name}</option>{/each}</select>
             </label>
@@ -918,6 +1143,11 @@
             <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Min level</span>
               <select bind:value={nLevel}><option value="">—</option><option>Beginner</option><option>Intermediate</option><option>Advanced</option><option>Expert</option></select>
             </label>
+            {#if nKind === 'labor'}
+              <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Hrs / mo</span>
+                <input type="number" min="1" bind:value={nHours} style="width:80px;" />
+              </label>
+            {/if}
             <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Count</span>
               <input type="number" min="1" bind:value={nCount} style="width:70px;" />
             </label>
