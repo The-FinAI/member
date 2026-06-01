@@ -18,6 +18,7 @@
     fee: number; status: string;
     skill: { name: string } | null; member: { full_name: string } | null;
   };
+  type Mem = { id: string; full_name: string };
 
   const LEVELS = ['apprentice', 'journeyman', 'craftsman', 'master'];
   const LEVEL_LABEL: Record<string, string> = {
@@ -45,9 +46,16 @@
   let busy = $state('');
 
   const canReview = $derived($capabilities.has('review_skillcard'));
+  const canMint = $derived($capabilities.has('mint_skillcard'));
   // effective identity: act for a card (officer proxy) when one is selected
   const effId = $derived($actingAs?.id ?? $member?.id ?? null);
   const asArg = $derived($actingAs?.id ?? null);
+
+  // direct mint (forge / update any member's skill profile — no fee, no review)
+  let members = $state<Mem[]>([]);
+  let mintMember = $state(''); let mintSkill = $state(''); let mintLevel = $state('apprentice'); let mintMsg = $state('');
+  // examinable leaves (skills with no children) for the mint picker
+  const leaves = $derived(skills.filter((s) => !skills.some((c) => c.parent_id === s.id)));
 
   let selected = $state(''); // selected leaf skill id
   let cardLevel = $state('apprentice');
@@ -127,6 +135,14 @@
     } else {
       cardQueue = [];
     }
+
+    // member roster for the direct-mint tool (forge any member's profile)
+    if ($capabilities.has('mint_skillcard')) {
+      const { data: mem } = await supabase.from('member').select('id, full_name').eq('status', 'active').order('full_name');
+      members = (mem as Mem[]) ?? [];
+    } else {
+      members = [];
+    }
     loading = false;
   }
 
@@ -159,6 +175,21 @@
     busy = '';
     if (err) { error = err.message; return; }
     cardNote[req.id] = '';
+    await load();
+  }
+
+  // direct mint (铸 — forge or update a member's skill profile, no fee/review)
+  async function mintCard() {
+    error = ''; mintMsg = '';
+    if (!mintMember || !mintSkill) return;
+    busy = 'mint';
+    const { error: err } = await supabase.rpc('mint_skillcard', { p_member: mintMember, p_skill: mintSkill, p_level: mintLevel });
+    busy = '';
+    if (err) { error = err.message; return; }
+    const mn = members.find((m) => m.id === mintMember)?.full_name ?? '';
+    const sn = skills.find((s) => s.id === mintSkill)?.name ?? '';
+    mintMsg = get(t)('Minted a {level} role card for {member} in {skill}.', { member: mn, skill: sn, level: get(t)(LEVEL_LABEL[mintLevel]) });
+    mintMember = ''; mintSkill = '';
     await load();
   }
 
@@ -247,6 +278,29 @@
           <input bind:value={cardNote[r.id]} placeholder={$t('Note (optional; shown on the record)')} style="max-width:380px;" />
         </div>
       {/each}
+    </div>
+  {/if}
+
+  <!-- direct mint (铸) — forge or update any member's skill profile -->
+  {#if canMint}
+    <div class="card stack" style="gap:.5rem;">
+      <h2 style="margin:0;">{$t('Mint a role card')}</h2>
+      <p class="muted" style="font-size:.85rem; margin:0;">
+        {$t('Forge or update a member’s skill profile directly — genesis, first cards, bootstrap or waiver. No fee, no review. Recorded as a direct mint.')}
+      </p>
+      <div class="row" style="align-items:flex-end; flex-wrap:wrap; gap:.6rem;">
+        <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Member')}</span>
+          <select bind:value={mintMember} style="max-width:200px;"><option value="">—</option>{#each members as m}<option value={m.id}>{m.full_name}</option>{/each}</select>
+        </label>
+        <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Skill')}</span>
+          <select bind:value={mintSkill} style="max-width:200px;"><option value="">—</option>{#each leaves as s}<option value={s.id}>{s.name}</option>{/each}</select>
+        </label>
+        <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Guild level')}</span>
+          <select bind:value={mintLevel}>{#each LEVELS as lv}<option value={lv}>{$t(LEVEL_LABEL[lv])}</option>{/each}</select>
+        </label>
+        <button onclick={mintCard} disabled={!mintMember || !mintSkill || busy === 'mint'}>{$t('Mint card')}</button>
+      </div>
+      {#if mintMsg}<p class="pos" style="font-size:.82rem; margin:0;">{mintMsg}</p>{/if}
     </div>
   {/if}
 
