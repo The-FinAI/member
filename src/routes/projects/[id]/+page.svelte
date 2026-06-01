@@ -37,7 +37,10 @@
   type ResType = { id: string; name: string };
   type ResRequest = { id: string; description: string | null; quantity: string | null; status: string; type_id: string | null; resource_type: { name: string } | null };
   type ResOffer = { id: string; status: string; message: string | null; request_id: string; member: { full_name: string } | null; resource: { name: string } | null };
-  type OfferableResource = { id: string; name: string; scope: string };
+  type OfferableResource = { id: string; name: string; scope: string;
+    unit?: string | null; str_per_unit?: number | null;
+    resource_type?: { unit: string | null; str_per_unit: number | null } | null };
+  type MyResourceRow = { resource_id: string; resource: string; unit: string; ym: string; qty: number; equiv: number };
   type MCatalog = { id: string; category: string; item: string; nominal_value: number; multiplier_bonus: number };
   type PMilestone = {
     id: string; catalog_id: string | null; title: string | null; status: string;
@@ -133,6 +136,10 @@
   let resOffers = $state<ResOffer[]>([]);
   let myResources = $state<OfferableResource[]>([]);
   let offeredRequestIds = $state<Set<string>>(new Set());
+  // rolling monthly resource contribution (declare = mint)
+  let myResCommits = $state<MyResourceRow[]>([]);
+  let rcRes = $state(''); let rcQty = $state(0); let rcMonth = $state(currentMonth());
+  let settingRes = $state(false);
   // new resource-request form
   let rrType = $state(''); let rrQty = $state(''); let rrDesc = $state('');
   // offer form state, keyed by request id
@@ -203,7 +210,9 @@
 
     if (me) {
       const { data: mine } = await supabase
-        .from('resource').select('id, name, scope').eq('holder_member_id', me)
+        .from('resource')
+        .select('id, name, scope, unit, str_per_unit, resource_type(unit, str_per_unit)')
+        .or(`holder_member_id.eq.${me},scope.eq.community`)
         .eq('approval_status', 'approved').order('name');
       myResources = (mine as OfferableResource[]) ?? [];
     }
@@ -282,6 +291,25 @@
       myWriting = wrows;
     } else {
       myWriting = [];
+    }
+
+    // my standing resource contributions on this project, with monthly periods
+    if (me) {
+      const { data: mres } = await supabase
+        .from('stater_project_stake_commitment')
+        .select('id, resource_id, resource(name, unit, str_per_unit, resource_type(unit, str_per_unit)), stater_commitment_period(year_month, committed_amount, token_equivalent)')
+        .eq('project_id', id).eq('member_id', me).eq('commitment_type', 'resource').not('resource_id', 'is', null);
+      const rrows: MyResourceRow[] = [];
+      for (const c of (mres as any[]) ?? []) {
+        const u = c.resource?.unit || c.resource?.resource_type?.unit || 'unit';
+        for (const p of c.stater_commitment_period ?? [])
+          rrows.push({ resource_id: c.resource_id, resource: c.resource?.name ?? '—', unit: u,
+                       ym: p.year_month, qty: Number(p.committed_amount), equiv: Number(p.token_equivalent) });
+      }
+      rrows.sort((a, b) => b.ym.localeCompare(a.ym) || a.resource.localeCompare(b.resource));
+      myResCommits = rrows;
+    } else {
+      myResCommits = [];
     }
 
     // latest settlement + items
@@ -590,6 +618,21 @@
     await load();
   }
 
+  function resUnit(r: OfferableResource) { return r.unit || r.resource_type?.unit || 'unit'; }
+  function resRate(r: OfferableResource) { return Number(r.str_per_unit ?? r.resource_type?.str_per_unit ?? 0); }
+
+  async function setResource() {
+    error = '';
+    if (!rcRes) { error = get(t)('Pick a resource to contribute.'); return; }
+    if (!/^\d{4}-\d{2}$/.test(rcMonth)) { error = get(t)('Month must be YYYY-MM.'); return; }
+    settingRes = true;
+    const { error: err } = await supabase.rpc('set_resource_commitment',
+      { p: id, res: rcRes, ym: rcMonth, qty: Number(rcQty) });
+    settingRes = false;
+    if (err) { error = err.message; return; }
+    await load();
+  }
+
   async function claimMilestone() {
     error = '';
     if (!msCatalog) { error = get(t)('Pick a milestone.'); return; }
@@ -830,6 +873,52 @@
             <input type="number" min="0" step="1" bind:value={clHours} style="width:110px;" /></label>
           <button onclick={setLabor} disabled={settingLabor}>{settingLabor ? $t('Minting…') : $t('Set & mint')}</button>
         </div>
+      </div>
+    {/if}
+
+    <!-- MY RESOURCES (rolling monthly resource quantity; declare = mint) -->
+    {#if canContribute}
+      <div class="card stack">
+        <div class="row" style="justify-content:space-between; align-items:baseline;">
+          <h2 style="margin:0;">{$t('My resources')}</h2>
+          <span class="muted" style="font-size:.8rem;">{$t('Valued by unit rate')}</span>
+        </div>
+        <p class="muted" style="font-size:.82rem; margin:-.3rem 0 0;">
+          {@html $t("Each month declare how much of a resource you put in — GPU-hours, dollars, API credits. <strong>Declaring mints immediately</strong> into the pool as nominal STR (quantity × the resource's STR-per-unit rate).")}
+        </p>
+        {#if myResCommits.length}
+          <table>
+            <thead><tr><th>{$t('Month')}</th><th>{$t('Resource')}</th><th>{$t('Quantity')}</th><th>{$t('Minted (nominal)')}</th></tr></thead>
+            <tbody>
+              {#each myResCommits as r}
+                <tr>
+                  <td>{fmtMonth(r.ym)}{r.ym === currentMonth() ? $t(' · now') : ''}</td>
+                  <td>{r.resource}</td>
+                  <td class="mono">{r.qty} {r.unit}</td>
+                  <td class="mono" style="color:var(--accent);">≈ {r.equiv.toLocaleString()}</td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        {:else}
+          <p class="muted">{$t('No resources declared yet on this project.')}</p>
+        {/if}
+        {#if myResources.length}
+          <div class="row" style="align-items:flex-end; flex-wrap:wrap; border-top:1px dashed var(--border); padding-top:.7rem;">
+            <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">{$t('Resource')}</span>
+              <select bind:value={rcRes}><option value="">{$t('— pick —')}</option>
+                {#each myResources as mr}<option value={mr.id}>{mr.name}{mr.scope === 'community' ? $t(' (community)') : ''} · {resRate(mr)} STR/{resUnit(mr)}</option>{/each}
+              </select>
+            </label>
+            <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">{$t('Month')}</span>
+              <input type="month" bind:value={rcMonth} /></label>
+            <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">{$t('Quantity / month')}</span>
+              <input type="number" min="0" step="1" bind:value={rcQty} style="width:130px;" /></label>
+            <button onclick={setResource} disabled={settingRes}>{settingRes ? $t('Minting…') : $t('Set & mint')}</button>
+          </div>
+        {:else}
+          <p class="muted" style="font-size:.8rem;">{@html $t('You have no approved resources yet. Add one under <a href="/profile">your profile</a>, or use a community resource.')}</p>
+        {/if}
       </div>
     {/if}
 

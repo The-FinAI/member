@@ -30,6 +30,8 @@
   let capacity = $state('');
   let availability = $state('available');
   let description = $state('');
+  let unit = $state('');
+  let strPerUnit = $state('');
 
   async function load() {
     if (!supabaseConfigured) { loading = false; return; }
@@ -62,10 +64,11 @@
     const { error: err } = await supabase.from('resource').insert({
       name: name.trim(), type_id: typeId || null, scope: 'community',
       holder_member_id: steward || null, capacity: capacity || null,
-      availability, description: description || null, approval_status: 'approved'
+      availability, description: description || null, approval_status: 'approved',
+      unit: unit.trim() || null, str_per_unit: strPerUnit === '' ? null : Number(strPerUnit)
     });
     if (err) { error = err.message; return; }
-    name = ''; typeId = ''; steward = ''; capacity = ''; availability = 'available'; description = '';
+    name = ''; typeId = ''; steward = ''; capacity = ''; availability = 'available'; description = ''; unit = ''; strPerUnit = '';
     await load();
   }
 
@@ -140,6 +143,10 @@
         <input bind:value={capacity} placeholder={$t('e.g. $5k / 200 GPU-hrs')} style="width:140px;" /></label>
       <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Availability')}</span>
         <select bind:value={availability}>{#each AVAIL as a}<option value={a}>{$t(a)}</option>{/each}</select></label>
+      <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Unit (override)')}</span>
+        <input bind:value={unit} placeholder={$t('inherit type')} style="width:110px;" /></label>
+      <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('STR / unit (override)')}</span>
+        <input type="number" min="0" step="0.01" bind:value={strPerUnit} placeholder={$t('inherit')} style="width:120px;" /></label>
       <button onclick={add}>{$t('Add')}</button>
     </div>
     <input bind:value={description} placeholder={$t('Description (optional)')} style="width:100%;" />
