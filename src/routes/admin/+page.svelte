@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { supabase, supabaseConfigured } from '$lib/supabase';
+  import { t } from '$lib/i18n';
 
   const sections = [
     { href: '/admin/invites', title: 'Invite Members', desc: 'Pre-create members by email (invite-only)' },
@@ -61,41 +62,41 @@
 </script>
 
 <div class="stack">
-  <h1>Admin dashboard</h1>
-  <p class="muted" style="margin-top:-.75rem;">The community at a glance, and every configurable knob. Nothing here is hard-coded.</p>
+  <h1>{$t('Admin dashboard')}</h1>
+  <p class="muted" style="margin-top:-.75rem;">{$t('The community at a glance, and every configurable knob. Nothing here is hard-coded.')}</p>
 
   <!-- headline metrics -->
   <div class="kpis">
     <div class="kpi">
-      <span class="k-label">Members</span>
+      <span class="k-label">{$t('Members')}</span>
       <span class="k-value accent">{loading ? '–' : members.toLocaleString()}</span>
-      <span class="k-sub">{loading ? '' : `${activeMembers} active`}</span>
+      <span class="k-sub">{loading ? '' : $t('{n} active', { n: activeMembers })}</span>
     </div>
     <div class="kpi">
-      <span class="k-label">Projects</span>
+      <span class="k-label">{$t('Projects')}</span>
       <span class="k-value">{loading ? '–' : projects.toLocaleString()}</span>
-      <span class="k-sub">across all statuses</span>
+      <span class="k-sub">{$t('across all statuses')}</span>
     </div>
     <div class="kpi">
-      <span class="k-label">STR circulating</span>
+      <span class="k-label">{$t('STR circulating')}</span>
       <span class="k-value">{loading ? '–' : circulating.toLocaleString()}</span>
-      <span class="k-sub"><a href="/admin/stater">economy →</a></span>
+      <span class="k-sub"><a href="/admin/stater">{$t('economy →')}</a></span>
     </div>
     <div class="kpi">
-      <span class="k-label">Skills</span>
+      <span class="k-label">{$t('Skills')}</span>
       <span class="k-value">{loading ? '–' : skillLeaves.toLocaleString()}</span>
-      <span class="k-sub">examinable crafts</span>
+      <span class="k-sub">{$t('examinable crafts')}</span>
     </div>
   </div>
 
   <!-- needs attention -->
   {#if !loading && attention.length > 0}
     <div class="card stack" style="gap:.5rem;">
-      <h2 style="margin:0; font-size:1rem;">Needs attention</h2>
+      <h2 style="margin:0; font-size:1rem;">{$t('Needs attention')}</h2>
       <div class="row" style="flex-wrap:wrap; gap:.5rem;">
         {#each attention as a}
           <a class="badge warn" href={a.href} style="text-decoration:none; font-size:.82rem; padding:.35rem .6rem;">
-            <strong>{a.n}</strong> {a.label} →
+            <strong>{a.n}</strong> {$t(a.label)} →
           </a>
         {/each}
       </div>
@@ -103,12 +104,12 @@
   {/if}
 
   <!-- configuration sections -->
-  <h2 style="margin:.5rem 0 -.25rem; font-size:1rem;">Configuration</h2>
+  <h2 style="margin:.5rem 0 -.25rem; font-size:1rem;">{$t('Configuration')}</h2>
   <div class="row" style="align-items:stretch;">
     {#each sections as s}
       <a class="card" href={s.href} style="flex:1; min-width:220px;">
-        <h2>{s.title}</h2>
-        <p class="muted">{s.desc}</p>
+        <h2>{$t(s.title)}</h2>
+        <p class="muted">{$t(s.desc)}</p>
       </a>
     {/each}
   </div>

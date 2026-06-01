@@ -1,11 +1,12 @@
 <script lang="ts">
   import LookupEditor from '$lib/LookupEditor.svelte';
+  import { t } from '$lib/i18n';
 </script>
 
 <div class="stack">
-  <p><a href="/admin">← Admin</a></p>
-  <h1>Resource Types</h1>
-  <p class="muted" style="margin-top:-.75rem;">Categories of resources members and the community can offer.</p>
+  <p><a href="/admin">← {$t('Admin')}</a></p>
+  <h1>{$t('Resource Types')}</h1>
+  <p class="muted" style="margin-top:-.75rem;">{$t('Categories of resources members and the community can offer.')}</p>
   <LookupEditor
     table="resource_type"
     columns={[

@@ -2,6 +2,8 @@
   import { onMount } from 'svelte';
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { capabilities } from '$lib/session';
+  import { t } from '$lib/i18n';
+  import { get } from 'svelte/store';
 
   type Skill = { id: string; parent_id: string | null; name: string; master_member_id: string | null };
   type Mem = { id: string; full_name: string };
@@ -34,7 +36,7 @@
   const roots = $derived(skills.filter((s) => !s.parent_id));
   function childrenOf(id: string) { return skills.filter((s) => s.parent_id === id); }
   function memberName(id: string | null) {
-    return id ? (members.find((m) => m.id === id)?.full_name ?? 'Unknown') : '';
+    return id ? (members.find((m) => m.id === id)?.full_name ?? get(t)('Unknown')) : '';
   }
 
   async function add() {
@@ -66,35 +68,35 @@
 </script>
 
 <div class="stack">
-  <p><a href="/admin">← Admin</a></p>
-  <h1>Skill Tree</h1>
+  <p><a href="/admin">← {$t('Admin')}</a></p>
+  <h1>{$t('Skill Tree')}</h1>
   <p class="muted" style="margin-top:-.75rem;">
-    Hierarchical skills. Leaves are examinable crafts in <a href="/skills">the Guild</a>; needs filter on these.
-    {#if canGuild}You may also <strong>appoint a master</strong> per leaf — they own its rubric and seed the reviewer pool.{/if}
+    {@html $t('Hierarchical skills. Leaves are examinable crafts in <a href="/skills">the Guild</a>; needs filter on these.')}
+    {#if canGuild}{@html $t('You may also <strong>appoint a master</strong> per leaf — they own its rubric and seed the reviewer pool.')}{/if}
   </p>
 
   {#if error}<p style="color:var(--down);">{error}</p>{/if}
 
   <div class="card row">
-    <input placeholder="New skill name" bind:value={newName} />
+    <input placeholder={$t('New skill name')} bind:value={newName} />
     <select bind:value={newParent}>
-      <option value="">— top-level category —</option>
+      <option value="">{$t('— top-level category —')}</option>
       {#each roots as r}<option value={r.id}>{r.name}</option>{/each}
     </select>
-    <button onclick={add}>Add skill</button>
+    <button onclick={add}>{$t('Add skill')}</button>
   </div>
 
   <div class="card">
     {#if loading}
-      <p class="muted">Loading…</p>
+      <p class="muted">{$t('Loading…')}</p>
     {:else if roots.length === 0}
-      <p class="muted">No skills yet.</p>
+      <p class="muted">{$t('No skills yet.')}</p>
     {:else}
       {#each roots as root}
         <div style="margin-bottom:1rem;">
           <div class="row" style="justify-content:space-between;">
             <strong>{root.name}</strong>
-            <button class="danger" onclick={() => remove(root.id)}>Delete</button>
+            <button class="danger" onclick={() => remove(root.id)}>{$t('Delete')}</button>
           </div>
           <ul style="margin:.4rem 0 0; padding-left:1.2rem; list-style:none;">
             {#each childrenOf(root.id) as child}
@@ -103,7 +105,7 @@
                 {#if child.master_member_id}
                   <span class="badge pos" style="font-size:.72rem;">👑 {memberName(child.master_member_id)}</span>
                 {:else}
-                  <span class="badge dim" style="font-size:.72rem;">no master</span>
+                  <span class="badge dim" style="font-size:.72rem;">{$t('no master')}</span>
                 {/if}
                 {#if canGuild}
                   <select
@@ -111,11 +113,11 @@
                     onchange={(e) => { appointMaster(child.id, e.currentTarget.value); e.currentTarget.value = ''; }}
                     style="max-width:180px;"
                   >
-                    <option value="">{child.master_member_id ? 'Reassign master…' : 'Appoint master…'}</option>
+                    <option value="">{child.master_member_id ? $t('Reassign master…') : $t('Appoint master…')}</option>
                     {#each members as m}<option value={m.id}>{m.full_name}</option>{/each}
                   </select>
                 {/if}
-                <button class="danger" onclick={() => remove(child.id)}>Delete</button>
+                <button class="danger" onclick={() => remove(child.id)}>{$t('Delete')}</button>
               </li>
             {/each}
           </ul>

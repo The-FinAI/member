@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { supabase, supabaseConfigured } from '$lib/supabase';
+  import { t } from '$lib/i18n';
+  import { get } from 'svelte/store';
 
   type Pending = { id: string; full_name: string; email: string; affiliation: string | null };
   type Position = { id: string; name: string };
@@ -31,7 +33,7 @@
 
   async function invite() {
     error = '';
-    if (!fullName.trim() || !email.trim()) { error = 'Name and email are required.'; return; }
+    if (!fullName.trim() || !email.trim()) { error = get(t)('Name and email are required.'); return; }
     const { data, error: err } = await supabase
       .from('member')
       .insert({ full_name: fullName.trim(), email: email.trim(), affiliation: affiliation || null, status: 'invited' })
@@ -47,38 +49,37 @@
 </script>
 
 <div class="stack">
-  <p><a href="/admin">← Admin</a></p>
-  <h1>Invite members</h1>
+  <p><a href="/admin">← {$t('Admin')}</a></p>
+  <h1>{$t('Invite members')}</h1>
   <p class="muted" style="margin-top:-.75rem;">
-    Pre-create a member by email. When they sign in with that email via magic link, their account
-    binds to this record automatically. Anyone not pre-created here cannot get in.
+    {$t('Pre-create a member by email. When they sign in with that email via magic link, their account binds to this record automatically. Anyone not pre-created here cannot get in.')}
   </p>
 
   {#if error}<p style="color:var(--down);">{error}</p>{/if}
 
   <div class="card row" style="align-items:flex-end;">
-    <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.78rem;">Full name</span><input bind:value={fullName} /></label>
-    <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.78rem;">Email</span><input type="email" bind:value={email} /></label>
-    <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.78rem;">Affiliation</span><input bind:value={affiliation} /></label>
+    <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.78rem;">{$t('Full name')}</span><input bind:value={fullName} /></label>
+    <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.78rem;">{$t('Email')}</span><input type="email" bind:value={email} /></label>
+    <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.78rem;">{$t('Affiliation')}</span><input bind:value={affiliation} /></label>
     <label class="stack" style="gap:.2rem;">
-      <span class="muted" style="font-size:.78rem;">Position</span>
+      <span class="muted" style="font-size:.78rem;">{$t('Position')}</span>
       <select bind:value={positionId}>
-        <option value="">— none —</option>
+        <option value="">{$t('— none —')}</option>
         {#each positions as p}<option value={p.id}>{p.name}</option>{/each}
       </select>
     </label>
-    <button onclick={invite}>Invite</button>
+    <button onclick={invite}>{$t('Invite')}</button>
   </div>
 
   <div class="card">
-    <h2>Pending (not yet signed in)</h2>
+    <h2>{$t('Pending (not yet signed in)')}</h2>
     {#if loading}
-      <p class="muted">Loading…</p>
+      <p class="muted">{$t('Loading…')}</p>
     {:else if pending.length === 0}
-      <p class="muted">No pending invites.</p>
+      <p class="muted">{$t('No pending invites.')}</p>
     {:else}
       <table>
-        <thead><tr><th>Name</th><th>Email</th><th>Affiliation</th></tr></thead>
+        <thead><tr><th>{$t('Name')}</th><th>{$t('Email')}</th><th>{$t('Affiliation')}</th></tr></thead>
         <tbody>
           {#each pending as m}
             <tr><td>{m.full_name}</td><td>{m.email}</td><td>{m.affiliation ?? '—'}</td></tr>

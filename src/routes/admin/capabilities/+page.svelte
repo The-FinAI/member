@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { supabase, supabaseConfigured } from '$lib/supabase';
+  import { t } from '$lib/i18n';
 
   type Position = { id: string; name: string };
   type Capability = { key: string; description: string | null };
@@ -55,24 +56,23 @@
 </script>
 
 <div class="stack">
-  <p><a href="/admin">← Admin</a></p>
-  <h1>Capabilities</h1>
+  <p><a href="/admin">← {$t('Admin')}</a></p>
+  <h1>{$t('Capabilities')}</h1>
   <p class="muted" style="margin-top:-.75rem;">
-    Grant capabilities to positions. A member gets the union of capabilities across their positions.
-    Capability keys are referenced in code — descriptions are editable, keys are fixed.
+    {$t('Grant capabilities to positions. A member gets the union of capabilities across their positions. Capability keys are referenced in code — descriptions are editable, keys are fixed.')}
   </p>
 
   {#if error}<p style="color:var(--down);">{error}</p>{/if}
 
   {#if loading}
-    <div class="card"><p class="muted">Loading…</p></div>
+    <div class="card"><p class="muted">{$t('Loading…')}</p></div>
   {:else}
     <div class="card" style="overflow-x:auto;">
-      <h2>Grant matrix</h2>
+      <h2>{$t('Grant matrix')}</h2>
       <table>
         <thead>
           <tr>
-            <th>Position</th>
+            <th>{$t('Position')}</th>
             {#each caps as c}<th style="text-align:center;"><code>{c.key}</code></th>{/each}
           </tr>
         </thead>
@@ -97,15 +97,15 @@
     </div>
 
     <div class="card">
-      <h2>Capability descriptions</h2>
+      <h2>{$t('Capability descriptions')}</h2>
       <table>
-        <thead><tr><th>Key</th><th>Description</th><th></th></tr></thead>
+        <thead><tr><th>{$t('Key')}</th><th>{$t('Description')}</th><th></th></tr></thead>
         <tbody>
           {#each caps as c}
             <tr>
               <td><code>{c.key}</code></td>
               <td><input bind:value={c.description} style="width:100%;" /></td>
-              <td><button class="ghost" onclick={() => saveDesc(c)}>Save</button></td>
+              <td><button class="ghost" onclick={() => saveDesc(c)}>{$t('Save')}</button></td>
             </tr>
           {/each}
         </tbody>
