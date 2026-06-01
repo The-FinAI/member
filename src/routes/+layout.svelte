@@ -10,7 +10,11 @@
 
   let { children } = $props();
 
+  // PUBLIC_ROUTES: only valid when signed OUT — a signed-in user is bounced away
+  // (e.g. /login). OPEN_ROUTES: reachable by anyone, no redirect either way
+  // (e.g. /guide, so prospective members can read it before being invited).
   const PUBLIC_ROUTES = ['/login'];
+  const OPEN_ROUTES = ['/guide'];
 
   let balance = $state<number | null>(null);
 
@@ -71,7 +75,8 @@
     if (!$authReady || !supabaseConfigured) return;
     const path = $page.url.pathname;
     const isPublic = PUBLIC_ROUTES.some((p) => path.startsWith(p));
-    if (!$session && !isPublic) goto('/login');
+    const isOpen = OPEN_ROUTES.some((p) => path.startsWith(p));
+    if (!$session && !isPublic && !isOpen) goto('/login');
     if ($session && isPublic) goto('/');
   });
 
