@@ -18,7 +18,9 @@
     id: string; amount: number; entry_type: string; reason: string;
     from_account: string | null; to_account: string | null; created_at: string;
   };
-  type ResType = { id: string; name: string };
+  type ResType = { id: string; name: string; valuation_method: string };
+  type GpuModel = { id: string; name: string; tflops: number };
+  type ApiModel = { id: string; provider: string; name: string; usd_per_million: number };
   type MyResource = {
     id: string; name: string; description: string | null; capacity: string | null;
     availability: string; approval_status: string; type_id: string | null;
@@ -45,10 +47,17 @@
   // resources (a member's offerable catalog — labor is a Labor-typed resource)
   let resTypes = $state<ResType[]>([]);
   let myResources = $state<MyResource[]>([]);
+  let gpuModels = $state<GpuModel[]>([]);
+  let apiModels = $state<ApiModel[]>([]);
   let rName = $state('');
   let rType = $state('');
   let rCapacity = $state('');
   let rAvail = $state('available');
+  let rGpuModel = $state('');
+  let rApiModel = $state('');
+
+  const rSelType = $derived(resTypes.find((t) => t.id === rType) ?? null);
+  const rSelMethod = $derived(rSelType?.valuation_method ?? 'flat');
   let laborHours = $state('');
   let laborBusy = $state(false);
 
@@ -56,17 +65,19 @@
 
   async function loadSkills(memberId: string) {
     skillsLoading = true;
-    const [{ data: tree }, { data: ms }, { data: cr }, { data: rt }, { data: mr }, { data: bal }, { data: nom }, { count: mc }] = await Promise.all([
+    const [{ data: tree }, { data: ms }, { data: cr }, { data: rt }, { data: mr }, { data: bal }, { data: nom }, { count: mc }, { data: gm }, { data: am }] = await Promise.all([
       supabase.from('skill').select('id, name, parent_id').order('name'),
       supabase.from('member_skill').select('skill_id, certified_level').eq('member_id', memberId),
       supabase.from('stater_skill_credit').select('skill_id, credit, endorsements').eq('member_id', memberId),
-      supabase.from('resource_type').select('id, name').order('rank'),
+      supabase.from('resource_type').select('id, name, valuation_method').order('rank'),
       supabase.from('resource')
         .select('id, name, description, capacity, availability, approval_status, type_id, resource_type(name)')
         .eq('scope', 'member').eq('holder_member_id', memberId).order('name'),
       supabase.from('stater_balance').select('account_id, balance').eq('owner_member_id', memberId).maybeSingle(),
       supabase.from('stater_project_member_nominal').select('nominal').eq('member_id', memberId),
-      supabase.from('skill').select('id', { count: 'exact', head: true }).eq('master_member_id', memberId)
+      supabase.from('skill').select('id', { count: 'exact', head: true }).eq('master_member_id', memberId),
+      supabase.from('gpu_model').select('id, name, tflops').eq('is_active', true).order('rank'),
+      supabase.from('api_model').select('id, provider, name, usd_per_million').eq('is_active', true).order('rank')
     ]);
     skills = (tree as Skill[]) ?? [];
     mySkills = ((ms as MySkill[]) ?? []).sort(
@@ -79,6 +90,8 @@
     skillCredit = credit;
     resTypes = (rt as ResType[]) ?? [];
     myResources = (mr as MyResource[]) ?? [];
+    gpuModels = (gm as GpuModel[]) ?? [];
+    apiModels = (am as ApiModel[]) ?? [];
     balance = Number((bal as { balance: number } | null)?.balance ?? 0);
     accountId = (bal as { account_id: string } | null)?.account_id ?? '';
     totalNominal = ((nom as { nominal: number }[]) ?? []).reduce((a, n) => a + (Number(n.nominal) || 0), 0);
@@ -130,10 +143,12 @@
     if (!rName.trim() || !$member) return;
     const { error: err } = await supabase.from('resource').insert({
       name: rName.trim(), type_id: rType || null, scope: 'member',
-      holder_member_id: $member.id, capacity: rCapacity || null, availability: rAvail
+      holder_member_id: $member.id, capacity: rCapacity || null, availability: rAvail,
+      gpu_model_id: rSelMethod === 'gpu' ? (rGpuModel || null) : null,
+      api_model_id: rSelMethod === 'api' ? (rApiModel || null) : null
     });
     if (err) { error = err.message; return; }
-    rName = ''; rType = ''; rCapacity = ''; rAvail = 'available';
+    rName = ''; rType = ''; rCapacity = ''; rAvail = 'available'; rGpuModel = ''; rApiModel = '';
     await loadSkills($member.id);
   }
 
@@ -304,8 +319,18 @@
             <input bind:value={rCapacity} placeholder={$t('optional')} style="width:120px;" /></label>
           <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Availability')}</span>
             <select bind:value={rAvail}>{#each AVAIL as a}<option value={a}>{$t(a)}</option>{/each}</select></label>
+          {#if rSelMethod === 'gpu'}
+            <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('GPU model')}</span>
+              <select bind:value={rGpuModel}><option value="">{$t('— pick —')}</option>{#each gpuModels as g}<option value={g.id}>{g.name} · {g.tflops} TFLOPs</option>{/each}</select></label>
+          {:else if rSelMethod === 'api'}
+            <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('API model')}</span>
+              <select bind:value={rApiModel}><option value="">{$t('— pick —')}</option>{#each apiModels as a}<option value={a.id}>{a.provider} {a.name} · ${a.usd_per_million}/M</option>{/each}</select></label>
+          {/if}
           <button onclick={addResource}>{$t('Add resource')}</button>
         </div>
+        {#if rSelMethod === 'gpu' || rSelMethod === 'api'}
+          <p class="muted" style="font-size:.78rem; margin-top:-.4rem;">{$t('Pick the closest model — its built-in throughput/price sets the USD→STR conversion when you declare monthly usage on a project.')}</p>
+        {/if}
       {/if}
     </div>
 

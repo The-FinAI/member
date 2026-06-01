@@ -38,8 +38,10 @@
   type ResRequest = { id: string; description: string | null; quantity: string | null; status: string; type_id: string | null; resource_type: { name: string } | null };
   type ResOffer = { id: string; status: string; message: string | null; request_id: string; member: { full_name: string } | null; resource: { name: string } | null };
   type OfferableResource = { id: string; name: string; scope: string;
-    unit?: string | null; str_per_unit?: number | null;
-    resource_type?: { unit: string | null; str_per_unit: number | null } | null };
+    unit?: string | null; usd_per_unit?: number | null;
+    resource_type?: { valuation_method: string | null; unit: string | null; usd_per_unit: number | null } | null;
+    gpu_model?: { name: string; tflops: number } | null;
+    api_model?: { name: string; usd_per_million: number } | null };
   type MyResourceRow = { resource_id: string; resource: string; unit: string; ym: string; qty: number; equiv: number };
   type MCatalog = { id: string; category: string; item: string; nominal_value: number; multiplier_bonus: number };
   type PMilestone = {
@@ -140,6 +142,7 @@
   let myResCommits = $state<MyResourceRow[]>([]);
   let rcRes = $state(''); let rcQty = $state(0); let rcMonth = $state(currentMonth());
   let settingRes = $state(false);
+  let strPerUsd = $state(0.2); let usdPerTflopHour = $state(0.005);
   // new resource-request form
   let rrType = $state(''); let rrQty = $state(''); let rrDesc = $state('');
   // offer form state, keyed by request id
@@ -201,17 +204,22 @@
     }
 
     // resources
-    const [{ data: rt }, { data: rr }] = await Promise.all([
+    const [{ data: rt }, { data: rr }, { data: pol }] = await Promise.all([
       supabase.from('resource_type').select('id, name').order('rank'),
-      supabase.from('resource_request').select('id, description, quantity, status, type_id, resource_type(name)').eq('project_id', id).order('created_at')
+      supabase.from('resource_request').select('id, description, quantity, status, type_id, resource_type(name)').eq('project_id', id).order('created_at'),
+      supabase.from('stater_policy').select('key, value').in('key', ['str_per_usd', 'usd_per_tflop_hour'])
     ]);
     resTypes = (rt as ResType[]) ?? [];
     resRequests = (rr as ResRequest[]) ?? [];
+    for (const p of (pol as { key: string; value: number }[]) ?? []) {
+      if (p.key === 'str_per_usd') strPerUsd = Number(p.value);
+      if (p.key === 'usd_per_tflop_hour') usdPerTflopHour = Number(p.value);
+    }
 
     if (me) {
       const { data: mine } = await supabase
         .from('resource')
-        .select('id, name, scope, unit, str_per_unit, resource_type(unit, str_per_unit)')
+        .select('id, name, scope, unit, usd_per_unit, resource_type(valuation_method, unit, usd_per_unit), gpu_model:gpu_model_id(name, tflops), api_model:api_model_id(name, usd_per_million)')
         .or(`holder_member_id.eq.${me},scope.eq.community`)
         .eq('approval_status', 'approved').order('name');
       myResources = (mine as OfferableResource[]) ?? [];
@@ -618,8 +626,30 @@
     await load();
   }
 
-  function resUnit(r: OfferableResource) { return r.unit || r.resource_type?.unit || 'unit'; }
-  function resRate(r: OfferableResource) { return Number(r.str_per_unit ?? r.resource_type?.str_per_unit ?? 0); }
+  function resMethod(r: OfferableResource) { return r.resource_type?.valuation_method ?? 'flat'; }
+  function resUnit(r: OfferableResource) {
+    return r.unit || r.resource_type?.unit ||
+      ({ gpu: 'GPU-hour', api: '1M tokens', usd: 'USD' } as Record<string, string>)[resMethod(r)] || 'unit';
+  }
+  function resValueUsd(r: OfferableResource, qty: number) {
+    switch (resMethod(r)) {
+      case 'gpu': return Number(r.gpu_model?.tflops ?? 0) * qty * usdPerTflopHour;
+      case 'api': return Number(r.api_model?.usd_per_million ?? 0) * qty;
+      case 'usd': return qty;
+      default: return Number(r.usd_per_unit ?? r.resource_type?.usd_per_unit ?? 0) * qty;
+    }
+  }
+  function resValueStr(r: OfferableResource, qty: number) { return Math.ceil(resValueUsd(r, qty) * strPerUsd); }
+  function resRateHint(r: OfferableResource) {
+    switch (resMethod(r)) {
+      case 'gpu': return r.gpu_model ? `${r.gpu_model.name} · ${r.gpu_model.tflops} TFLOPs` : 'GPU';
+      case 'api': return r.api_model ? `${r.api_model.name} · $${r.api_model.usd_per_million}/M` : 'API';
+      case 'usd': return `$ → STR`;
+      default: return `$${Number(r.usd_per_unit ?? r.resource_type?.usd_per_unit ?? 0)}/${resUnit(r)}`;
+    }
+  }
+  const rcSelected = $derived(myResources.find((r) => r.id === rcRes) ?? null);
+  const rcPreview = $derived(rcSelected ? resValueStr(rcSelected, Number(rcQty) || 0) : 0);
 
   async function setResource() {
     error = '';
@@ -907,14 +937,17 @@
           <div class="row" style="align-items:flex-end; flex-wrap:wrap; border-top:1px dashed var(--border); padding-top:.7rem;">
             <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">{$t('Resource')}</span>
               <select bind:value={rcRes}><option value="">{$t('— pick —')}</option>
-                {#each myResources as mr}<option value={mr.id}>{mr.name}{mr.scope === 'community' ? $t(' (community)') : ''} · {resRate(mr)} STR/{resUnit(mr)}</option>{/each}
+                {#each myResources as mr}<option value={mr.id}>{mr.name}{mr.scope === 'community' ? $t(' (community)') : ''} · {resRateHint(mr)}</option>{/each}
               </select>
             </label>
             <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">{$t('Month')}</span>
               <input type="month" bind:value={rcMonth} /></label>
-            <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">{$t('Quantity / month')}</span>
+            <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">{rcSelected ? $t('Quantity ({u}) / month', { u: resUnit(rcSelected) }) : $t('Quantity / month')}</span>
               <input type="number" min="0" step="1" bind:value={rcQty} style="width:130px;" /></label>
             <button onclick={setResource} disabled={settingRes}>{settingRes ? $t('Minting…') : $t('Set & mint')}</button>
+            {#if rcSelected && Number(rcQty) > 0}
+              <span class="muted" style="font-size:.82rem; padding-bottom:.4rem;">{@html $t('mints <strong style="color:var(--accent);">≈ {n} STR</strong>', { n: rcPreview.toLocaleString() })}</span>
+            {/if}
           </div>
         {:else}
           <p class="muted" style="font-size:.8rem;">{@html $t('You have no approved resources yet. Add one under <a href="/profile">your profile</a>, or use a community resource.')}</p>
