@@ -3,7 +3,11 @@
   import { t } from '$lib/i18n';
   import LangSwitcher from '$lib/LangSwitcher.svelte';
 
-  let email = $state('');
+  // An invitation letter links here with ?email=…&invited=1 so we can greet
+  // the new member and pre-fill their address before they request the link.
+  const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+  let email = $state(params.get('email') ?? '');
+  const invited = params.get('invited') === '1';
   let sent = $state(false);
   let error = $state('');
   let loading = $state(false);
@@ -41,10 +45,16 @@
     <LangSwitcher />
   </div>
   <div class="card stack">
-    <h1 style="margin-bottom:0;">{$t('Sign in')}</h1>
-    <p class="muted" style="margin-top:-.5rem;">
-      {$t("Membership is invite-only. Enter the email you were invited with — we'll send a magic link.")}
-    </p>
+    <h1 style="margin-bottom:0;">{invited ? $t('Welcome to The Fin AI') : $t('Sign in')}</h1>
+    {#if invited}
+      <p class="muted" style="margin-top:-.5rem;">
+        {$t("You've been invited! Confirm your email below and we'll send a secure one-time sign-in link — no password needed.")}
+      </p>
+    {:else}
+      <p class="muted" style="margin-top:-.5rem;">
+        {$t("Membership is invite-only. Enter the email you were invited with — we'll send a magic link.")}
+      </p>
+    {/if}
 
     {#if sent}
       <p class="badge pos">{$t('Check your inbox for the sign-in link.')}</p>

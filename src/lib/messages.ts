@@ -742,7 +742,13 @@ const zh: Table = {
   'welcome': '欢迎',
   'settlement': '结算',
   'endorsement': '背书',
-  'sink': '销毁'
+  'sink': '销毁',
+  // ── invitations ──
+  'Add a member by email and we send them a branded invitation letter with a sign-in link. Their account binds to this record the first time they sign in. Anyone not added here cannot get in.': '按邮箱添加成员,我们会给对方发送一封带登录入口、印有品牌的邀请函。他们首次登录时,账户会自动绑定到此记录。未在此处添加的人无法进入。',
+  'Member added, but the invitation email could not be sent. You can resend later.': '成员已添加,但邀请邮件未能发送。你可以稍后重新发送。',
+  'Invitation sent to {email} 🎉': '邀请函已发送至 {email} 🎉',
+  'Welcome to The Fin AI': '欢迎加入 The Fin AI',
+  "You've been invited! Confirm your email below and we'll send a secure one-time sign-in link — no password needed.": '你已被邀请!在下方确认你的邮箱,我们会发送一个安全的一次性登录链接 —— 无需密码。'
 };
 
 const ja: Table = {
@@ -1481,7 +1487,13 @@ const ja: Table = {
   'welcome': 'ウェルカム',
   'settlement': '精算',
   'endorsement': '推薦',
-  'sink': '消却'
+  'sink': '消却',
+  // ── invitations ──
+  'Add a member by email and we send them a branded invitation letter with a sign-in link. Their account binds to this record the first time they sign in. Anyone not added here cannot get in.': 'メールでメンバーを追加すると、サインインリンク付きのブランド入り招待状を相手に送ります。初回サインイン時にアカウントがこのレコードに紐づきます。ここで追加されていない人は参加できません。',
+  'Member added, but the invitation email could not be sent. You can resend later.': 'メンバーは追加されましたが、招待メールを送信できませんでした。後で再送できます。',
+  'Invitation sent to {email} 🎉': '{email} に招待状を送信しました 🎉',
+  'Welcome to The Fin AI': 'The Fin AI へようこそ',
+  "You've been invited! Confirm your email below and we'll send a secure one-time sign-in link — no password needed.": '招待されました！下でメールを確認すると、安全なワンタイムのサインインリンクをお送りします — パスワードは不要です。'
 };
 
 const fr: Table = {
@@ -2220,7 +2232,13 @@ const fr: Table = {
   'welcome': 'bienvenue',
   'settlement': 'règlement',
   'endorsement': 'recommandation',
-  'sink': 'destruction'
+  'sink': 'destruction',
+  // ── invitations ──
+  'Add a member by email and we send them a branded invitation letter with a sign-in link. Their account binds to this record the first time they sign in. Anyone not added here cannot get in.': "Ajoutez un membre par e-mail et nous lui envoyons une lettre d'invitation à votre image, avec un lien de connexion. Son compte se lie à cet enregistrement lors de sa première connexion. Quiconque n'est pas ajouté ici ne peut pas entrer.",
+  'Member added, but the invitation email could not be sent. You can resend later.': "Membre ajouté, mais l'e-mail d'invitation n'a pas pu être envoyé. Vous pourrez le renvoyer plus tard.",
+  'Invitation sent to {email} 🎉': 'Invitation envoyée à {email} 🎉',
+  'Welcome to The Fin AI': 'Bienvenue chez The Fin AI',
+  "You've been invited! Confirm your email below and we'll send a secure one-time sign-in link — no password needed.": "Vous avez été invité ! Confirmez votre e-mail ci-dessous et nous enverrons un lien de connexion unique et sécurisé — aucun mot de passe requis."
 };
 
 export const dict: Record<Exclude<Locale, 'en'>, Table> = { zh, ja, fr };

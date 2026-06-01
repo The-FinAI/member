@@ -3,6 +3,7 @@
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { t } from '$lib/i18n';
   import { get } from 'svelte/store';
+  import { member } from '$lib/session';
 
   type Pending = { id: string; full_name: string; email: string; affiliation: string | null };
   type Position = { id: string; name: string };
@@ -11,6 +12,8 @@
   let positions = $state<Position[]>([]);
   let loading = $state(true);
   let error = $state('');
+  let notice = $state('');
+  let sending = $state(false);
 
   let fullName = $state('');
   let email = $state('');
@@ -32,16 +35,29 @@
   onMount(load);
 
   async function invite() {
-    error = '';
+    error = ''; notice = '';
     if (!fullName.trim() || !email.trim()) { error = get(t)('Name and email are required.'); return; }
-    const { data, error: err } = await supabase
-      .from('member')
-      .insert({ full_name: fullName.trim(), email: email.trim(), affiliation: affiliation || null, status: 'invited' })
-      .select('id')
-      .single();
+    const targetEmail = email.trim();
+    sending = true;
+    // The edge function inserts the member with the caller's JWT (so the same
+    // RLS that gates the member table authorises this) and then emails the
+    // invitation letter via Resend.
+    const { data, error: err } = await supabase.functions.invoke('invite-member', {
+      body: {
+        full_name: fullName.trim(),
+        email: targetEmail,
+        affiliation: affiliation || null,
+        position_id: positionId || null,
+        inviter_name: get(member)?.full_name ?? null
+      }
+    });
+    sending = false;
     if (err) { error = err.message; return; }
-    if (positionId && data) {
-      await supabase.from('member_position').insert({ member_id: data.id, position_id: positionId });
+    if ((data as any)?.error) { error = (data as any).error; return; }
+    if ((data as any)?.email_sent === false) {
+      notice = get(t)('Member added, but the invitation email could not be sent. You can resend later.');
+    } else {
+      notice = get(t)('Invitation sent to {email} 🎉', { email: targetEmail });
     }
     fullName = ''; email = ''; affiliation = ''; positionId = '';
     await load();
@@ -52,10 +68,11 @@
   <p><a href="/admin">← {$t('Admin')}</a></p>
   <h1>{$t('Invite members')}</h1>
   <p class="muted" style="margin-top:-.75rem;">
-    {$t('Pre-create a member by email. When they sign in with that email via magic link, their account binds to this record automatically. Anyone not pre-created here cannot get in.')}
+    {$t('Add a member by email and we send them a branded invitation letter with a sign-in link. Their account binds to this record the first time they sign in. Anyone not added here cannot get in.')}
   </p>
 
   {#if error}<p style="color:var(--down);">{error}</p>{/if}
+  {#if notice}<p style="color:var(--up);">{notice}</p>{/if}
 
   <div class="card row" style="align-items:flex-end;">
     <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.78rem;">{$t('Full name')}</span><input bind:value={fullName} /></label>
@@ -68,7 +85,7 @@
         {#each positions as p}<option value={p.id}>{p.name}</option>{/each}
       </select>
     </label>
-    <button onclick={invite}>{$t('Invite')}</button>
+    <button onclick={invite} disabled={sending}>{sending ? $t('Sending…') : $t('Invite')}</button>
   </div>
 
   <div class="card">
