@@ -179,7 +179,7 @@ begin
     values (p, me, 'labor', sk, 'verified') returning id into cid;
   end if;
 
-  rate  := coalesce((select rate from stater_skill_rate where skill_id = sk),
+  rate  := coalesce((select s.rate from stater_skill_rate s where s.skill_id = sk),
                     stater_policy_int('paper_writing_rate', 10));
   equiv := ceil(rate * hours);
 

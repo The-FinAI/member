@@ -16,6 +16,7 @@
     status: string;
     statusRank: number;
     venue: string;
+    venueKind: string;
     deadline: string | null;
     leader: string;
     members: number;
@@ -40,6 +41,7 @@
   let q = $state('');
   let typeFilter = $state('');
   let statusFilter = $state('');
+  let venueFilter = $state('');
   type SortKey = 'name' | 'type' | 'status' | 'leader' | 'members' | 'openNeeds' | 'escrow' | 'pool' | 'multiplier' | 'msVerified' | 'venue' | 'deadline';
   let sortKey = $state<SortKey>('pool');
   let sortDir = $state<1 | -1>(1);
@@ -58,7 +60,7 @@
   async function loadGrid() {
     const [{ data: pr }, { data: pm }, { data: nd }, { data: esc }, { data: mnom }, { data: pms }] = await Promise.all([
       supabase.from('project')
-        .select('id, name, target_venue, venue:venue_id(name, deadline), project_type(name), project_status!project_status_id_fkey(name, rank)'),
+        .select('id, name, target_venue, venue:venue_id(name, kind, deadline), project_type(name), project_status!project_status_id_fkey(name, rank)'),
       supabase.from('project_member')
         .select('project_id, member(full_name), project_role(name, can_manage)'),
       supabase.from('open_need').select('project_id, status, contribution_kind'),
@@ -112,6 +114,7 @@
       status: p.project_status?.name ?? '—',
       statusRank: p.project_status?.rank ?? 999,
       venue: p.venue?.name ?? p.target_venue ?? '',
+      venueKind: p.venue?.kind ?? '',
       deadline: p.venue?.deadline ?? null,
       leader: leaderName[p.id] ?? '',
       members: memberCount[p.id] ?? 0,
@@ -183,6 +186,17 @@
     }
   }
 
+  // venue kind → label + color class + glyph (journal vs conference at a glance)
+  function venueKindMeta(kind: string) {
+    switch (kind) {
+      case 'journal':    return { label: 'Journal',    cls: 'vk-journal',    icon: '📚' };
+      case 'conference': return { label: 'Conference', cls: 'vk-conference', icon: '🎤' };
+      case 'workshop':   return { label: 'Workshop',   cls: 'vk-workshop',   icon: '🛠' };
+      case 'rolling':    return { label: 'Rolling',    cls: 'vk-rolling',    icon: '🔁' };
+      default:           return { label: 'Other',      cls: 'vk-other',      icon: '📄' };
+    }
+  }
+
   function fmtDate(d: string | null) {
     if (!d) return '';
     return new Date(d + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
@@ -202,6 +216,21 @@
   function arrow(k: SortKey) { return sortKey === k ? (sortDir === 1 ? '▲' : '▼') : ''; }
 
   const typeNames = $derived([...new Set(grid.map((r) => r.type))].filter((x) => x !== '—').sort());
+
+  // venues actually in use (excluding finished), grouped by kind for the dropdown
+  const venueGroups = $derived.by(() => {
+    const byKind = new Map<string, Set<string>>();
+    for (const r of grid) {
+      if (r.status === 'Finished' || !r.venue) continue;
+      const k = r.venueKind || 'other';
+      if (!byKind.has(k)) byKind.set(k, new Set());
+      byKind.get(k)!.add(r.venue);
+    }
+    const order = ['conference', 'journal', 'workshop', 'rolling', 'other'];
+    return order
+      .filter((k) => byKind.has(k))
+      .map((k) => ({ kind: k, meta: venueKindMeta(k), names: [...byKind.get(k)!].sort() }));
+  });
   const statusNames = $derived(
     [...new Map(grid.filter((r) => r.status !== 'Finished').map((r) => [r.status, r.statusRank])).entries()]
       .sort((a, b) => a[1] - b[1]).map((e) => e[0]).filter((x) => x !== '—')
@@ -213,6 +242,8 @@
       r.status !== 'Finished' &&
       (!typeFilter || r.type === typeFilter) &&
       (!statusFilter || r.status === statusFilter) &&
+      (!venueFilter ||
+        (venueFilter.startsWith('kind:') ? r.venueKind === venueFilter.slice(5) : r.venue === venueFilter)) &&
       (!needle ||
         r.name.toLowerCase().includes(needle) ||
         r.venue.toLowerCase().includes(needle) ||
@@ -258,7 +289,7 @@
   // keep the current page in range when filters/sort/size shrink the result set
   $effect(() => { if (pageNum > pageCount) pageNum = pageCount; });
   // reset to first page whenever the filter inputs change
-  $effect(() => { q; typeFilter; statusFilter; pageSize; pageNum = 1; });
+  $effect(() => { q; typeFilter; statusFilter; venueFilter; pageSize; pageNum = 1; });
   const pageRows = $derived(rows.slice((pageNum - 1) * pageSize, pageNum * pageSize));
   const rangeFrom = $derived(rows.length === 0 ? 0 : (pageNum - 1) * pageSize + 1);
   const rangeTo = $derived(Math.min(pageNum * pageSize, rows.length));
@@ -485,8 +516,17 @@
       <option value="">{$t('All types')}</option>
       {#each typeNames as tn}<option value={tn}>{tn}</option>{/each}
     </select>
-    {#if q || typeFilter || statusFilter}
-      <button class="ghost" onclick={() => { q = ''; typeFilter = ''; statusFilter = ''; }}>{$t('Reset')}</button>
+    <select bind:value={venueFilter}>
+      <option value="">{$t('All venues')}</option>
+      {#each venueGroups as g}
+        <optgroup label={`${g.meta.icon} ${$t(g.meta.label)}`}>
+          <option value={`kind:${g.kind}`}>{$t('All {label}', { label: $t(g.meta.label) })}</option>
+          {#each g.names as vn}<option value={vn}>{vn}</option>{/each}
+        </optgroup>
+      {/each}
+    </select>
+    {#if q || typeFilter || statusFilter || venueFilter}
+      <button class="ghost" onclick={() => { q = ''; typeFilter = ''; statusFilter = ''; venueFilter = ''; }}>{$t('Reset')}</button>
     {/if}
   </div>
 
@@ -506,6 +546,7 @@
             <th class="sortable num" onclick={() => setSort('pool')}>{$t('Nominal pool')} <span class="arrow">{arrow('pool')}</span></th>
             <th class="sortable num" onclick={() => setSort('multiplier')}>{$t('×Mult')} <span class="arrow">{arrow('multiplier')}</span></th>
             <th class="sortable num" onclick={() => setSort('msVerified')}>{$t('Milestones')} <span class="arrow">{arrow('msVerified')}</span></th>
+            <th class="sortable" onclick={() => setSort('venue')}>{$t('Venue')} <span class="arrow">{arrow('venue')}</span></th>
             <th class="sortable" onclick={() => setSort('deadline')}>{$t('Target deadline')} <span class="arrow">{arrow('deadline')}</span></th>
           </tr>
         </thead>
@@ -517,7 +558,6 @@
                   <span class="pname">{r.name}{#if r.claimable}<span class="badge warn" style="margin-left:.4rem; font-size:.66rem; vertical-align:middle;">{$t('lead open')}</span>{/if}</span>
                   <span class="psub">
                     <span>{r.type}</span>
-                    {#if r.venue}<span class="sep">·</span><span>{r.venue}</span>{/if}
                   </span>
                 </a>
               </td>
@@ -567,6 +607,16 @@
                 {:else}<span class="muted">—</span>{/if}
               </td>
               <td>
+                {#if r.venue}
+                  <span class="venue-cell">
+                    {#if r.venueKind}
+                      <span class="vk {venueKindMeta(r.venueKind).cls}" title={$t(venueKindMeta(r.venueKind).label)}>{venueKindMeta(r.venueKind).icon}</span>
+                    {/if}
+                    <span class="vname">{r.venue}</span>
+                  </span>
+                {:else}<span class="muted">—</span>{/if}
+              </td>
+              <td>
                 {#if r.deadline}
                   <span class="mono {ddlClass(r.deadline)}" style="font-size:.82rem; white-space:nowrap;">{fmtDate(r.deadline)}</span>
                   <span class="rel {ddlClass(r.deadline)}" style="display:block;">{relDays(r.deadline)}</span>
@@ -583,6 +633,7 @@
             <td></td><td></td>
             <td class="num mono muted" style="font-size:.78rem;">{totalNeeds}</td>
             <td class="num mono muted" style="font-size:.78rem;" title={$t('{n} STR bonded', { n: totalEscrow.toLocaleString() })}>{totalPool.toLocaleString()}</td>
+            <td></td>
             <td></td>
             <td></td>
             <td></td>
@@ -640,4 +691,18 @@
   .hof-stat .mono { font-size: 1.02rem; font-weight: 600; }
   .hof-stat .muted { font-size: .68rem; text-transform: uppercase; letter-spacing: .03em; }
   .hof-team { display: flex; align-items: center; gap: .4rem; padding-top: .15rem; }
+
+  /* venue column */
+  .venue-cell { display: inline-flex; align-items: center; gap: .4rem; max-width: 220px; }
+  .vname { font-size: .85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .vk {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 1.45rem; height: 1.45rem; border-radius: 7px; font-size: .8rem; flex: none;
+    border: 1px solid transparent; line-height: 1;
+  }
+  .vk-conference { background: color-mix(in srgb, var(--accent) 16%, transparent); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
+  .vk-journal    { background: color-mix(in srgb, #a371f7 18%, transparent);     border-color: color-mix(in srgb, #a371f7 38%, transparent); }
+  .vk-workshop   { background: color-mix(in srgb, #f0a35e 18%, transparent);     border-color: color-mix(in srgb, #f0a35e 38%, transparent); }
+  .vk-rolling    { background: color-mix(in srgb, #3fb6c6 18%, transparent);     border-color: color-mix(in srgb, #3fb6c6 38%, transparent); }
+  .vk-other      { background: var(--bg-elev, transparent); border-color: var(--border-2, var(--border)); }
 </style>

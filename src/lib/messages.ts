@@ -15,6 +15,15 @@ const zh: Table = {
   'STR minted': 'STR 已铸造',
   'multiplier': '倍数',
   'milestones': '里程碑',
+  // ── venues / filters ──
+  'All venues': '全部会议',
+  'Venue': '目标会议',
+  'All {label}': '全部{label}',
+  'Conference': '会议',
+  'Journal': '期刊',
+  'Workshop': 'Workshop',
+  'Rolling': '滚动征稿',
+  'Other': '其他',
   // ── nav / chrome ──
   'Projects': '项目',
   'Opportunities': '机会',
@@ -768,6 +777,15 @@ const ja: Table = {
   'STR minted': 'STR 発行済み',
   'multiplier': '倍率',
   'milestones': 'マイルストーン',
+  // ── venues / filters ──
+  'All venues': 'すべての会議',
+  'Venue': '投稿先',
+  'All {label}': 'すべての{label}',
+  'Conference': '国際会議',
+  'Journal': 'ジャーナル',
+  'Workshop': 'ワークショップ',
+  'Rolling': '随時投稿',
+  'Other': 'その他',
   // ── nav / chrome ──
   'Projects': 'プロジェクト',
   'Opportunities': '募集',
@@ -1521,6 +1539,15 @@ const fr: Table = {
   'STR minted': 'STR émis',
   'multiplier': 'multiplicateur',
   'milestones': 'jalons',
+  // ── venues / filters ──
+  'All venues': 'Tous les lieux',
+  'Venue': 'Lieu cible',
+  'All {label}': 'Tous : {label}',
+  'Conference': 'Conférence',
+  'Journal': 'Revue',
+  'Workshop': 'Atelier',
+  'Rolling': 'Continu',
+  'Other': 'Autre',
   // ── nav / chrome ──
   'Projects': 'Projets',
   'Opportunities': 'Opportunités',
