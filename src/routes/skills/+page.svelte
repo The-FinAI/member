@@ -3,6 +3,7 @@
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { member, capabilities, actingAs } from '$lib/session';
   import Hint from '$lib/Hint.svelte';
+  import Medal from '$lib/Medal.svelte';
   import { t } from '$lib/i18n';
   import { get } from 'svelte/store';
 
@@ -15,7 +16,7 @@
   };
   type CardReq = {
     id: string; skill_id: string; member_id: string; target_level: string; kind: string;
-    fee: number; status: string;
+    fee: number; status: string; batch_id: string | null;
     skill: { name: string } | null; member: { full_name: string } | null;
   };
   type Mem = { id: string; full_name: string };
@@ -56,6 +57,7 @@
   let mintMember = $state(''); let mintMsg = $state('');
   let mintCert = $state<Record<string, string>>({});     // selected member's certified levels per skill
   let mintPending = $state<Record<string, string>>({});  // selected member's pending request target levels
+  let staged = $state<Record<string, string>>({});       // staged skillId -> level, submitted as one batch
 
   let selected = $state(''); // selected leaf skill id
   let cardLevel = $state('apprentice');
@@ -120,7 +122,7 @@
       // my (or acting card's) role-card requests
       const { data: mr } = await supabase
         .from('skillcard_request')
-        .select('id, skill_id, member_id, target_level, kind, fee, status, skill:skill_id(name), member:member_id(full_name)')
+        .select('id, skill_id, member_id, target_level, kind, fee, status, batch_id, skill:skill_id(name), member:member_id(full_name)')
         .eq('member_id', me).order('created_at', { ascending: false });
       myCardReqs = (mr as CardReq[]) ?? [];
     }
@@ -129,7 +131,7 @@
     if ($capabilities.has('review_skillcard')) {
       const { data: cq } = await supabase
         .from('skillcard_request')
-        .select('id, skill_id, member_id, target_level, kind, fee, status, skill:skill_id(name), member:member_id(full_name)')
+        .select('id, skill_id, member_id, target_level, kind, fee, status, batch_id, skill:skill_id(name), member:member_id(full_name)')
         .eq('status', 'submitted').order('created_at');
       cardQueue = (cq as CardReq[]) ?? [];
     } else {
@@ -169,18 +171,27 @@
     if (err) { error = err.message; return; }
     await load();
   }
-  async function reviewCard(req: CardReq, approve: boolean) {
-    error = ''; busy = req.id;
-    const { error: err } = await supabase.rpc('review_skillcard_request', { p_request: req.id, p_approve: approve, p_note: cardNote[req.id] ?? null });
+  async function reviewBatch(batchId: string, approve: boolean) {
+    error = ''; busy = 'batch:' + batchId;
+    const { error: err } = await supabase.rpc('review_skillcard_batch', { p_batch: batchId, p_approve: approve, p_note: cardNote[batchId] ?? null });
     busy = '';
     if (err) { error = err.message; return; }
-    cardNote[req.id] = '';
+    cardNote[batchId] = '';
     await load();
   }
+  // group the review queue by batch — a reviewer acts on a whole batch at once
+  const cardBatches = $derived.by(() => {
+    const m = new Map<string, CardReq[]>();
+    for (const r of cardQueue) {
+      const k = r.batch_id ?? r.id;
+      (m.get(k) ?? m.set(k, []).get(k)!).push(r);
+    }
+    return [...m.entries()].map(([batch_id, items]) => ({ batch_id, items }));
+  });
 
   // direct mint (铸 — click a member's talent tree to PROPOSE a certification)
   async function loadMintCert() {
-    mintMsg = ''; mintCert = {}; mintPending = {};
+    mintMsg = ''; mintCert = {}; mintPending = {}; staged = {};
     if (!mintMember) return;
     const [{ data: cert }, { data: pend }] = await Promise.all([
       supabase.from('member_skill').select('skill_id, certified_level').eq('member_id', mintMember).not('certified_level', 'is', null),
@@ -192,16 +203,25 @@
     for (const r of (pend as any[]) ?? []) p[r.skill_id] = r.target_level;
     mintCert = c; mintPending = p;
   }
-  async function mintAt(skillId: string, level: string) {
-    error = ''; mintMsg = ''; busy = 'mint:' + skillId;
-    const { error: err } = await supabase.rpc('mint_skillcard', { p_member: mintMember, p_skill: skillId, p_level: level });
+  // stage a node (toggle: clicking the staged level un-stages it)
+  function stageAt(skillId: string, level: string) {
+    mintMsg = '';
+    if (staged[skillId] === level) { const { [skillId]: _, ...rest } = staged; staged = rest; }
+    else staged = { ...staged, [skillId]: level };
+  }
+  const stagedCount = $derived(Object.keys(staged).length);
+  async function submitBatch() {
+    if (stagedCount === 0 || !mintMember) return;
+    error = ''; mintMsg = ''; busy = 'batch';
+    const items = Object.entries(staged).map(([skill, level]) => ({ skill, level }));
+    const { error: err } = await supabase.rpc('mint_skillcard_batch', { p_member: mintMember, p_items: items });
     busy = '';
     if (err) { error = err.message; return; }
     const mn = members.find((m) => m.id === mintMember)?.full_name ?? '';
-    const sn = skills.find((s) => s.id === skillId)?.name ?? '';
-    mintMsg = get(t)('Submitted a {level} role-card request for {member} in {skill} — awaiting review.', { member: mn, skill: sn, level: get(t)(LEVEL_LABEL[level]) });
+    mintMsg = get(t)('Submitted {n} role-card request(s) for {member} as one batch — awaiting review.', { n: stagedCount, member: mn });
+    staged = {};
     await loadMintCert();
-    await load(); // surface the new request in the review queue
+    await load(); // surface the new batch in the review queue
   }
 
   const domains = $derived(skills.filter((s) => !s.parent_id).sort((a, b) => a.name.localeCompare(b.name)));
@@ -264,29 +284,37 @@
     <p class="muted" style="font-size:.82rem; margin:0;">{$t('Requesting role cards for card {name}; the fee is paid from the card’s balance.', { name: $actingAs.full_name })}</p>
   {/if}
 
-  <!-- 审 role-card review queue -->
-  {#if canReview && cardQueue.length > 0}
+  <!-- 审 role-card review queue — grouped by batch, approved/rejected as one -->
+  {#if canReview && cardBatches.length > 0}
     <div class="card stack" style="gap:.5rem;">
       <div class="row" style="justify-content:space-between; align-items:center;">
         <h2 style="margin:0;">{$t('Role cards awaiting your review')}</h2>
         <span class="badge warn">{cardQueue.length}</span>
       </div>
-      {#each cardQueue as r}
-        <div class="stack" style="gap:.35rem; padding:.5rem .2rem; border-top:1px solid var(--border-2);">
+      {#each cardBatches as b}
+        {@const head = b.items[0]}
+        <div class="stack" style="gap:.4rem; padding:.55rem .2rem; border-top:1px solid var(--border-2);">
           <div class="row" style="justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.4rem;">
-            <span>{@html $t('<strong>{name}</strong> requests <strong>{skill}</strong>', { name: r.member?.full_name ?? $t('A member'), skill: r.skill?.name ?? '' })}
-              · <span class="badge dim">{$t(LEVEL_LABEL[r.target_level])}</span>
-              · <span class="badge {r.kind === 'mint' ? 'pos' : 'dim'}">{r.kind === 'mint' ? $t('mint') : $t('update')}</span>
-              · <span class="muted" style="font-size:.78rem;">{r.fee} STR</span></span>
+            <span>{@html $t('<strong>{name}</strong> — {n} role card(s)', { name: head.member?.full_name ?? $t('A member'), n: b.items.length })}</span>
             <div class="row" style="gap:.4rem;">
-              <button class="up" disabled={busy === r.id} onclick={() => reviewCard(r, true)}>{$t('Approve')}</button>
-              <button class="danger" disabled={busy === r.id} onclick={() => reviewCard(r, false)}>{$t('Reject')}</button>
+              <button class="up" disabled={busy === 'batch:' + b.batch_id} onclick={() => reviewBatch(b.batch_id, true)}>{$t('Approve all')}</button>
+              <button class="danger" disabled={busy === 'batch:' + b.batch_id} onclick={() => reviewBatch(b.batch_id, false)}>{$t('Reject all')}</button>
             </div>
           </div>
-          {#if rubrics[r.skill_id]?.[r.target_level]}
-            <p class="muted" style="font-size:.8rem; margin:0;"><strong>{$t('Rubric:')}</strong> {rubrics[r.skill_id][r.target_level]}</p>
-          {/if}
-          <input bind:value={cardNote[r.id]} placeholder={$t('Note (optional; shown on the record)')} style="max-width:380px;" />
+          <ul style="margin:0; padding:0; list-style:none;">
+            {#each b.items as r}
+              <li class="stack" style="gap:.2rem; padding:.2rem 0;">
+                <span style="font-size:.85rem;">{r.skill?.name ?? ''}
+                  · <span class="badge dim">{$t(LEVEL_LABEL[r.target_level])}</span>
+                  · <span class="badge {r.kind === 'mint' ? 'pos' : 'dim'}">{r.kind === 'mint' ? $t('mint') : $t('update')}</span>
+                  {#if r.fee > 0}· <span class="muted" style="font-size:.78rem;">{r.fee} STR</span>{/if}</span>
+                {#if rubrics[r.skill_id]?.[r.target_level]}
+                  <span class="muted" style="font-size:.78rem;"><strong>{$t('Rubric:')}</strong> {rubrics[r.skill_id][r.target_level]}</span>
+                {/if}
+              </li>
+            {/each}
+          </ul>
+          <input bind:value={cardNote[b.batch_id]} placeholder={$t('Note (optional; shown on the record)')} style="max-width:380px;" />
         </div>
       {/each}
     </div>
@@ -307,7 +335,7 @@
         </select>
       </label>
       {#if mintMember}
-        <p class="muted" style="font-size:.76rem; margin:0;">{$t('Click a node to submit a certification request — like a talent tree. Filled = earned; dashed = pending review.')}</p>
+        <p class="muted" style="font-size:.76rem; margin:0;">{$t('Click nodes to stage them — like a talent tree — then submit the set as one batch for review. Filled = earned; dashed = pending; ringed = staged.')}</p>
         {#if mintMsg}<p class="pos" style="font-size:.82rem; margin:0;">{mintMsg}</p>{/if}
         <div class="talent">
           {#each domains as d}
@@ -316,26 +344,32 @@
               {#each leavesOf(d.id) as s}
                 {@const cur = levelRank(mintCert[s.id] ?? null)}
                 {@const pend = levelRank(mintPending[s.id] ?? null)}
+                {@const stg = levelRank(staged[s.id] ?? null)}
                 <div class="talent-row">
                   <span class="talent-name">{s.name}</span>
                   <div class="pips">
                     {#each LEVELS as lv, i}
                       <button
-                        class="pip {i <= cur ? 'on' : (pend >= 0 && i <= pend ? 'pending' : '')}"
+                        class="pip {i <= cur ? 'on' : (pend >= 0 && i <= pend ? 'pending' : (stg === i ? 'staged' : ''))}"
                         title={$t(LEVEL_LABEL[lv])}
-                        disabled={i <= cur || pend >= 0 || busy === 'mint:' + s.id}
-                        onclick={() => mintAt(s.id, lv)}
+                        disabled={i <= cur || pend >= 0}
+                        onclick={() => stageAt(s.id, lv)}
                         aria-label={$t(LEVEL_LABEL[lv])}
                       ><span class="pip-dot"></span></button>
                     {/each}
                   </div>
                   <span class="talent-cur muted">
-                    {cur >= 0 ? $t(LEVEL_LABEL[LEVELS[cur]]) : '—'}{#if pend >= 0} · {$t('pending {lvl}', { lvl: $t(LEVEL_LABEL[LEVELS[pend]]) })}{/if}
+                    {cur >= 0 ? $t(LEVEL_LABEL[LEVELS[cur]]) : '—'}{#if pend >= 0} · {$t('pending {lvl}', { lvl: $t(LEVEL_LABEL[LEVELS[pend]]) })}{/if}{#if stg >= 0} · {$t('staged {lvl}', { lvl: $t(LEVEL_LABEL[LEVELS[stg]]) })}{/if}
                   </span>
                 </div>
               {/each}
             </div>
           {/each}
+        </div>
+        <div class="row" style="gap:.5rem; align-items:center; border-top:1px solid var(--border-2); padding-top:.6rem;">
+          <button class="stake" disabled={stagedCount === 0 || busy === 'batch'} onclick={submitBatch}>
+            {busy === 'batch' ? $t('Submitting…') : $t('Submit batch for review · {n}', { n: stagedCount })}</button>
+          {#if stagedCount > 0}<button onclick={() => (staged = {})} disabled={busy === 'batch'}>{$t('Clear')}</button>{/if}
         </div>
       {/if}
     </div>
@@ -411,7 +445,7 @@
                 <button class="tree-leaf {selected === s.id ? 'on' : ''}" onclick={() => pick(s.id)}>
                   <span>{s.name}</span>
                   <span class="row" style="gap:.3rem;">
-                    {#if myCert[s.id]}<span class="badge pos" style="font-size:.62rem;">✓ {myCert[s.id]}</span>{/if}
+                    {#if myCert[s.id]}<Medal level={myCert[s.id]} size="sm" />{/if}
                     {#if holders[s.id]}<span class="muted" style="font-size:.72rem;">{holders[s.id]}⚒</span>{/if}
                   </span>
                 </button>
@@ -543,5 +577,6 @@
   }
   .pip.on .pip-dot { background: var(--accent); border-color: var(--accent); }
   .pip.pending .pip-dot { border-style: dashed; border-color: var(--accent); background: var(--accent-soft); }
+  .pip.staged .pip-dot { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); background: transparent; }
   .pip:not(.on):not(.pending):not(:disabled):hover .pip-dot { border-color: var(--accent); background: var(--accent-soft); }
 </style>

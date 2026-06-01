@@ -4,6 +4,7 @@
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { t } from '$lib/i18n';
   import { get } from 'svelte/store';
+  import Medal from '$lib/Medal.svelte';
 
   // guild certification ladder (member_skill.certified_level) — the hard credential
   const GUILD_LABEL: Record<string, string> = {
@@ -167,6 +168,7 @@
 
   function skillName(skillId: string) { return skills.find((s) => s.id === skillId)?.name ?? skillId; }
   const certifiedCount = $derived(mySkills.filter((s) => s.certified_level).length);
+  const myCards = $derived(mySkills.filter((s) => s.certified_level));
   const totalCredit = $derived(Object.values(skillCredit).reduce((a, c) => a + c.credit, 0));
   // non-labor resources go in the general catalog; labor has its own control
   const catalogResources = $derived(myResources.filter((r) => r.resource_type?.name !== 'Labor'));
@@ -239,6 +241,11 @@
         {@html $t("Skills aren't self-rated — they're <strong>earned</strong>. Sit a paid, peer-reviewed exam in <a href='/skills'>the Guild</a> to climb Apprentice → Journeyman → Craftsman → Master.")}
       </p>
       {#if error}<p style="color:var(--down);">{error}</p>{/if}
+      {#if myCards.length > 0}
+        <div class="row" style="gap:.5rem; flex-wrap:wrap;">
+          {#each myCards as s}<Medal name={skillName(s.skill_id)} level={s.certified_level!} />{/each}
+        </div>
+      {/if}
       {#if skillsLoading}
         <p class="muted">{$t('Loading…')}</p>
       {:else if mySkills.length === 0}

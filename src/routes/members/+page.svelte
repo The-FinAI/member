@@ -3,6 +3,7 @@
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { member } from '$lib/session';
   import CountUp from '$lib/CountUp.svelte';
+  import Medal from '$lib/Medal.svelte';
   import { t } from '$lib/i18n';
   import { get } from 'svelte/store';
 
@@ -18,7 +19,7 @@
     kind: string;
     member_position: { position: { name: string } }[];
   };
-  type MemberSkill = { skill_id: string; self_level: string; skill: { name: string } | null };
+  type MemberSkill = { skill_id: string; self_level: string; certified_level: string | null; skill: { name: string } | null };
   type Credit = { skill_id: string; credit: number; endorsements: number };
 
   let rows = $state<Row[]>([]);
@@ -104,7 +105,7 @@
     openId = id;
     panelLoading = true;
     const [{ data: ms }, { data: cr }] = await Promise.all([
-      supabase.from('member_skill').select('skill_id, self_level, skill(name)').eq('member_id', id),
+      supabase.from('member_skill').select('skill_id, self_level, certified_level, skill(name)').eq('member_id', id),
       supabase.from('stater_skill_credit').select('skill_id, credit, endorsements').eq('member_id', id)
     ]);
     openSkills = (ms as MemberSkill[]) ?? [];
@@ -250,7 +251,7 @@
                       {#each openSkills as s}
                         <div class="row" style="align-items:center; flex-wrap:wrap; gap:.5rem;">
                           <strong style="min-width:160px;">{s.skill?.name ?? s.skill_id}</strong>
-                          <span class="badge">{s.self_level}</span>
+                          {#if s.certified_level}<Medal level={s.certified_level} size="sm" />{:else}<span class="badge">{s.self_level}</span>{/if}
                           <span class="muted" style="font-size:.8rem;">
                             {$t('credit {c} · {n} endorsers', { c: openCredit[s.skill_id]?.credit ?? 0, n: openCredit[s.skill_id]?.endorsements ?? 0 })}
                           </span>

@@ -3,6 +3,7 @@
   import { page } from '$app/stores';
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { t } from '$lib/i18n';
+  import Medal from '$lib/Medal.svelte';
 
   // PUBLIC reputation page. By design this NEVER reads or shows liquid STR
   // balance or the ledger — only contribution (nominal), skills & projects.
@@ -13,7 +14,7 @@
     member_position: { position: { name: string } | null }[];
   };
   type Skill = {
-    skill_id: string; self_level: string;
+    skill_id: string; self_level: string; certified_level: string | null;
     skill: { name: string } | null;
     credit: number; endorsements: number;
   };
@@ -51,7 +52,7 @@
     mem = m as Mem;
 
     const [{ data: ms }, { data: cr }, { data: pm }, { data: nom }, { count: msc }] = await Promise.all([
-      supabase.from('member_skill').select('skill_id, self_level, skill(name)').eq('member_id', memberId),
+      supabase.from('member_skill').select('skill_id, self_level, certified_level, skill(name)').eq('member_id', memberId),
       supabase.from('stater_skill_credit').select('skill_id, credit, endorsements').eq('member_id', memberId),
       supabase.from('project_member')
         .select('project_id, project_role(name), project:project_id(id, name, project_status!project_status_id_fkey(name))')
@@ -64,7 +65,7 @@
     const creditBy: Record<string, { credit: number; endorsements: number }> = {};
     for (const c of (cr as any[]) ?? []) creditBy[c.skill_id] = { credit: Number(c.credit) || 0, endorsements: Number(c.endorsements) || 0 };
     skills = ((ms as any[]) ?? []).map((s) => ({
-      skill_id: s.skill_id, self_level: s.self_level, skill: s.skill,
+      skill_id: s.skill_id, self_level: s.self_level, certified_level: s.certified_level ?? null, skill: s.skill,
       credit: creditBy[s.skill_id]?.credit ?? 0, endorsements: creditBy[s.skill_id]?.endorsements ?? 0
     })).sort((a, b) => b.credit - a.credit || (a.skill?.name ?? '').localeCompare(b.skill?.name ?? ''));
 
@@ -95,6 +96,12 @@
 
   const totalEndorsers = $derived(skills.reduce((a, s) => a + s.endorsements, 0));
   const totalCredit = $derived(skills.reduce((a, s) => a + s.credit, 0));
+  // certified role cards (medals) — guild-certified skills, ordered by rank
+  const RANK: Record<string, number> = { apprentice: 0, journeyman: 1, craftsman: 2, master: 3 };
+  const cards = $derived(
+    skills.filter((s) => s.certified_level)
+      .sort((a, b) => (RANK[b.certified_level!] ?? 0) - (RANK[a.certified_level!] ?? 0))
+  );
 </script>
 
 <div class="stack">
@@ -158,6 +165,16 @@
         <span class="k-sub">{$t('collaborations on record')}</span>
       </div>
     </div>
+
+    <!-- certified role cards (medals) -->
+    {#if cards.length > 0}
+      <div class="card stack">
+        <h2 style="margin:0;">{$t('Role cards')}</h2>
+        <div class="row" style="gap:.5rem; flex-wrap:wrap;">
+          {#each cards as c}<Medal name={c.skill?.name ?? c.skill_id} level={c.certified_level!} />{/each}
+        </div>
+      </div>
+    {/if}
 
     <!-- skills -->
     <div class="card stack">
