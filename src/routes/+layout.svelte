@@ -9,6 +9,7 @@
   import { theme, toggleTheme } from '$lib/theme';
   import { t } from '$lib/i18n';
   import LangSwitcher from '$lib/LangSwitcher.svelte';
+  import LaunchBanner from '$lib/LaunchBanner.svelte';
 
   let { children } = $props();
 
@@ -155,6 +156,7 @@
 </header>
 
 <main class="container">
+  {#if $session && $member}<LaunchBanner />{/if}
   {#if $actingAs}
     <div class="acting-banner">
       <span>{$t('Acting as card')} <strong>{$actingAs.full_name}</strong> — {$t('actions and STR apply to this card.')}</span>

@@ -5,7 +5,6 @@
   import CountUp from '$lib/CountUp.svelte';
   import Hint from '$lib/Hint.svelte';
   import GettingStarted from '$lib/GettingStarted.svelte';
-  import LaunchBanner from '$lib/LaunchBanner.svelte';
   import Medal from '$lib/Medal.svelte';
   import { t } from '$lib/i18n';
   import { get } from 'svelte/store';
@@ -228,8 +227,6 @@
       <a href="/projects"><button>{$t('Start a project')}</button></a>
     </div>
   </div>
-
-  <LaunchBanner />
 
   {#if $member}<GettingStarted memberId={$member.id} />{/if}
 
