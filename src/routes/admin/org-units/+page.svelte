@@ -19,6 +19,13 @@
   let draftMember = $state<Record<string, string>>({});
   let draftRole = $state<Record<string, string>>({});
 
+  // new working-group form
+  let wgName = $state('');
+  let wgCode = $state('');
+  let wgDesc = $state('');
+  let creating = $state(false);
+  let notice = $state('');
+
   const canManage = $derived($capabilities.has('manage_members'));
   const ROLE_LABEL: Record<string, string> = { chair: 'Chair', secretary: 'Secretary', leader: 'Leader' };
   function rolesFor(kind: string) {
@@ -43,6 +50,28 @@
     loading = false;
   }
   onMount(load);
+
+  async function createWG() {
+    error = ''; notice = '';
+    const name = wgName.trim();
+    const code = wgCode.trim().toUpperCase();
+    if (!name || !code) { error = $t('Name and code are required.'); return; }
+    // place it after the last working group in the ordering
+    const maxWgRank = Math.max(30, ...units.filter((u) => u.kind === 'working_group').map((u) => u.rank));
+    creating = true;
+    const { error: err } = await supabase.from('org_unit').insert({
+      code, name, kind: 'working_group', rank: maxWgRank + 10,
+      description: wgDesc.trim() || null
+    });
+    creating = false;
+    if (err) {
+      error = (err as any).code === '23505' ? $t('That code is already taken.') : err.message;
+      return;
+    }
+    notice = $t('Working group “{name}” created.', { name });
+    wgName = ''; wgCode = ''; wgDesc = '';
+    await load();
+  }
 
   async function assign(unit: Unit) {
     error = '';
@@ -78,6 +107,26 @@
     <p class="banner">{$t('You need the manage_members capability to assign officers.')}</p>
   {/if}
   {#if error}<p style="color:var(--down);">{error}</p>{/if}
+  {#if notice}<p style="color:var(--up);">{notice}</p>{/if}
+
+  {#if canManage}
+    <div class="card stack" style="gap:.6rem;">
+      <h2 style="margin:0; font-size:1rem;">{$t('New working group')}</h2>
+      <p class="muted" style="font-size:.82rem; margin:0;">
+        {$t('Spin up a new working group. Give it a short code and a name, then assign a Leader below.')}
+      </p>
+      <div class="row" style="align-items:flex-end; flex-wrap:wrap; gap:.5rem;">
+        <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">{$t('Code')}</span>
+          <input bind:value={wgCode} placeholder="e.g. NLP" style="max-width:130px; text-transform:uppercase;" /></label>
+        <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">{$t('Name')}</span>
+          <input bind:value={wgName} placeholder={$t('Working group name')} style="min-width:220px;" /></label>
+        <label class="stack" style="gap:.2rem; flex:1; min-width:220px;"><span class="muted" style="font-size:.72rem;">{$t('Description')} <span style="opacity:.6;">({$t('optional')})</span></span>
+          <input bind:value={wgDesc} placeholder={$t('What this unit is about…')} /></label>
+        <button disabled={!wgName.trim() || !wgCode.trim() || creating} onclick={createWG}>
+          {creating ? $t('Creating…') : $t('Create working group')}</button>
+      </div>
+    </div>
+  {/if}
 
   {#if loading}
     <p class="muted">{$t('Loading…')}</p>
