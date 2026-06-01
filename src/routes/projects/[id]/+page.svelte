@@ -45,6 +45,7 @@
     milestone_catalog: { category: string; item: string; nominal_value: number; multiplier_bonus: number } | null;
   };
   type MyLaborRow = { skill_id: string; skill: string; ym: string; hours: number; equiv: number };
+  type MyWritingRow = { ym: string; hours: number; equiv: number };
 
   let project = $state<Project | null>(null);
   let participants = $state<Participant[]>([]);
@@ -81,6 +82,11 @@
   // my-contribution (set next month's labor)
   let clSkill = $state(''); let clHours = $state(0); let clMonth = $state(currentMonth());
   let settingLabor = $state(false);
+  // leader first-author writing duty (20h/month)
+  let myWriting = $state<MyWritingRow[]>([]);
+  let writeHours = $state(20); let writeMonth = $state(currentMonth());
+  let settingWriting = $state(false);
+  const writingRequired = 20;
   // milestone claim form
   let msCatalog = $state(''); let msTitle = $state(''); let claimingMs = $state(false);
 
@@ -260,6 +266,22 @@
       myLabor = rows;
     } else {
       myLabor = [];
+    }
+
+    // my standing first-author writing duty on this project (leaders)
+    if (me) {
+      const { data: fw } = await supabase
+        .from('stater_project_stake_commitment')
+        .select('id, stater_commitment_period(year_month, committed_amount, token_equivalent)')
+        .eq('project_id', id).eq('member_id', me).eq('commitment_type', 'first_author_writing');
+      const wrows: MyWritingRow[] = [];
+      for (const c of (fw as any[]) ?? [])
+        for (const p of c.stater_commitment_period ?? [])
+          wrows.push({ ym: p.year_month, hours: Number(p.committed_amount), equiv: Number(p.token_equivalent) });
+      wrows.sort((a, b) => b.ym.localeCompare(a.ym));
+      myWriting = wrows;
+    } else {
+      myWriting = [];
     }
 
     // latest settlement + items
@@ -536,6 +558,8 @@
     return new Date(y, m - 1, 1).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
   }
   const leafSkills = $derived(skills.filter((s) => s.parent_id));
+  const writingThisMonth = $derived(myWriting.find((w) => w.ym === currentMonth())?.hours ?? 0);
+  const writingMet = $derived(writingThisMonth >= writingRequired);
   const totalNominal = $derived(Object.values(memberNominal).reduce((a, b) => a + b, 0));
   const canVerifyMs = $derived(iManage || $capabilities.has('manage_stater') || $capabilities.has('manage_resources'));
   const verifiedBonus = $derived(
@@ -551,6 +575,17 @@
     const { error: err } = await supabase.rpc('set_labor_commitment',
       { p: id, sk: clSkill, ym: clMonth, hours: Number(clHours) });
     settingLabor = false;
+    if (err) { error = err.message; return; }
+    await load();
+  }
+
+  async function setWriting() {
+    error = '';
+    if (!/^\d{4}-\d{2}$/.test(writeMonth)) { error = get(t)('Month must be YYYY-MM.'); return; }
+    settingWriting = true;
+    const { error: err } = await supabase.rpc('set_first_author_writing',
+      { p: id, ym: writeMonth, hours: Number(writeHours) });
+    settingWriting = false;
     if (err) { error = err.message; return; }
     await load();
   }
@@ -794,6 +829,45 @@
           <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">{$t('Hours / month')}</span>
             <input type="number" min="0" step="1" bind:value={clHours} style="width:110px;" /></label>
           <button onclick={setLabor} disabled={settingLabor}>{settingLabor ? $t('Minting…') : $t('Set & mint')}</button>
+        </div>
+      </div>
+    {/if}
+
+    <!-- LEADER FIRST-AUTHOR WRITING DUTY (20h / month) -->
+    {#if iManage}
+      <div class="card stack">
+        <div class="row" style="justify-content:space-between; align-items:baseline;">
+          <h2 style="margin:0;">{$t('First-author writing')}</h2>
+          <span class="badge {writingMet ? 'pos' : 'neg'}">
+            {writingMet ? $t('On track') : $t('Behind')} · {writingThisMonth}/{writingRequired}h
+          </span>
+        </div>
+        <p class="muted" style="font-size:.82rem; margin:-.3rem 0 0;">
+          {@html $t('As leader you owe <strong>{n}h of first-author writing every month</strong>. Declare the hours to mint them into the pool — falling short flags you on the admin compliance board.', { n: writingRequired })}
+        </p>
+        {#if myWriting.length}
+          <table>
+            <thead><tr><th>{$t('Month')}</th><th>{$t('Hours')}</th><th>{$t('Required')}</th><th>{$t('Minted (nominal)')}</th></tr></thead>
+            <tbody>
+              {#each myWriting as w}
+                <tr>
+                  <td>{fmtMonth(w.ym)}{w.ym === currentMonth() ? $t(' · now') : ''}</td>
+                  <td class="mono">{w.hours}h</td>
+                  <td class="mono"><span class="badge {w.hours >= writingRequired ? 'pos' : 'neg'}">{writingRequired}h</span></td>
+                  <td class="mono" style="color:var(--accent);">≈ {w.equiv.toLocaleString()}</td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        {:else}
+          <p class="muted">{$t('No first-author writing declared yet.')}</p>
+        {/if}
+        <div class="row" style="align-items:flex-end; flex-wrap:wrap; border-top:1px dashed var(--border); padding-top:.7rem;">
+          <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">{$t('Month')}</span>
+            <input type="month" bind:value={writeMonth} /></label>
+          <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">{$t('Hours / month')}</span>
+            <input type="number" min="0" step="1" bind:value={writeHours} style="width:110px;" /></label>
+          <button onclick={setWriting} disabled={settingWriting}>{settingWriting ? $t('Minting…') : $t('Declare & mint')}</button>
         </div>
       </div>
     {/if}
