@@ -66,6 +66,15 @@
     <p class="muted">
       {@html $t('In short: <strong>nominal = a promise the pool owes you, liquid = money you hold.</strong> Your wallet shows liquid balance separately from nominal locked per project.')}
     </p>
+    <div class="note">
+      <h3 id="term-anchor" style="margin-top:0;">{$t('How value becomes STR — the USD anchor')}</h3>
+      <p style="margin-bottom:.4rem;">
+        {@html $t("Every contribution is first priced in <strong>US dollars</strong> at its real-world value — a GPU-hour by its TFLOPs, API tokens by their per-token price, an hour of work by a reference postdoc wage — then minted into STR at a single fixed <strong>anchor</strong> (calibrated so one labour-hour ≈ 10 STR). One scale, so compute, funding and human time all price consistently.")}
+      </p>
+      <p class="muted" style="margin-bottom:0;">
+        {@html $t("The anchor is <strong>one-directional today</strong>: real-world value flows <em>into</em> STR, but STR can't yet be redeemed back out into dollars. It may become <strong>two-way (STR ⇄ USD)</strong> in the future; for now treat STR as the community's internal accounting and reward unit, not a cash-out claim.")}
+      </p>
+    </div>
   </section>
 
   <!-- ───────────────────────── contribution ───────────────────────── -->
@@ -193,6 +202,9 @@
   .mini { background: var(--elevate); border: 1px solid var(--border); border-radius: 10px; padding: .8rem .9rem; }
   .mini h3 { margin: 0 0 .3rem; color: var(--accent); }
   .mini p { margin: 0; font-size: .88rem; }
+  .note { border: 1px solid var(--accent-soft); border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 10px; padding: .85rem 1rem; }
+  .note h3 { color: var(--accent); font-size: .95rem; }
+  .note p { font-size: .88rem; }
   .chip-ish { font-family: var(--font-mono); font-size: .72rem; background: var(--accent-soft); color: var(--accent); padding: .05rem .35rem; border-radius: 5px; }
   .flow, .ladder { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
   .step, .rung { background: var(--elevate); border: 1px solid var(--border); border-radius: 999px; padding: .3rem .7rem; font-size: .8rem; }

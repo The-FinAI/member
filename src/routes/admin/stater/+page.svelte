@@ -260,6 +260,16 @@
       </div>
     </div>
 
+    <div class="card stack" style="border-left:3px solid var(--accent);">
+      <h2 style="margin:0;">{$t('The USD anchor')}</h2>
+      <p class="muted" style="font-size:.82rem; margin:-.3rem 0 0;">
+        {@html $t('Resources and labour are first priced in <strong>US dollars</strong> (<code>gpu</code> by TFLOPs, <code>api</code> by token price, <code>flat</code> by USD-per-unit), then minted to STR via <code>str_per_usd</code> — calibrated against a reference postdoc hour (<code>usd_per_labor_hour</code>) so human time and compute price on one scale. Edit these three keys in the table below.')}
+      </p>
+      <p class="muted" style="font-size:.82rem; margin:0;">
+        {@html $t("The anchor is <strong>one-directional today</strong>: real-world value flows into STR, but STR is not yet redeemable back to USD. A <strong>two-way (STR ⇄ USD)</strong> peg may come later — until then STR stays an internal accounting and reward unit.")}
+      </p>
+    </div>
+
     <div class="card stack">
       <h2>{$t('Policy')}</h2>
       <p class="muted" style="font-size:.82rem; margin-top:-.5rem;">

@@ -142,7 +142,7 @@
   let myResCommits = $state<MyResourceRow[]>([]);
   let rcRes = $state(''); let rcQty = $state(0); let rcMonth = $state(currentMonth());
   let settingRes = $state(false);
-  let strPerUsd = $state(0.2); let usdPerTflopHour = $state(0.005);
+  let strPerUsd = $state(0.24); let usdPerTflopHour = $state(0.005);
   // new resource-request form
   let rrType = $state(''); let rrQty = $state(''); let rrDesc = $state('');
   // offer form state, keyed by request id
