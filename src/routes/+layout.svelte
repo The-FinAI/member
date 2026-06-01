@@ -7,6 +7,8 @@
   import { session, member, capabilities, authReady } from '$lib/session';
   import { loadProfile, clearProfile, claimMembership } from '$lib/profile';
   import { theme, toggleTheme } from '$lib/theme';
+  import { t } from '$lib/i18n';
+  import LangSwitcher from '$lib/LangSwitcher.svelte';
 
   let { children } = $props();
 
@@ -103,10 +105,10 @@
       {#if $session}
         <nav class="row" style="gap: 1.1rem;">
           {#each navItems as n}
-            <a href={n.href} class="navlink" class:active={isActive(n.href, $page.url.pathname)}>{n.label}</a>
+            <a href={n.href} class="navlink" class:active={isActive(n.href, $page.url.pathname)}>{$t(n.label)}</a>
           {/each}
           {#if canAdmin}
-            <a href="/admin" class="navlink" class:active={isActive('/admin', $page.url.pathname)}>Admin</a>
+            <a href="/admin" class="navlink" class:active={isActive('/admin', $page.url.pathname)}>{$t('Admin')}</a>
           {/if}
         </nav>
 
@@ -117,13 +119,15 @@
         {/if}
       {/if}
 
-      <button class="icon-btn" onclick={toggleTheme} title="Toggle theme" aria-label="Toggle theme">
+      <LangSwitcher />
+
+      <button class="icon-btn" onclick={toggleTheme} title={$t('Toggle theme')} aria-label={$t('Toggle theme')}>
         {$theme === 'dark' ? '☀' : '☾'}
       </button>
 
       {#if $session}
         <div class="usermenu">
-          <button class="avatar-btn" onclick={() => (menuOpen = !menuOpen)} title="Account" aria-label="Account menu" aria-haspopup="true" aria-expanded={menuOpen}>
+          <button class="avatar-btn" onclick={() => (menuOpen = !menuOpen)} title={$t('Account')} aria-label={$t('Account menu')} aria-haspopup="true" aria-expanded={menuOpen}>
             {initials($member?.full_name)}
           </button>
           {#if menuOpen}
@@ -134,9 +138,9 @@
                 <div class="mh-mail">{$session.user.email}</div>
               </div>
               <div class="menu-sep"></div>
-              <button class="menu-item" onclick={() => go('/profile')}><span class="mi-ico">⚙</span> Profile &amp; skills</button>
+              <button class="menu-item" onclick={() => go('/profile')}><span class="mi-ico">⚙</span> {$t('Profile & skills')}</button>
               <div class="menu-sep"></div>
-              <button class="menu-item" onclick={signOut}><span class="mi-ico">⏻</span> Sign out</button>
+              <button class="menu-item" onclick={signOut}><span class="mi-ico">⏻</span> {$t('Sign out')}</button>
             </div>
           {/if}
         </div>
@@ -154,9 +158,8 @@
   {/if}
   {#if supabaseConfigured && $authReady && $session && !$member}
     <p class="banner">
-      You're signed in as <strong>{$session.user.email}</strong>, but this email isn't linked to a
-      membership. Access is invite-only — please ask an admin to invite you. Meanwhile you can
-      <a href="/guide">read how the community works →</a>
+      {$t("You're signed in as {email}, but this email isn't linked to a membership. Access is invite-only — please ask an admin to invite you. Meanwhile you can", { email: $session.user.email })}
+      <a href="/guide">{$t('read how the community works →')}</a>
     </p>
   {/if}
   {@render children()}

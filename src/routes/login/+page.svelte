@@ -1,5 +1,7 @@
 <script lang="ts">
   import { supabase, supabaseConfigured } from '$lib/supabase';
+  import { t } from '$lib/i18n';
+  import LangSwitcher from '$lib/LangSwitcher.svelte';
 
   let email = $state('');
   let sent = $state(false);
@@ -34,17 +36,18 @@
 </script>
 
 <div class="stack" style="max-width: 420px; margin: 4rem auto;">
-  <div class="row" style="justify-content:center; gap:.55rem; margin-bottom:.25rem;">
+  <div class="row" style="justify-content:space-between; gap:.55rem; margin-bottom:.25rem;">
     <span class="brand" style="font-size:1.2rem;"><span class="dot"></span>The&nbsp;Fin&nbsp;AI <span class="muted" style="font-weight:500;">· Stater</span></span>
+    <LangSwitcher />
   </div>
   <div class="card stack">
-    <h1 style="margin-bottom:0;">Sign in</h1>
+    <h1 style="margin-bottom:0;">{$t('Sign in')}</h1>
     <p class="muted" style="margin-top:-.5rem;">
-      Membership is invite-only. Enter the email you were invited with — we'll send a magic link.
+      {$t("Membership is invite-only. Enter the email you were invited with — we'll send a magic link.")}
     </p>
 
     {#if sent}
-      <p class="badge pos">Check your inbox for the sign-in link.</p>
+      <p class="badge pos">{$t('Check your inbox for the sign-in link.')}</p>
     {:else}
       <form class="stack" onsubmit={signIn}>
         <input
@@ -54,10 +57,10 @@
           required
         />
         <button type="submit" disabled={loading}>
-          {loading ? 'Sending…' : 'Send magic link'}
+          {loading ? $t('Sending…') : $t('Send magic link')}
         </button>
       </form>
     {/if}
-    {#if error}<p class="neg" style="font-size:.85rem;">{error}</p>{/if}
+    {#if error}<p class="neg" style="font-size:.85rem;">{$t(error)}</p>{/if}
   </div>
 </div>

@@ -15,6 +15,17 @@
       } catch (e) {
         document.documentElement.setAttribute('data-theme', 'dark');
       }
+      // Apply saved locale to <html lang> before first paint so i18n picks it up.
+      try {
+        var lc = localStorage.getItem('locale');
+        if (lc !== 'en' && lc !== 'zh' && lc !== 'ja' && lc !== 'fr') {
+          var n = (navigator.language || 'en').toLowerCase();
+          lc = n.indexOf('zh') === 0 ? 'zh' : n.indexOf('ja') === 0 ? 'ja' : n.indexOf('fr') === 0 ? 'fr' : 'en';
+        }
+        document.documentElement.setAttribute('lang', lc);
+      } catch (e) {
+        document.documentElement.setAttribute('lang', 'en');
+      }
     </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

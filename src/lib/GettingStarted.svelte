@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { supabase, supabaseConfigured } from '$lib/supabase';
+  import { t } from '$lib/i18n';
 
   // First-run onboarding checklist for the dashboard. Reads real signals so a
   // step ticks off once the member actually does it; auto-hides when all done or
@@ -53,12 +54,13 @@
   <div class="card onboard">
     <div class="row" style="justify-content:space-between; align-items:flex-start;">
       <div>
-        <h2 style="margin:0 0 .15rem;">Get started</h2>
+        <h2 style="margin:0 0 .15rem;">{$t('Get started')}</h2>
         <p class="muted" style="margin:0; font-size:.85rem;">
-          {doneCount} of {steps.length} done · new here? <a href="/guide">Read how it works →</a>
+          {$t('{done} of {total} done · new here?', { done: doneCount, total: steps.length })}
+          <a href="/guide">{$t('Read how it works →')}</a>
         </p>
       </div>
-      <button class="dismiss" onclick={dismiss} title="Dismiss">Dismiss ✕</button>
+      <button class="dismiss" onclick={dismiss} title={$t('Dismiss')}>{$t('Dismiss')} ✕</button>
     </div>
 
     <div class="progress"><span style={`width:${(doneCount / steps.length) * 100}%`}></span></div>
@@ -68,13 +70,13 @@
         <li class:done={s.done}>
           <span class="mark">{s.done ? '✓' : i + 1}</span>
           <div class="body">
-            <div class="t">{s.title}</div>
-            <div class="b">{s.blurb}</div>
+            <div class="t">{$t(s.title)}</div>
+            <div class="b">{$t(s.blurb)}</div>
           </div>
           {#if !s.done}
-            <a href={s.href} class="go">{s.cta} →</a>
+            <a href={s.href} class="go">{$t(s.cta)} →</a>
           {:else}
-            <span class="badge pos" style="font-size:.7rem;">done</span>
+            <span class="badge pos" style="font-size:.7rem;">{$t('done')}</span>
           {/if}
         </li>
       {/each}

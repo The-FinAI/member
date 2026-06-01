@@ -5,6 +5,7 @@
   import CountUp from '$lib/CountUp.svelte';
   import Hint from '$lib/Hint.svelte';
   import GettingStarted from '$lib/GettingStarted.svelte';
+  import { t } from '$lib/i18n';
 
   type MyProject = { project: { id: string; name: string; project_status: { name: string } | null } | null; project_role: { name: string } | null };
   type MyApp = { id: string; status: string; open_need: { project: { id: string; name: string } | null } | null };
@@ -60,46 +61,46 @@
 <div class="stack">
   <div class="row" style="justify-content:space-between; align-items:flex-end;">
     <div>
-      <h1 style="margin-bottom:.15rem;">Portfolio{$member ? ` · ${$member.full_name.split(' ')[0]}` : ''}</h1>
-      <span class="muted" style="font-size:.85rem;">Your stake across the Stater research economy.</span>
+      <h1 style="margin-bottom:.15rem;">{$t('Portfolio')}{$member ? ` · ${$member.full_name.split(' ')[0]}` : ''}</h1>
+      <span class="muted" style="font-size:.85rem;">{$t('Your stake across the Stater research economy.')}</span>
     </div>
-    <a href="/projects"><button>Start a project</button></a>
+    <a href="/projects"><button>{$t('Start a project')}</button></a>
   </div>
 
   {#if $member}<GettingStarted memberId={$member.id} />{/if}
 
   <div class="row rise-stagger" style="align-items:stretch;">
     <div class="tile" style="flex:1; min-width:170px;">
-      <span class="label">STR balance <Hint term="liquid" text="Liquid STR — your spendable wallet balance. Used to post bonds and pay Guild exam fees." /></span>
+      <span class="label">{$t('STR balance')} <Hint term="liquid" text={$t('Liquid STR — your spendable wallet balance. Used to post bonds and pay Guild exam fees.')} /></span>
       <span class="value accent"><CountUp value={balance} /></span>
-      <span class="sub">liquid, spendable</span>
+      <span class="sub">{$t('liquid, spendable')}</span>
     </div>
     <div class="tile" style="flex:1; min-width:170px;">
-      <span class="label">Staked <Hint term="nominal" text="Nominal STR you've minted into project pools — locked until each project settles, then it converts to liquid STR." /></span>
+      <span class="label">{$t('Staked')} <Hint term="nominal" text={$t("Nominal STR you've minted into project pools — locked until each project settles, then it converts to liquid STR.")} /></span>
       <span class="value"><CountUp value={staked} /></span>
-      <span class="sub">bonded in projects</span>
+      <span class="sub">{$t('bonded in projects')}</span>
     </div>
     <a class="tile" href="/projects" style="flex:1; min-width:170px;">
-      <span class="label">My projects</span>
+      <span class="label">{$t('My projects')}</span>
       <span class="value">{myProjects.length}</span>
-      <span class="sub">projects joined</span>
+      <span class="sub">{$t('projects joined')}</span>
     </a>
     <a class="tile" href="/opportunities" style="flex:1; min-width:170px;">
-      <span class="label">Open needs</span>
+      <span class="label">{$t('Open needs')}</span>
       <span class="value">{openCount}</span>
-      <span class="sub">across {projectCount} projects</span>
+      <span class="sub">{$t('across {n} projects', { n: projectCount })}</span>
     </a>
   </div>
 
   <div class="card">
-    <h2>My positions</h2>
+    <h2>{$t('My positions')}</h2>
     {#if loading}
-      <p class="muted">Loading…</p>
+      <p class="muted">{$t('Loading…')}</p>
     {:else if myProjects.length === 0}
-      <p class="muted">No positions yet. Browse <a href="/opportunities">Open Opportunities</a> to stake into a project, or <a href="/guide">read how it works</a> first.</p>
+      <p class="muted">{$t('No positions yet. Browse')} <a href="/opportunities">{$t('Open Opportunities')}</a> {$t('to stake into a project, or')} <a href="/guide">{$t('read how it works')}</a>{$t('first.')}</p>
     {:else}
       <table>
-        <thead><tr><th>Project</th><th>Role</th><th>Status</th></tr></thead>
+        <thead><tr><th>{$t('Project')}</th><th>{$t('Role')}</th><th>{$t('Status')}</th></tr></thead>
         <tbody>
           {#each myProjects as p}
             <tr>
@@ -114,21 +115,21 @@
   </div>
 
   <div class="card">
-    <h2>My applications</h2>
+    <h2>{$t('My applications')}</h2>
     {#if loading}
-      <p class="muted">Loading…</p>
+      <p class="muted">{$t('Loading…')}</p>
     {:else if myApps.length === 0}
-      <p class="muted">No open orders.</p>
+      <p class="muted">{$t('No open orders.')}</p>
     {:else}
       <table>
-        <thead><tr><th>Project</th><th>Status</th></tr></thead>
+        <thead><tr><th>{$t('Project')}</th><th>{$t('Status')}</th></tr></thead>
         <tbody>
           {#each myApps as a}
             <tr>
               <td>{#if a.open_need?.project}<a href={`/projects/${a.open_need.project.id}`}>{a.open_need.project.name}</a>{:else}—{/if}</td>
               <td>
                 {#if a.status === 'accepted'}
-                  <a href={`/projects/${a.open_need?.project?.id}`}><span class="badge info">accepted · confirm to join →</span></a>
+                  <a href={`/projects/${a.open_need?.project?.id}`}><span class="badge info">{$t('accepted · confirm to join →')}</span></a>
                 {:else}
                   <span class="badge {a.status === 'joined' ? 'pos' : a.status === 'declined' ? 'neg' : 'dim'}">{a.status}</span>
                 {/if}
