@@ -20,6 +20,8 @@
   let pending = $state<UnitMember[]>([]);
   let projects = $state<Proj[]>([]);
   let myStatus = $state<string | null>(null); // pending | active | rejected | left | null
+  let allMembers = $state<Person[]>([]); // for the officer "add member" picker
+  let addQ = $state('');
   let loading = $state(true);
   let notFound = $state(false);
   let error = $state('');
@@ -50,7 +52,7 @@
     unit = u as Unit;
     eName = unit.name; eDesc = unit.description ?? '';
 
-    const [{ data: off }, { data: oum }, { data: prj }] = await Promise.all([
+    const [{ data: off }, { data: oum }, { data: prj }, { data: am }] = await Promise.all([
       supabase.from('org_unit_officer')
         .select('member_id, role, member:member_id(id, full_name, affiliation)')
         .eq('org_unit_id', unitId).is('ended_on', null),
@@ -59,8 +61,10 @@
         .eq('org_unit_id', unitId),
       unit.kind === 'working_group'
         ? supabase.from('project').select('id, name, project_status!project_status_id_fkey(name)').eq('org_unit_id', unitId)
-        : Promise.resolve({ data: [] as any[] })
+        : Promise.resolve({ data: [] as any[] }),
+      supabase.from('member').select('id, full_name, affiliation, kind').order('full_name')
     ]);
+    allMembers = (am as Person[]) ?? [];
 
     officers = ((off as any[]) ?? []).sort((a, b) => a.role.localeCompare(b.role));
     const all = (oum as UnitMember[]) ?? [];
@@ -144,8 +148,30 @@
     await load(unit.id);
   }
 
+  async function addExisting(memberId: string) {
+    if (!unit) return;
+    busy = 'add:' + memberId; error = '';
+    const { error: err } = await supabase.rpc('officer_add_unit_member', {
+      p_unit: unit.id, p_member: memberId
+    });
+    busy = '';
+    if (err) { error = err.message; return; }
+    addQ = '';
+    await load(unit.id);
+  }
+
   function officersByRole(role: string) { return officers.filter((o) => o.role === role); }
   const roleOrder = $derived(isChapter ? ['chair', 'secretary'] : ['leader']);
+  const officerIds = $derived(new Set(officers.map((o) => o.member_id)));
+  // members who already belong (active) — exclude from the add picker
+  const activeIds = $derived(new Set(members.map((m) => m.member_id)));
+  const candidates = $derived(
+    !addQ.trim() ? []
+      : allMembers
+          .filter((m) => !activeIds.has(m.id))
+          .filter((m) => (m.full_name + ' ' + (m.affiliation ?? '')).toLowerCase().includes(addQ.trim().toLowerCase()))
+          .slice(0, 8)
+  );
 </script>
 
 <div class="stack">
@@ -275,7 +301,9 @@
                   <span class="p-sub">{m.member?.affiliation ?? '—'}</span>
                 </span>
               </a>
-              {#if isOfficer}
+              {#if isOfficer && officerIds.has(m.member_id)}
+                <span class="badge dim" title={$t('Serves as an officer of this unit.')}>{$t('Officer')}</span>
+              {:else if isOfficer}
                 <button onclick={() => removeMember(m.member_id)} disabled={busy === m.member_id}>{$t('Remove')}</button>
               {/if}
             </li>
@@ -283,6 +311,35 @@
         </ul>
       {/if}
     </div>
+
+    <!-- add an existing member (officers / admins) -->
+    {#if isOfficer}
+      <div class="card stack" style="gap:.5rem;">
+        <h2 style="margin:0; font-size:1rem;">{$t('Add an existing member')}</h2>
+        <p class="muted" style="font-size:.82rem; margin:0;">
+          {$t('Search anyone in the community and add them to this unit directly — no application needed.')}
+        </p>
+        <input placeholder={$t('Search by name…')} bind:value={addQ} style="max-width:340px;" />
+        {#if candidates.length}
+          <ul style="margin:0; padding:0; list-style:none;">
+            {#each candidates as c}
+              <li class="row" style="justify-content:space-between; align-items:center; gap:.5rem; border-top:1px solid var(--border); padding:.45rem 0;">
+                <span class="person">
+                  <span class="p-ava">{initials(c.full_name)}</span>
+                  <span class="stack" style="gap:0;">
+                    <span class="p-name">{c.full_name}{#if c.kind === 'card'}<span class="badge dim" style="margin-left:.35rem; font-size:.68rem;">{$t('card')}</span>{/if}</span>
+                    <span class="p-sub">{c.affiliation ?? '—'}</span>
+                  </span>
+                </span>
+                <button class="stake" onclick={() => addExisting(c.id)} disabled={busy === 'add:' + c.id}>{$t('Add')}</button>
+              </li>
+            {/each}
+          </ul>
+        {:else if addQ.trim()}
+          <p class="muted" style="font-size:.82rem; margin:0;">{$t('No matching members.')}</p>
+        {/if}
+      </div>
+    {/if}
 
     <!-- forge a card (chapter officers) -->
     {#if isOfficer && isChapter}
