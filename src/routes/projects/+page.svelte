@@ -203,13 +203,14 @@
 
   const typeNames = $derived([...new Set(grid.map((r) => r.type))].filter((x) => x !== '—').sort());
   const statusNames = $derived(
-    [...new Map(grid.map((r) => [r.status, r.statusRank])).entries()]
+    [...new Map(grid.filter((r) => r.status !== 'Finished').map((r) => [r.status, r.statusRank])).entries()]
       .sort((a, b) => a[1] - b[1]).map((e) => e[0]).filter((x) => x !== '—')
   );
 
   const rows = $derived.by(() => {
     const needle = q.trim().toLowerCase();
     let out = grid.filter((r) =>
+      r.status !== 'Finished' &&
       (!typeFilter || r.type === typeFilter) &&
       (!statusFilter || r.status === statusFilter) &&
       (!needle ||
@@ -269,7 +270,7 @@
   // status counts over the *unfiltered* grid, in pipeline order
   const statusCounts = $derived.by(() => {
     const m = new Map<string, number>();
-    for (const r of grid) m.set(r.status, (m.get(r.status) ?? 0) + 1);
+    for (const r of grid) if (r.status !== 'Finished') m.set(r.status, (m.get(r.status) ?? 0) + 1);
     const ordered = statusNames.map((n) => ({ name: n, count: m.get(n) ?? 0 }));
     return ordered;
   });
@@ -286,6 +287,17 @@
     const days = (new Date(r.deadline + 'T00:00:00').getTime() - Date.now()) / 86400000;
     return days >= 0 && days <= 60;
   }).length);
+
+  // Finished projects live in their own "hall of fame" — settled, minted, archived —
+  // so the working grid below only carries projects still moving through the pipeline.
+  let showHof = $state(true);
+  const finished = $derived(
+    grid
+      .filter((r) => r.status === 'Finished')
+      .map((r) => ({ ...r, minted: Math.floor(r.pool * r.multiplier) }))
+      .sort((a, b) => b.minted - a.minted)
+  );
+  const hofMinted = $derived(finished.reduce((a, r) => a + r.minted, 0));
 
   function initials(name: string) {
     const p = name.trim().split(/\s+/);
@@ -381,6 +393,66 @@
     </div>
   </div>
 
+  <!-- hall of fame: finished projects, settled & minted -->
+  {#if finished.length > 0}
+    <div class="hof card">
+      <div
+        class="hof-head"
+        role="button" tabindex="0"
+        onclick={() => (showHof = !showHof)}
+        onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') showHof = !showHof; }}
+      >
+        <div class="row" style="gap:.5rem; align-items:baseline;">
+          <h2 style="margin:0;">🏆 {$t('Hall of fame')}</h2>
+          <span class="muted" style="font-size:.85rem;">{$t('{n} shipped', { n: finished.length })}</span>
+        </div>
+        <div class="row" style="gap:.6rem; align-items:center;">
+          <span class="muted" style="font-size:.82rem;">{$t('{n} STR minted', { n: hofMinted.toLocaleString() })}</span>
+          <span class="chev" class:open={showHof}>▾</span>
+        </div>
+      </div>
+      {#if showHof}
+        <div class="hof-grid">
+          {#each finished as r}
+            <a href={`/projects/${r.id}`} class="hof-card">
+              <div class="hof-card-top">
+                <span class="hof-name">{r.name}</span>
+                <span class="badge up">✓ {$t('shipped')}</span>
+              </div>
+              <span class="psub">
+                <span>{r.type}</span>
+                {#if r.venue}<span class="sep">·</span><span>{r.venue}</span>{/if}
+              </span>
+              <div class="hof-stats">
+                <div class="hof-stat">
+                  <span class="mono accent">{r.minted.toLocaleString()}</span>
+                  <span class="muted">{$t('STR minted')}</span>
+                </div>
+                <div class="hof-stat">
+                  <span class="mono">×{r.multiplier.toFixed(2)}</span>
+                  <span class="muted">{$t('multiplier')}</span>
+                </div>
+                <div class="hof-stat">
+                  <span class="mono up">✓{r.msVerified}<span class="dim">/{r.msTotal}</span></span>
+                  <span class="muted">{$t('milestones')}</span>
+                </div>
+              </div>
+              <div class="hof-team">
+                {#if r.leader}
+                  <span class="ava" title={r.leader}>{initials(r.leader)}</span>
+                  <span class="dim" style="font-size:.82rem;">{r.leader}</span>
+                  <span class="psub">· {r.members} {r.members === 1 ? $t('member') : $t('members')}</span>
+                {:else}
+                  <span class="muted" style="font-size:.82rem;">{r.members} {r.members === 1 ? $t('member') : $t('members')}</span>
+                {/if}
+              </div>
+            </a>
+          {/each}
+        </div>
+      {/if}
+    </div>
+  {/if}
+
   <!-- status filter chips -->
   <div class="row" style="gap:.4rem;">
     <span
@@ -388,7 +460,7 @@
       role="button" tabindex="0"
       onclick={() => (statusFilter = '')}
       onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') statusFilter = ''; }}
-    >{$t('All')} <span class="ct">{grid.length}</span></span>
+    >{$t('All')} <span class="ct">{kActive}</span></span>
     {#each statusCounts as s}
       <span
         class="chip toggle {statusFilter === s.name ? 'on' : ''}"
@@ -540,3 +612,32 @@
     </div>
   {/if}
 </div>
+
+<style>
+  .hof { padding: 0; overflow: hidden; }
+  .hof-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: .6rem; padding: .85rem 1rem; cursor: pointer; user-select: none;
+  }
+  .hof-head:hover { background: var(--accent-soft); }
+  .chev { display: inline-block; transition: transform .15s ease; color: var(--muted); }
+  .chev.open { transform: rotate(180deg); }
+  .hof-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: .7rem; padding: 0 1rem 1rem;
+  }
+  .hof-card {
+    display: flex; flex-direction: column; gap: .5rem;
+    padding: .8rem .9rem; border: 1px solid var(--border-2, var(--border));
+    border-radius: 12px; background: var(--bg-elev, transparent);
+    text-decoration: none; color: inherit; transition: border-color .15s ease, transform .15s ease;
+  }
+  .hof-card:hover { border-color: var(--up); transform: translateY(-2px); }
+  .hof-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem; }
+  .hof-name { font-weight: 600; line-height: 1.25; }
+  .hof-stats { display: flex; gap: .9rem; padding-top: .15rem; }
+  .hof-stat { display: flex; flex-direction: column; gap: .1rem; }
+  .hof-stat .mono { font-size: 1.02rem; font-weight: 600; }
+  .hof-stat .muted { font-size: .68rem; text-transform: uppercase; letter-spacing: .03em; }
+  .hof-team { display: flex; align-items: center; gap: .4rem; padding-top: .15rem; }
+</style>

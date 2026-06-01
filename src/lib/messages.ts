@@ -7,6 +7,14 @@ import type { Locale } from './i18n';
 type Table = Record<string, string>;
 
 const zh: Table = {
+  // ── hall of fame ──
+  'Hall of fame': '荣誉殿堂',
+  '{n} shipped': '{n} 个已交付',
+  '{n} STR minted': '已铸造 {n} STR',
+  'shipped': '已交付',
+  'STR minted': 'STR 已铸造',
+  'multiplier': '倍数',
+  'milestones': '里程碑',
   // ── nav / chrome ──
   'Projects': '项目',
   'Opportunities': '机会',
@@ -752,6 +760,14 @@ const zh: Table = {
 };
 
 const ja: Table = {
+  // ── hall of fame ──
+  'Hall of fame': '殿堂入り',
+  '{n} shipped': '{n} 件完了',
+  '{n} STR minted': '{n} STR 発行済み',
+  'shipped': '完了',
+  'STR minted': 'STR 発行済み',
+  'multiplier': '倍率',
+  'milestones': 'マイルストーン',
   // ── nav / chrome ──
   'Projects': 'プロジェクト',
   'Opportunities': '募集',
@@ -1497,6 +1513,14 @@ const ja: Table = {
 };
 
 const fr: Table = {
+  // ── hall of fame ──
+  'Hall of fame': 'Panthéon',
+  '{n} shipped': '{n} livrés',
+  '{n} STR minted': '{n} STR émis',
+  'shipped': 'livré',
+  'STR minted': 'STR émis',
+  'multiplier': 'multiplicateur',
+  'milestones': 'jalons',
   // ── nav / chrome ──
   'Projects': 'Projets',
   'Opportunities': 'Opportunités',
