@@ -2,6 +2,8 @@
   import { onMount } from 'svelte';
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { member } from '$lib/session';
+  import { t } from '$lib/i18n';
+  import { get } from 'svelte/store';
 
   type PType = { id: string; name: string; leader_stake: number; join_stake: number; finish_bonus: number };
   type PStatus = { id: string; name: string; rank: number };
@@ -150,9 +152,9 @@
 
   async function createProject() {
     error = '';
-    if (!cName.trim() || !cType) { error = 'Name and type are required.'; return; }
-    if (!cProposal.trim()) { error = 'A proposal link is required to start a project.'; return; }
-    if (leaderStake > myBalance) { error = `Leader stake is ${leaderStake} STR but you only have ${myBalance}.`; return; }
+    if (!cName.trim() || !cType) { error = get(t)('Name and type are required.'); return; }
+    if (!cProposal.trim()) { error = get(t)('A proposal link is required to start a project.'); return; }
+    if (leaderStake > myBalance) { error = get(t)('Leader stake is {n} STR but you only have {bal}.', { n: leaderStake, bal: myBalance }); return; }
     let proposal = cProposal.trim();
     if (!/^https?:\/\//i.test(proposal)) proposal = 'https://' + proposal;
     creating = true;
@@ -292,20 +294,20 @@
   function relDays(d: string | null) {
     if (!d) return '';
     const days = Math.round((new Date(d + 'T00:00:00').getTime() - Date.now()) / 86400000);
-    if (days === 0) return 'today';
-    if (days > 0) return days <= 365 ? `in ${days}d` : '';
-    return `${-days}d ago`;
+    if (days === 0) return get(t)('today');
+    if (days > 0) return days <= 365 ? get(t)('in {d}d', { d: days }) : '';
+    return get(t)('{d}d ago', { d: -days });
   }
 </script>
 
 <div class="stack">
   <div class="row" style="justify-content:space-between; align-items:center;">
     <div>
-      <h1 style="margin:0;">Projects</h1>
-      <span class="muted" style="font-size:.85rem;">{grid.length} research projects · contribution pools, milestones & open needs</span>
+      <h1 style="margin:0;">{$t('Projects')}</h1>
+      <span class="muted" style="font-size:.85rem;">{$t('{n} research projects · contribution pools, milestones & open needs', { n: grid.length })}</span>
     </div>
     {#if $member}
-      <button onclick={() => (showForm = !showForm)}>{showForm ? 'Cancel' : 'Start a project'}</button>
+      <button onclick={() => (showForm = !showForm)}>{showForm ? $t('Cancel') : $t('Start a project')}</button>
     {/if}
   </div>
 
@@ -313,40 +315,39 @@
 
   {#if showForm}
     <div class="card stack">
-      <h2 style="margin:0;">Start a project</h2>
+      <h2 style="margin:0;">{$t('Start a project')}</h2>
       <p class="muted" style="font-size:.82rem; margin:0;">
-        A new project always starts at <span class="badge dim">Proposal</span> with a proposal on file and the
-        leader initiation bond staked into its escrow.
+        {@html $t('A new project always starts at <span class="badge dim">Proposal</span> with a proposal on file and the leader initiation bond staked into its escrow.')}
       </p>
-      <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Name *</span>
-        <input bind:value={cName} placeholder="Project / paper name" /></label>
+      <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Name *')}</span>
+        <input bind:value={cName} placeholder={$t('Project / paper name')} /></label>
       <div class="row" style="flex-wrap:wrap;">
-        <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Type *</span>
-          <select bind:value={cType}><option value="">—</option>{#each types as t}<option value={t.id}>{t.name} (stake {t.leader_stake})</option>{/each}</select></label>
-        <label class="stack" style="gap:.2rem; flex:1;"><span class="muted" style="font-size:.75rem;">Target venue</span>
+        <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Type *')}</span>
+          <select bind:value={cType}><option value="">—</option>{#each types as pt}<option value={pt.id}>{pt.name} ({$t('stake')} {pt.leader_stake})</option>{/each}</select></label>
+        <label class="stack" style="gap:.2rem; flex:1;"><span class="muted" style="font-size:.75rem;">{$t('Target venue')}</span>
           <select bind:value={cVenueId}>
-            <option value="">— none —</option>
-            {#each venues as v}<option value={v.id}>{v.name}{v.deadline ? ` · ddl ${fmtDate(v.deadline)}` : ''}</option>{/each}
+            <option value="">{$t('— none —')}</option>
+            {#each venues as v}<option value={v.id}>{v.name}{v.deadline ? ` · ${$t('ddl')} ${fmtDate(v.deadline)}` : ''}</option>{/each}
           </select></label>
       </div>
-      <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Proposal link * <span class="dim">(PDF on Drive, Overleaf, OpenReview…)</span></span>
+      <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Proposal link *')} <span class="dim">{$t('(PDF on Drive, Overleaf, OpenReview…)')}</span></span>
         <input bind:value={cProposal} placeholder="https://…" /></label>
-      <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Summary</span>
-        <textarea bind:value={cSummary} rows="2" placeholder="One-line description"></textarea></label>
+      <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Summary')}</span>
+        <textarea bind:value={cSummary} rows="2" placeholder={$t('One-line description')}></textarea></label>
       <div class="card" style="background:var(--accent-soft); border-color:transparent; padding:.6rem .8rem;">
         <div class="row" style="justify-content:space-between;">
-          <span class="muted" style="font-size:.8rem;">Leader initiation stake</span>
+          <span class="muted" style="font-size:.8rem;">{$t('Leader initiation stake')}</span>
           <span class="mono" style="font-weight:600;">{leaderStake.toLocaleString()} STR</span>
         </div>
         <div class="row" style="justify-content:space-between;">
-          <span class="muted" style="font-size:.8rem;">Your balance after</span>
+          <span class="muted" style="font-size:.8rem;">{$t('Your balance after')}</span>
           <span class="mono {myBalance - leaderStake < 0 ? 'neg' : ''}">{(myBalance - leaderStake).toLocaleString()} STR</span>
         </div>
       </div>
       <div class="row">
         <button onclick={createProject} disabled={creating || leaderStake > myBalance}>
-          {creating ? 'Creating…' : `Stake ${leaderStake} STR & create`}</button>
-        {#if leaderStake > myBalance}<span class="neg" style="font-size:.8rem;">Insufficient balance to stake.</span>{/if}
+          {creating ? $t('Creating…') : $t('Stake {n} STR & create', { n: leaderStake })}</button>
+        {#if leaderStake > myBalance}<span class="neg" style="font-size:.8rem;">{$t('Insufficient balance to stake.')}</span>{/if}
       </div>
     </div>
   {/if}
@@ -354,29 +355,29 @@
   <!-- KPI summary -->
   <div class="kpis">
     <div class="kpi">
-      <span class="k-label">Projects</span>
+      <span class="k-label">{$t('Projects')}</span>
       <span class="k-value">{grid.length}</span>
-      <span class="k-sub">{kActive} active · {kFinished} finished</span>
+      <span class="k-sub">{$t('{a} active · {f} finished', { a: kActive, f: kFinished })}</span>
     </div>
     <div class="kpi">
-      <span class="k-label">Nominal pool</span>
+      <span class="k-label">{$t('Nominal pool')}</span>
       <span class="k-value accent">{kPool.toLocaleString()}</span>
-      <span class="k-sub">accrued contribution · {kEscrow.toLocaleString()} STR bonded</span>
+      <span class="k-sub">{$t('accrued contribution · {n} STR bonded', { n: kEscrow.toLocaleString() })}</span>
     </div>
     <div class="kpi">
-      <span class="k-label">Projected mint</span>
+      <span class="k-label">{$t('Projected mint')}</span>
       <span class="k-value">{kProjected.toLocaleString()}</span>
-      <span class="k-sub">at settlement, pool × multiplier</span>
+      <span class="k-sub">{$t('at settlement, pool × multiplier')}</span>
     </div>
     <div class="kpi">
-      <span class="k-label">Open needs</span>
+      <span class="k-label">{$t('Open needs')}</span>
       <span class="k-value">{kNeeds}</span>
-      <span class="k-sub">roles seeking contributors</span>
+      <span class="k-sub">{$t('roles seeking contributors')}</span>
     </div>
     <div class="kpi">
-      <span class="k-label">Deadlines ≤ 60d</span>
+      <span class="k-label">{$t('Deadlines ≤ 60d')}</span>
       <span class="k-value">{kUpcoming}</span>
-      <span class="k-sub">venues approaching</span>
+      <span class="k-sub">{$t('venues approaching')}</span>
     </div>
   </div>
 
@@ -387,7 +388,7 @@
       role="button" tabindex="0"
       onclick={() => (statusFilter = '')}
       onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') statusFilter = ''; }}
-    >All <span class="ct">{grid.length}</span></span>
+    >{$t('All')} <span class="ct">{grid.length}</span></span>
     {#each statusCounts as s}
       <span
         class="chip toggle {statusFilter === s.name ? 'on' : ''}"
@@ -396,7 +397,7 @@
         onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') statusFilter = statusFilter === s.name ? '' : s.name; }}
       >
         <span class="cdot {statusClass(s.name)}"></span>
-        <span>{s.name}</span>
+        <span>{$t(s.name)}</span>
         <span class="ct">{s.count}</span>
       </span>
     {/each}
@@ -406,34 +407,34 @@
   <div class="row" style="gap:.6rem;">
     <div class="search" style="flex:1; min-width:220px;">
       <span class="ico">⌕</span>
-      <input placeholder="Search name, leader, venue, type…" bind:value={q} style="width:100%;" />
+      <input placeholder={$t('Search name, leader, venue, type…')} bind:value={q} style="width:100%;" />
     </div>
     <select bind:value={typeFilter}>
-      <option value="">All types</option>
-      {#each typeNames as t}<option value={t}>{t}</option>{/each}
+      <option value="">{$t('All types')}</option>
+      {#each typeNames as tn}<option value={tn}>{tn}</option>{/each}
     </select>
     {#if q || typeFilter || statusFilter}
-      <button class="ghost" onclick={() => { q = ''; typeFilter = ''; statusFilter = ''; }}>Reset</button>
+      <button class="ghost" onclick={() => { q = ''; typeFilter = ''; statusFilter = ''; }}>{$t('Reset')}</button>
     {/if}
   </div>
 
   <div class="card" style="padding:0; overflow-x:auto;">
     {#if loading}
-      <p class="muted" style="padding:1rem;">Loading…</p>
+      <p class="muted" style="padding:1rem;">{$t('Loading…')}</p>
     {:else if rows.length === 0}
-      <p class="muted" style="padding:1rem;">No projects match.</p>
+      <p class="muted" style="padding:1rem;">{$t('No projects match.')}</p>
     {:else}
       <table>
         <thead class="sticky">
           <tr>
-            <th class="sortable" onclick={() => setSort('name')}>Project <span class="arrow">{arrow('name')}</span></th>
-            <th class="sortable" onclick={() => setSort('status')}>Status <span class="arrow">{arrow('status')}</span></th>
-            <th class="sortable" onclick={() => setSort('leader')}>Team <span class="arrow">{arrow('leader')}</span></th>
-            <th class="sortable num" onclick={() => setSort('openNeeds')}>Open needs <span class="arrow">{arrow('openNeeds')}</span></th>
-            <th class="sortable num" onclick={() => setSort('pool')}>Nominal pool <span class="arrow">{arrow('pool')}</span></th>
-            <th class="sortable num" onclick={() => setSort('multiplier')}>×Mult <span class="arrow">{arrow('multiplier')}</span></th>
-            <th class="sortable num" onclick={() => setSort('msVerified')}>Milestones <span class="arrow">{arrow('msVerified')}</span></th>
-            <th class="sortable" onclick={() => setSort('deadline')}>Target deadline <span class="arrow">{arrow('deadline')}</span></th>
+            <th class="sortable" onclick={() => setSort('name')}>{$t('Project')} <span class="arrow">{arrow('name')}</span></th>
+            <th class="sortable" onclick={() => setSort('status')}>{$t('Status')} <span class="arrow">{arrow('status')}</span></th>
+            <th class="sortable" onclick={() => setSort('leader')}>{$t('Team')} <span class="arrow">{arrow('leader')}</span></th>
+            <th class="sortable num" onclick={() => setSort('openNeeds')}>{$t('Open needs')} <span class="arrow">{arrow('openNeeds')}</span></th>
+            <th class="sortable num" onclick={() => setSort('pool')}>{$t('Nominal pool')} <span class="arrow">{arrow('pool')}</span></th>
+            <th class="sortable num" onclick={() => setSort('multiplier')}>{$t('×Mult')} <span class="arrow">{arrow('multiplier')}</span></th>
+            <th class="sortable num" onclick={() => setSort('msVerified')}>{$t('Milestones')} <span class="arrow">{arrow('msVerified')}</span></th>
+            <th class="sortable" onclick={() => setSort('deadline')}>{$t('Target deadline')} <span class="arrow">{arrow('deadline')}</span></th>
           </tr>
         </thead>
         <tbody>
@@ -441,7 +442,7 @@
             <tr>
               <td>
                 <a href={`/projects/${r.id}`} class="proj">
-                  <span class="pname">{r.name}{#if r.claimable}<span class="badge warn" style="margin-left:.4rem; font-size:.66rem; vertical-align:middle;">lead open</span>{/if}</span>
+                  <span class="pname">{r.name}{#if r.claimable}<span class="badge warn" style="margin-left:.4rem; font-size:.66rem; vertical-align:middle;">{$t('lead open')}</span>{/if}</span>
                   <span class="psub">
                     <span>{r.type}</span>
                     {#if r.venue}<span class="sep">·</span><span>{r.venue}</span>{/if}
@@ -450,10 +451,10 @@
               </td>
               <td>
                 <span class="status {statusClass(r.status)}">
-                  <span class="sdot" style="background:currentColor;"></span>{r.status}
+                  <span class="sdot" style="background:currentColor;"></span>{$t(r.status)}
                 </span>
                 {#if pipeIndex(r.status) >= 0 && r.status !== 'Hold'}
-                  <span class="pipe {statusClass(r.status)}" title={`Step ${pipeIndex(r.status) + 1} of ${pipeline.length}`}>
+                  <span class="pipe {statusClass(r.status)}" title={$t('Step {n} of {total}', { n: pipeIndex(r.status) + 1, total: pipeline.length })}>
                     {#each pipeline as _, i}<i class:fill={i <= pipeIndex(r.status)}></i>{/each}
                   </span>
                 {/if}
@@ -464,26 +465,26 @@
                     <span class="ava" title={r.leader}>{initials(r.leader)}</span>
                     <span class="proj" style="gap:0;">
                       <span class="dim" style="font-size:.82rem;">{r.leader}</span>
-                      <span class="psub">{r.members} member{r.members === 1 ? '' : 's'}</span>
+                      <span class="psub">{r.members} {r.members === 1 ? $t('member') : $t('members')}</span>
                     </span>
                   </span>
                 {:else}
-                  <span class="muted">{r.members} member{r.members === 1 ? '' : 's'}</span>
+                  <span class="muted">{r.members} {r.members === 1 ? $t('member') : $t('members')}</span>
                 {/if}
               </td>
               <td class="num">
                 {#if r.openNeeds > 0}
                   <span class="row" style="gap:.25rem; justify-content:flex-end;">
-                    {#if r.laborNeeds > 0}<span class="badge info" title="labor needs">{r.laborNeeds}L</span>{/if}
-                    {#if r.resourceNeeds > 0}<span class="badge dim" title="resource needs">{r.resourceNeeds}R</span>{/if}
-                    {#if r.openNeeds - r.laborNeeds - r.resourceNeeds > 0}<span class="badge" title="seat needs">{r.openNeeds - r.laborNeeds - r.resourceNeeds}S</span>{/if}
+                    {#if r.laborNeeds > 0}<span class="badge info" title={$t('labor needs')}>{r.laborNeeds}L</span>{/if}
+                    {#if r.resourceNeeds > 0}<span class="badge dim" title={$t('resource needs')}>{r.resourceNeeds}R</span>{/if}
+                    {#if r.openNeeds - r.laborNeeds - r.resourceNeeds > 0}<span class="badge" title={$t('seat needs')}>{r.openNeeds - r.laborNeeds - r.resourceNeeds}S</span>{/if}
                   </span>
                 {:else}<span class="muted">—</span>{/if}
               </td>
               <td class="num">
                 <span class="mono">{r.pool.toLocaleString()}</span>
                 {#if r.pool > 0}<span class="bar"><i style={`width:${Math.round((r.pool / maxPool) * 100)}%`}></i></span>{/if}
-                {#if r.escrow > 0}<span class="rel dim" style="display:block;">{r.escrow.toLocaleString()} bonded</span>{/if}
+                {#if r.escrow > 0}<span class="rel dim" style="display:block;">{$t('{n} bonded', { n: r.escrow.toLocaleString() })}</span>{/if}
               </td>
               <td class="num mono">
                 {#if r.multiplier > 1}<span class="badge {r.multiplier >= 2 ? 'up' : 'info'}">×{r.multiplier.toFixed(2)}</span>{:else}<span class="muted">×1.00</span>{/if}
@@ -506,10 +507,10 @@
         </tbody>
         <tfoot>
           <tr style="border-top:1px solid var(--border-2);">
-            <td class="muted" style="font-size:.78rem;">{rows.length} total</td>
+            <td class="muted" style="font-size:.78rem;">{$t('{n} total', { n: rows.length })}</td>
             <td></td><td></td>
             <td class="num mono muted" style="font-size:.78rem;">{totalNeeds}</td>
-            <td class="num mono muted" style="font-size:.78rem;" title={`${totalEscrow.toLocaleString()} STR bonded`}>{totalPool.toLocaleString()}</td>
+            <td class="num mono muted" style="font-size:.78rem;" title={$t('{n} STR bonded', { n: totalEscrow.toLocaleString() })}>{totalPool.toLocaleString()}</td>
             <td></td>
             <td></td>
             <td></td>
@@ -522,18 +523,18 @@
   {#if !loading && rows.length > 0}
     <div class="row" style="justify-content:space-between; align-items:center;">
       <div class="row" style="gap:.5rem;">
-        <span class="muted" style="font-size:.8rem;">{rangeFrom}–{rangeTo} of {rows.length}</span>
+        <span class="muted" style="font-size:.8rem;">{rangeFrom}–{rangeTo} {$t('of')} {rows.length}</span>
         <select bind:value={pageSize} style="padding:.3rem .5rem; font-size:.82rem;">
-          {#each [10, 25, 50, 100] as n}<option value={n}>{n} / page</option>{/each}
+          {#each [10, 25, 50, 100] as n}<option value={n}>{$t('{n} / page', { n })}</option>{/each}
         </select>
       </div>
       {#if pageCount > 1}
         <div class="row" style="gap:.35rem;">
-          <button class="ghost" onclick={() => (pageNum = 1)} disabled={pageNum === 1} title="First">«</button>
-          <button class="ghost" onclick={() => (pageNum = Math.max(1, pageNum - 1))} disabled={pageNum === 1}>‹ Prev</button>
+          <button class="ghost" onclick={() => (pageNum = 1)} disabled={pageNum === 1} title={$t('First')}>«</button>
+          <button class="ghost" onclick={() => (pageNum = Math.max(1, pageNum - 1))} disabled={pageNum === 1}>‹ {$t('Prev')}</button>
           <span class="muted mono" style="font-size:.82rem; padding:0 .3rem;">{pageNum} / {pageCount}</span>
-          <button class="ghost" onclick={() => (pageNum = Math.min(pageCount, pageNum + 1))} disabled={pageNum === pageCount}>Next ›</button>
-          <button class="ghost" onclick={() => (pageNum = pageCount)} disabled={pageNum === pageCount} title="Last">»</button>
+          <button class="ghost" onclick={() => (pageNum = Math.min(pageCount, pageNum + 1))} disabled={pageNum === pageCount}>{$t('Next')} ›</button>
+          <button class="ghost" onclick={() => (pageNum = pageCount)} disabled={pageNum === pageCount} title={$t('Last')}>»</button>
         </div>
       {/if}
     </div>
