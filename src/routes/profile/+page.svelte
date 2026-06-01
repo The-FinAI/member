@@ -2,6 +2,8 @@
   import { onMount } from 'svelte';
   import { member, capabilities } from '$lib/session';
   import { supabase, supabaseConfigured } from '$lib/supabase';
+  import { t } from '$lib/i18n';
+  import { get } from 'svelte/store';
 
   // guild certification ladder (member_skill.certified_level) — the hard credential
   const GUILD_LABEL: Record<string, string> = {
@@ -106,7 +108,7 @@
     error = '';
     if (!$member) return;
     const hrs = parseInt(laborHours, 10);
-    if (!Number.isFinite(hrs) || hrs < 0) { error = 'Enter hours per month (a number).'; return; }
+    if (!Number.isFinite(hrs) || hrs < 0) { error = get(t)('Enter hours per month (a number).'); return; }
     laborBusy = true;
     const capacity = `${hrs} hrs/mo`;
     let err;
@@ -165,10 +167,10 @@
 </script>
 
 <div class="stack" style="max-width:680px;">
-  <h1>Your profile</h1>
+  <h1>{$t('Your profile')}</h1>
 
   {#if !$member}
-    <div class="card"><p class="muted">No member record linked to this account yet.</p></div>
+    <div class="card"><p class="muted">{$t('No member record linked to this account yet.')}</p></div>
   {:else}
     <div class="card stack">
       <div class="row" style="justify-content:space-between; align-items:flex-start;">
@@ -176,71 +178,70 @@
           <div><strong>{$member.full_name}</strong></div>
           <div class="muted">{$member.email}</div>
         </div>
-        <a href={`/members/${$member.id}`}><button class="ghost">Public page →</button></a>
+        <a href={`/members/${$member.id}`}><button class="ghost">{$t('Public page →')}</button></a>
       </div>
       <label class="stack" style="gap:.3rem;">
-        <span class="muted" style="font-size:.8rem;">Affiliation</span>
+        <span class="muted" style="font-size:.8rem;">{$t('Affiliation')}</span>
         <input bind:value={affiliation} />
       </label>
       <div class="row">
-        <button onclick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
-        {#if saved}<span class="badge">Saved</span>{/if}
+        <button onclick={save} disabled={saving}>{saving ? $t('Saving…') : $t('Save')}</button>
+        {#if saved}<span class="badge">{$t('Saved')}</span>{/if}
       </div>
     </div>
 
     <!-- standing at a glance -->
     <div class="kpis">
       <div class="kpi">
-        <span class="k-label">Contribution</span>
+        <span class="k-label">{$t('Contribution')}</span>
         <span class="k-value accent">{totalNominal.toLocaleString()}</span>
-        <span class="k-sub">nominal STR minted through work</span>
+        <span class="k-sub">{$t('nominal STR minted through work')}</span>
       </div>
       <div class="kpi">
-        <span class="k-label">Liquid balance</span>
+        <span class="k-label">{$t('Liquid balance')}</span>
         <span class="k-value">{balance.toLocaleString()}</span>
-        <span class="k-sub"><a href="/wallet">open wallet →</a></span>
+        <span class="k-sub"><a href="/wallet">{$t('open wallet →')}</a></span>
       </div>
       <div class="kpi">
-        <span class="k-label">Guild rank</span>
+        <span class="k-label">{$t('Guild rank')}</span>
         <span class="k-value">{certifiedCount}</span>
-        <span class="k-sub">{certifiedCount === 1 ? 'skill' : 'skills'} certified{masterCount ? ` · ${masterCount} mastered` : ''}</span>
+        <span class="k-sub">{$t(certifiedCount === 1 ? 'skill certified' : 'skills certified')}{masterCount ? $t(' · {n} mastered', { n: masterCount }) : ''}</span>
       </div>
       <div class="kpi">
-        <span class="k-label">Reputation</span>
+        <span class="k-label">{$t('Reputation')}</span>
         <span class="k-value">{totalCredit.toLocaleString()}</span>
-        <span class="k-sub">peer-endorsement credit</span>
+        <span class="k-sub">{$t('peer-endorsement credit')}</span>
       </div>
     </div>
 
     <!-- skills: read-only certifications. Acquisition happens in the Guild. -->
     <div class="card stack">
       <div class="row" style="justify-content:space-between; align-items:center;">
-        <h2 style="margin:0;">Certifications</h2>
-        <a href="/skills"><button>Go to the Guild →</button></a>
+        <h2 style="margin:0;">{$t('Certifications')}</h2>
+        <a href="/skills"><button>{$t('Go to the Guild →')}</button></a>
       </div>
       <p class="muted" style="font-size:.82rem; margin-top:-.35rem;">
-        Skills aren't self-rated — they're <strong>earned</strong>. Sit a paid, peer-reviewed exam in
-        <a href="/skills">the Guild</a> to climb Apprentice → Journeyman → Craftsman → Master.
+        {@html $t("Skills aren't self-rated — they're <strong>earned</strong>. Sit a paid, peer-reviewed exam in <a href='/skills'>the Guild</a> to climb Apprentice → Journeyman → Craftsman → Master.")}
       </p>
       {#if error}<p style="color:var(--down);">{error}</p>{/if}
       {#if skillsLoading}
-        <p class="muted">Loading…</p>
+        <p class="muted">{$t('Loading…')}</p>
       {:else if mySkills.length === 0}
-        <p class="muted">No certifications yet. Visit <a href="/skills">the Guild</a> to sit your first exam and earn one.</p>
+        <p class="muted">{@html $t("No certifications yet. Visit <a href='/skills'>the Guild</a> to sit your first exam and earn one.")}</p>
       {:else}
         <table>
-          <thead><tr><th>Skill</th><th>Guild certification</th><th class="num">Reputation</th></tr></thead>
+          <thead><tr><th>{$t('Skill')}</th><th>{$t('Guild certification')}</th><th class="num">{$t('Reputation')}</th></tr></thead>
           <tbody>
             {#each mySkills as s}
               <tr>
                 <td><strong>{skillName(s.skill_id)}</strong></td>
                 <td>
                   {#if s.certified_level === 'master'}
-                    <span class="badge pos">👑 {GUILD_LABEL.master}</span>
+                    <span class="badge pos">👑 {$t(GUILD_LABEL.master)}</span>
                   {:else if s.certified_level}
-                    <span class="badge pos">✓ {GUILD_LABEL[s.certified_level] ?? s.certified_level}</span>
+                    <span class="badge pos">✓ {$t(GUILD_LABEL[s.certified_level] ?? s.certified_level)}</span>
                   {:else}
-                    <a href="/skills" class="badge dim" style="text-decoration:none;">Uncertified — sit exam →</a>
+                    <a href="/skills" class="badge dim" style="text-decoration:none;">{$t('Uncertified — sit exam →')}</a>
                   {/if}
                 </td>
                 <td class="num mono dim">{skillCredit[s.skill_id]?.credit ?? 0}</td>
@@ -253,41 +254,41 @@
 
     <!-- resources: an offerable catalog (what I can bring), steward-gated -->
     <div class="card stack">
-      <h2>What I can bring</h2>
-      <p class="muted" style="font-size:.82rem; margin-top:-.5rem;">Your offerable catalog — time, compute, funding, data. You pledge specific amounts to a project when you join it; this is just what's available.</p>
+      <h2>{$t('What I can bring')}</h2>
+      <p class="muted" style="font-size:.82rem; margin-top:-.5rem;">{$t("Your offerable catalog — time, compute, funding, data. You pledge specific amounts to a project when you join it; this is just what's available.")}</p>
 
       <!-- labor / time -->
       <div class="stack" style="gap:.4rem; border:1px solid var(--border); border-radius:8px; padding:.6rem .75rem;">
         <div class="row" style="justify-content:space-between; align-items:center;">
-          <strong style="font-size:.9rem;">⏱ Time I can commit</strong>
-          {#if myLabor}<span class="badge {myLabor.approval_status}">{myLabor.approval_status === 'approved' ? '✓ approved' : myLabor.approval_status === 'rejected' ? '✕ rejected' : '⏳ pending'}</span>{/if}
+          <strong style="font-size:.9rem;">⏱ {$t('Time I can commit')}</strong>
+          {#if myLabor}<span class="badge {myLabor.approval_status}">{myLabor.approval_status === 'approved' ? $t('✓ approved') : myLabor.approval_status === 'rejected' ? $t('✕ rejected') : $t('⏳ pending')}</span>{/if}
         </div>
         <div class="row" style="align-items:flex-end; gap:.5rem; flex-wrap:wrap;">
-          <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Hours per month</span>
-            <input type="number" min="0" bind:value={laborHours} placeholder="e.g. 40" style="width:120px;" /></label>
-          <button onclick={saveLabor} disabled={laborBusy}>{laborBusy ? 'Saving…' : myLabor ? 'Update time' : 'Set time'}</button>
+          <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Hours per month')}</span>
+            <input type="number" min="0" bind:value={laborHours} placeholder={$t('e.g. 40')} style="width:120px;" /></label>
+          <button onclick={saveLabor} disabled={laborBusy}>{laborBusy ? $t('Saving…') : myLabor ? $t('Update time') : $t('Set time')}</button>
         </div>
-        <p class="muted" style="font-size:.75rem; margin:0;">Valued at <code>hours × your skill rate</code> and minted monthly into a project once you pledge it.</p>
+        <p class="muted" style="font-size:.75rem; margin:0;">{@html $t('Valued at <code>hours × your skill rate</code> and minted monthly into a project once you pledge it.')}</p>
       </div>
 
-      <div class="res-pending-note">⏳ New resources are reviewed by a steward before they can be offered to projects.</div>
+      <div class="res-pending-note">{$t('⏳ New resources are reviewed by a steward before they can be offered to projects.')}</div>
       {#if skillsLoading}
-        <p class="muted">Loading…</p>
+        <p class="muted">{$t('Loading…')}</p>
       {:else}
         {#if catalogResources.length === 0}
-          <p class="muted">No other resources added yet.</p>
+          <p class="muted">{$t('No other resources added yet.')}</p>
         {:else}
           <table>
-            <thead><tr><th>Name</th><th>Type</th><th>Capacity</th><th>Availability</th><th>Review</th><th></th></tr></thead>
+            <thead><tr><th>{$t('Name')}</th><th>{$t('Type')}</th><th>{$t('Capacity')}</th><th>{$t('Availability')}</th><th>{$t('Review')}</th><th></th></tr></thead>
             <tbody>
               {#each catalogResources as r}
                 <tr>
                   <td>{r.name}</td>
                   <td>{r.resource_type?.name ?? '—'}</td>
                   <td>{r.capacity ?? '—'}</td>
-                  <td><span class="badge dim">{r.availability}</span></td>
-                  <td><span class="badge {r.approval_status}">{r.approval_status === 'approved' ? '✓ approved' : r.approval_status === 'rejected' ? '✕ rejected' : '⏳ pending'}</span></td>
-                  <td><button class="danger" onclick={() => removeResource(r.id)}>Remove</button></td>
+                  <td><span class="badge dim">{$t(r.availability)}</span></td>
+                  <td><span class="badge {r.approval_status}">{r.approval_status === 'approved' ? $t('✓ approved') : r.approval_status === 'rejected' ? $t('✕ rejected') : $t('⏳ pending')}</span></td>
+                  <td><button class="danger" onclick={() => removeResource(r.id)}>{$t('Remove')}</button></td>
                 </tr>
               {/each}
             </tbody>
@@ -295,15 +296,15 @@
         {/if}
 
         <div class="row" style="align-items:flex-end; flex-wrap:wrap; border-top:1px dashed var(--border); padding-top:.75rem;">
-          <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Name</span>
-            <input bind:value={rName} placeholder="e.g. RTX 4090 ×2" /></label>
-          <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Type</span>
-            <select bind:value={rType}><option value="">—</option>{#each catalogTypes as t}<option value={t.id}>{t.name}</option>{/each}</select></label>
-          <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Capacity</span>
-            <input bind:value={rCapacity} placeholder="optional" style="width:120px;" /></label>
-          <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Availability</span>
-            <select bind:value={rAvail}>{#each AVAIL as a}<option>{a}</option>{/each}</select></label>
-          <button onclick={addResource}>Add resource</button>
+          <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Name')}</span>
+            <input bind:value={rName} placeholder={$t('e.g. RTX 4090 ×2')} /></label>
+          <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Type')}</span>
+            <select bind:value={rType}><option value="">—</option>{#each catalogTypes as ct}<option value={ct.id}>{ct.name}</option>{/each}</select></label>
+          <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Capacity')}</span>
+            <input bind:value={rCapacity} placeholder={$t('optional')} style="width:120px;" /></label>
+          <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Availability')}</span>
+            <select bind:value={rAvail}>{#each AVAIL as a}<option value={a}>{$t(a)}</option>{/each}</select></label>
+          <button onclick={addResource}>{$t('Add resource')}</button>
         </div>
       {/if}
     </div>
@@ -332,9 +333,9 @@
     {/if}
 
     <div class="card">
-      <h2>Capabilities</h2>
+      <h2>{$t('Capabilities')}</h2>
       {#if $capabilities.size === 0}
-        <p class="muted">Standard member — no admin capabilities.</p>
+        <p class="muted">{$t('Standard member — no admin capabilities.')}</p>
       {:else}
         <div class="row">{#each [...$capabilities] as c}<span class="badge">{c}</span>{/each}</div>
       {/if}
