@@ -103,7 +103,103 @@ const zh: Table = {
   'Activity': '活动',
   'Earned by finishing projects; spent to join ({n}/join), stake, and endorse peers.':
     '通过完成项目赚取;用于加入({n}/次)、质押和为同伴背书。',
-  'No transactions yet.': '暂无交易。'
+  'No transactions yet.': '暂无交易。',
+
+  // ── opportunities / task market ──
+  'Task Market': '任务市场',
+  'Each row is a need — a typed request a project posts for a contribution (labor hours, a resource, or a seat). Apply to one that fits, then post the join bond to start.':
+    '每一行都是一个需求——项目为某项贡献(工时、资源或席位)发布的具体请求。申请一个契合的,然后缴纳加入保证金开始。',
+  'Open work across the community — claim a seat, commit monthly labor, lend a resource, or take the lead on a project.':
+    '社区中的开放工作——认领席位、承诺每月工时、出借资源,或主导一个项目。',
+  'Lead a project': '主导项目',
+  'Leading means posting the 50 STR leader bond — real liquid STR escrowed into the project. It funds the pool and seeds your claim, but is slashable if you flake.':
+    '主导意味着缴纳 50 STR 的领导保证金——真实的流动 STR 托管进项目。它为资金池注资并为你的权益奠基,但若你失约可被罚没。',
+  '{n} leaderless': '{n} 个无领导',
+  'These projects have no managing leader. Stake the leader bond to take the lead seat and start staffing it.':
+    '这些项目没有管理领导者。质押领导保证金以接任领导席位并开始组建团队。',
+  'member': '名成员',
+  'members': '名成员',
+  'Claiming…': '认领中…',
+  'Take the lead · {n} STR': '接任领导 · {n} STR',
+  'Sign in to lead': '登录以主导',
+  'Insufficient balance ({bal} STR) to lead {name}.': '余额不足({bal} STR),无法主导 {name}。',
+  'All': '全部',
+  'Seat': '席位',
+  'Labor': '工时',
+  'Resource': '资源',
+  'Search project, role, skill…': '搜索项目、角色、技能…',
+  'All roles': '全部角色',
+  'All skills': '全部技能',
+  "Show needs I'd qualify for at this level or below": '显示我在此等级或以下符合资格的需求',
+  'Any level': '任意等级',
+  'Reset': '重置',
+  'No open opportunities match.': '没有匹配的开放机会。',
+  'Skill:': '技能:',
+  '{n} opening(s)': '{n} 个空缺',
+  'hrs/mo': '小时/月',
+  'lend a resource': '出借资源',
+  'stakes': '质押',
+  'Contributor': '贡献者',
+  "You're on this project": '你已在该项目中',
+  'Joined': '已加入',
+  "You've been <strong>accepted</strong> — stake <strong class='mono' style='color:var(--accent);'>{n}</strong> STR to take your seat.":
+    '你已被<strong>接受</strong>——质押 <strong class=\'mono\' style=\'color:var(--accent);\'>{n}</strong> STR 以就座。',
+  'Joining…': '加入中…',
+  'Confirm join · {n} STR': '确认加入 · {n} STR',
+  'Insufficient balance ({bal} STR).': '余额不足({bal} STR)。',
+  'Application declined': '申请被拒',
+  'Applied · pending review': '已申请 · 待审核',
+  'Short pitch (optional)': '简短自荐(可选)',
+  'I can help': '我可以帮忙',
+  'Confirm joining {name}? This stakes {n} STR into the project escrow.': '确认加入 {name}?这会向项目托管质押 {n} STR。',
+  'this project': '该项目',
+  'Leading {name} stakes {n} STR but you only have {bal}.': '主导 {name} 需质押 {n} STR,但你只有 {bal}。',
+  'Take the lead on {name}? This stakes {n} STR (the leader bond) into its escrow and makes you the managing leader.':
+    '接任 {name} 的领导?这会向其托管质押 {n} STR(领导保证金)并使你成为管理领导者。',
+
+  // ── guild / skills ──
+  'The Guild': '行会',
+  'Certification turns a self-declared skill into a hard, peer-reviewed credential — and sets your labor rate, which is how much your monthly hours mint.':
+    '认证将自我申报的技能转化为经同行评审的硬资质——并设定你的工时单价,即你每月工时能铸造多少。',
+  "Skills are a craft ladder — Apprentice → Journeyman → Craftsman → Master. Certification is earned by paid, peer-reviewed exam. Each craft's master is appointed by an admin; the master owns its rubric and seeds the reviewer pool.":
+    '技能是一条工匠阶梯——学徒 → 熟练工 → 工匠 → 大师。认证通过付费的同行评审考试获得。每门技艺的大师由管理员任命;大师拥有其评分标准并组建评审池。',
+  'Apprentice': '学徒',
+  'Journeyman': '熟练工',
+  'Craftsman': '工匠',
+  'Master': '大师',
+  'Exams awaiting your review': '等待你评审的考试',
+  '<strong>{name}</strong> sits <strong>{skill}</strong>': '<strong>{name}</strong> 应试 <strong>{skill}</strong>',
+  'A member': '一名成员',
+  'Pass': '通过',
+  'Fail': '未通过',
+  'Rubric:': '评分标准:',
+  'No rubric on file — grade on your own judgement.': '无存档评分标准——请凭你的判断评分。',
+  'Note to applicant (optional)': '给申请人的留言(可选)',
+  'My exams': '我的考试',
+  'in review': '评审中',
+  'passed': '已通过',
+  'failed': '未通过',
+  'Pick a skill from the tree to see its master, rubric, and exam.': '从技能树中选择一项,查看其大师、评分标准和考试。',
+  '— none appointed —': '— 暂未任命 —',
+  '{n} certified holder(s)': '{n} 名认证持有者',
+  'you are <strong class="pos">✓ {level}</strong>': '你是 <strong class="pos">✓ {level}</strong>',
+  'Rubric': '评分标准',
+  'No rubric published yet.': '尚未发布评分标准。',
+  'No master appointed yet. An admin appoints a master in': '尚未任命大师。管理员在',
+  'the skill tree': '技能树',
+  '; certification opens once a master seeds the reviewer pool.': '中任命大师;大师组建评审池后认证即开放。',
+  'Sit exam at': '应试等级',
+  'Requesting…': '申请中…',
+  'Sit exam · {n} STR': '应试 · {n} STR',
+  'A panel of certified peers grades you. The fee pays the reviewers (80%) and treasury (20%) whether you pass or fail.':
+    '一组认证同行为你评分。无论通过与否,费用都支付给评审(80%)和金库(20%)。',
+  'Master tools — rubric': '大师工具——评分标准',
+  'Rubric for': '评分标准等级',
+  'What must a candidate demonstrate at this level?': '在该等级,候选人必须展示什么?',
+  'Saving…': '保存中…',
+  'Save rubric': '保存评分标准',
+  'You were appointed master of this craft — define how each level is tested. The tree itself (adding or branching skills) is managed by admins in':
+    '你被任命为该技艺的大师——定义每个等级如何考核。技能树本身(新增或分支技能)由管理员在'
 };
 
 const ja: Table = {
@@ -203,7 +299,103 @@ const ja: Table = {
   'Activity': 'アクティビティ',
   'Earned by finishing projects; spent to join ({n}/join), stake, and endorse peers.':
     'プロジェクトの完了で獲得；参加（{n}/回）、ステーク、仲間の推薦に使用。',
-  'No transactions yet.': 'まだ取引はありません。'
+  'No transactions yet.': 'まだ取引はありません。',
+
+  // ── opportunities / task market ──
+  'Task Market': 'タスク市場',
+  'Each row is a need — a typed request a project posts for a contribution (labor hours, a resource, or a seat). Apply to one that fits, then post the join bond to start.':
+    '各行は需要——プロジェクトが貢献(稼働時間・リソース・席)のために出す具体的な要請です。合うものに応募し、参加ボンドを拠出して開始します。',
+  'Open work across the community — claim a seat, commit monthly labor, lend a resource, or take the lead on a project.':
+    'コミュニティ全体の募集中の仕事——席を取る、月次の稼働を約束する、リソースを貸す、またはプロジェクトを主導する。',
+  'Lead a project': 'プロジェクトを主導',
+  'Leading means posting the 50 STR leader bond — real liquid STR escrowed into the project. It funds the pool and seeds your claim, but is slashable if you flake.':
+    '主導とは 50 STR のリーダーボンドを拠出すること——プロジェクトに預託される実際の流動 STR です。プールに資金を入れあなたの取り分の基盤になりますが、放棄すると没収され得ます。',
+  '{n} leaderless': 'リーダー不在 {n} 件',
+  'These projects have no managing leader. Stake the leader bond to take the lead seat and start staffing it.':
+    'これらのプロジェクトには管理リーダーがいません。リーダーボンドをステークしてリーダー席に就き、人員配置を始めましょう。',
+  'member': '名',
+  'members': '名',
+  'Claiming…': '取得中…',
+  'Take the lead · {n} STR': 'リーダーになる · {n} STR',
+  'Sign in to lead': '主導するにはサインイン',
+  'Insufficient balance ({bal} STR) to lead {name}.': '残高不足（{bal} STR)のため {name} を主導できません。',
+  'All': 'すべて',
+  'Seat': '席',
+  'Labor': '稼働',
+  'Resource': 'リソース',
+  'Search project, role, skill…': 'プロジェクト・役割・スキルを検索…',
+  'All roles': 'すべての役割',
+  'All skills': 'すべてのスキル',
+  "Show needs I'd qualify for at this level or below": 'このレベル以下で資格のある需要を表示',
+  'Any level': '任意のレベル',
+  'Reset': 'リセット',
+  'No open opportunities match.': '一致する募集はありません。',
+  'Skill:': 'スキル:',
+  '{n} opening(s)': '{n} 枠',
+  'hrs/mo': '時間/月',
+  'lend a resource': 'リソースを貸す',
+  'stakes': 'ステーク',
+  'Contributor': '貢献者',
+  "You're on this project": 'あなたはこのプロジェクトに参加中',
+  'Joined': '参加済み',
+  "You've been <strong>accepted</strong> — stake <strong class='mono' style='color:var(--accent);'>{n}</strong> STR to take your seat.":
+    'あなたは<strong>承認されました</strong>——<strong class=\'mono\' style=\'color:var(--accent);\'>{n}</strong> STR をステークして席に就きましょう。',
+  'Joining…': '参加中…',
+  'Confirm join · {n} STR': '参加を確定 · {n} STR',
+  'Insufficient balance ({bal} STR).': '残高不足（{bal} STR)。',
+  'Application declined': '応募は却下されました',
+  'Applied · pending review': '応募済み · 審査待ち',
+  'Short pitch (optional)': '短い自己アピール(任意)',
+  'I can help': '手伝えます',
+  'Confirm joining {name}? This stakes {n} STR into the project escrow.': '{name} に参加しますか?プロジェクトのエスクローに {n} STR をステークします。',
+  'this project': 'このプロジェクト',
+  'Leading {name} stakes {n} STR but you only have {bal}.': '{name} の主導には {n} STR が必要ですが、残高は {bal} です。',
+  'Take the lead on {name}? This stakes {n} STR (the leader bond) into its escrow and makes you the managing leader.':
+    '{name} を主導しますか?エスクローに {n} STR(リーダーボンド)をステークし、あなたが管理リーダーになります。',
+
+  // ── guild / skills ──
+  'The Guild': 'ギルド',
+  'Certification turns a self-declared skill into a hard, peer-reviewed credential — and sets your labor rate, which is how much your monthly hours mint.':
+    '認定は自己申告のスキルを、同僚審査を経た確かな資格に変え——あなたの稼働単価、つまり月の稼働がどれだけ鋳造するかを決めます。',
+  "Skills are a craft ladder — Apprentice → Journeyman → Craftsman → Master. Certification is earned by paid, peer-reviewed exam. Each craft's master is appointed by an admin; the master owns its rubric and seeds the reviewer pool.":
+    'スキルは職人のはしご——見習い → 職人 → 熟練工 → マスター。認定は有料の同僚審査試験で得られます。各技のマスターは管理者が任命し、評価基準を所有し審査員プールを編成します。',
+  'Apprentice': '見習い',
+  'Journeyman': '職人',
+  'Craftsman': '熟練工',
+  'Master': 'マスター',
+  'Exams awaiting your review': 'あなたの審査待ちの試験',
+  '<strong>{name}</strong> sits <strong>{skill}</strong>': '<strong>{name}</strong> が <strong>{skill}</strong> を受験',
+  'A member': 'あるメンバー',
+  'Pass': '合格',
+  'Fail': '不合格',
+  'Rubric:': '評価基準:',
+  'No rubric on file — grade on your own judgement.': '評価基準の登録なし——ご自身の判断で採点してください。',
+  'Note to applicant (optional)': '応募者へのメモ(任意)',
+  'My exams': 'マイ試験',
+  'in review': '審査中',
+  'passed': '合格',
+  'failed': '不合格',
+  'Pick a skill from the tree to see its master, rubric, and exam.': 'ツリーからスキルを選ぶと、マスター・評価基準・試験が表示されます。',
+  '— none appointed —': '— 未任命 —',
+  '{n} certified holder(s)': '認定保有者 {n} 名',
+  'you are <strong class="pos">✓ {level}</strong>': 'あなたは <strong class="pos">✓ {level}</strong>',
+  'Rubric': '評価基準',
+  'No rubric published yet.': 'まだ評価基準が公開されていません。',
+  'No master appointed yet. An admin appoints a master in': 'まだマスターが任命されていません。管理者は',
+  'the skill tree': 'スキルツリー',
+  '; certification opens once a master seeds the reviewer pool.': 'でマスターを任命します。マスターが審査員プールを編成すると認定が開きます。',
+  'Sit exam at': '受験レベル',
+  'Requesting…': '申請中…',
+  'Sit exam · {n} STR': '受験 · {n} STR',
+  'A panel of certified peers grades you. The fee pays the reviewers (80%) and treasury (20%) whether you pass or fail.':
+    '認定された同僚のパネルが採点します。合否にかかわらず、料金は審査員(80%)と財庫(20%)に支払われます。',
+  'Master tools — rubric': 'マスターツール——評価基準',
+  'Rubric for': '評価基準のレベル',
+  'What must a candidate demonstrate at this level?': 'このレベルで候補者は何を示すべきか?',
+  'Saving…': '保存中…',
+  'Save rubric': '評価基準を保存',
+  'You were appointed master of this craft — define how each level is tested. The tree itself (adding or branching skills) is managed by admins in':
+    'あなたはこの技のマスターに任命されました——各レベルの試験方法を定義してください。ツリー自体(スキルの追加や分岐)は管理者が'
 };
 
 const fr: Table = {
@@ -303,7 +495,103 @@ const fr: Table = {
   'Activity': 'Activité',
   'Earned by finishing projects; spent to join ({n}/join), stake, and endorse peers.':
     'Gagné en terminant des projets ; dépensé pour rejoindre ({n}/adhésion), engager et recommander des pairs.',
-  'No transactions yet.': 'Aucune transaction pour le moment.'
+  'No transactions yet.': 'Aucune transaction pour le moment.',
+
+  // ── opportunities / task market ──
+  'Task Market': 'Marché des tâches',
+  'Each row is a need — a typed request a project posts for a contribution (labor hours, a resource, or a seat). Apply to one that fits, then post the join bond to start.':
+    'Chaque ligne est un besoin — une demande qu’un projet publie pour une contribution (heures de travail, ressource ou siège). Postulez à celui qui convient, puis déposez la caution pour commencer.',
+  'Open work across the community — claim a seat, commit monthly labor, lend a resource, or take the lead on a project.':
+    'Travail ouvert dans la communauté — prenez un siège, engagez des heures mensuelles, prêtez une ressource ou dirigez un projet.',
+  'Lead a project': 'Diriger un projet',
+  'Leading means posting the 50 STR leader bond — real liquid STR escrowed into the project. It funds the pool and seeds your claim, but is slashable if you flake.':
+    'Diriger signifie déposer la caution de chef de 50 STR — du STR liquide réel mis sous séquestre dans le projet. Elle finance le pool et amorce votre part, mais peut être confisquée si vous abandonnez.',
+  '{n} leaderless': '{n} sans chef',
+  'These projects have no managing leader. Stake the leader bond to take the lead seat and start staffing it.':
+    'Ces projets n’ont pas de chef. Engagez la caution de chef pour prendre la tête et commencer à recruter.',
+  'member': 'membre',
+  'members': 'membres',
+  'Claiming…': 'Prise en cours…',
+  'Take the lead · {n} STR': 'Prendre la tête · {n} STR',
+  'Sign in to lead': 'Connectez-vous pour diriger',
+  'Insufficient balance ({bal} STR) to lead {name}.': 'Solde insuffisant ({bal} STR) pour diriger {name}.',
+  'All': 'Tout',
+  'Seat': 'Siège',
+  'Labor': 'Travail',
+  'Resource': 'Ressource',
+  'Search project, role, skill…': 'Rechercher projet, rôle, compétence…',
+  'All roles': 'Tous les rôles',
+  'All skills': 'Toutes les compétences',
+  "Show needs I'd qualify for at this level or below": 'Afficher les besoins admissibles à ce niveau ou en dessous',
+  'Any level': 'Tout niveau',
+  'Reset': 'Réinitialiser',
+  'No open opportunities match.': 'Aucune opportunité ne correspond.',
+  'Skill:': 'Compétence :',
+  '{n} opening(s)': '{n} poste(s)',
+  'hrs/mo': 'h/mois',
+  'lend a resource': 'prêter une ressource',
+  'stakes': 'engage',
+  'Contributor': 'Contributeur',
+  "You're on this project": 'Vous êtes sur ce projet',
+  'Joined': 'Rejoint',
+  "You've been <strong>accepted</strong> — stake <strong class='mono' style='color:var(--accent);'>{n}</strong> STR to take your seat.":
+    'Vous avez été <strong>accepté</strong> — engagez <strong class=\'mono\' style=\'color:var(--accent);\'>{n}</strong> STR pour prendre votre siège.',
+  'Joining…': 'Adhésion…',
+  'Confirm join · {n} STR': 'Confirmer · {n} STR',
+  'Insufficient balance ({bal} STR).': 'Solde insuffisant ({bal} STR).',
+  'Application declined': 'Candidature refusée',
+  'Applied · pending review': 'Candidaté · en attente',
+  'Short pitch (optional)': 'Brève présentation (facultatif)',
+  'I can help': 'Je peux aider',
+  'Confirm joining {name}? This stakes {n} STR into the project escrow.': 'Rejoindre {name} ? Cela engage {n} STR dans le séquestre du projet.',
+  'this project': 'ce projet',
+  'Leading {name} stakes {n} STR but you only have {bal}.': 'Diriger {name} engage {n} STR mais vous n’avez que {bal}.',
+  'Take the lead on {name}? This stakes {n} STR (the leader bond) into its escrow and makes you the managing leader.':
+    'Prendre la tête de {name} ? Cela engage {n} STR (la caution de chef) dans le séquestre et vous nomme chef.',
+
+  // ── guild / skills ──
+  'The Guild': 'La Guilde',
+  'Certification turns a self-declared skill into a hard, peer-reviewed credential — and sets your labor rate, which is how much your monthly hours mint.':
+    'La certification transforme une compétence auto-déclarée en un titre solide évalué par les pairs — et fixe votre taux horaire, soit ce que vos heures mensuelles frappent.',
+  "Skills are a craft ladder — Apprentice → Journeyman → Craftsman → Master. Certification is earned by paid, peer-reviewed exam. Each craft's master is appointed by an admin; the master owns its rubric and seeds the reviewer pool.":
+    'Les compétences forment une échelle d’artisanat — Apprenti → Compagnon → Artisan → Maître. La certification s’obtient par un examen payant évalué par les pairs. Le maître de chaque métier est nommé par un admin ; il détient son barème et constitue le panel d’évaluateurs.',
+  'Apprentice': 'Apprenti',
+  'Journeyman': 'Compagnon',
+  'Craftsman': 'Artisan',
+  'Master': 'Maître',
+  'Exams awaiting your review': 'Examens en attente de votre évaluation',
+  '<strong>{name}</strong> sits <strong>{skill}</strong>': '<strong>{name}</strong> passe <strong>{skill}</strong>',
+  'A member': 'Un membre',
+  'Pass': 'Réussite',
+  'Fail': 'Échec',
+  'Rubric:': 'Barème :',
+  'No rubric on file — grade on your own judgement.': 'Aucun barème enregistré — évaluez selon votre jugement.',
+  'Note to applicant (optional)': 'Note au candidat (facultatif)',
+  'My exams': 'Mes examens',
+  'in review': 'en évaluation',
+  'passed': 'réussi',
+  'failed': 'échoué',
+  'Pick a skill from the tree to see its master, rubric, and exam.': 'Choisissez une compétence dans l’arbre pour voir son maître, son barème et son examen.',
+  '— none appointed —': '— aucun nommé —',
+  '{n} certified holder(s)': '{n} titulaire(s) certifié(s)',
+  'you are <strong class="pos">✓ {level}</strong>': 'vous êtes <strong class="pos">✓ {level}</strong>',
+  'Rubric': 'Barème',
+  'No rubric published yet.': 'Aucun barème publié pour le moment.',
+  'No master appointed yet. An admin appoints a master in': 'Aucun maître nommé. Un admin nomme un maître dans',
+  'the skill tree': 'l’arbre des compétences',
+  '; certification opens once a master seeds the reviewer pool.': ' ; la certification s’ouvre dès qu’un maître constitue le panel d’évaluateurs.',
+  'Sit exam at': 'Passer l’examen au niveau',
+  'Requesting…': 'Demande…',
+  'Sit exam · {n} STR': 'Passer l’examen · {n} STR',
+  'A panel of certified peers grades you. The fee pays the reviewers (80%) and treasury (20%) whether you pass or fail.':
+    'Un panel de pairs certifiés vous évalue. Les frais rémunèrent les évaluateurs (80 %) et le trésor (20 %), que vous réussissiez ou non.',
+  'Master tools — rubric': 'Outils du maître — barème',
+  'Rubric for': 'Barème pour',
+  'What must a candidate demonstrate at this level?': 'Que doit démontrer un candidat à ce niveau ?',
+  'Saving…': 'Enregistrement…',
+  'Save rubric': 'Enregistrer le barème',
+  'You were appointed master of this craft — define how each level is tested. The tree itself (adding or branching skills) is managed by admins in':
+    'Vous avez été nommé maître de ce métier — définissez comment chaque niveau est évalué. L’arbre lui-même (ajout ou ramification des compétences) est géré par les admins dans'
 };
 
 export const dict: Record<Exclude<Locale, 'en'>, Table> = { zh, ja, fr };

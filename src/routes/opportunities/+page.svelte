@@ -3,6 +3,8 @@
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { member } from '$lib/session';
   import Hint from '$lib/Hint.svelte';
+  import { t } from '$lib/i18n';
+  import { get } from 'svelte/store';
 
   type Row = {
     id: string;
@@ -114,7 +116,7 @@
     error = '';
     const app = myApps[r.id];
     if (!app || !$member) return;
-    if (!confirm(`Confirm joining ${r.project?.name ?? 'this project'}? This stakes ${stakeOf(r)} STR into the project escrow.`)) return;
+    if (!confirm(get(t)('Confirm joining {name}? This stakes {n} STR into the project escrow.', { name: r.project?.name ?? get(t)('this project'), n: stakeOf(r) }))) return;
     busy = r.id;
     const { error: err } = await supabase.rpc('confirm_join', { app_id: app.id });
     busy = '';
@@ -125,8 +127,8 @@
   async function claimLead(l: Lead) {
     error = '';
     if (!$member) return;
-    if (l.leaderStake > myBalance) { error = `Leading ${l.name} stakes ${l.leaderStake} STR but you only have ${myBalance}.`; return; }
-    if (!confirm(`Take the lead on ${l.name}? This stakes ${l.leaderStake} STR (the leader bond) into its escrow and makes you the managing leader.`)) return;
+    if (l.leaderStake > myBalance) { error = get(t)('Leading {name} stakes {n} STR but you only have {bal}.', { name: l.name, n: l.leaderStake, bal: myBalance }); return; }
+    if (!confirm(get(t)('Take the lead on {name}? This stakes {n} STR (the leader bond) into its escrow and makes you the managing leader.', { name: l.name, n: l.leaderStake }))) return;
     busy = l.id;
     const { error: err } = await supabase.rpc('claim_leadership', { p: l.id });
     busy = '';
@@ -171,8 +173,8 @@
 
 <div class="stack">
   <div>
-    <h1 style="margin-bottom:.15rem;">Task Market <Hint term="need" text="Each row is a need — a typed request a project posts for a contribution (labor hours, a resource, or a seat). Apply to one that fits, then post the join bond to start." /></h1>
-    <span class="muted" style="font-size:.85rem;">Open work across the community — claim a seat, commit monthly labor, lend a resource, or take the lead on a project.</span>
+    <h1 style="margin-bottom:.15rem;">{$t('Task Market')} <Hint term="need" text={$t('Each row is a need — a typed request a project posts for a contribution (labor hours, a resource, or a seat). Apply to one that fits, then post the join bond to start.')} /></h1>
+    <span class="muted" style="font-size:.85rem;">{$t('Open work across the community — claim a seat, commit monthly labor, lend a resource, or take the lead on a project.')}</span>
   </div>
 
   {#if error}<p class="neg" style="font-size:.85rem;">{error}</p>{/if}
@@ -181,27 +183,27 @@
   {#if leaderless.length > 0}
     <div class="card stack" style="gap:.6rem;">
       <div class="row" style="justify-content:space-between; align-items:center;">
-        <h2 style="margin:0;">Lead a project <Hint term="bond" text="Leading means posting the 50 STR leader bond — real liquid STR escrowed into the project. It funds the pool and seeds your claim, but is slashable if you flake." /></h2>
-        <span class="badge warn">{leaderless.length} leaderless</span>
+        <h2 style="margin:0;">{$t('Lead a project')} <Hint term="bond" text={$t('Leading means posting the 50 STR leader bond — real liquid STR escrowed into the project. It funds the pool and seeds your claim, but is slashable if you flake.')} /></h2>
+        <span class="badge warn">{$t('{n} leaderless', { n: leaderless.length })}</span>
       </div>
       <p class="muted" style="font-size:.82rem; margin:-.3rem 0 0;">
-        These projects have no managing leader. Stake the leader bond to take the lead seat and start staffing it.
+        {$t('These projects have no managing leader. Stake the leader bond to take the lead seat and start staffing it.')}
       </p>
       <div class="stack" style="gap:.4rem;">
         {#each leaderless as l}
           <div class="row" style="justify-content:space-between; align-items:center; gap:.6rem; padding:.5rem .2rem; border-top:1px solid var(--border-2);">
             <div>
               <a href={`/projects/${l.id}`} style="font-weight:600;">{l.name}</a>
-              <span class="muted" style="font-size:.8rem;"> · {l.type} · {l.status} · {l.members} member{l.members === 1 ? '' : 's'}</span>
+              <span class="muted" style="font-size:.8rem;"> · {l.type} · {l.status} · {l.members} {l.members === 1 ? $t('member') : $t('members')}</span>
             </div>
             {#if $member}
               <button class="stake" onclick={() => claimLead(l)} disabled={busy === l.id || l.leaderStake > myBalance}>
-                {#if busy === l.id}<span class="spin"></span> Claiming…{:else}Take the lead · {l.leaderStake} STR{/if}</button>
+                {#if busy === l.id}<span class="spin"></span> {$t('Claiming…')}{:else}{$t('Take the lead · {n} STR', { n: l.leaderStake })}{/if}</button>
             {:else}
-              <span class="muted" style="font-size:.8rem;">Sign in to lead</span>
+              <span class="muted" style="font-size:.8rem;">{$t('Sign in to lead')}</span>
             {/if}
           </div>
-          {#if $member && l.leaderStake > myBalance}<span class="neg" style="font-size:.75rem; padding-left:.2rem;">Insufficient balance ({myBalance} STR) to lead {l.name}.</span>{/if}
+          {#if $member && l.leaderStake > myBalance}<span class="neg" style="font-size:.75rem; padding-left:.2rem;">{$t('Insufficient balance ({bal} STR) to lead {name}.', { bal: myBalance, name: l.name })}</span>{/if}
         {/each}
       </div>
     </div>
@@ -212,41 +214,41 @@
     <span class="chip toggle {kindFilter === '' ? 'on' : ''}" role="button" tabindex="0"
       onclick={() => (kindFilter = '')}
       onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') kindFilter = ''; }}
-    >All <span class="ct">{rows.length}</span></span>
+    >{$t('All')} <span class="ct">{rows.length}</span></span>
     {#each ['seat', 'labor', 'resource'] as k}
       <span class="chip toggle {kindFilter === k ? 'on' : ''}" role="button" tabindex="0"
         onclick={() => (kindFilter = kindFilter === k ? '' : k)}
         onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') kindFilter = kindFilter === k ? '' : k; }}
-      >{kindLabel(k)} <span class="ct">{kindCounts[k] ?? 0}</span></span>
+      >{$t(kindLabel(k))} <span class="ct">{kindCounts[k] ?? 0}</span></span>
     {/each}
   </div>
 
   <div class="row" style="gap:.6rem; flex-wrap:wrap;">
     <div class="search" style="flex:1; min-width:220px;">
       <span class="ico">⌕</span>
-      <input placeholder="Search project, role, skill…" bind:value={q} style="width:100%;" />
+      <input placeholder={$t('Search project, role, skill…')} bind:value={q} style="width:100%;" />
     </div>
     <select bind:value={roleFilter}>
-      <option value="">All roles</option>
+      <option value="">{$t('All roles')}</option>
       {#each roleNames as r}<option value={r}>{r}</option>{/each}
     </select>
     <select bind:value={skillFilter}>
-      <option value="">All skills</option>
+      <option value="">{$t('All skills')}</option>
       {#each skillNames as s}<option value={s}>{s}</option>{/each}
     </select>
-    <select bind:value={levelFilter} title="Show needs I'd qualify for at this level or below">
-      <option value="">Any level</option>
+    <select bind:value={levelFilter} title={$t("Show needs I'd qualify for at this level or below")}>
+      <option value="">{$t('Any level')}</option>
       {#each LEVELS as l}<option value={l}>≤ {l}</option>{/each}
     </select>
     {#if q || kindFilter || roleFilter || skillFilter || levelFilter}
-      <button class="ghost" onclick={() => { q = ''; kindFilter = ''; roleFilter = ''; skillFilter = ''; levelFilter = ''; }}>Reset</button>
+      <button class="ghost" onclick={() => { q = ''; kindFilter = ''; roleFilter = ''; skillFilter = ''; levelFilter = ''; }}>{$t('Reset')}</button>
     {/if}
   </div>
 
   {#if loading}
-    <p class="muted">Loading…</p>
+    <p class="muted">{$t('Loading…')}</p>
   {:else if filtered.length === 0}
-    <div class="card"><p class="muted">No open opportunities match.</p></div>
+    <div class="card"><p class="muted">{$t('No open opportunities match.')}</p></div>
   {:else}
     <div class="stack">
       {#each filtered as r}
@@ -256,49 +258,49 @@
         <div class="card">
           <div class="row" style="justify-content:space-between; align-items:flex-start;">
             <div>
-              <a href={`/projects/${r.project?.id}`}><h2 style="margin:0;">{r.project?.name ?? 'Project'}</h2></a>
+              <a href={`/projects/${r.project?.id}`}><h2 style="margin:0;">{r.project?.name ?? $t('Project')}</h2></a>
               <div class="row muted" style="font-size:.82rem; margin-top:.2rem; flex-wrap:wrap;">
-                {#if r.skill}<span>Skill: {r.skill.name}{r.min_level ? ` (≥ ${r.min_level})` : ''}</span>{/if}
-                <span>· {r.headcount} opening(s)</span>
+                {#if r.skill}<span>{$t('Skill:')} {r.skill.name}{r.min_level ? ` (≥ ${r.min_level})` : ''}</span>{/if}
+                <span>· {$t('{n} opening(s)', { n: r.headcount })}</span>
                 {#if kind === 'labor'}
-                  <span>· <strong class="mono">{r.hours_per_month ?? '—'}</strong> hrs/mo</span>
+                  <span>· <strong class="mono">{r.hours_per_month ?? '—'}</strong> {$t('hrs/mo')}</span>
                 {:else if kind === 'resource'}
-                  <span>· lend a resource</span>
+                  <span>· {$t('lend a resource')}</span>
                 {:else}
-                  <span>· stakes <strong class="mono">{stakeOf(r)}</strong> STR</span>
+                  <span>· {$t('stakes')} <strong class="mono">{stakeOf(r)}</strong> STR</span>
                 {/if}
               </div>
             </div>
             <div class="row" style="gap:.35rem;">
-              <span class="badge {kindClass(kind)}">{kindLabel(kind)}</span>
-              <span class="badge">{r.project_role?.name ?? 'Contributor'}</span>
+              <span class="badge {kindClass(kind)}">{$t(kindLabel(kind))}</span>
+              <span class="badge">{r.project_role?.name ?? $t('Contributor')}</span>
             </div>
           </div>
           {#if r.description}<p class="muted" style="margin:.5rem 0 .2rem;">{r.description}</p>{/if}
 
           <div style="margin-top:.6rem;">
             {#if member_already}
-              <span class="badge pos">You're on this project</span>
+              <span class="badge pos">{$t("You're on this project")}</span>
             {:else if mine === 'joined'}
-              <span class="badge pos">Joined</span>
+              <span class="badge pos">{$t('Joined')}</span>
             {:else if mine === 'accepted'}
               <div class="stake-cta" style="padding:.55rem .8rem;">
                 <div class="row" style="justify-content:space-between; align-items:center; gap:.6rem;">
-                  <span style="font-size:.85rem;">You've been <strong>accepted</strong> — stake <strong class="mono" style="color:var(--accent);">{stakeOf(r)}</strong> STR to take your seat.</span>
+                  <span style="font-size:.85rem;">{@html $t("You've been <strong>accepted</strong> — stake <strong class='mono' style='color:var(--accent);'>{n}</strong> STR to take your seat.", { n: stakeOf(r) })}</span>
                   <button class="stake" onclick={() => confirmJoin(r)} disabled={busy === r.id || stakeOf(r) > myBalance}>
-                    {#if busy === r.id}<span class="spin"></span> Joining…{:else}Confirm join · {stakeOf(r)} STR{/if}</button>
+                    {#if busy === r.id}<span class="spin"></span> {$t('Joining…')}{:else}{$t('Confirm join · {n} STR', { n: stakeOf(r) })}{/if}</button>
                 </div>
-                {#if stakeOf(r) > myBalance}<span class="neg" style="font-size:.78rem;">Insufficient balance ({myBalance} STR).</span>{/if}
+                {#if stakeOf(r) > myBalance}<span class="neg" style="font-size:.78rem;">{$t('Insufficient balance ({bal} STR).', { bal: myBalance })}</span>{/if}
               </div>
             {:else if mine === 'declined'}
-              <span class="badge neg">Application declined</span>
+              <span class="badge neg">{$t('Application declined')}</span>
             {:else if mine === 'pending'}
-              <span class="badge dim">Applied · pending review</span>
+              <span class="badge dim">{$t('Applied · pending review')}</span>
             {:else}
               <div class="row" style="gap:.5rem;">
-                <input bind:value={pitch[r.id]} placeholder="Short pitch (optional)" style="flex:1; min-width:180px;" />
+                <input bind:value={pitch[r.id]} placeholder={$t('Short pitch (optional)')} style="flex:1; min-width:180px;" />
                 <button onclick={() => apply(r, pitch[r.id] ?? '')} disabled={busy === r.id}>
-                  {busy === r.id ? '…' : 'I can help'}</button>
+                  {busy === r.id ? '…' : $t('I can help')}</button>
               </div>
             {/if}
           </div>

@@ -3,6 +3,7 @@
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { member } from '$lib/session';
   import Hint from '$lib/Hint.svelte';
+  import { t } from '$lib/i18n';
 
   type Skill = { id: string; name: string; parent_id: string | null; master_member_id: string | null };
   type Rubric = { skill_id: string; level: string; requirements: string };
@@ -142,9 +143,9 @@
 
 <div class="stack">
   <div>
-    <h1 style="margin-bottom:.15rem;">The Guild <Hint term="certification" text="Certification turns a self-declared skill into a hard, peer-reviewed credential — and sets your labor rate, which is how much your monthly hours mint." /></h1>
+    <h1 style="margin-bottom:.15rem;">{$t('The Guild')} <Hint term="certification" text={$t('Certification turns a self-declared skill into a hard, peer-reviewed credential — and sets your labor rate, which is how much your monthly hours mint.')} /></h1>
     <span class="muted" style="font-size:.85rem;">
-      Skills are a craft ladder — Apprentice → Journeyman → Craftsman → Master. Certification is earned by paid, peer-reviewed exam. Each craft's master is appointed by an admin; the master owns its rubric and seeds the reviewer pool.
+      {$t("Skills are a craft ladder — Apprentice → Journeyman → Craftsman → Master. Certification is earned by paid, peer-reviewed exam. Each craft's master is appointed by an admin; the master owns its rubric and seeds the reviewer pool.")}
     </span>
   </div>
 
@@ -154,24 +155,24 @@
   {#if reviewerQueue.length > 0}
     <div class="card stack" style="gap:.5rem;">
       <div class="row" style="justify-content:space-between; align-items:center;">
-        <h2 style="margin:0;">Exams awaiting your review</h2>
+        <h2 style="margin:0;">{$t('Exams awaiting your review')}</h2>
         <span class="badge warn">{reviewerQueue.length}</span>
       </div>
       {#each reviewerQueue as e}
         <div class="stack" style="gap:.35rem; padding:.5rem .2rem; border-top:1px solid var(--border-2);">
           <div class="row" style="justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.4rem;">
-            <span><strong>{e.applicant?.full_name ?? 'A member'}</strong> sits <strong>{e.skill?.name}</strong> · <span class="badge dim">{LEVEL_LABEL[e.target_level]}</span></span>
+            <span>{@html $t('<strong>{name}</strong> sits <strong>{skill}</strong>', { name: e.applicant?.full_name ?? $t('A member'), skill: e.skill?.name ?? '' })} · <span class="badge dim">{$t(LEVEL_LABEL[e.target_level])}</span></span>
             <div class="row" style="gap:.4rem;">
-              <button class="up" disabled={busy === e.id} onclick={() => castVote(e, true)}>Pass</button>
-              <button class="danger" disabled={busy === e.id} onclick={() => castVote(e, false)}>Fail</button>
+              <button class="up" disabled={busy === e.id} onclick={() => castVote(e, true)}>{$t('Pass')}</button>
+              <button class="danger" disabled={busy === e.id} onclick={() => castVote(e, false)}>{$t('Fail')}</button>
             </div>
           </div>
           {#if rubrics[e.skill_id]?.[e.target_level]}
-            <p class="muted" style="font-size:.8rem; margin:0;"><strong>Rubric:</strong> {rubrics[e.skill_id][e.target_level]}</p>
+            <p class="muted" style="font-size:.8rem; margin:0;"><strong>{$t('Rubric:')}</strong> {rubrics[e.skill_id][e.target_level]}</p>
           {:else}
-            <p class="muted" style="font-size:.8rem; margin:0;">No rubric on file — grade on your own judgement.</p>
+            <p class="muted" style="font-size:.8rem; margin:0;">{$t('No rubric on file — grade on your own judgement.')}</p>
           {/if}
-          <input bind:value={voteNote[e.id]} placeholder="Note to applicant (optional)" style="max-width:380px;" />
+          <input bind:value={voteNote[e.id]} placeholder={$t('Note to applicant (optional)')} style="max-width:380px;" />
         </div>
       {/each}
     </div>
@@ -180,11 +181,11 @@
   <!-- my exams -->
   {#if myExams.length > 0}
     <div class="card stack" style="gap:.4rem;">
-      <h2 style="margin:0;">My exams</h2>
+      <h2 style="margin:0;">{$t('My exams')}</h2>
       {#each myExams as e}
         <div class="row" style="justify-content:space-between; padding:.35rem .2rem; border-top:1px solid var(--border-2);">
-          <span>{e.skill?.name} · {LEVEL_LABEL[e.target_level]}</span>
-          <span class="badge {e.status === 'passed' ? 'pos' : e.status === 'failed' ? 'neg' : 'dim'}">{e.status === 'in_review' ? 'in review' : e.status}</span>
+          <span>{e.skill?.name} · {$t(LEVEL_LABEL[e.target_level])}</span>
+          <span class="badge {e.status === 'passed' ? 'pos' : e.status === 'failed' ? 'neg' : 'dim'}">{e.status === 'in_review' ? $t('in review') : $t(e.status)}</span>
         </div>
       {/each}
     </div>
@@ -194,7 +195,7 @@
     <!-- tree -->
     <div class="card stack" style="flex:1; min-width:280px; gap:.8rem;">
       {#if loading}
-        <p class="muted">Loading…</p>
+        <p class="muted">{$t('Loading…')}</p>
       {:else}
         {#each domains as d}
           <div class="stack" style="gap:.3rem;">
@@ -218,27 +219,27 @@
     <!-- detail -->
     <div class="card stack" style="flex:1.2; min-width:300px; gap:.8rem;">
       {#if !sel}
-        <p class="muted">Pick a skill from the tree to see its master, rubric, and exam.</p>
+        <p class="muted">{$t('Pick a skill from the tree to see its master, rubric, and exam.')}</p>
       {:else}
         <div>
           <h2 style="margin:0;">{sel.name}</h2>
           <p class="muted" style="font-size:.82rem; margin:.2rem 0 0;">
-            Master<Hint term="master" text="The admin-appointed owner of this craft's rubric and reviewer pool — the top of the guild ladder. Certification opens once a master is appointed." />: {masterName[sel.id] ?? '— none appointed —'}
-            {#if holders[sel.id]}· {holders[sel.id]} certified holder{holders[sel.id] === 1 ? '' : 's'}{/if}
-            {#if myLevelHere}· you are <strong class="pos">✓ {LEVEL_LABEL[myLevelHere]}</strong>{/if}
+            {$t('Master')}<Hint term="master" text={$t("The admin-appointed owner of this craft's rubric and reviewer pool — the top of the guild ladder. Certification opens once a master is appointed.")} />: {masterName[sel.id] ?? $t('— none appointed —')}
+            {#if holders[sel.id]}· {$t('{n} certified holder(s)', { n: holders[sel.id] })}{/if}
+            {#if myLevelHere}· {@html $t('you are <strong class="pos">✓ {level}</strong>', { level: $t(LEVEL_LABEL[myLevelHere]) })}{/if}
           </p>
         </div>
 
         <!-- rubric display -->
         <div class="stack" style="gap:.3rem;">
-          <h3 style="margin:0; font-size:.9rem;">Rubric</h3>
+          <h3 style="margin:0; font-size:.9rem;">{$t('Rubric')}</h3>
           {#each LEVELS as lv}
             {#if rubrics[sel.id]?.[lv]}
-              <div style="font-size:.82rem;"><span class="badge dim">{LEVEL_LABEL[lv]}</span> {rubrics[sel.id][lv]}</div>
+              <div style="font-size:.82rem;"><span class="badge dim">{$t(LEVEL_LABEL[lv])}</span> {rubrics[sel.id][lv]}</div>
             {/if}
           {/each}
           {#if !rubrics[sel.id] || Object.keys(rubrics[sel.id]).length === 0}
-            <p class="muted" style="font-size:.82rem; margin:0;">No rubric published yet.</p>
+            <p class="muted" style="font-size:.82rem; margin:0;">{$t('No rubric published yet.')}</p>
           {/if}
         </div>
 
@@ -246,8 +247,7 @@
         {#if unclaimed}
           <div class="card" style="background:var(--card-2); border-color:transparent; padding:.6rem .8rem;">
             <p class="muted" style="font-size:.8rem; margin:0;">
-              No master appointed yet. An admin appoints a master in <a href="/admin/skills">the skill tree</a>;
-              certification opens once a master seeds the reviewer pool.
+              {$t('No master appointed yet. An admin appoints a master in')} <a href="/admin/skills">{$t('the skill tree')}</a>{$t('; certification opens once a master seeds the reviewer pool.')}
             </p>
           </div>
         {/if}
@@ -256,29 +256,29 @@
         {#if $member && !iAmMaster && !unclaimed}
           <div class="card" style="background:var(--accent-soft); border-color:transparent; padding:.6rem .8rem;">
             <div class="row" style="align-items:flex-end; gap:.5rem; flex-wrap:wrap;">
-              <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">Sit exam at</span>
+              <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">{$t('Sit exam at')}</span>
                 <select bind:value={examLevel}>
-                  {#each LEVELS as lv}<option value={lv} disabled={levelRank(myLevelHere) >= levelRank(lv)}>{LEVEL_LABEL[lv]} · {fees[lv] ?? '—'} STR</option>{/each}
+                  {#each LEVELS as lv}<option value={lv} disabled={levelRank(myLevelHere) >= levelRank(lv)}>{$t(LEVEL_LABEL[lv])} · {fees[lv] ?? '—'} STR</option>{/each}
                 </select></label>
               <button class="stake" onclick={requestExam} disabled={busy === 'exam' || (fees[examLevel] ?? 0) > myBalance}>
-                {busy === 'exam' ? 'Requesting…' : `Sit exam · ${fees[examLevel] ?? '—'} STR`}</button>
+                {busy === 'exam' ? $t('Requesting…') : $t('Sit exam · {n} STR', { n: fees[examLevel] ?? '—' })}</button>
             </div>
-            {#if (fees[examLevel] ?? 0) > myBalance}<span class="neg" style="font-size:.75rem;">Insufficient balance ({myBalance} STR).</span>{/if}
-            <p class="muted" style="font-size:.74rem; margin:.4rem 0 0;">A panel of certified peers grades you. The fee pays the reviewers (80%) and treasury (20%) whether you pass or fail.</p>
+            {#if (fees[examLevel] ?? 0) > myBalance}<span class="neg" style="font-size:.75rem;">{$t('Insufficient balance ({bal} STR).', { bal: myBalance })}</span>{/if}
+            <p class="muted" style="font-size:.74rem; margin:.4rem 0 0;">{$t('A panel of certified peers grades you. The fee pays the reviewers (80%) and treasury (20%) whether you pass or fail.')}</p>
           </div>
         {/if}
 
         <!-- master tools: the appointed master owns the rubric -->
         {#if iAmMaster}
           <div class="stack" style="gap:.5rem; border-top:1px solid var(--border-2); padding-top:.6rem;">
-            <h3 style="margin:0; font-size:.9rem;">Master tools — rubric</h3>
+            <h3 style="margin:0; font-size:.9rem;">{$t('Master tools — rubric')}</h3>
             <div class="row" style="align-items:flex-end; gap:.5rem; flex-wrap:wrap;">
-              <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">Rubric for</span>
-                <select bind:value={rubricLevel}>{#each LEVELS as lv}<option value={lv}>{LEVEL_LABEL[lv]}</option>{/each}</select></label>
+              <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">{$t('Rubric for')}</span>
+                <select bind:value={rubricLevel}>{#each LEVELS as lv}<option value={lv}>{$t(LEVEL_LABEL[lv])}</option>{/each}</select></label>
             </div>
-            <textarea bind:value={rubricText} rows="3" placeholder="What must a candidate demonstrate at this level?"></textarea>
-            <div class="row"><button onclick={saveRubric} disabled={busy === 'rubric'}>{busy === 'rubric' ? 'Saving…' : 'Save rubric'}</button></div>
-            <p class="muted" style="font-size:.74rem; margin:0;">You were appointed master of this craft — define how each level is tested. The tree itself (adding or branching skills) is managed by admins in <a href="/admin/skills">the skill tree</a>.</p>
+            <textarea bind:value={rubricText} rows="3" placeholder={$t('What must a candidate demonstrate at this level?')}></textarea>
+            <div class="row"><button onclick={saveRubric} disabled={busy === 'rubric'}>{busy === 'rubric' ? $t('Saving…') : $t('Save rubric')}</button></div>
+            <p class="muted" style="font-size:.74rem; margin:0;">{$t('You were appointed master of this craft — define how each level is tested. The tree itself (adding or branching skills) is managed by admins in')} <a href="/admin/skills">{$t('the skill tree')}</a>.</p>
           </div>
         {/if}
       {/if}
