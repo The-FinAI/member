@@ -12,6 +12,9 @@
   let sent = $state(false);
   let error = $state('');
   let loading = $state(false);
+  // step 2: the 6-digit code the user pastes from their inbox
+  let code = $state('');
+  let verifying = $state(false);
 
   async function signIn(e: Event) {
     e.preventDefault();
@@ -22,22 +25,46 @@
     }
     loading = true;
     authError.set(null);
-    // Invite-only: only request a magic link if this email is on the member list.
+    // Invite-only: only request a code if this email is on the member list.
     // Stops non-invited emails from ever creating an auth user / signup email.
-    const { data: invited, error: chkErr } = await supabase.rpc('is_email_invited', { p_email: email });
+    const { data: isInvited, error: chkErr } = await supabase.rpc('is_email_invited', { p_email: email });
     if (chkErr) { loading = false; error = chkErr.message; return; }
-    if (!invited) {
+    if (!isInvited) {
       loading = false;
       error = "This email isn't on the invite list. Ask a community admin to invite you first.";
       return;
     }
+    // No emailRedirectTo → Supabase emails the {{ .Token }} verification code
+    // instead of a single-use magic link (scanner-proof for enterprise inboxes).
     const { error: err } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: window.location.origin }
+      options: { shouldCreateUser: false }
     });
     loading = false;
     if (err) error = err.message;
     else sent = true;
+  }
+
+  async function verify(e: Event) {
+    e.preventDefault();
+    error = '';
+    authError.set(null);
+    const token = code.trim();
+    if (token.length < 6) { error = 'Enter the 6-digit code from your email.'; return; }
+    verifying = true;
+    const { error: err } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
+    verifying = false;
+    if (err) {
+      error = 'That code is invalid or has expired. Request a new one.';
+      return;
+    }
+    // verifyOtp establishes the session; the layout's auth listener takes over.
+  }
+
+  function restart() {
+    sent = false;
+    code = '';
+    error = '';
   }
 </script>
 
@@ -54,7 +81,7 @@
       </p>
     {:else}
       <p class="muted" style="margin-top:-.5rem;">
-        {$t("Membership is invite-only. Enter the email you were invited with — we'll send a magic link.")}
+        {$t("Membership is invite-only. Enter the email you were invited with — we'll send a verification code.")}
       </p>
     {/if}
 
@@ -63,7 +90,27 @@
     {/if}
 
     {#if sent}
-      <p class="badge pos">{$t('Check your inbox for the sign-in link.')}</p>
+      <p class="muted" style="margin-top:-.25rem;">
+        {$t('We emailed a 6-digit code to {email}. Enter it below to sign in.', { email })}
+      </p>
+      <form class="stack" onsubmit={verify}>
+        <input
+          type="text"
+          inputmode="numeric"
+          autocomplete="one-time-code"
+          maxlength="6"
+          placeholder="123456"
+          bind:value={code}
+          style="letter-spacing:.4em; font-size:1.2rem; text-align:center;"
+          required
+        />
+        <button type="submit" disabled={verifying}>
+          {verifying ? $t('Verifying…') : $t('Verify & sign in')}
+        </button>
+      </form>
+      <button class="linkish" onclick={restart} style="background:none; border:none; color:var(--muted); font-size:.82rem; cursor:pointer; padding:0; text-align:left;">
+        {$t('Use a different email')}
+      </button>
     {:else}
       <form class="stack" onsubmit={signIn}>
         <input
@@ -73,7 +120,7 @@
           required
         />
         <button type="submit" disabled={loading}>
-          {loading ? $t('Sending…') : $t('Send magic link')}
+          {loading ? $t('Sending…') : $t('Send verification code')}
         </button>
       </form>
     {/if}

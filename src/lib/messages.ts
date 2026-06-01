@@ -245,7 +245,17 @@ const zh: Table = {
   'Sign in': '登录',
   "Membership is invite-only. Enter the email you were invited with — we'll send a magic link.":
     '会员仅限受邀。请输入你被邀请时使用的邮箱——我们会发送一个登录魔法链接。',
+  "Membership is invite-only. Enter the email you were invited with — we'll send a verification code.":
+    '会员仅限受邀。请输入你被邀请时使用的邮箱——我们会发送一个验证码。',
   'Send magic link': '发送魔法链接',
+  'Send verification code': '发送验证码',
+  'We emailed a 6-digit code to {email}. Enter it below to sign in.':
+    '我们已向 {email} 发送了一个 6 位验证码。请在下方输入以登录。',
+  'Verify & sign in': '验证并登录',
+  'Verifying…': '验证中…',
+  'Use a different email': '换一个邮箱',
+  'Enter the 6-digit code from your email.': '请输入邮件中的 6 位验证码。',
+  'That code is invalid or has expired. Request a new one.': '验证码无效或已过期，请重新获取。',
   'Sending…': '发送中…',
   'Check your inbox for the sign-in link.': '请查收邮箱中的登录链接。',
   'This sign-in link has expired or was already used. Please request a new one below.': '此登录链接已过期或已被使用。请在下方重新获取一个。',
@@ -1271,7 +1281,17 @@ const ja: Table = {
   'Sign in': 'サインイン',
   "Membership is invite-only. Enter the email you were invited with — we'll send a magic link.":
     'メンバーは招待制です。招待されたメールアドレスを入力してください——マジックリンクを送ります。',
+  "Membership is invite-only. Enter the email you were invited with — we'll send a verification code.":
+    'メンバーは招待制です。招待されたメールアドレスを入力してください——確認コードを送ります。',
   'Send magic link': 'マジックリンクを送信',
+  'Send verification code': '確認コードを送信',
+  'We emailed a 6-digit code to {email}. Enter it below to sign in.':
+    '{email} に 6 桁のコードを送信しました。下記に入力してサインインしてください。',
+  'Verify & sign in': '確認してサインイン',
+  'Verifying…': '確認中…',
+  'Use a different email': '別のメールアドレスを使う',
+  'Enter the 6-digit code from your email.': 'メールに記載された 6 桁のコードを入力してください。',
+  'That code is invalid or has expired. Request a new one.': 'コードが無効か期限切れです。新しいコードをリクエストしてください。',
   'Sending…': '送信中…',
   'Check your inbox for the sign-in link.': '受信トレイのサインインリンクをご確認ください。',
   'This sign-in link has expired or was already used. Please request a new one below.': 'このサインインリンクは期限切れか、すでに使用されています。下記から新しいリンクをリクエストしてください。',
@@ -2297,7 +2317,17 @@ const fr: Table = {
   'Sign in': 'Connexion',
   "Membership is invite-only. Enter the email you were invited with — we'll send a magic link.":
     'L’adhésion est sur invitation. Saisissez l’e-mail de votre invitation — nous enverrons un lien magique.',
+  "Membership is invite-only. Enter the email you were invited with — we'll send a verification code.":
+    'L’adhésion est sur invitation. Saisissez l’e-mail de votre invitation — nous enverrons un code de vérification.',
   'Send magic link': 'Envoyer le lien magique',
+  'Send verification code': 'Envoyer le code de vérification',
+  'We emailed a 6-digit code to {email}. Enter it below to sign in.':
+    'Nous avons envoyé un code à 6 chiffres à {email}. Saisissez-le ci-dessous pour vous connecter.',
+  'Verify & sign in': 'Vérifier et se connecter',
+  'Verifying…': 'Vérification…',
+  'Use a different email': 'Utiliser une autre adresse e-mail',
+  'Enter the 6-digit code from your email.': 'Saisissez le code à 6 chiffres reçu par e-mail.',
+  'That code is invalid or has expired. Request a new one.': 'Ce code est invalide ou a expiré. Demandez-en un nouveau.',
   'Sending…': 'Envoi…',
   'Check your inbox for the sign-in link.': 'Vérifiez votre boîte de réception pour le lien de connexion.',
   'This sign-in link has expired or was already used. Please request a new one below.': "Ce lien de connexion a expiré ou a déjà été utilisé. Veuillez en demander un nouveau ci-dessous.",
