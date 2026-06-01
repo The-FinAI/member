@@ -402,7 +402,7 @@
               </span>
             {/each}
           </div>
-          <span class="dim" style="font-size:.76rem; display:block; margin-top:.4rem;">{$t('Pass the guild exams or ask an admin to certify you, then come back.')}</span>
+          <span class="dim" style="font-size:.76rem; display:block; margin-top:.4rem;">{$t('Request a role card in the Guild or ask an officer to mint one, then come back.')}</span>
         </div>
       {/if}
       <div class="card" style="background:var(--accent-soft); border-color:transparent; padding:.6rem .8rem;">

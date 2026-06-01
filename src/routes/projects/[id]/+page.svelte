@@ -1009,7 +1009,7 @@
             {/if}
           </div>
         {:else}
-          <p class="muted" style="font-size:.8rem;">{@html $t('You have no approved resources yet. Add one under <a href="/profile">your profile</a>, or use a community resource.')}</p>
+          <p class="muted" style="font-size:.8rem;">{@html $t('You have no approved resources yet. Add one under <a href="/">your portfolio</a>, or use a community resource.')}</p>
         {/if}
       </div>
     {/if}

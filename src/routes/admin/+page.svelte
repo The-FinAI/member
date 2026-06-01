@@ -32,7 +32,7 @@
   // things that want an admin's attention
   const attention = $derived([
     { n: pendingResources, label: 'resources awaiting review', href: '/admin/resources' },
-    { n: examsInReview, label: 'skill exams in review', href: '/skills' },
+    { n: examsInReview, label: 'role cards awaiting review', href: '/skills' },
     { n: openNeeds, label: 'open needs on the market', href: '/opportunities' }
   ].filter((a) => a.n > 0));
 
@@ -45,7 +45,7 @@
       c(supabase.from('project')),
       c(supabase.from('open_need')).eq('status', 'open'),
       c(supabase.from('resource')).eq('approval_status', 'pending'),
-      c(supabase.from('skill_exam')).eq('status', 'in_review'),
+      c(supabase.from('skillcard_request')).eq('status', 'submitted'),
       supabase.from('skill').select('id', { count: 'exact', head: true }).not('parent_id', 'is', null),
       supabase.from('stater_balance').select('balance')
     ]);
@@ -87,7 +87,7 @@
     <div class="kpi">
       <span class="k-label">{$t('Skills')}</span>
       <span class="k-value">{loading ? '–' : skillLeaves.toLocaleString()}</span>
-      <span class="k-sub">{$t('examinable crafts')}</span>
+      <span class="k-sub">{$t('certifiable crafts')}</span>
     </div>
   </div>
 

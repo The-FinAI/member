@@ -135,7 +135,7 @@
   <p><a href="/admin">← {$t('Admin')}</a></p>
   <h1>{$t('Stater (STR)')}</h1>
   <p class="muted" style="margin-top:-.75rem;">
-    {$t('The community stake economy. STR is earned via welcome grants, monthly allowance, and project settlement; it is staked to start and join projects, and transferred to endorse peers. Mint supply, grant to members, issue the monthly allowance, and tune the rules below.')}
+    {$t('The community stake economy. STR is earned via welcome grants, monthly allowance, and project settlement; it is staked to start and join projects. Mint supply, grant to members, issue the monthly allowance, and tune the rules below.')}
   </p>
 
   {#if error}<p style="color:var(--down);">{error}</p>{/if}

@@ -121,7 +121,7 @@
 
     <div class="row rise-stagger" style="align-items:stretch;">
       <div class="tile" style="flex:1; min-width:160px;">
-        <span class="label">{$t('Liquid balance')} <Hint term="liquid" text={$t('Spendable STR in your wallet — used to post bonds and pay Guild exam fees.')} /></span>
+        <span class="label">{$t('Liquid balance')} <Hint term="liquid" text={$t('Spendable STR in your wallet — used to post bonds and pay role-card fees.')} /></span>
         <span class="value accent"><CountUp value={balance} /></span>
         <span class="sub">{$t('spendable now')}</span>
       </div>
@@ -140,7 +140,7 @@
     <div class="card stack">
       <h2 style="margin:0;">{$t('Activity')}</h2>
       <p class="muted" style="font-size:.82rem; margin-top:-.4rem;">
-        {$t('Earned by finishing projects; spent to join ({n}/join), stake, and endorse peers.', { n: joinStake })}
+        {$t('Earned by finishing projects; spent to join ({n}/join) and stake.', { n: joinStake })}
       </p>
       {#if loading}
         <div>{#each Array(5) as _}<div class="sk sk-row"></div>{/each}</div>

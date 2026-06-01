@@ -3,20 +3,16 @@
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { capabilities } from '$lib/session';
   import { t } from '$lib/i18n';
-  import { get } from 'svelte/store';
 
-  type Skill = { id: string; parent_id: string | null; name: string; master_member_id: string | null };
-  type Mem = { id: string; full_name: string };
+  type Skill = { id: string; parent_id: string | null; name: string };
   type LeaderReq = { skill_id: string; min_level: string; rank: number; skill: { name: string } | null };
 
   let skills = $state<Skill[]>([]);
-  let members = $state<Mem[]>([]);
   let leaderReqs = $state<LeaderReq[]>([]);
   let loading = $state(true);
   let error = $state('');
   let newName = $state('');
   let newParent = $state('');
-  let busy = $state('');
 
   const GUILD_LADDER = ['apprentice', 'journeyman', 'craftsman', 'master'];
   const GUILD_LABEL: Record<string, string> = {
@@ -27,20 +23,18 @@
   let reqSkill = $state(''); let reqLevel = $state('journeyman');
 
   const canGuild = $derived($capabilities.has('manage_guild'));
-  // examinable leaves (skills that have no children) for requirement picker
+  // certifiable leaves (skills that have no children) for requirement picker
   const leaves = $derived(skills.filter((s) => !skills.some((c) => c.parent_id === s.id)));
 
   async function load() {
     if (!supabaseConfigured) { loading = false; return; }
     loading = true;
-    const [{ data, error: err }, { data: mem }, { data: lr }] = await Promise.all([
-      supabase.from('skill').select('id, parent_id, name, master_member_id').order('name'),
-      supabase.from('member').select('id, full_name').eq('status', 'active').order('full_name'),
+    const [{ data, error: err }, { data: lr }] = await Promise.all([
+      supabase.from('skill').select('id, parent_id, name').order('name'),
       supabase.from('leader_skill_requirement').select('skill_id, min_level, rank, skill(name)').order('rank')
     ]);
     if (err) error = err.message;
     skills = (data as Skill[]) ?? [];
-    members = (mem as Mem[]) ?? [];
     leaderReqs = (lr as LeaderReq[]) ?? [];
     loading = false;
   }
@@ -49,9 +43,6 @@
 
   const roots = $derived(skills.filter((s) => !s.parent_id));
   function childrenOf(id: string) { return skills.filter((s) => s.parent_id === id); }
-  function memberName(id: string | null) {
-    return id ? (members.find((m) => m.id === id)?.full_name ?? get(t)('Unknown')) : '';
-  }
 
   async function add() {
     error = '';
@@ -67,15 +58,6 @@
   async function remove(id: string) {
     error = '';
     const { error: err } = await supabase.from('skill').delete().eq('id', id);
-    if (err) { error = err.message; return; }
-    await load();
-  }
-
-  async function appointMaster(skillId: string, memberId: string) {
-    if (!memberId) return;
-    error = ''; busy = skillId;
-    const { error: err } = await supabase.rpc('appoint_skill_master', { p_skill: skillId, p_member: memberId });
-    busy = '';
     if (err) { error = err.message; return; }
     await load();
   }
@@ -111,8 +93,7 @@
   <p><a href="/admin">← {$t('Admin')}</a></p>
   <h1>{$t('Skill Tree')}</h1>
   <p class="muted" style="margin-top:-.75rem;">
-    {@html $t('Hierarchical skills. Leaves are examinable crafts in <a href="/skills">the Guild</a>; needs filter on these.')}
-    {#if canGuild}{@html $t('You may also <strong>appoint a master</strong> per leaf — they own its rubric and seed the reviewer pool.')}{/if}
+    {@html $t('Hierarchical skills. Leaves are certifiable crafts in <a href="/skills">the Guild</a>; needs filter on these.')}
   </p>
 
   {#if error}<p style="color:var(--down);">{error}</p>{/if}
@@ -142,21 +123,6 @@
             {#each childrenOf(root.id) as child}
               <li class="row" style="justify-content:space-between; align-items:center; gap:.6rem; max-width:640px; padding:.2rem 0;">
                 <span style="flex:1;">{child.name}</span>
-                {#if child.master_member_id}
-                  <span class="badge pos" style="font-size:.72rem;">👑 {memberName(child.master_member_id)}</span>
-                {:else}
-                  <span class="badge dim" style="font-size:.72rem;">{$t('no master')}</span>
-                {/if}
-                {#if canGuild}
-                  <select
-                    disabled={busy === child.id}
-                    onchange={(e) => { appointMaster(child.id, e.currentTarget.value); e.currentTarget.value = ''; }}
-                    style="max-width:180px;"
-                  >
-                    <option value="">{child.master_member_id ? $t('Reassign master…') : $t('Appoint master…')}</option>
-                    {#each members as m}<option value={m.id}>{m.full_name}</option>{/each}
-                  </select>
-                {/if}
                 <button class="danger" onclick={() => remove(child.id)}>{$t('Delete')}</button>
               </li>
             {/each}

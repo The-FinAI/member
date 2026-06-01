@@ -56,7 +56,7 @@
     <div class="two">
       <div class="mini">
         <h3 id="term-liquid">{$t('Liquid STR')}</h3>
-        <p>{@html $t("The spendable balance in your wallet. You use it to post bonds and pay Guild exam fees. This is what the <span class='chip-ish'>STR</span> chip in the top bar shows.")}</p>
+        <p>{@html $t("The spendable balance in your wallet. You use it to post bonds and pay role-card fees. This is what the <span class='chip-ish'>STR</span> chip in the top bar shows.")}</p>
       </div>
       <div class="mini">
         <h3 id="term-nominal">{$t('Nominal STR')}</h3>
@@ -134,29 +134,28 @@
   <section id="guild" class="card stack">
     <h2>{$t('5 · The Guild — skills & certification')}</h2>
     <p>
-      {@html $t("Skills are organised as a <strong>tree</strong> (domain → branch → concrete leaf skill). They go from <em>self-declared</em> to <strong id='term-certification'>certified</strong> via a paid, peer-reviewed exam — this is what sets your <em>skill rate</em> (and thus how much your labor mints).")}
+      {@html $t("Skills are organised as a <strong>tree</strong> (domain → branch → concrete leaf skill). A certified skill is a <strong id='term-certification'>role card</strong> — this is what sets your <em>skill rate</em> (and thus how much your labor mints).")}
     </p>
     <h3 id="term-master">{$t('The guild ladder')}</h3>
     <div class="ladder">
       <span class="rung">{$t('Apprentice')}</span><span class="arr">→</span>
       <span class="rung">{$t('Journeyman')}</span><span class="arr">→</span>
       <span class="rung">{$t('Craftsman')}</span><span class="arr">→</span>
-      <span class="rung crown">{$t('👑 Master')}</span>
+      <span class="rung crown">{$t('Master')}</span>
     </div>
     <p>
-      {@html $t('Each examinable leaf skill has a <strong>Master</strong> — appointed by an admin — who owns its rubric and seeds the reviewer pool. To certify, you <strong>sit an exam</strong>: pay the level fee (liquid STR) into escrow, the system randomly assigns 3 qualified reviewers (certified at ≥ your target level), they grade against the rubric, and <strong>2 of 3 pass → certified</strong>. The fee is split 80% to reviewers / 20% to treasury regardless of outcome, so an exam is pay-to-sit, not pay-only-if-pass.')}
+      {@html $t('A certified skill is a <strong>role card</strong>. There are two ways one is forged. A chapter officer can <strong>mint</strong> cards onto a member (genesis, first cards, bootstrap) — free, but staged as a batch awaiting review. Or you <strong>request</strong> a card yourself, paying the mint or update fee (escrowed, refunded if rejected). Either way a reviewer with the review capability approves or rejects it. There is no exam and no per-skill master.')}
     </p>
-    <p class="muted">{$t('Lightweight peer endorsements (bronze→silver→gold) still exist as a soft popularity signal, but a certified medal is the hard credential and outranks them.')}</p>
   </section>
 
   <!-- ───────────────────────── reputation ───────────────────────── -->
   <section id="reputation" class="card stack">
     <h2>{$t('6 · Reputation & the leaderboard')}</h2>
     <p>
-      {@html $t("Your standing isn't your bank balance. The <a href='/members'>Leaderboard</a> has several boards: <strong>Contribution</strong> (lifetime minted work — the default), <strong>Net worth</strong> (liquid + nominal), <strong>Wealth</strong> (liquid only), and <strong>Masters</strong> (certifications and crowns).")}
+      {@html $t("Your standing isn't your bank balance. The <a href='/members'>Leaderboard</a> has several boards: <strong>Contribution</strong> (lifetime minted work — the default), <strong>Net worth</strong> (liquid + nominal), and <strong>Wealth</strong> (liquid only).")}
     </p>
     <p class="muted">
-      {@html $t('Your <strong>public member page</strong> shows reputation — certified medals, Master crowns, offered resources, project history and milestones — but <strong>never</strong> your liquid balance or ledger. Money is private; reputation is public.')}
+      {@html $t('Your <strong>public member page</strong> shows reputation — certified role-card medals, offered resources, project history and milestones — but <strong>never</strong> your liquid balance or ledger. Money is private; reputation is public.')}
     </p>
   </section>
 
@@ -164,10 +163,10 @@
   <section id="start" class="card stack">
     <h2>{$t('7 · How to start')}</h2>
     <ol class="start">
-      <li>{@html $t("<strong>Set up your profile.</strong> List what you can bring — your monthly labor capacity and any resources. <a href='/profile'>Open profile →</a>")}</li>
+      <li>{@html $t("<strong>Set up your profile.</strong> List what you can bring — your monthly labor capacity and any resources. <a href='/'>Open your portfolio →</a>")}</li>
       <li>{@html $t("<strong>Browse opportunities.</strong> Find a project that needs your skills. <a href='/opportunities'>Open opportunities →</a>")}</li>
       <li>{@html $t("<strong>Join a project.</strong> Apply to a need; once accepted, post the 20 STR bond and start declaring monthly hours. <a href='/projects'>Browse projects →</a>")}</li>
-      <li>{@html $t("<strong>Certify a skill.</strong> Sit a Guild exam to turn a self-declared skill into a certified credential and raise your labor rate. <a href='/skills'>Visit the Guild →</a>")}</li>
+      <li>{@html $t("<strong>Certify a skill.</strong> Request a role card to turn a skill into a certified credential and raise your labor rate. <a href='/skills'>Visit the Guild →</a>")}</li>
     </ol>
   </section>
 
@@ -176,7 +175,7 @@
     <h2>{$t('Glossary')}</h2>
     <dl class="glossary">
       <dt id="term-str-g">{$t('STR')}</dt><dd>{@html $t("The community's internal token; minted from delivered work, used to measure and reward contribution. <a href='#str'>More →</a>")}</dd>
-      <dt id="term-liquid-g">{$t('Liquid STR')}</dt><dd>{$t('Spendable balance in your wallet. Used for bonds and exam fees.')}</dd>
+      <dt id="term-liquid-g">{$t('Liquid STR')}</dt><dd>{$t('Spendable balance in your wallet. Used for bonds and role-card fees.')}</dd>
       <dt id="term-nominal-g">{$t('Nominal STR')}</dt><dd>{$t('Minted but locked in a project pool — a provisional claim that becomes liquid only at settlement.')}</dd>
       <dt id="term-stake-g">{$t('Stake')}</dt><dd>{@html $t('Your minted claim on a project pool. Your contribution <em>is</em> your stake.')}</dd>
       <dt id="term-bond-g">{$t('Bond')}</dt><dd>{$t('Real liquid STR escrowed to join a project (20 contributor / 50 leader). Funds the pool, seeds your claim, slashable if you flake.')}</dd>
@@ -184,8 +183,8 @@
       <dt id="term-milestone-g">{$t('Milestone')}</dt><dd>{$t('A verifiable achievement (submission, acceptance, release…). Verifying it mints nominal STR and raises the settlement multiplier.')}</dd>
       <dt id="term-settlement-g">{$t('Settlement')}</dt><dd>{$t('The joint sign-off (leader + Stater manager) that splits a finished project\'s pool into liquid STR by agreed weights, plus a finish bonus.')}</dd>
       <dt id="term-need-g">{$t('Need')}</dt><dd>{$t('A typed request a project posts for a contribution (labor / resource), shown on the Opportunities board.')}</dd>
-      <dt id="term-certification-g">{$t('Certification')}</dt><dd>{$t('A hard, peer-reviewed credential for a leaf skill, earned by a paid Guild exam. Sets your labor rate.')}</dd>
-      <dt id="term-master-g">{$t('Master')}</dt><dd>{$t("The admin-appointed owner of a leaf skill's rubric and reviewer pool; the top of the guild ladder.")}</dd>
+      <dt id="term-certification-g">{$t('Certification')}</dt><dd>{$t('A hard, reviewed credential for a leaf skill — a role card minted or requested, then approved by a reviewer. Sets your labor rate.')}</dd>
+      <dt id="term-master-g">{$t('Master')}</dt><dd>{$t('The top rung of the guild ladder (Apprentice → Journeyman → Craftsman → Master).')}</dd>
     </dl>
   </section>
 </div>

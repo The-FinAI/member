@@ -14,9 +14,8 @@
     member_position: { position: { name: string } | null }[];
   };
   type Skill = {
-    skill_id: string; self_level: string; certified_level: string | null;
+    skill_id: string; certified_level: string | null;
     skill: { name: string } | null;
-    credit: number; endorsements: number;
   };
   type Proj = {
     id: string; name: string; status: string; role: string; nominal: number;
@@ -38,9 +37,6 @@
   function initials(name: string) {
     return name.split(' ').filter(Boolean).slice(0, 2).map((s) => s[0]?.toUpperCase() ?? '').join('') || '?';
   }
-  function levelClass(l: string) {
-    return l === 'Expert' ? 'up' : l === 'Advanced' ? 'info' : l === 'Intermediate' ? '' : 'dim';
-  }
 
   async function load(memberId: string) {
     if (!supabaseConfigured) { loading = false; return; }
@@ -51,9 +47,8 @@
     if (!m) { mem = null; notFound = true; loading = false; return; }
     mem = m as Mem;
 
-    const [{ data: ms }, { data: cr }, { data: pm }, { data: nom }, { count: msc }] = await Promise.all([
-      supabase.from('member_skill').select('skill_id, self_level, certified_level, skill(name)').eq('member_id', memberId),
-      supabase.from('stater_skill_credit').select('skill_id, credit, endorsements').eq('member_id', memberId),
+    const [{ data: ms }, { data: pm }, { data: nom }, { count: msc }] = await Promise.all([
+      supabase.from('member_skill').select('skill_id, certified_level, skill(name)').eq('member_id', memberId),
       supabase.from('project_member')
         .select('project_id, project_role(name), project:project_id(id, name, project_status!project_status_id_fkey(name))')
         .eq('member_id', memberId),
@@ -62,12 +57,10 @@
         .eq('claimed_by', memberId).eq('status', 'verified')
     ]);
 
-    const creditBy: Record<string, { credit: number; endorsements: number }> = {};
-    for (const c of (cr as any[]) ?? []) creditBy[c.skill_id] = { credit: Number(c.credit) || 0, endorsements: Number(c.endorsements) || 0 };
     skills = ((ms as any[]) ?? []).map((s) => ({
-      skill_id: s.skill_id, self_level: s.self_level, certified_level: s.certified_level ?? null, skill: s.skill,
-      credit: creditBy[s.skill_id]?.credit ?? 0, endorsements: creditBy[s.skill_id]?.endorsements ?? 0
-    })).sort((a, b) => b.credit - a.credit || (a.skill?.name ?? '').localeCompare(b.skill?.name ?? ''));
+      skill_id: s.skill_id, certified_level: s.certified_level ?? null, skill: s.skill
+    })).sort((a, b) => (RANK[b.certified_level ?? ''] ?? -1) - (RANK[a.certified_level ?? ''] ?? -1)
+      || (a.skill?.name ?? '').localeCompare(b.skill?.name ?? ''));
 
     const nomBy: Record<string, number> = {};
     let tot = 0;
@@ -94,8 +87,6 @@
 
   onMount(() => { if (id) { lastId = id; load(id); } });
 
-  const totalEndorsers = $derived(skills.reduce((a, s) => a + s.endorsements, 0));
-  const totalCredit = $derived(skills.reduce((a, s) => a + s.credit, 0));
   // certified role cards (medals) — guild-certified skills, ordered by rank
   const RANK: Record<string, number> = { apprentice: 0, journeyman: 1, craftsman: 2, master: 3 };
   const cards = $derived(
@@ -150,11 +141,6 @@
         <span class="k-sub">{$t('nominal STR minted through work')}</span>
       </div>
       <div class="kpi">
-        <span class="k-label">{$t('Reputation')}</span>
-        <span class="k-value">{totalCredit.toLocaleString()}</span>
-        <span class="k-sub">{$t('{n} endorsements across skills', { n: totalEndorsers })}</span>
-      </div>
-      <div class="kpi">
         <span class="k-label">{$t('Milestones')}</span>
         <span class="k-value">{msVerified}</span>
         <span class="k-sub">{$t('verified outcomes claimed')}</span>
@@ -178,19 +164,17 @@
 
     <!-- skills -->
     <div class="card stack">
-      <h2 style="margin:0;">{$t('Skills & reputation')}</h2>
+      <h2 style="margin:0;">{$t('Skills')}</h2>
       {#if skills.length === 0}
         <p class="muted">{$t('No skills listed yet.')}</p>
       {:else}
         <table>
-          <thead><tr><th>{$t('Skill')}</th><th>{$t('Self-rating')}</th><th class="num">{$t('Reputation')}</th><th class="num">{$t('Endorsers')}</th></tr></thead>
+          <thead><tr><th>{$t('Skill')}</th><th>{$t('Role card')}</th></tr></thead>
           <tbody>
             {#each skills as s}
               <tr>
                 <td><strong>{s.skill?.name ?? s.skill_id}</strong></td>
-                <td><span class="badge {levelClass(s.self_level)}">{s.self_level}</span></td>
-                <td class="num mono">{s.credit.toLocaleString()}</td>
-                <td class="num mono dim">{s.endorsements}</td>
+                <td>{#if s.certified_level}<Medal level={s.certified_level} size="sm" />{:else}<span class="muted">—</span>{/if}</td>
               </tr>
             {/each}
           </tbody>
