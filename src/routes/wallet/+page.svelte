@@ -4,6 +4,7 @@
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import CountUp from '$lib/CountUp.svelte';
   import Hint from '$lib/Hint.svelte';
+  import { t } from '$lib/i18n';
 
   type LedgerRow = {
     id: string; amount: number; entry_type: string; reason: string;
@@ -85,13 +86,13 @@
 <div class="stack" style="max-width:760px;">
   <div class="row" style="justify-content:space-between; align-items:flex-end;">
     <div>
-      <h1 style="margin-bottom:.15rem;">Wallet</h1>
-      <span class="muted" style="font-size:.85rem;">Your Stater (STR) balance and transaction history.</span>
+      <h1 style="margin-bottom:.15rem;">{$t('Wallet')}</h1>
+      <span class="muted" style="font-size:.85rem;">{$t('Your Stater (STR) balance and transaction history.')}</span>
     </div>
   </div>
 
   {#if !$member}
-    <div class="card"><p class="muted">No member record linked to this account yet.</p></div>
+    <div class="card"><p class="muted">{$t('No member record linked to this account yet.')}</p></div>
   {:else}
     <!-- HERO BALANCE -->
     <div class="hero rise" class:celebrate>
@@ -102,7 +103,7 @@
           {#each Array(14) as _, i}<i style="--i:{i}"></i>{/each}
         </div>
       {/if}
-      <span class="h-label">Net worth <Hint term="nominal" text="Liquid balance plus nominal STR you've staked across projects. Staked STR isn't spendable until each project settles." /></span>
+      <span class="h-label">{$t('Net worth')} <Hint term="nominal" text={$t("Liquid balance plus nominal STR you've staked across projects. Staked STR isn't spendable until each project settles.")} /></span>
       <div class="h-balance">
         {#if loading}<span class="sk sk-line" style="width:200px; height:42px;"></span>
         {:else}<CountUp value={netWorth} /><span class="unit">STR</span>{/if}
@@ -113,38 +114,38 @@
         <i class="bonded" style="width:{bondedPct}%"></i>
       </div>
       <div class="alloc-legend">
-        <span class="lg"><span class="sw l"></span> Liquid <strong class="mono" style="color:var(--text);">{balance.toLocaleString()}</strong></span>
-        <span class="lg"><span class="sw b"></span> Staked <strong class="mono" style="color:var(--text);">{staked.toLocaleString()}</strong></span>
+        <span class="lg"><span class="sw l"></span> {$t('Liquid')} <strong class="mono" style="color:var(--text);">{balance.toLocaleString()}</strong></span>
+        <span class="lg"><span class="sw b"></span> {$t('Staked')} <strong class="mono" style="color:var(--text);">{staked.toLocaleString()}</strong></span>
       </div>
     </div>
 
     <div class="row rise-stagger" style="align-items:stretch;">
       <div class="tile" style="flex:1; min-width:160px;">
-        <span class="label">Liquid balance <Hint term="liquid" text="Spendable STR in your wallet — used to post bonds and pay Guild exam fees." /></span>
+        <span class="label">{$t('Liquid balance')} <Hint term="liquid" text={$t('Spendable STR in your wallet — used to post bonds and pay Guild exam fees.')} /></span>
         <span class="value accent"><CountUp value={balance} /></span>
-        <span class="sub">spendable now</span>
+        <span class="sub">{$t('spendable now')}</span>
       </div>
       <div class="tile" style="flex:1; min-width:160px;">
-        <span class="label">Staked <Hint term="nominal" text="Nominal STR minted into project pools (your bond + declared work). Locked until each project settles, then converts to liquid." /></span>
+        <span class="label">{$t('Staked')} <Hint term="nominal" text={$t('Nominal STR minted into project pools (your bond + declared work). Locked until each project settles, then converts to liquid.')} /></span>
         <span class="value"><CountUp value={staked} /></span>
-        <span class="sub">bonded in projects</span>
+        <span class="sub">{$t('bonded in projects')}</span>
       </div>
       <div class="tile" style="flex:1; min-width:160px;">
-        <span class="label">Bonded ratio</span>
+        <span class="label">{$t('Bonded ratio')}</span>
         <span class="value"><CountUp value={netWorth > 0 ? bondedPct : 0} decimals={0} suffix="%" /></span>
-        <span class="sub">of net worth at work</span>
+        <span class="sub">{$t('of net worth at work')}</span>
       </div>
     </div>
 
     <div class="card stack">
-      <h2 style="margin:0;">Activity</h2>
+      <h2 style="margin:0;">{$t('Activity')}</h2>
       <p class="muted" style="font-size:.82rem; margin-top:-.4rem;">
-        Earned by finishing projects; spent to join ({joinStake}/join), stake, and endorse peers.
+        {$t('Earned by finishing projects; spent to join ({n}/join), stake, and endorse peers.', { n: joinStake })}
       </p>
       {#if loading}
         <div>{#each Array(5) as _}<div class="sk sk-row"></div>{/each}</div>
       {:else if ledger.length === 0}
-        <p class="muted">No transactions yet.</p>
+        <p class="muted">{$t('No transactions yet.')}</p>
       {:else}
         <div class="rise-stagger">
           {#each ledger as e}

@@ -82,7 +82,28 @@ const zh: Table = {
   'Browse projects': '浏览项目',
   'Certify a skill': '认证技能',
   'Sit a Guild exam to earn a credential and raise your labor rate.': '参加行会考试,获取资质并提升你的工时单价。',
-  'Visit the Guild': '前往行会'
+  'Visit the Guild': '前往行会',
+
+  // ── wallet ──
+  'Wallet': '钱包',
+  'Your Stater (STR) balance and transaction history.': '你的 Stater(STR)余额与交易记录。',
+  'No member record linked to this account yet.': '该账户尚未关联会员记录。',
+  'Net worth': '净值',
+  "Liquid balance plus nominal STR you've staked across projects. Staked STR isn't spendable until each project settles.":
+    '流动余额加上你在各项目质押的名义 STR。已质押的 STR 在项目结算前不可花费。',
+  'Liquid': '流动',
+  'Liquid balance': '流动余额',
+  'spendable now': '当前可花费',
+  'Spendable STR in your wallet — used to post bonds and pay Guild exam fees.':
+    '钱包中可花费的 STR——用于缴纳保证金和支付行会考试费。',
+  'Nominal STR minted into project pools (your bond + declared work). Locked until each project settles, then converts to liquid.':
+    '铸入项目池的名义 STR(你的保证金 + 申报的工作)。在项目结算前锁定,之后转为流动。',
+  'Bonded ratio': '锁定比例',
+  'of net worth at work': '净值中投入工作的占比',
+  'Activity': '活动',
+  'Earned by finishing projects; spent to join ({n}/join), stake, and endorse peers.':
+    '通过完成项目赚取;用于加入({n}/次)、质押和为同伴背书。',
+  'No transactions yet.': '暂无交易。'
 };
 
 const ja: Table = {
@@ -161,7 +182,28 @@ const ja: Table = {
   'Browse projects': 'プロジェクトを見る',
   'Certify a skill': 'スキルを認定',
   'Sit a Guild exam to earn a credential and raise your labor rate.': 'ギルド試験を受けて資格を取得し、稼働単価を上げる。',
-  'Visit the Guild': 'ギルドへ'
+  'Visit the Guild': 'ギルドへ',
+
+  // ── wallet ──
+  'Wallet': 'ウォレット',
+  'Your Stater (STR) balance and transaction history.': 'あなたの Stater（STR）残高と取引履歴。',
+  'No member record linked to this account yet.': 'このアカウントにはまだメンバー記録が紐づいていません。',
+  'Net worth': '純資産',
+  "Liquid balance plus nominal STR you've staked across projects. Staked STR isn't spendable until each project settles.":
+    '流動残高と、各プロジェクトにステークした名目 STR の合計。ステークした STR は各プロジェクトの精算まで使えません。',
+  'Liquid': '流動',
+  'Liquid balance': '流動残高',
+  'spendable now': '今すぐ使用可能',
+  'Spendable STR in your wallet — used to post bonds and pay Guild exam fees.':
+    'ウォレット内の使用可能な STR——ボンドの拠出やギルド試験料に使います。',
+  'Nominal STR minted into project pools (your bond + declared work). Locked until each project settles, then converts to liquid.':
+    'プロジェクトプールに鋳造した名目 STR（ボンド + 申告した作業）。各プロジェクトの精算までロックされ、その後 流動に変換されます。',
+  'Bonded ratio': '拘束比率',
+  'of net worth at work': '純資産のうち稼働中の割合',
+  'Activity': 'アクティビティ',
+  'Earned by finishing projects; spent to join ({n}/join), stake, and endorse peers.':
+    'プロジェクトの完了で獲得；参加（{n}/回）、ステーク、仲間の推薦に使用。',
+  'No transactions yet.': 'まだ取引はありません。'
 };
 
 const fr: Table = {
@@ -240,7 +282,28 @@ const fr: Table = {
   'Browse projects': 'Voir les projets',
   'Certify a skill': 'Certifier une compétence',
   'Sit a Guild exam to earn a credential and raise your labor rate.': 'Passez un examen de la Guilde pour obtenir un titre et augmenter votre taux horaire.',
-  'Visit the Guild': 'Aller à la Guilde'
+  'Visit the Guild': 'Aller à la Guilde',
+
+  // ── wallet ──
+  'Wallet': 'Portefeuille',
+  'Your Stater (STR) balance and transaction history.': 'Votre solde Stater (STR) et l’historique des transactions.',
+  'No member record linked to this account yet.': 'Aucun membre n’est encore lié à ce compte.',
+  'Net worth': 'Valeur nette',
+  "Liquid balance plus nominal STR you've staked across projects. Staked STR isn't spendable until each project settles.":
+    'Solde liquide plus le STR nominal engagé dans vos projets. Le STR engagé n’est pas dépensable avant le règlement de chaque projet.',
+  'Liquid': 'Liquide',
+  'Liquid balance': 'Solde liquide',
+  'spendable now': 'dépensable maintenant',
+  'Spendable STR in your wallet — used to post bonds and pay Guild exam fees.':
+    'STR dépensable dans votre portefeuille — sert à déposer des cautions et payer les examens de la Guilde.',
+  'Nominal STR minted into project pools (your bond + declared work). Locked until each project settles, then converts to liquid.':
+    'STR nominal frappé dans les pools de projet (votre caution + travail déclaré). Bloqué jusqu’au règlement de chaque projet, puis converti en liquide.',
+  'Bonded ratio': 'Ratio engagé',
+  'of net worth at work': 'de la valeur nette au travail',
+  'Activity': 'Activité',
+  'Earned by finishing projects; spent to join ({n}/join), stake, and endorse peers.':
+    'Gagné en terminant des projets ; dépensé pour rejoindre ({n}/adhésion), engager et recommander des pairs.',
+  'No transactions yet.': 'Aucune transaction pour le moment.'
 };
 
 export const dict: Record<Exclude<Locale, 'en'>, Table> = { zh, ja, fr };
