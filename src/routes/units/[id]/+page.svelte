@@ -10,7 +10,7 @@
   type Person = { id: string; full_name: string; affiliation: string | null; kind?: string };
   type Officer = { member_id: string; role: string; member: Person | null };
   type UnitMember = { member_id: string; status: string; applied_on: string; member: Person | null };
-  type Proj = { id: string; name: string; status: string };
+  type Proj = { id: string; name: string; status: string; org_unit_id: string | null };
 
   const id = $derived($page.params.id);
 
@@ -21,7 +21,9 @@
   let projects = $state<Proj[]>([]);
   let myStatus = $state<string | null>(null); // pending | active | rejected | left | null
   let allMembers = $state<Person[]>([]); // for the officer "add member" picker
+  let allProjects = $state<Proj[]>([]); // for the WG "add project" picker
   let addQ = $state('');
+  let projQ = $state('');
   let loading = $state(true);
   let notFound = $state(false);
   let error = $state('');
@@ -52,6 +54,7 @@
     unit = u as Unit;
     eName = unit.name; eDesc = unit.description ?? '';
 
+    const isWG = unit.kind === 'working_group';
     const [{ data: off }, { data: oum }, { data: prj }, { data: am }] = await Promise.all([
       supabase.from('org_unit_officer')
         .select('member_id, role, member:member_id(id, full_name, affiliation)')
@@ -59,8 +62,8 @@
       supabase.from('org_unit_member')
         .select('member_id, status, applied_on, member:member_id(id, full_name, affiliation, kind)')
         .eq('org_unit_id', unitId),
-      unit.kind === 'working_group'
-        ? supabase.from('project').select('id, name, project_status!project_status_id_fkey(name)').eq('org_unit_id', unitId)
+      isWG
+        ? supabase.from('project').select('id, name, org_unit_id, project_status!project_status_id_fkey(name)').order('name')
         : Promise.resolve({ data: [] as any[] }),
       supabase.from('member').select('id, full_name, affiliation, kind').order('full_name')
     ]);
@@ -72,9 +75,10 @@
       .sort((a, b) => (a.member?.full_name ?? '').localeCompare(b.member?.full_name ?? ''));
     pending = all.filter((m) => m.status === 'pending')
       .sort((a, b) => a.applied_on.localeCompare(b.applied_on));
-    projects = ((prj as any[]) ?? []).map((p) => ({
-      id: p.id, name: p.name, status: p.project_status?.name ?? '—'
+    allProjects = ((prj as any[]) ?? []).map((p) => ({
+      id: p.id, name: p.name, org_unit_id: p.org_unit_id ?? null, status: p.project_status?.name ?? '—'
     }));
+    projects = allProjects.filter((p) => p.org_unit_id === unitId);
 
     const mine = $member ? all.find((m) => m.member_id === $member!.id) : null;
     myStatus = mine?.status ?? null;
@@ -160,6 +164,24 @@
     await load(unit.id);
   }
 
+  async function attachProject(projectId: string) {
+    if (!unit) return;
+    busy = 'attach:' + projectId; error = '';
+    const { error: err } = await supabase.rpc('attach_project_to_unit', { p_project: projectId, p_unit: unit.id });
+    busy = '';
+    if (err) { error = err.message; return; }
+    projQ = '';
+    await load(unit.id);
+  }
+  async function detachProject(projectId: string) {
+    if (!unit) return;
+    busy = 'detach:' + projectId; error = '';
+    const { error: err } = await supabase.rpc('detach_project_from_unit', { p_project: projectId });
+    busy = '';
+    if (err) { error = err.message; return; }
+    await load(unit.id);
+  }
+
   function officersByRole(role: string) { return officers.filter((o) => o.role === role); }
   const roleOrder = $derived(isChapter ? ['chair', 'secretary'] : ['leader']);
   const officerIds = $derived(new Set(officers.map((o) => o.member_id)));
@@ -170,6 +192,14 @@
       : allMembers
           .filter((m) => !activeIds.has(m.id))
           .filter((m) => (m.full_name + ' ' + (m.affiliation ?? '')).toLowerCase().includes(addQ.trim().toLowerCase()))
+          .slice(0, 8)
+  );
+  // projects not yet in this group, for the WG "add project" picker
+  const projCandidates = $derived(
+    !projQ.trim() ? []
+      : allProjects
+          .filter((p) => p.org_unit_id !== unit?.id)
+          .filter((p) => p.name.toLowerCase().includes(projQ.trim().toLowerCase()))
           .slice(0, 8)
   );
 </script>
@@ -370,13 +400,39 @@
           <p class="muted" style="margin:0;">{$t('No projects attributed to this group yet.')}</p>
         {:else}
           <table>
-            <thead><tr><th>{$t('Project')}</th><th>{$t('Status')}</th></tr></thead>
+            <thead><tr><th>{$t('Project')}</th><th>{$t('Status')}</th>{#if isOfficer}<th></th>{/if}</tr></thead>
             <tbody>
               {#each projects as p}
-                <tr><td><a href={`/projects/${p.id}`}><strong>{p.name}</strong></a></td><td class="muted">{p.status}</td></tr>
+                <tr>
+                  <td><a href={`/projects/${p.id}`}><strong>{p.name}</strong></a></td>
+                  <td class="muted">{p.status}</td>
+                  {#if isOfficer}<td class="num"><button onclick={() => detachProject(p.id)} disabled={busy === 'detach:' + p.id}>{$t('Remove')}</button></td>{/if}
+                </tr>
               {/each}
             </tbody>
           </table>
+        {/if}
+
+        {#if isOfficer}
+          <div class="stack" style="gap:.4rem; border-top:1px solid var(--border-2); padding-top:.6rem;">
+            <span class="muted" style="font-size:.8rem;">{$t('Attach an existing project to this group.')}</span>
+            <input placeholder={$t('Search projects…')} bind:value={projQ} style="max-width:340px;" />
+            {#if projCandidates.length}
+              <ul style="margin:0; padding:0; list-style:none;">
+                {#each projCandidates as p}
+                  <li class="row" style="justify-content:space-between; align-items:center; gap:.5rem; border-top:1px solid var(--border); padding:.45rem 0;">
+                    <span class="stack" style="gap:0;">
+                      <a href={`/projects/${p.id}`} class="p-name">{p.name}</a>
+                      <span class="p-sub">{p.status}{#if p.org_unit_id} · {$t('in another group')}{/if}</span>
+                    </span>
+                    <button class="stake" onclick={() => attachProject(p.id)} disabled={busy === 'attach:' + p.id}>{$t('Attach')}</button>
+                  </li>
+                {/each}
+              </ul>
+            {:else if projQ.trim()}
+              <p class="muted" style="font-size:.82rem; margin:0;">{$t('No matching projects.')}</p>
+            {/if}
+          </div>
         {/if}
       </div>
     {/if}
