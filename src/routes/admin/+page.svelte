@@ -10,7 +10,7 @@
     { href: '/admin/skills', title: 'Skill Tree', desc: 'Hierarchical skills used for matching' },
     { href: '/admin/resource-types', title: 'Resource Types', desc: 'Categories of resources (compute, funding, data…)' },
     { href: '/admin/resources', title: 'Community Resources', desc: 'Community-owned resources + their stewards' },
-    { href: '/admin/stater', title: 'Stater (STR)', desc: 'Stake economy: mint, grant, allowance, and tune the rules' }
+    { href: '/admin/stater', title: 'STR Economy', desc: 'Supply at a glance, mint/sink flow, treasury ledger, health flags — plus mint, grant, allowance & policy knobs' }
   ];
 </script>
 

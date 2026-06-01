@@ -6,8 +6,19 @@
   type Member = { id: string; full_name: string };
   type Rate = { skill_id: string; rate: number; skill?: { name: string } | null };
 
+  type Flow = { type: string; amount: number };
+  type LedgerRow = { entry_type: string; amount: number; reason: string | null; created_at: string; dir: 'in' | 'out' };
+
   let treasury = $state(0);
   let supply = $state(0);
+  let circulating = $state(0);   // member wallets
+  let escrowTotal = $state(0);   // project escrows
+  let minted = $state<Flow[]>([]);
+  let sunk = $state<Flow[]>([]);
+  let mintedTotal = $state(0);
+  let sunkTotal = $state(0);
+  let treasuryLog = $state<LedgerRow[]>([]);
+  let flags = $state<{ level: 'warn' | 'down'; msg: string }[]>([]);
   let policies = $state<Policy[]>([]);
   let rates = $state<Rate[]>([]);
   let members = $state<Member[]>([]);
@@ -24,18 +35,56 @@
   async function load() {
     if (!supabaseConfigured) { loading = false; return; }
     loading = true;
-    const [{ data: tre }, { data: pol }, { data: mem }, { data: bals }, { data: rt }] = await Promise.all([
+    const [{ data: tre }, { data: pol }, { data: mem }, { data: bals }, { data: esc }, { data: rt }, { data: acc }, { data: led }] = await Promise.all([
       supabase.from('stater_balance').select('balance').eq('account_type', 'treasury').maybeSingle(),
       supabase.from('stater_policy').select('key, value, description').order('key'),
       supabase.from('member').select('id, full_name').order('full_name'),
       supabase.from('stater_balance').select('balance').eq('account_type', 'member'),
-      supabase.from('stater_skill_rate').select('skill_id, rate, skill(name)').order('rate', { ascending: false })
+      supabase.from('stater_balance').select('balance').eq('account_type', 'project'),
+      supabase.from('stater_skill_rate').select('skill_id, rate, skill(name)').order('rate', { ascending: false }),
+      supabase.from('stater_account').select('id, account_type'),
+      supabase.from('stater_ledger').select('entry_type, amount, from_account, to_account, reason, created_at').order('created_at', { ascending: false })
     ]);
     treasury = Number((tre as { balance: number } | null)?.balance ?? 0);
     policies = (pol as Policy[]) ?? [];
     members = (mem as Member[]) ?? [];
     rates = (rt as Rate[]) ?? [];
-    supply = ((bals as { balance: number }[]) ?? []).reduce((a, b) => a + Number(b.balance), 0) + treasury;
+    circulating = ((bals as { balance: number }[]) ?? []).reduce((a, b) => a + Number(b.balance), 0);
+    escrowTotal = ((esc as { balance: number }[]) ?? []).reduce((a, b) => a + Number(b.balance), 0);
+    supply = circulating + escrowTotal + treasury;
+
+    // treasury account id, for ledger direction
+    const treId = ((acc as any[]) ?? []).find((a) => a.account_type === 'treasury')?.id ?? null;
+
+    // mint/sink flow from the append-only ledger
+    const mintMap: Record<string, number> = {};
+    const sunkMap: Record<string, number> = {};
+    const tlog: LedgerRow[] = [];
+    for (const r of (led as any[]) ?? []) {
+      const amt = Number(r.amount) || 0;
+      if (r.from_account === null) mintMap[r.entry_type] = (mintMap[r.entry_type] ?? 0) + amt;   // created supply
+      if (r.to_account === null)   sunkMap[r.entry_type] = (sunkMap[r.entry_type] ?? 0) + amt;   // destroyed supply
+      if (treId && (r.from_account === treId || r.to_account === treId) && tlog.length < 25)
+        tlog.push({ entry_type: r.entry_type, amount: amt, reason: r.reason, created_at: r.created_at,
+                    dir: r.to_account === treId ? 'in' : 'out' });
+    }
+    minted = Object.entries(mintMap).map(([type, amount]) => ({ type, amount })).sort((a, b) => b.amount - a.amount);
+    sunk = Object.entries(sunkMap).map(([type, amount]) => ({ type, amount })).sort((a, b) => b.amount - a.amount);
+    mintedTotal = minted.reduce((a, f) => a + f.amount, 0);
+    sunkTotal = sunk.reduce((a, f) => a + f.amount, 0);
+    treasuryLog = tlog;
+
+    // health flags
+    const f: { level: 'warn' | 'down'; msg: string }[] = [];
+    if (treasury < 0) f.push({ level: 'down', msg: 'Treasury balance is negative — more has been paid out than minted.' });
+    if (mintedTotal - sunkTotal !== supply)
+      f.push({ level: 'down', msg: `Supply mismatch: ledger says ${(mintedTotal - sunkTotal).toLocaleString()} but account balances sum to ${supply.toLocaleString()}.` });
+    if (treasury > 0 && supply > 0 && treasury / supply > 0.7)
+      f.push({ level: 'warn', msg: 'Over 70% of supply sits idle in the treasury — little is circulating.' });
+    if (escrowTotal > 0 && circulating > 0 && escrowTotal / (circulating + escrowTotal) > 0.6)
+      f.push({ level: 'warn', msg: 'Most member STR is locked in project escrow rather than spendable.' });
+    flags = f;
+
     loading = false;
   }
   onMount(load);
@@ -111,6 +160,78 @@
         <p class="muted" style="font-size:.8rem; margin:0;">Issue this window's allowance to members active in the last 30 days (idempotent per window).</p>
         <button onclick={allowance}>Issue allowance</button>
       </div>
+    </div>
+
+    <!-- health flags -->
+    {#if flags.length > 0}
+      <div class="stack" style="gap:.4rem;">
+        {#each flags as fl}
+          <p style="margin:0; font-size:.85rem; color:{fl.level === 'down' ? 'var(--down)' : 'var(--warn, #c90)'};">
+            {fl.level === 'down' ? '⛔' : '⚠️'} {fl.msg}
+          </p>
+        {/each}
+      </div>
+    {/if}
+
+    <!-- supply composition + mint/sink flow -->
+    <div class="row" style="align-items:stretch;">
+      <div class="card stack" style="flex:1; min-width:280px;">
+        <h2 style="margin:0;">Supply at a glance</h2>
+        <p class="muted" style="font-size:.8rem; margin:-.3rem 0 .2rem;">Where the {supply.toLocaleString()} STR lives right now.</p>
+        {#each [{ label: 'Circulating (wallets)', val: circulating }, { label: 'Project escrow', val: escrowTotal }, { label: 'Treasury', val: treasury }] as seg}
+          <div class="stack" style="gap:.2rem;">
+            <div class="row" style="justify-content:space-between; font-size:.85rem;">
+              <span>{seg.label}</span><span class="mono">{seg.val.toLocaleString()} <span class="muted">({supply ? Math.round((seg.val / supply) * 100) : 0}%)</span></span>
+            </div>
+            <span class="bar"><i style={`width:${supply ? (seg.val / supply) * 100 : 0}%`}></i></span>
+          </div>
+        {/each}
+      </div>
+
+      <div class="card stack" style="flex:1; min-width:280px;">
+        <h2 style="margin:0;">Mint &amp; sink flow</h2>
+        <p class="muted" style="font-size:.8rem; margin:-.3rem 0 .2rem;">Lifetime STR created vs destroyed, from the ledger.</p>
+        <div class="row" style="justify-content:space-between;">
+          <span class="up" style="font-weight:600;">↑ Minted {mintedTotal.toLocaleString()}</span>
+          <span class="down" style="font-weight:600; color:var(--down);">↓ Sunk {sunkTotal.toLocaleString()}</span>
+        </div>
+        <table style="font-size:.82rem;">
+          <tbody>
+            {#each minted as f}
+              <tr><td class="muted">{f.type}</td><td class="num mono up">+{f.amount.toLocaleString()}</td></tr>
+            {/each}
+            {#each sunk as f}
+              <tr><td class="muted">{f.type}</td><td class="num mono" style="color:var(--down);">−{f.amount.toLocaleString()}</td></tr>
+            {/each}
+            {#if minted.length === 0 && sunk.length === 0}
+              <tr><td class="muted" colspan="2">No supply events yet.</td></tr>
+            {/if}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- treasury ledger -->
+    <div class="card stack">
+      <h2 style="margin:0;">Treasury ledger</h2>
+      <p class="muted" style="font-size:.8rem; margin:-.3rem 0 .2rem;">Most recent {treasuryLog.length} movements in and out of the treasury.</p>
+      {#if treasuryLog.length === 0}
+        <p class="muted">No treasury activity yet.</p>
+      {:else}
+        <table>
+          <thead><tr><th>When</th><th>Type</th><th>Reason</th><th class="num">Amount</th></tr></thead>
+          <tbody>
+            {#each treasuryLog as l}
+              <tr>
+                <td class="muted" style="font-size:.8rem; white-space:nowrap;">{new Date(l.created_at).toLocaleDateString()}</td>
+                <td><span class="badge dim">{l.entry_type}</span></td>
+                <td class="muted" style="font-size:.82rem;">{l.reason ?? '—'}</td>
+                <td class="num mono" style={l.dir === 'in' ? 'color:var(--up);' : 'color:var(--down);'}>{l.dir === 'in' ? '+' : '−'}{l.amount.toLocaleString()}</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      {/if}
     </div>
 
     <div class="row" style="align-items:stretch;">
