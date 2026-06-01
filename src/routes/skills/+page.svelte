@@ -13,8 +13,8 @@
 
   const LEVELS = ['apprentice', 'journeyman', 'craftsman', 'master'];
   const LEVEL_LABEL: Record<string, string> = {
-    apprentice: 'Apprentice 学徒', journeyman: 'Journeyman 职人',
-    craftsman: 'Craftsman 名匠', master: 'Master 宗师'
+    apprentice: 'Apprentice', journeyman: 'Journeyman',
+    craftsman: 'Craftsman', master: 'Master'
   };
   const levelRank = (l: string | null) => (l ? LEVELS.indexOf(l) : -1);
 
@@ -35,7 +35,6 @@
   let examLevel = $state('apprentice');
   let rubricLevel = $state('apprentice');
   let rubricText = $state('');
-  let branchName = $state('');
   let voteNote = $state<Record<string, string>>({});
 
   async function load() {
@@ -101,6 +100,7 @@
   const sel = $derived(skills.find((s) => s.id === selected) ?? null);
   const iAmMaster = $derived(!!sel && !!$member && sel.master_member_id === $member.id);
   const myLevelHere = $derived(sel ? (myCert[sel.id] ?? null) : null);
+  const unclaimed = $derived(!!sel && !sel.master_member_id);
 
   function pick(id: string) {
     selected = selected === id ? '' : id;
@@ -137,22 +137,13 @@
     if (err) { error = err.message; return; }
     await load();
   }
-  async function branch() {
-    if (!sel || !branchName.trim()) return;
-    error = ''; busy = 'branch';
-    const { error: err } = await supabase.rpc('branch_skill', { p_parent: sel.id, p_name: branchName.trim() });
-    busy = '';
-    if (err) { error = err.message; return; }
-    branchName = '';
-    await load();
-  }
 </script>
 
 <div class="stack">
   <div>
     <h1 style="margin-bottom:.15rem;">The Guild</h1>
     <span class="muted" style="font-size:.85rem;">
-      Skills are a craft ladder — Apprentice → Journeyman → Craftsman → Master. Certification is earned by paid, peer-reviewed exam. The first to hold a skill masters it, owns its rubric, and may branch new sub-crafts.
+      Skills are a craft ladder — Apprentice → Journeyman → Craftsman → Master. Certification is earned by paid, peer-reviewed exam. Each craft's master is appointed by an admin; the master owns its rubric and seeds the reviewer pool.
     </span>
   </div>
 
@@ -231,7 +222,7 @@
         <div>
           <h2 style="margin:0;">{sel.name}</h2>
           <p class="muted" style="font-size:.82rem; margin:.2rem 0 0;">
-            Master: {masterName[sel.id] ?? '— unclaimed —'}
+            Master: {masterName[sel.id] ?? '— none appointed —'}
             {#if holders[sel.id]}· {holders[sel.id]} certified holder{holders[sel.id] === 1 ? '' : 's'}{/if}
             {#if myLevelHere}· you are <strong class="pos">✓ {LEVEL_LABEL[myLevelHere]}</strong>{/if}
           </p>
@@ -250,8 +241,18 @@
           {/if}
         </div>
 
-        <!-- take exam -->
-        {#if $member && !iAmMaster}
+        <!-- no master appointed yet → certification can't open -->
+        {#if unclaimed}
+          <div class="card" style="background:var(--card-2); border-color:transparent; padding:.6rem .8rem;">
+            <p class="muted" style="font-size:.8rem; margin:0;">
+              No master appointed yet. An admin appoints a master in <a href="/admin/skills">the skill tree</a>;
+              certification opens once a master seeds the reviewer pool.
+            </p>
+          </div>
+        {/if}
+
+        <!-- take exam (only once the craft has a Master + reviewer pool) -->
+        {#if $member && !iAmMaster && !unclaimed}
           <div class="card" style="background:var(--accent-soft); border-color:transparent; padding:.6rem .8rem;">
             <div class="row" style="align-items:flex-end; gap:.5rem; flex-wrap:wrap;">
               <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">Sit exam at</span>
@@ -266,22 +267,17 @@
           </div>
         {/if}
 
-        <!-- master tools -->
+        <!-- master tools: the appointed master owns the rubric -->
         {#if iAmMaster}
           <div class="stack" style="gap:.5rem; border-top:1px solid var(--border-2); padding-top:.6rem;">
-            <h3 style="margin:0; font-size:.9rem;">Master tools</h3>
+            <h3 style="margin:0; font-size:.9rem;">Master tools — rubric</h3>
             <div class="row" style="align-items:flex-end; gap:.5rem; flex-wrap:wrap;">
               <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">Rubric for</span>
                 <select bind:value={rubricLevel}>{#each LEVELS as lv}<option value={lv}>{LEVEL_LABEL[lv]}</option>{/each}</select></label>
             </div>
             <textarea bind:value={rubricText} rows="3" placeholder="What must a candidate demonstrate at this level?"></textarea>
             <div class="row"><button onclick={saveRubric} disabled={busy === 'rubric'}>{busy === 'rubric' ? 'Saving…' : 'Save rubric'}</button></div>
-            <div class="row" style="gap:.5rem; align-items:flex-end;">
-              <label class="stack" style="gap:.2rem; flex:1;"><span class="muted" style="font-size:.72rem;">Branch a sub-skill</span>
-                <input bind:value={branchName} placeholder="e.g. Relation extraction" /></label>
-              <button onclick={branch} disabled={busy === 'branch' || !branchName.trim()}>{busy === 'branch' ? '…' : 'Branch'}</button>
-            </div>
-            <p class="muted" style="font-size:.74rem; margin:0;">You author this craft. Define how each level is tested, and split it into finer sub-crafts you'll master.</p>
+            <p class="muted" style="font-size:.74rem; margin:0;">You were appointed master of this craft — define how each level is tested. The tree itself (adding or branching skills) is managed by admins in <a href="/admin/skills">the skill tree</a>.</p>
           </div>
         {/if}
       {/if}

@@ -3,17 +3,15 @@
   import { member, capabilities } from '$lib/session';
   import { supabase, supabaseConfigured } from '$lib/supabase';
 
-  const LEVELS = ['Beginner', 'Intermediate', 'Advanced', 'Expert'];
-
-  // guild certification ladder (member_skill.certified_level)
+  // guild certification ladder (member_skill.certified_level) — the hard credential
   const GUILD_LABEL: Record<string, string> = {
-    apprentice: 'Apprentice 学徒', journeyman: 'Journeyman 职人',
-    craftsman: 'Craftsman 名匠', master: 'Master 宗师'
+    apprentice: 'Apprentice', journeyman: 'Journeyman',
+    craftsman: 'Craftsman', master: 'Master'
   };
   const GUILD_RANK = ['apprentice', 'journeyman', 'craftsman', 'master'];
 
   type Skill = { id: string; name: string; parent_id: string | null };
-  type MySkill = { skill_id: string; self_level: string; certified_level: string | null };
+  type MySkill = { skill_id: string; certified_level: string | null };
   type LedgerRow = {
     id: string; amount: number; entry_type: string; reason: string;
     from_account: string | null; to_account: string | null; created_at: string;
@@ -21,7 +19,8 @@
   type ResType = { id: string; name: string };
   type MyResource = {
     id: string; name: string; description: string | null; capacity: string | null;
-    availability: string; approval_status: string; resource_type: { name: string } | null;
+    availability: string; approval_status: string; type_id: string | null;
+    resource_type: { name: string } | null;
   };
 
   const AVAIL = ['available', 'limited', 'committed'];
@@ -38,18 +37,18 @@
   let accountId = $state('');
   let totalNominal = $state(0);
   let ledger = $state<LedgerRow[]>([]);
-  let addSkill = $state('');
-  let addLevel = $state('Intermediate');
   let skillsLoading = $state(true);
   let error = $state('');
 
-  // personal resources
+  // resources (a member's offerable catalog — labor is a Labor-typed resource)
   let resTypes = $state<ResType[]>([]);
   let myResources = $state<MyResource[]>([]);
   let rName = $state('');
   let rType = $state('');
   let rCapacity = $state('');
   let rAvail = $state('available');
+  let laborHours = $state('');
+  let laborBusy = $state(false);
 
   $effect(() => { if ($member) affiliation = $member.affiliation ?? ''; });
 
@@ -57,11 +56,11 @@
     skillsLoading = true;
     const [{ data: tree }, { data: ms }, { data: cr }, { data: rt }, { data: mr }, { data: bal }, { data: nom }, { count: mc }] = await Promise.all([
       supabase.from('skill').select('id, name, parent_id').order('name'),
-      supabase.from('member_skill').select('skill_id, self_level, certified_level').eq('member_id', memberId),
+      supabase.from('member_skill').select('skill_id, certified_level').eq('member_id', memberId),
       supabase.from('stater_skill_credit').select('skill_id, credit, endorsements').eq('member_id', memberId),
       supabase.from('resource_type').select('id, name').order('rank'),
       supabase.from('resource')
-        .select('id, name, description, capacity, availability, approval_status, resource_type(name)')
+        .select('id, name, description, capacity, availability, approval_status, type_id, resource_type(name)')
         .eq('scope', 'member').eq('holder_member_id', memberId).order('name'),
       supabase.from('stater_balance').select('account_id, balance').eq('owner_member_id', memberId).maybeSingle(),
       supabase.from('stater_project_member_nominal').select('nominal').eq('member_id', memberId),
@@ -94,6 +93,36 @@
     skillsLoading = false;
   }
 
+  // --- labor: a member's time, stored as a Labor-typed resource (hrs/month) ---
+  const laborTypeId = $derived(resTypes.find((t) => t.name === 'Labor')?.id ?? '');
+  const myLabor = $derived(myResources.find((r) => r.resource_type?.name === 'Labor') ?? null);
+  $effect(() => {
+    const cap = myLabor?.capacity ?? '';
+    const m = cap.match(/\d+/);
+    if (m && laborHours === '') laborHours = m[0];
+  });
+
+  async function saveLabor() {
+    error = '';
+    if (!$member) return;
+    const hrs = parseInt(laborHours, 10);
+    if (!Number.isFinite(hrs) || hrs < 0) { error = 'Enter hours per month (a number).'; return; }
+    laborBusy = true;
+    const capacity = `${hrs} hrs/mo`;
+    let err;
+    if (myLabor) {
+      ({ error: err } = await supabase.from('resource').update({ capacity }).eq('id', myLabor.id));
+    } else {
+      ({ error: err } = await supabase.from('resource').insert({
+        name: 'My time', type_id: laborTypeId || null, scope: 'member',
+        holder_member_id: $member.id, capacity, availability: 'available'
+      }));
+    }
+    laborBusy = false;
+    if (err) { error = err.message; return; }
+    await loadSkills($member.id);
+  }
+
   async function addResource() {
     error = '';
     if (!rName.trim() || !$member) return;
@@ -119,13 +148,12 @@
     return unsub;
   });
 
-  const leafSkills = $derived(skills.filter((s) => s.parent_id));
   function skillName(skillId: string) { return skills.find((s) => s.id === skillId)?.name ?? skillId; }
-  function levelClass(l: string) {
-    return l === 'Expert' ? 'up' : l === 'Advanced' ? 'info' : l === 'Intermediate' ? '' : 'dim';
-  }
   const certifiedCount = $derived(mySkills.filter((s) => s.certified_level).length);
   const totalCredit = $derived(Object.values(skillCredit).reduce((a, c) => a + c.credit, 0));
+  // non-labor resources go in the general catalog; labor has its own control
+  const catalogResources = $derived(myResources.filter((r) => r.resource_type?.name !== 'Labor'));
+  const catalogTypes = $derived(resTypes.filter((t) => t.name !== 'Labor'));
 
   async function save() {
     if (!supabaseConfigured || !$member) return;
@@ -133,25 +161,6 @@
     const { error: err } = await supabase.from('member').update({ affiliation }).eq('id', $member.id);
     saving = false;
     if (!err) { saved = true; member.update((m) => (m ? { ...m, affiliation } : m)); }
-  }
-
-  async function addMySkill() {
-    error = '';
-    if (!addSkill || !$member) return;
-    const { error: err } = await supabase
-      .from('member_skill')
-      .upsert({ member_id: $member.id, skill_id: addSkill, self_level: addLevel });
-    if (err) { error = err.message; return; }
-    addSkill = '';
-    await loadSkills($member.id);
-  }
-
-  async function removeMySkill(skillId: string) {
-    if (!$member) return;
-    const { error: err } = await supabase
-      .from('member_skill').delete().eq('member_id', $member.id).eq('skill_id', skillId);
-    if (err) { error = err.message; return; }
-    await loadSkills($member.id);
   }
 </script>
 
@@ -203,73 +212,75 @@
       </div>
     </div>
 
+    <!-- skills: read-only certifications. Acquisition happens in the Guild. -->
     <div class="card stack">
       <div class="row" style="justify-content:space-between; align-items:center;">
-        <h2 style="margin:0;">Skills &amp; certifications</h2>
-        <a href="/skills"><button class="ghost">The Guild →</button></a>
+        <h2 style="margin:0;">Certifications</h2>
+        <a href="/skills"><button>Go to the Guild →</button></a>
       </div>
       <p class="muted" style="font-size:.82rem; margin-top:-.35rem;">
-        Set your self-rating here. The hard credential — Apprentice → Journeyman → Craftsman → Master —
-        is earned by paid, peer-reviewed exam in <a href="/skills">the Guild</a>.
+        Skills aren't self-rated — they're <strong>earned</strong>. Sit a paid, peer-reviewed exam in
+        <a href="/skills">the Guild</a> to climb Apprentice → Journeyman → Craftsman → Master.
       </p>
       {#if error}<p style="color:var(--down);">{error}</p>{/if}
       {#if skillsLoading}
         <p class="muted">Loading…</p>
+      {:else if mySkills.length === 0}
+        <p class="muted">No certifications yet. Visit <a href="/skills">the Guild</a> to sit your first exam and earn one.</p>
       {:else}
-        {#if mySkills.length === 0}
-          <p class="muted">No skills yet. Add one below, then sit its exam in the Guild to get certified.</p>
-        {:else}
-          <table>
-            <thead><tr><th>Skill</th><th>Self-rating</th><th>Guild certification</th><th class="num">Reputation</th><th></th></tr></thead>
-            <tbody>
-              {#each mySkills as s}
-                <tr>
-                  <td><strong>{skillName(s.skill_id)}</strong></td>
-                  <td><span class="badge {levelClass(s.self_level)}">{s.self_level}</span></td>
-                  <td>
-                    {#if s.certified_level}
-                      <span class="badge pos">✓ {GUILD_LABEL[s.certified_level] ?? s.certified_level}</span>
-                    {:else}
-                      <a href="/skills" class="badge dim" style="text-decoration:none;">Uncertified — sit exam →</a>
-                    {/if}
-                  </td>
-                  <td class="num mono dim">{skillCredit[s.skill_id]?.credit ?? 0}</td>
-                  <td><button class="danger" onclick={() => removeMySkill(s.skill_id)}>Remove</button></td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
-        {/if}
-
-        <div class="row" style="align-items:flex-end; border-top:1px dashed var(--border); padding-top:.75rem;">
-          <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Skill</span>
-            <select bind:value={addSkill}>
-              <option value="">— pick a skill —</option>
-              {#each leafSkills as s}<option value={s.id}>{s.name}</option>{/each}
-            </select>
-          </label>
-          <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Self-rating</span>
-            <select bind:value={addLevel}>{#each LEVELS as l}<option>{l}</option>{/each}</select>
-          </label>
-          <button onclick={addMySkill}>Add skill</button>
-        </div>
+        <table>
+          <thead><tr><th>Skill</th><th>Guild certification</th><th class="num">Reputation</th></tr></thead>
+          <tbody>
+            {#each mySkills as s}
+              <tr>
+                <td><strong>{skillName(s.skill_id)}</strong></td>
+                <td>
+                  {#if s.certified_level === 'master'}
+                    <span class="badge pos">👑 {GUILD_LABEL.master}</span>
+                  {:else if s.certified_level}
+                    <span class="badge pos">✓ {GUILD_LABEL[s.certified_level] ?? s.certified_level}</span>
+                  {:else}
+                    <a href="/skills" class="badge dim" style="text-decoration:none;">Uncertified — sit exam →</a>
+                  {/if}
+                </td>
+                <td class="num mono dim">{skillCredit[s.skill_id]?.credit ?? 0}</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
       {/if}
     </div>
 
+    <!-- resources: an offerable catalog (what I can bring), steward-gated -->
     <div class="card stack">
-      <h2>My resources</h2>
-      <p class="muted" style="font-size:.82rem; margin-top:-.5rem;">Resources you can bring to projects (compute, funding, data, expertise…).</p>
+      <h2>What I can bring</h2>
+      <p class="muted" style="font-size:.82rem; margin-top:-.5rem;">Your offerable catalog — time, compute, funding, data. You pledge specific amounts to a project when you join it; this is just what's available.</p>
+
+      <!-- labor / time -->
+      <div class="stack" style="gap:.4rem; border:1px solid var(--border); border-radius:8px; padding:.6rem .75rem;">
+        <div class="row" style="justify-content:space-between; align-items:center;">
+          <strong style="font-size:.9rem;">⏱ Time I can commit</strong>
+          {#if myLabor}<span class="badge {myLabor.approval_status}">{myLabor.approval_status === 'approved' ? '✓ approved' : myLabor.approval_status === 'rejected' ? '✕ rejected' : '⏳ pending'}</span>{/if}
+        </div>
+        <div class="row" style="align-items:flex-end; gap:.5rem; flex-wrap:wrap;">
+          <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Hours per month</span>
+            <input type="number" min="0" bind:value={laborHours} placeholder="e.g. 40" style="width:120px;" /></label>
+          <button onclick={saveLabor} disabled={laborBusy}>{laborBusy ? 'Saving…' : myLabor ? 'Update time' : 'Set time'}</button>
+        </div>
+        <p class="muted" style="font-size:.75rem; margin:0;">Valued at <code>hours × your skill rate</code> and minted monthly into a project once you pledge it.</p>
+      </div>
+
       <div class="res-pending-note">⏳ New resources are reviewed by a steward before they can be offered to projects.</div>
       {#if skillsLoading}
         <p class="muted">Loading…</p>
       {:else}
-        {#if myResources.length === 0}
-          <p class="muted">No resources added yet.</p>
+        {#if catalogResources.length === 0}
+          <p class="muted">No other resources added yet.</p>
         {:else}
           <table>
             <thead><tr><th>Name</th><th>Type</th><th>Capacity</th><th>Availability</th><th>Review</th><th></th></tr></thead>
             <tbody>
-              {#each myResources as r}
+              {#each catalogResources as r}
                 <tr>
                   <td>{r.name}</td>
                   <td>{r.resource_type?.name ?? '—'}</td>
@@ -287,7 +298,7 @@
           <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Name</span>
             <input bind:value={rName} placeholder="e.g. RTX 4090 ×2" /></label>
           <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Type</span>
-            <select bind:value={rType}><option value="">—</option>{#each resTypes as t}<option value={t.id}>{t.name}</option>{/each}</select></label>
+            <select bind:value={rType}><option value="">—</option>{#each catalogTypes as t}<option value={t.id}>{t.name}</option>{/each}</select></label>
           <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Capacity</span>
             <input bind:value={rCapacity} placeholder="optional" style="width:120px;" /></label>
           <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Availability</span>
