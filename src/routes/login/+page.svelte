@@ -14,6 +14,15 @@
       return;
     }
     loading = true;
+    // Invite-only: only request a magic link if this email is on the member list.
+    // Stops non-invited emails from ever creating an auth user / signup email.
+    const { data: invited, error: chkErr } = await supabase.rpc('is_email_invited', { p_email: email });
+    if (chkErr) { loading = false; error = chkErr.message; return; }
+    if (!invited) {
+      loading = false;
+      error = "This email isn't on the invite list. Ask a community admin to invite you first.";
+      return;
+    }
     const { error: err } = await supabase.auth.signInWithOtp({
       email,
       options: { emailRedirectTo: window.location.origin }
