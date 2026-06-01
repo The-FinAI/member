@@ -54,7 +54,8 @@
   // direct mint (forge / update any member's skill profile — no fee, no review)
   let members = $state<Mem[]>([]);
   let mintMember = $state(''); let mintMsg = $state('');
-  let mintCert = $state<Record<string, string>>({}); // selected member's certified levels per skill
+  let mintCert = $state<Record<string, string>>({});     // selected member's certified levels per skill
+  let mintPending = $state<Record<string, string>>({});  // selected member's pending request target levels
 
   let selected = $state(''); // selected leaf skill id
   let cardLevel = $state('apprentice');
@@ -177,15 +178,19 @@
     await load();
   }
 
-  // direct mint (铸 — light up a member's talent tree, no fee/review)
+  // direct mint (铸 — click a member's talent tree to PROPOSE a certification)
   async function loadMintCert() {
-    mintMsg = ''; mintCert = {};
+    mintMsg = ''; mintCert = {}; mintPending = {};
     if (!mintMember) return;
-    const { data } = await supabase.from('member_skill')
-      .select('skill_id, certified_level').eq('member_id', mintMember).not('certified_level', 'is', null);
-    const m: Record<string, string> = {};
-    for (const r of (data as any[]) ?? []) if (r.certified_level) m[r.skill_id] = r.certified_level;
-    mintCert = m;
+    const [{ data: cert }, { data: pend }] = await Promise.all([
+      supabase.from('member_skill').select('skill_id, certified_level').eq('member_id', mintMember).not('certified_level', 'is', null),
+      supabase.from('skillcard_request').select('skill_id, target_level').eq('member_id', mintMember).eq('status', 'submitted')
+    ]);
+    const c: Record<string, string> = {};
+    for (const r of (cert as any[]) ?? []) if (r.certified_level) c[r.skill_id] = r.certified_level;
+    const p: Record<string, string> = {};
+    for (const r of (pend as any[]) ?? []) p[r.skill_id] = r.target_level;
+    mintCert = c; mintPending = p;
   }
   async function mintAt(skillId: string, level: string) {
     error = ''; mintMsg = ''; busy = 'mint:' + skillId;
@@ -194,9 +199,9 @@
     if (err) { error = err.message; return; }
     const mn = members.find((m) => m.id === mintMember)?.full_name ?? '';
     const sn = skills.find((s) => s.id === skillId)?.name ?? '';
-    mintMsg = get(t)('Minted a {level} role card for {member} in {skill}.', { member: mn, skill: sn, level: get(t)(LEVEL_LABEL[level]) });
+    mintMsg = get(t)('Submitted a {level} role-card request for {member} in {skill} — awaiting review.', { member: mn, skill: sn, level: get(t)(LEVEL_LABEL[level]) });
     await loadMintCert();
-    await load(); // refresh holder counts on the main tree
+    await load(); // surface the new request in the review queue
   }
 
   const domains = $derived(skills.filter((s) => !s.parent_id).sort((a, b) => a.name.localeCompare(b.name)));
@@ -292,7 +297,7 @@
     <div class="card stack" style="gap:.6rem;">
       <h2 style="margin:0;">{$t('Mint a role card')}</h2>
       <p class="muted" style="font-size:.85rem; margin:0;">
-        {$t('Forge or update a member’s skill profile directly — genesis, first cards, bootstrap or waiver. No fee, no review. Recorded as a direct mint.')}
+        {$t('Propose certifying a member’s skills — genesis, first cards, bootstrap or waiver. No fee, but a reviewer must approve each request before it takes effect.')}
       </p>
       <label class="row" style="gap:.5rem; align-items:center; flex-wrap:wrap;">
         <span class="muted" style="font-size:.78rem;">{$t('Member')}</span>
@@ -302,7 +307,7 @@
         </select>
       </label>
       {#if mintMember}
-        <p class="muted" style="font-size:.76rem; margin:0;">{$t('Click a node to certify this member at that level — like a talent tree. Filled nodes are already earned.')}</p>
+        <p class="muted" style="font-size:.76rem; margin:0;">{$t('Click a node to submit a certification request — like a talent tree. Filled = earned; dashed = pending review.')}</p>
         {#if mintMsg}<p class="pos" style="font-size:.82rem; margin:0;">{mintMsg}</p>{/if}
         <div class="talent">
           {#each domains as d}
@@ -310,20 +315,23 @@
               <h3 style="margin:0; font-size:.9rem;">{d.name}</h3>
               {#each leavesOf(d.id) as s}
                 {@const cur = levelRank(mintCert[s.id] ?? null)}
+                {@const pend = levelRank(mintPending[s.id] ?? null)}
                 <div class="talent-row">
                   <span class="talent-name">{s.name}</span>
                   <div class="pips">
                     {#each LEVELS as lv, i}
                       <button
-                        class="pip {i <= cur ? 'on' : ''}"
+                        class="pip {i <= cur ? 'on' : (pend >= 0 && i <= pend ? 'pending' : '')}"
                         title={$t(LEVEL_LABEL[lv])}
-                        disabled={i <= cur || busy === 'mint:' + s.id}
+                        disabled={i <= cur || pend >= 0 || busy === 'mint:' + s.id}
                         onclick={() => mintAt(s.id, lv)}
                         aria-label={$t(LEVEL_LABEL[lv])}
                       ><span class="pip-dot"></span></button>
                     {/each}
                   </div>
-                  <span class="talent-cur muted">{cur >= 0 ? $t(LEVEL_LABEL[LEVELS[cur]]) : '—'}</span>
+                  <span class="talent-cur muted">
+                    {cur >= 0 ? $t(LEVEL_LABEL[LEVELS[cur]]) : '—'}{#if pend >= 0} · {$t('pending {lvl}', { lvl: $t(LEVEL_LABEL[LEVELS[pend]]) })}{/if}
+                  </span>
                 </div>
               {/each}
             </div>
@@ -534,5 +542,6 @@
     border: 1.5px solid var(--border); background: transparent; transition: all .12s;
   }
   .pip.on .pip-dot { background: var(--accent); border-color: var(--accent); }
-  .pip:not(.on):not(:disabled):hover .pip-dot { border-color: var(--accent); background: var(--accent-soft); }
+  .pip.pending .pip-dot { border-style: dashed; border-color: var(--accent); background: var(--accent-soft); }
+  .pip:not(.on):not(.pending):not(:disabled):hover .pip-dot { border-color: var(--accent); background: var(--accent-soft); }
 </style>

@@ -158,6 +158,10 @@ const zh: Table = {
   'Forge or update a member’s skill profile directly — genesis, first cards, bootstrap or waiver. No fee, no review. Recorded as a direct mint.': '直接打造或更新某成员的技能档案——用于初始发行、首批卡牌、引导或豁免。无费用、无评审。记录为直接铸造。',
   '— pick a member —': '— 选择成员 —',
   'Click a node to certify this member at that level — like a talent tree. Filled nodes are already earned.': '点击节点即可将该成员认证到对应等级——就像天赋树一样。已点亮的节点表示已获得。',
+  'Propose certifying a member’s skills — genesis, first cards, bootstrap or waiver. No fee, but a reviewer must approve each request before it takes effect.': '为某成员的技能发起认证——用于初始发行、首批卡牌、引导或豁免。无费用,但每条请求需经审核者批准后才生效。',
+  'Click a node to submit a certification request — like a talent tree. Filled = earned; dashed = pending review.': '点击节点即可提交认证请求——就像天赋树一样。实心=已获得;虚线=待审核。',
+  'Submitted a {level} role-card request for {member} in {skill} — awaiting review.': '已为 {member} 在 {skill} 提交 {level} 角色卡牌请求——等待审核。',
+  'pending {lvl}': '待审 {lvl}',
   'Mint card': '铸造卡牌',
   'Minted a {level} role card for {member} in {skill}.': '已为 {member} 在 {skill} 铸造 {level} 角色卡牌。',
   // ── nav / chrome ──
@@ -1056,6 +1060,10 @@ const ja: Table = {
   'Forge or update a member’s skill profile directly — genesis, first cards, bootstrap or waiver. No fee, no review. Recorded as a direct mint.': 'メンバーのスキルプロフィールを直接作成または更新——初期発行、最初のカード、ブートストラップまたは免除用。手数料なし、レビューなし。直接鋳造として記録されます。',
   '— pick a member —': '— メンバーを選択 —',
   'Click a node to certify this member at that level — like a talent tree. Filled nodes are already earned.': 'ノードをクリックすると、そのレベルでメンバーを認定できます——タレントツリーのように。点灯済みのノードは取得済みです。',
+  'Propose certifying a member’s skills — genesis, first cards, bootstrap or waiver. No fee, but a reviewer must approve each request before it takes effect.': 'メンバーのスキル認定を申請——初期発行、最初のカード、ブートストラップまたは免除用。手数料なしですが、各リクエストは反映前にレビュアーの承認が必要です。',
+  'Click a node to submit a certification request — like a talent tree. Filled = earned; dashed = pending review.': 'ノードをクリックすると認定リクエストを送信できます——タレントツリーのように。塗りつぶし＝取得済み、破線＝レビュー待ち。',
+  'Submitted a {level} role-card request for {member} in {skill} — awaiting review.': '{member} の {skill} について {level} ロールカードのリクエストを送信しました——レビュー待ちです。',
+  'pending {lvl}': 'レビュー待ち {lvl}',
   'Mint card': 'カードを鋳造',
   'Minted a {level} role card for {member} in {skill}.': '{member} の {skill} に {level} ロールカードを鋳造しました。',
   // ── nav / chrome ──
@@ -1954,6 +1962,10 @@ const fr: Table = {
   'Forge or update a member’s skill profile directly — genesis, first cards, bootstrap or waiver. No fee, no review. Recorded as a direct mint.': "Forger ou mettre à jour directement le profil de compétences d'un membre — genèse, premières cartes, amorçage ou dérogation. Sans frais, sans examen. Enregistré comme frappe directe.",
   '— pick a member —': '— choisir un membre —',
   'Click a node to certify this member at that level — like a talent tree. Filled nodes are already earned.': "Cliquez sur un nœud pour certifier ce membre à ce niveau — comme un arbre de talents. Les nœuds remplis sont déjà acquis.",
+  'Propose certifying a member’s skills — genesis, first cards, bootstrap or waiver. No fee, but a reviewer must approve each request before it takes effect.': "Proposer la certification des compétences d'un membre — genèse, premières cartes, amorçage ou dérogation. Sans frais, mais un évaluateur doit approuver chaque demande avant qu'elle ne prenne effet.",
+  'Click a node to submit a certification request — like a talent tree. Filled = earned; dashed = pending review.': "Cliquez sur un nœud pour soumettre une demande de certification — comme un arbre de talents. Plein = acquis ; pointillé = en attente d'examen.",
+  'Submitted a {level} role-card request for {member} in {skill} — awaiting review.': "Demande de carte de rôle {level} soumise pour {member} en {skill} — en attente d'examen.",
+  'pending {lvl}': 'en attente {lvl}',
   'Mint card': 'Frapper la carte',
   'Minted a {level} role card for {member} in {skill}.': 'Carte de rôle {level} frappée pour {member} en {skill}.',
   // ── nav / chrome ──
