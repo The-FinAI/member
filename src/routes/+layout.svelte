@@ -4,7 +4,7 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { supabase, supabaseConfigured } from '$lib/supabase';
-  import { session, member, capabilities, officerUnits, actingAs, authReady } from '$lib/session';
+  import { session, member, capabilities, officerUnits, actingAs, authReady, authError } from '$lib/session';
   import { loadProfile, clearProfile, claimMembership } from '$lib/profile';
   import { theme, toggleTheme } from '$lib/theme';
   import { t } from '$lib/i18n';
@@ -49,11 +49,36 @@
   }
   function go(href: string) { menuOpen = false; goto(href); }
 
+  // If a magic link lands here with an error (single-use link already consumed
+  // by an email scanner, expired, etc.), Supabase redirects back with the
+  // reason in the URL hash/query. Capture it BEFORE the route guard sends us to
+  // /login and discards the hash, so the user sees *why* instead of a silent
+  // bounce. Returns true when an auth error was present.
+  function captureAuthError(): boolean {
+    if (typeof window === 'undefined') return false;
+    const hp = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const qp = new URLSearchParams(window.location.search);
+    const code = hp.get('error_code') || qp.get('error_code');
+    const desc = hp.get('error_description') || qp.get('error_description');
+    const err = hp.get('error') || qp.get('error');
+    if (!err && !code && !desc) return false;
+    authError.set(
+      code === 'otp_expired'
+        ? 'This sign-in link has expired or was already used. Please request a new one below.'
+        : desc || 'Sign-in failed. Please request a new link below.'
+    );
+    // strip the error params so they don't linger or get re-processed
+    history.replaceState(null, '', window.location.pathname);
+    return true;
+  }
+
   onMount(() => {
     if (!supabaseConfigured) {
       authReady.set(true);
       return;
     }
+
+    captureAuthError();
 
     // onAuthStateChange fires INITIAL_SESSION on subscribe (covers reload) and
     // SIGNED_IN on login. Its callback runs while supabase-js holds the auth

@@ -240,6 +240,8 @@ const zh: Table = {
   'Send magic link': '发送魔法链接',
   'Sending…': '发送中…',
   'Check your inbox for the sign-in link.': '请查收邮箱中的登录链接。',
+  'This sign-in link has expired or was already used. Please request a new one below.': '此登录链接已过期或已被使用。请在下方重新获取一个。',
+  'Sign-in failed. Please request a new link below.': '登录失败，请在下方重新获取链接。',
   'Supabase is not configured yet.': 'Supabase 尚未配置。',
   "This email isn't on the invite list. Ask a community admin to invite you first.":
     '该邮箱不在邀请名单中。请先让社区管理员邀请你。',
@@ -1256,6 +1258,8 @@ const ja: Table = {
   'Send magic link': 'マジックリンクを送信',
   'Sending…': '送信中…',
   'Check your inbox for the sign-in link.': '受信トレイのサインインリンクをご確認ください。',
+  'This sign-in link has expired or was already used. Please request a new one below.': 'このサインインリンクは期限切れか、すでに使用されています。下記から新しいリンクをリクエストしてください。',
+  'Sign-in failed. Please request a new link below.': 'サインインに失敗しました。下記から新しいリンクをリクエストしてください。',
   'Supabase is not configured yet.': 'Supabase はまだ設定されていません。',
   "This email isn't on the invite list. Ask a community admin to invite you first.":
     'このメールは招待リストにありません。まず管理者に招待を依頼してください。',
@@ -2272,6 +2276,8 @@ const fr: Table = {
   'Send magic link': 'Envoyer le lien magique',
   'Sending…': 'Envoi…',
   'Check your inbox for the sign-in link.': 'Vérifiez votre boîte de réception pour le lien de connexion.',
+  'This sign-in link has expired or was already used. Please request a new one below.': "Ce lien de connexion a expiré ou a déjà été utilisé. Veuillez en demander un nouveau ci-dessous.",
+  'Sign-in failed. Please request a new link below.': 'La connexion a échoué. Veuillez demander un nouveau lien ci-dessous.',
   'Supabase is not configured yet.': 'Supabase n’est pas encore configuré.',
   "This email isn't on the invite list. Ask a community admin to invite you first.":
     'Cet e-mail n’est pas sur la liste d’invitation. Demandez d’abord à un administrateur de vous inviter.',

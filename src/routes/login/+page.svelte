@@ -1,5 +1,6 @@
 <script lang="ts">
   import { supabase, supabaseConfigured } from '$lib/supabase';
+  import { authError } from '$lib/session';
   import { t } from '$lib/i18n';
   import LangSwitcher from '$lib/LangSwitcher.svelte';
 
@@ -20,6 +21,7 @@
       return;
     }
     loading = true;
+    authError.set(null);
     // Invite-only: only request a magic link if this email is on the member list.
     // Stops non-invited emails from ever creating an auth user / signup email.
     const { data: invited, error: chkErr } = await supabase.rpc('is_email_invited', { p_email: email });
@@ -54,6 +56,10 @@
       <p class="muted" style="margin-top:-.5rem;">
         {$t("Membership is invite-only. Enter the email you were invited with — we'll send a magic link.")}
       </p>
+    {/if}
+
+    {#if $authError}
+      <p class="neg" style="font-size:.85rem; border:1px solid var(--down); border-radius:8px; padding:.5rem .7rem;">{$t($authError)}</p>
     {/if}
 
     {#if sent}
