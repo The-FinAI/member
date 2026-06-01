@@ -3,6 +3,7 @@
   import { member } from '$lib/session';
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import CountUp from '$lib/CountUp.svelte';
+  import Hint from '$lib/Hint.svelte';
 
   type LedgerRow = {
     id: string; amount: number; entry_type: string; reason: string;
@@ -101,7 +102,7 @@
           {#each Array(14) as _, i}<i style="--i:{i}"></i>{/each}
         </div>
       {/if}
-      <span class="h-label">Net worth</span>
+      <span class="h-label">Net worth <Hint term="nominal" text="Liquid balance plus nominal STR you've staked across projects. Staked STR isn't spendable until each project settles." /></span>
       <div class="h-balance">
         {#if loading}<span class="sk sk-line" style="width:200px; height:42px;"></span>
         {:else}<CountUp value={netWorth} /><span class="unit">STR</span>{/if}
@@ -119,12 +120,12 @@
 
     <div class="row rise-stagger" style="align-items:stretch;">
       <div class="tile" style="flex:1; min-width:160px;">
-        <span class="label">Liquid balance</span>
+        <span class="label">Liquid balance <Hint term="liquid" text="Spendable STR in your wallet — used to post bonds and pay Guild exam fees." /></span>
         <span class="value accent"><CountUp value={balance} /></span>
         <span class="sub">spendable now</span>
       </div>
       <div class="tile" style="flex:1; min-width:160px;">
-        <span class="label">Staked</span>
+        <span class="label">Staked <Hint term="nominal" text="Nominal STR minted into project pools (your bond + declared work). Locked until each project settles, then converts to liquid." /></span>
         <span class="value"><CountUp value={staked} /></span>
         <span class="sub">bonded in projects</span>
       </div>

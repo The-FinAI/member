@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { member } from '$lib/session';
+  import Hint from '$lib/Hint.svelte';
 
   type Row = {
     id: string;
@@ -170,7 +171,7 @@
 
 <div class="stack">
   <div>
-    <h1 style="margin-bottom:.15rem;">Task Market</h1>
+    <h1 style="margin-bottom:.15rem;">Task Market <Hint term="need" text="Each row is a need — a typed request a project posts for a contribution (labor hours, a resource, or a seat). Apply to one that fits, then post the join bond to start." /></h1>
     <span class="muted" style="font-size:.85rem;">Open work across the community — claim a seat, commit monthly labor, lend a resource, or take the lead on a project.</span>
   </div>
 
@@ -180,7 +181,7 @@
   {#if leaderless.length > 0}
     <div class="card stack" style="gap:.6rem;">
       <div class="row" style="justify-content:space-between; align-items:center;">
-        <h2 style="margin:0;">Lead a project</h2>
+        <h2 style="margin:0;">Lead a project <Hint term="bond" text="Leading means posting the 50 STR leader bond — real liquid STR escrowed into the project. It funds the pool and seeds your claim, but is slashable if you flake." /></h2>
         <span class="badge warn">{leaderless.length} leaderless</span>
       </div>
       <p class="muted" style="font-size:.82rem; margin:-.3rem 0 0;">

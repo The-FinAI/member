@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { member } from '$lib/session';
+  import Hint from '$lib/Hint.svelte';
 
   type Skill = { id: string; name: string; parent_id: string | null; master_member_id: string | null };
   type Rubric = { skill_id: string; level: string; requirements: string };
@@ -141,7 +142,7 @@
 
 <div class="stack">
   <div>
-    <h1 style="margin-bottom:.15rem;">The Guild</h1>
+    <h1 style="margin-bottom:.15rem;">The Guild <Hint term="certification" text="Certification turns a self-declared skill into a hard, peer-reviewed credential — and sets your labor rate, which is how much your monthly hours mint." /></h1>
     <span class="muted" style="font-size:.85rem;">
       Skills are a craft ladder — Apprentice → Journeyman → Craftsman → Master. Certification is earned by paid, peer-reviewed exam. Each craft's master is appointed by an admin; the master owns its rubric and seeds the reviewer pool.
     </span>
@@ -222,7 +223,7 @@
         <div>
           <h2 style="margin:0;">{sel.name}</h2>
           <p class="muted" style="font-size:.82rem; margin:.2rem 0 0;">
-            Master: {masterName[sel.id] ?? '— none appointed —'}
+            Master<Hint term="master" text="The admin-appointed owner of this craft's rubric and reviewer pool — the top of the guild ladder. Certification opens once a master is appointed." />: {masterName[sel.id] ?? '— none appointed —'}
             {#if holders[sel.id]}· {holders[sel.id]} certified holder{holders[sel.id] === 1 ? '' : 's'}{/if}
             {#if myLevelHere}· you are <strong class="pos">✓ {LEVEL_LABEL[myLevelHere]}</strong>{/if}
           </p>

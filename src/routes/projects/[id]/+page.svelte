@@ -4,6 +4,7 @@
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { member, capabilities } from '$lib/session';
   import CountUp from '$lib/CountUp.svelte';
+  import Hint from '$lib/Hint.svelte';
 
   const id = $derived($page.params.id);
 
@@ -719,12 +720,12 @@
     <div class="card stack" style="gap:.7rem;">
       <div class="row" style="justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
         <div>
-          <span class="muted" style="font-size:.78rem;">Nominal pool</span>
+          <span class="muted" style="font-size:.78rem;">Nominal pool <Hint term="nominal" text="The sum of everyone's nominal stake in this project — bonds + minted labor/resources + verified milestone value. Provisional until settlement, when it's split into liquid STR." /></span>
           <div><strong class="mono" style="font-size:1.5rem; color:var(--accent);"><CountUp value={nominalPool} /></strong>
             <span class="muted" style="font-size:.8rem;"> STR (provisional, mints at settlement)</span></div>
         </div>
         <div style="text-align:right;">
-          <span class="muted" style="font-size:.78rem;">Mint multiplier</span>
+          <span class="muted" style="font-size:.78rem;">Mint multiplier <Hint term="milestone" text="Verified milestones raise this multiplier (capped ×3). At settlement the nominal pool is multiplied by it before converting to liquid STR." /></span>
           <div><strong class="mono" style="font-size:1.5rem; color:{multiplier > 1 ? 'var(--up)' : 'var(--text)'};">×{multiplier.toFixed(3).replace(/0+$/,'').replace(/\.$/,'')}</strong></div>
         </div>
       </div>
