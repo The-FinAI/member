@@ -5,8 +5,15 @@
 
   const LEVELS = ['Beginner', 'Intermediate', 'Advanced', 'Expert'];
 
+  // guild certification ladder (member_skill.certified_level)
+  const GUILD_LABEL: Record<string, string> = {
+    apprentice: 'Apprentice 学徒', journeyman: 'Journeyman 职人',
+    craftsman: 'Craftsman 名匠', master: 'Master 宗师'
+  };
+  const GUILD_RANK = ['apprentice', 'journeyman', 'craftsman', 'master'];
+
   type Skill = { id: string; name: string; parent_id: string | null };
-  type MySkill = { skill_id: string; self_level: string };
+  type MySkill = { skill_id: string; self_level: string; certified_level: string | null };
   type LedgerRow = {
     id: string; amount: number; entry_type: string; reason: string;
     from_account: string | null; to_account: string | null; created_at: string;
@@ -19,14 +26,6 @@
 
   const AVAIL = ['available', 'limited', 'committed'];
 
-  // skill medal tier from earned endorsement credit
-  function medalTier(credit: number) {
-    if (credit >= 30) return { cls: 'tier-g', label: 'Gold' };
-    if (credit >= 10) return { cls: 'tier-s', label: 'Silver' };
-    if (credit >= 1) return { cls: 'tier-b', label: 'Bronze' };
-    return { cls: 'tier-0', label: 'Unproven' };
-  }
-
   let saving = $state(false);
   let affiliation = $state('');
   let saved = $state(false);
@@ -34,10 +33,11 @@
   let skills = $state<Skill[]>([]);
   let mySkills = $state<MySkill[]>([]);
   let skillCredit = $state<Record<string, { credit: number; endorsements: number }>>({});
+  let masterCount = $state(0);
   let balance = $state(0);
   let accountId = $state('');
+  let totalNominal = $state(0);
   let ledger = $state<LedgerRow[]>([]);
-  let joinStake = $state(20);
   let addSkill = $state('');
   let addLevel = $state('Intermediate');
   let skillsLoading = $state(true);
@@ -55,19 +55,23 @@
 
   async function loadSkills(memberId: string) {
     skillsLoading = true;
-    const [{ data: tree }, { data: ms }, { data: cr }, { data: rt }, { data: mr }, { data: bal }, { data: pol }] = await Promise.all([
+    const [{ data: tree }, { data: ms }, { data: cr }, { data: rt }, { data: mr }, { data: bal }, { data: nom }, { count: mc }] = await Promise.all([
       supabase.from('skill').select('id, name, parent_id').order('name'),
-      supabase.from('member_skill').select('skill_id, self_level').eq('member_id', memberId),
+      supabase.from('member_skill').select('skill_id, self_level, certified_level').eq('member_id', memberId),
       supabase.from('stater_skill_credit').select('skill_id, credit, endorsements').eq('member_id', memberId),
       supabase.from('resource_type').select('id, name').order('rank'),
       supabase.from('resource')
         .select('id, name, description, capacity, availability, approval_status, resource_type(name)')
         .eq('scope', 'member').eq('holder_member_id', memberId).order('name'),
       supabase.from('stater_balance').select('account_id, balance').eq('owner_member_id', memberId).maybeSingle(),
-      supabase.from('stater_policy').select('value').eq('key', 'join_stake_normal').maybeSingle()
+      supabase.from('stater_project_member_nominal').select('nominal').eq('member_id', memberId),
+      supabase.from('skill').select('id', { count: 'exact', head: true }).eq('master_member_id', memberId)
     ]);
     skills = (tree as Skill[]) ?? [];
-    mySkills = (ms as MySkill[]) ?? [];
+    mySkills = ((ms as MySkill[]) ?? []).sort(
+      (a, b) => GUILD_RANK.indexOf(b.certified_level ?? '') - GUILD_RANK.indexOf(a.certified_level ?? '')
+        || skillName(a.skill_id).localeCompare(skillName(b.skill_id))
+    );
     const credit: Record<string, { credit: number; endorsements: number }> = {};
     for (const c of (cr as { skill_id: string; credit: number; endorsements: number }[]) ?? [])
       credit[c.skill_id] = { credit: Number(c.credit), endorsements: Number(c.endorsements) };
@@ -76,7 +80,8 @@
     myResources = (mr as MyResource[]) ?? [];
     balance = Number((bal as { balance: number } | null)?.balance ?? 0);
     accountId = (bal as { account_id: string } | null)?.account_id ?? '';
-    joinStake = Number((pol as { value: number } | null)?.value ?? 20);
+    totalNominal = ((nom as { nominal: number }[]) ?? []).reduce((a, n) => a + (Number(n.nominal) || 0), 0);
+    masterCount = mc ?? 0;
     if (accountId) {
       const { data: lg } = await supabase
         .from('stater_ledger')
@@ -116,6 +121,11 @@
 
   const leafSkills = $derived(skills.filter((s) => s.parent_id));
   function skillName(skillId: string) { return skills.find((s) => s.id === skillId)?.name ?? skillId; }
+  function levelClass(l: string) {
+    return l === 'Expert' ? 'up' : l === 'Advanced' ? 'info' : l === 'Intermediate' ? '' : 'dim';
+  }
+  const certifiedCount = $derived(mySkills.filter((s) => s.certified_level).length);
+  const totalCredit = $derived(Object.values(skillCredit).reduce((a, c) => a + c.credit, 0));
 
   async function save() {
     if (!supabaseConfigured || !$member) return;
@@ -145,15 +155,20 @@
   }
 </script>
 
-<div class="stack" style="max-width:620px;">
+<div class="stack" style="max-width:680px;">
   <h1>Your profile</h1>
 
   {#if !$member}
     <div class="card"><p class="muted">No member record linked to this account yet.</p></div>
   {:else}
     <div class="card stack">
-      <div><strong>{$member.full_name}</strong></div>
-      <div class="muted">{$member.email}</div>
+      <div class="row" style="justify-content:space-between; align-items:flex-start;">
+        <div>
+          <div><strong>{$member.full_name}</strong></div>
+          <div class="muted">{$member.email}</div>
+        </div>
+        <a href={`/members/${$member.id}`}><button class="ghost">Public page →</button></a>
+      </div>
       <label class="stack" style="gap:.3rem;">
         <span class="muted" style="font-size:.8rem;">Affiliation</span>
         <input bind:value={affiliation} />
@@ -164,40 +179,66 @@
       </div>
     </div>
 
-    <div class="card row" style="justify-content:space-between; align-items:center;">
-      <div>
-        <span class="muted" style="font-size:.8rem;">STR balance</span>
-        <strong style="font-size:1.2rem; margin-left:.4rem;">{balance.toLocaleString()}</strong>
+    <!-- standing at a glance -->
+    <div class="kpis">
+      <div class="kpi">
+        <span class="k-label">Contribution</span>
+        <span class="k-value accent">{totalNominal.toLocaleString()}</span>
+        <span class="k-sub">nominal STR minted through work</span>
       </div>
-      <a href="/wallet"><button class="ghost">Open wallet →</button></a>
+      <div class="kpi">
+        <span class="k-label">Liquid balance</span>
+        <span class="k-value">{balance.toLocaleString()}</span>
+        <span class="k-sub"><a href="/wallet">open wallet →</a></span>
+      </div>
+      <div class="kpi">
+        <span class="k-label">Guild rank</span>
+        <span class="k-value">{certifiedCount}</span>
+        <span class="k-sub">{certifiedCount === 1 ? 'skill' : 'skills'} certified{masterCount ? ` · ${masterCount} mastered` : ''}</span>
+      </div>
+      <div class="kpi">
+        <span class="k-label">Reputation</span>
+        <span class="k-value">{totalCredit.toLocaleString()}</span>
+        <span class="k-sub">peer-endorsement credit</span>
+      </div>
     </div>
 
     <div class="card stack">
-      <h2>Skill medals</h2>
-      <p class="muted" style="font-size:.82rem; margin-top:-.5rem;">
-        Each skill is a medal. Peer endorsements earn credit that levels it up — Bronze → Silver → Gold.
+      <div class="row" style="justify-content:space-between; align-items:center;">
+        <h2 style="margin:0;">Skills &amp; certifications</h2>
+        <a href="/skills"><button class="ghost">The Guild →</button></a>
+      </div>
+      <p class="muted" style="font-size:.82rem; margin-top:-.35rem;">
+        Set your self-rating here. The hard credential — Apprentice → Journeyman → Craftsman → Master —
+        is earned by paid, peer-reviewed exam in <a href="/skills">the Guild</a>.
       </p>
       {#if error}<p style="color:var(--down);">{error}</p>{/if}
       {#if skillsLoading}
         <p class="muted">Loading…</p>
       {:else}
         {#if mySkills.length === 0}
-          <p class="muted">No skill medals yet. Add one below to start earning endorsements.</p>
+          <p class="muted">No skills yet. Add one below, then sit its exam in the Guild to get certified.</p>
         {:else}
-          <div class="medals rise-stagger">
-            {#each mySkills as s}
-              {@const credit = skillCredit[s.skill_id]?.credit ?? 0}
-              {@const t = medalTier(credit)}
-              <div class="medal {t.cls}">
-                <button class="m-remove" title="Remove" onclick={() => removeMySkill(s.skill_id)}>✕</button>
-                <div class="emblem"><span class="star">★</span></div>
-                <div class="m-name">{skillName(s.skill_id)}</div>
-                <div class="m-tier">{t.label}</div>
-                <div class="m-level"><span class="badge dim">{s.self_level}</span></div>
-                <div class="m-credit">{credit} credit · {skillCredit[s.skill_id]?.endorsements ?? 0} endorsers</div>
-              </div>
-            {/each}
-          </div>
+          <table>
+            <thead><tr><th>Skill</th><th>Self-rating</th><th>Guild certification</th><th class="num">Reputation</th><th></th></tr></thead>
+            <tbody>
+              {#each mySkills as s}
+                <tr>
+                  <td><strong>{skillName(s.skill_id)}</strong></td>
+                  <td><span class="badge {levelClass(s.self_level)}">{s.self_level}</span></td>
+                  <td>
+                    {#if s.certified_level}
+                      <span class="badge pos">✓ {GUILD_LABEL[s.certified_level] ?? s.certified_level}</span>
+                    {:else}
+                      <a href="/skills" class="badge dim" style="text-decoration:none;">Uncertified — sit exam →</a>
+                    {/if}
+                  </td>
+                  <td class="num mono dim">{skillCredit[s.skill_id]?.credit ?? 0}</td>
+                  <td><button class="danger" onclick={() => removeMySkill(s.skill_id)}>Remove</button></td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
         {/if}
 
         <div class="row" style="align-items:flex-end; border-top:1px dashed var(--border); padding-top:.75rem;">
@@ -207,7 +248,7 @@
               {#each leafSkills as s}<option value={s.id}>{s.name}</option>{/each}
             </select>
           </label>
-          <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Level</span>
+          <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">Self-rating</span>
             <select bind:value={addLevel}>{#each LEVELS as l}<option>{l}</option>{/each}</select>
           </label>
           <button onclick={addMySkill}>Add skill</button>
@@ -255,6 +296,29 @@
         </div>
       {/if}
     </div>
+
+    {#if ledger.length > 0}
+      <div class="card stack">
+        <div class="row" style="justify-content:space-between; align-items:center;">
+          <h2 style="margin:0;">Recent STR activity</h2>
+          <a href="/wallet"><button class="ghost">Full ledger →</button></a>
+        </div>
+        <table>
+          <thead><tr><th>When</th><th>Type</th><th>Reason</th><th class="num">Amount</th></tr></thead>
+          <tbody>
+            {#each ledger as l}
+              {@const incoming = l.to_account === accountId}
+              <tr>
+                <td class="muted" style="font-size:.78rem;">{new Date(l.created_at).toLocaleDateString()}</td>
+                <td><span class="badge dim">{l.entry_type}</span></td>
+                <td class="muted" style="font-size:.82rem;">{l.reason ?? '—'}</td>
+                <td class="num mono {incoming ? 'up' : 'down'}">{incoming ? '+' : '−'}{l.amount.toLocaleString()}</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
+    {/if}
 
     <div class="card">
       <h2>Capabilities</h2>

@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
+  import { supabase, supabaseConfigured } from '$lib/supabase';
+
   const sections = [
     { href: '/admin/invites', title: 'Invite Members', desc: 'Pre-create members by email (invite-only)' },
     { href: '/admin/positions', title: 'Positions', desc: 'Community-level titles + ordering' },
@@ -12,11 +15,95 @@
     { href: '/admin/resources', title: 'Community Resources', desc: 'Community-owned resources + their stewards' },
     { href: '/admin/stater', title: 'STR Economy', desc: 'Supply at a glance, mint/sink flow, treasury ledger, health flags — plus mint, grant, allowance & policy knobs' }
   ];
+
+  let loading = $state(true);
+  let members = $state(0);
+  let activeMembers = $state(0);
+  let projects = $state(0);
+  let openNeeds = $state(0);
+  let pendingResources = $state(0);
+  let examsInReview = $state(0);
+  let skillLeaves = $state(0);
+  let circulating = $state(0);
+
+  // things that want an admin's attention
+  const attention = $derived([
+    { n: pendingResources, label: 'resources awaiting review', href: '/admin/resources' },
+    { n: examsInReview, label: 'skill exams in review', href: '/skills' },
+    { n: openNeeds, label: 'open needs on the market', href: '/opportunities' }
+  ].filter((a) => a.n > 0));
+
+  async function load() {
+    if (!supabaseConfigured) { loading = false; return; }
+    const c = (q: any) => q.select('id', { count: 'exact', head: true });
+    const [m, am, p, on, pr, ex, sk, bal] = await Promise.all([
+      c(supabase.from('member')),
+      c(supabase.from('member')).eq('status', 'active'),
+      c(supabase.from('project')),
+      c(supabase.from('open_need')).eq('status', 'open'),
+      c(supabase.from('resource')).eq('approval_status', 'pending'),
+      c(supabase.from('skill_exam')).eq('status', 'in_review'),
+      supabase.from('skill').select('id', { count: 'exact', head: true }).not('parent_id', 'is', null),
+      supabase.from('stater_balance').select('balance')
+    ]);
+    members = m.count ?? 0;
+    activeMembers = am.count ?? 0;
+    projects = p.count ?? 0;
+    openNeeds = on.count ?? 0;
+    pendingResources = pr.count ?? 0;
+    examsInReview = ex.count ?? 0;
+    skillLeaves = sk.count ?? 0;
+    circulating = ((bal.data as { balance: number }[]) ?? []).reduce((a, b) => a + (Number(b.balance) || 0), 0);
+    loading = false;
+  }
+
+  onMount(load);
 </script>
 
 <div class="stack">
-  <h1>Admin</h1>
-  <p class="muted" style="margin-top:-.75rem;">Adjust the configurable taxonomy. Nothing here is hard-coded.</p>
+  <h1>Admin dashboard</h1>
+  <p class="muted" style="margin-top:-.75rem;">The community at a glance, and every configurable knob. Nothing here is hard-coded.</p>
+
+  <!-- headline metrics -->
+  <div class="kpis">
+    <div class="kpi">
+      <span class="k-label">Members</span>
+      <span class="k-value accent">{loading ? '–' : members.toLocaleString()}</span>
+      <span class="k-sub">{loading ? '' : `${activeMembers} active`}</span>
+    </div>
+    <div class="kpi">
+      <span class="k-label">Projects</span>
+      <span class="k-value">{loading ? '–' : projects.toLocaleString()}</span>
+      <span class="k-sub">across all statuses</span>
+    </div>
+    <div class="kpi">
+      <span class="k-label">STR circulating</span>
+      <span class="k-value">{loading ? '–' : circulating.toLocaleString()}</span>
+      <span class="k-sub"><a href="/admin/stater">economy →</a></span>
+    </div>
+    <div class="kpi">
+      <span class="k-label">Skills</span>
+      <span class="k-value">{loading ? '–' : skillLeaves.toLocaleString()}</span>
+      <span class="k-sub">examinable crafts</span>
+    </div>
+  </div>
+
+  <!-- needs attention -->
+  {#if !loading && attention.length > 0}
+    <div class="card stack" style="gap:.5rem;">
+      <h2 style="margin:0; font-size:1rem;">Needs attention</h2>
+      <div class="row" style="flex-wrap:wrap; gap:.5rem;">
+        {#each attention as a}
+          <a class="badge warn" href={a.href} style="text-decoration:none; font-size:.82rem; padding:.35rem .6rem;">
+            <strong>{a.n}</strong> {a.label} →
+          </a>
+        {/each}
+      </div>
+    </div>
+  {/if}
+
+  <!-- configuration sections -->
+  <h2 style="margin:.5rem 0 -.25rem; font-size:1rem;">Configuration</h2>
   <div class="row" style="align-items:stretch;">
     {#each sections as s}
       <a class="card" href={s.href} style="flex:1; min-width:220px;">
