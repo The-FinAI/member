@@ -26,7 +26,8 @@
     { href: '/projects', label: 'Projects' },
     { href: '/opportunities', label: 'Opportunities' },
     { href: '/skills', label: 'Guild' },
-    { href: '/members', label: 'Leaderboard' }
+    { href: '/members', label: 'Leaderboard' },
+    { href: '/guide', label: 'Guide' }
   ];
   function isActive(href: string, path: string) {
     return href === '/' ? path === '/' : path.startsWith(href);
@@ -149,7 +150,8 @@
   {#if supabaseConfigured && $authReady && $session && !$member}
     <p class="banner">
       You're signed in as <strong>{$session.user.email}</strong>, but this email isn't linked to a
-      membership. Access is invite-only — please ask an admin to invite you.
+      membership. Access is invite-only — please ask an admin to invite you. Meanwhile you can
+      <a href="/guide">read how the community works →</a>
     </p>
   {/if}
   {@render children()}

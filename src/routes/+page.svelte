@@ -3,6 +3,8 @@
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { member } from '$lib/session';
   import CountUp from '$lib/CountUp.svelte';
+  import Hint from '$lib/Hint.svelte';
+  import GettingStarted from '$lib/GettingStarted.svelte';
 
   type MyProject = { project: { id: string; name: string; project_status: { name: string } | null } | null; project_role: { name: string } | null };
   type MyApp = { id: string; status: string; open_need: { project: { id: string; name: string } | null } | null };
@@ -64,14 +66,16 @@
     <a href="/projects"><button>Start a project</button></a>
   </div>
 
+  {#if $member}<GettingStarted memberId={$member.id} />{/if}
+
   <div class="row rise-stagger" style="align-items:stretch;">
     <div class="tile" style="flex:1; min-width:170px;">
-      <span class="label">STR balance</span>
+      <span class="label">STR balance <Hint term="liquid" text="Liquid STR — your spendable wallet balance. Used to post bonds and pay Guild exam fees." /></span>
       <span class="value accent"><CountUp value={balance} /></span>
       <span class="sub">liquid, spendable</span>
     </div>
     <div class="tile" style="flex:1; min-width:170px;">
-      <span class="label">Staked</span>
+      <span class="label">Staked <Hint term="nominal" text="Nominal STR you've minted into project pools — locked until each project settles, then it converts to liquid STR." /></span>
       <span class="value"><CountUp value={staked} /></span>
       <span class="sub">bonded in projects</span>
     </div>
@@ -92,7 +96,7 @@
     {#if loading}
       <p class="muted">Loading…</p>
     {:else if myProjects.length === 0}
-      <p class="muted">No positions yet. Browse <a href="/opportunities">Open Opportunities</a> to stake into a project.</p>
+      <p class="muted">No positions yet. Browse <a href="/opportunities">Open Opportunities</a> to stake into a project, or <a href="/guide">read how it works</a> first.</p>
     {:else}
       <table>
         <thead><tr><th>Project</th><th>Role</th><th>Status</th></tr></thead>
