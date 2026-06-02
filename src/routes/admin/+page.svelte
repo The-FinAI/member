@@ -18,6 +18,7 @@
     { href: '/admin/skills', title: 'Skill Tree', desc: 'Hierarchical skills used for matching' },
     { href: '/admin/resource-types', title: 'Resource Types', desc: 'Categories of resources (compute, funding, data…)' },
     { href: '/admin/resources', title: 'Community Resources', desc: 'Community-owned resources + their stewards' },
+    { href: '/admin/milestone-catalog', title: 'Milestone Catalog', desc: 'Achievement catalog — nominal STR + multiplier bonus per milestone' },
     { href: '/admin/stater', title: 'STR Economy', desc: 'Supply at a glance, mint/sink flow, treasury ledger, health flags — plus mint, grant, allowance & policy knobs' },
     { href: '/admin/writing', title: 'First-author Writing', desc: "Leaders short on this month's writing hours — remind them by email" }
   ];
