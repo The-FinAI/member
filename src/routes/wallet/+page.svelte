@@ -121,7 +121,7 @@
 
     <div class="row rise-stagger" style="align-items:stretch;">
       <div class="tile" style="flex:1; min-width:160px;">
-        <span class="label">{$t('Liquid balance')} <Hint term="liquid" text={$t('Spendable STR in your wallet — used to post bonds and pay role-card fees.')} /></span>
+        <span class="label">{$t('Liquid balance')} <Hint term="liquid" text={$t('Spendable STR in your wallet — used to post bonds and pay badge fees.')} /></span>
         <span class="value accent"><CountUp value={balance} /></span>
         <span class="sub">{$t('spendable now')}</span>
       </div>

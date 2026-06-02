@@ -251,7 +251,7 @@
   // drawer edit fields
   let dHours = $state('');
   let dResType = $state(''); let dResCap = $state('');
-  let dStaged = $state<Record<string, string>>({}); // skillId -> level (new role cards to mint)
+  let dStaged = $state<Record<string, string>>({}); // skillId -> level (new badges to mint)
   let dNewSkill = $state(''); let dNewLevel = $state('apprentice');
 
   // per-project monthly contributions (labor + resource), declared for the card
@@ -362,7 +362,7 @@
     const { error: err } = await supabase.rpc('mint_skillcard_batch', { p_member: selected.id, p_items: items });
     dBusy = '';
     if (err) { dErr = err.message; return; }
-    dMsg = get(t)('{n} role-card request(s) staged for review.', { n: items.length });
+    dMsg = get(t)('{n} badge request(s) staged for review.', { n: items.length });
     dStaged = {};
     await loadCardData();
   }
@@ -637,7 +637,7 @@
           <button class="stake" onclick={forge} disabled={!fName.trim() || !fEmail.trim() || busy === 'forge'}>
             {busy === 'forge' ? $t('Forging…') : $t('Forge card')}</button>
         </div>
-        <p class="muted" style="font-size:.76rem; margin:0;">{$t('Forge the identity here, then open the card from the roster above to mint role cards, set monthly hours and resources, and declare its work.')}</p>
+        <p class="muted" style="font-size:.76rem; margin:0;">{$t('Forge the identity here, then open the card from the roster above to award badges, set monthly hours and resources, and declare its work.')}</p>
       </div>
     {/if}
 
@@ -720,9 +720,9 @@
       </div>
     </section>
 
-    <!-- role cards: mint additional ones directly onto the card -->
+    <!-- badges: mint additional ones directly onto the card -->
     <section class="dsec">
-      <h3>{$t('Role cards')}</h3>
+      <h3>{$t('Badges')}</h3>
       {#if (cardSkills[selected.id] ?? []).length > 0}
         <div class="row" style="flex-wrap:wrap; gap:.3rem;">
           {#each cardSkills[selected.id] as s}
@@ -730,7 +730,7 @@
           {/each}
         </div>
       {:else}
-        <p class="muted" style="font-size:.82rem; margin:0;">{$t('No role cards yet.')}</p>
+        <p class="muted" style="font-size:.82rem; margin:0;">{$t('No badges yet.')}</p>
       {/if}
       <div class="row" style="gap:.4rem; align-items:flex-end; flex-wrap:wrap;">
         <label class="stack" style="gap:.2rem; flex:1; min-width:120px;"><span class="muted" style="font-size:.72rem;">{$t('Skill')}</span>
@@ -845,7 +845,7 @@
                 </div>
               {/if}
               {#if cardCertSkills.length === 0 && committableRes.length === 0}
-                <p class="muted" style="font-size:.72rem; margin:0;">{$t('Add a role card or an approved resource above to mint contributions here.')}</p>
+                <p class="muted" style="font-size:.72rem; margin:0;">{$t('Add a badge or an approved resource above to mint contributions here.')}</p>
               {/if}
             </div>
           {/each}

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { t } from '$lib/i18n';
 
-  // A certified role-card shown as a medal: skill name + guild level.
+  // A certified badge shown as a medal: skill name + guild level.
   let { name = '', level, size = 'md' }: { name?: string; level: string; size?: 'sm' | 'md' } = $props();
 
   const LEVEL_LABEL: Record<string, string> = {

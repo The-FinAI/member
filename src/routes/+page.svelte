@@ -299,7 +299,7 @@
   <!-- economy snapshot -->
   <div class="row rise-stagger" style="align-items:stretch; flex-wrap:wrap;">
     <div class="tile" style="flex:1; min-width:150px;">
-      <span class="label">{$t('STR balance')} <Hint term="liquid" text={$t('Liquid STR — your spendable wallet balance. Used to post bonds and pay role-card fees.')} /></span>
+      <span class="label">{$t('STR balance')} <Hint term="liquid" text={$t('Liquid STR — your spendable wallet balance. Used to post bonds and pay badge fees.')} /></span>
       <span class="value accent"><CountUp value={balance} /></span>
       <span class="sub"><a href="/wallet">{$t('open wallet →')}</a></span>
     </div>
@@ -314,9 +314,9 @@
       <span class="sub">{$t('nominal STR minted through work')}</span>
     </div>
     <div class="tile" style="flex:1; min-width:150px;">
-      <span class="label">{$t('Role cards')}</span>
+      <span class="label">{$t('Badges')}</span>
       <span class="value">{certifiedCount}</span>
-      <span class="sub">{$t(certifiedCount === 1 ? 'card earned' : 'cards earned')}</span>
+      <span class="sub">{$t(certifiedCount === 1 ? 'badge earned' : 'badges earned')}</span>
     </div>
     <a class="tile" href="/projects?tab=needs" style="flex:1; min-width:150px;">
       <span class="label">{$t('Open needs')}</span>
@@ -372,19 +372,19 @@
     {/if}
   </div>
 
-  <!-- role cards: read-only. A certified skill IS a role card; reviewers mint them. -->
+  <!-- badges: read-only. A certified skill IS a badge; reviewers award them. -->
   <div class="card stack">
     <div class="row" style="justify-content:space-between; align-items:center;">
-      <h2 style="margin:0;">{$t('Role cards')}</h2>
-      <a href="/community?tab=cards"><button class="ghost">{$t('Card catalog →')}</button></a>
+      <h2 style="margin:0;">{$t('Badges')}</h2>
+      <a href="/community?tab=badges"><button class="ghost">{$t('Badge catalog →')}</button></a>
     </div>
     <p class="muted" style="font-size:.82rem; margin-top:-.35rem;">
-      {@html $t("Skills aren't self-rated — they're <strong>earned</strong>. A reviewer certifies each role card, climbing Apprentice → Journeyman → Craftsman → Master.")}
+      {@html $t("Skills aren't self-rated — they're <strong>earned</strong>. A reviewer certifies each badge, climbing Apprentice → Journeyman → Craftsman → Master.")}
     </p>
     {#if skillsLoading}
       <p class="muted">{$t('Loading…')}</p>
     {:else if mySkills.length === 0}
-      <p class="muted">{$t('No role cards yet — a reviewer certifies your cards as you demonstrate skill.')}</p>
+      <p class="muted">{$t('No badges yet — a reviewer certifies your skills as you demonstrate them.')}</p>
     {:else}
       {#if myCards.length > 0}
         <div class="row" style="gap:.5rem; flex-wrap:wrap;">
@@ -394,7 +394,7 @@
       {@const pending = mySkills.filter((s) => !s.certified_level)}
       {#if pending.length > 0}
         <div class="stack" style="gap:.35rem;">
-          <span class="muted" style="font-size:.78rem;">{$t('Skills awaiting a card')}</span>
+          <span class="muted" style="font-size:.78rem;">{$t('Skills awaiting a badge')}</span>
           <div class="row" style="gap:.35rem; flex-wrap:wrap;">
             {#each pending as s}<span class="badge dim">{skillName(s.skill_id)}</span>{/each}
           </div>

@@ -36,19 +36,19 @@
   let myUnitStatus = $state<Record<string, string>>({});
 
   // top-level tab over the card families in the community
-  type Tab = 'people' | 'chapters' | 'wgroups' | 'cards';
+  type Tab = 'people' | 'chapters' | 'wgroups' | 'badges';
   let tab = $state<Tab>('people');
 
   const TABS: { key: Tab; label: string }[] = [
     { key: 'people', label: 'People' },
     { key: 'chapters', label: 'Chapters' },
     { key: 'wgroups', label: 'Working Groups' },
-    { key: 'cards', label: 'Role cards' }
+    { key: 'badges', label: 'Badges' }
   ];
 
-  // ---- role-card catalog (the former "Guild / crafts") ----
-  // A certified skill IS a role card. The catalog lists every certifiable skill
-  // (a leaf in the skill tree) as a card type, with the members who hold it.
+  // ---- badge catalog (the former "Guild / crafts") ----
+  // A certified skill IS a badge. The catalog lists every certifiable skill
+  // (a leaf in the skill tree) as a badge type, with the members who hold it.
   type Skill = { id: string; name: string; parent_id: string | null };
   type Holder = { member_id: string; full_name: string; level: string };
   let skills = $state<Skill[]>([]);
@@ -77,7 +77,7 @@
 
   onMount(async () => {
     const initial = $page.url.searchParams.get('tab');
-    if (initial === 'chapters' || initial === 'wgroups' || initial === 'people' || initial === 'cards') tab = initial;
+    if (initial === 'chapters' || initial === 'wgroups' || initial === 'people' || initial === 'badges') tab = initial;
     if (!supabaseConfigured) { loading = false; return; }
     const [{ data }, { data: bals }, { data: nom }, { data: ou }, { data: prj }] = await Promise.all([
       supabase.from('member')
@@ -107,7 +107,7 @@
     projectUnitOf = pumap;
     loading = false;
 
-    // role-card catalog data (skill tree + certified holders)
+    // badge catalog data (skill tree + certified holders)
     const [{ data: sk }, { data: msk }] = await Promise.all([
       supabase.from('skill').select('id, name, parent_id').order('name'),
       supabase.from('member_skill')
@@ -179,13 +179,13 @@
       .sort((a, b) => Number(myUnitIds.has(b.id)) - Number(myUnitIds.has(a.id)))
   );
 
-  // ---- role-card catalog ----
-  type CardType = { id: string; name: string; domain: string; holders: Holder[]; top: string };
-  const cardCatalog = $derived.by<CardType[]>(() => {
+  // ---- badge catalog ----
+  type BadgeType = { id: string; name: string; domain: string; holders: Holder[]; top: string };
+  const badgeCatalog = $derived.by<BadgeType[]>(() => {
     if (!skills.length) return [];
     const parentIds = new Set(skills.map((s) => s.parent_id).filter(Boolean));
     const nameOf = (id: string | null) => (id ? (skills.find((s) => s.id === id)?.name ?? '') : '');
-    // a leaf (certifiable craft) is any skill that is nobody's parent
+    // a leaf (certifiable skill) is any skill that is nobody's parent
     return skills
       .filter((s) => !parentIds.has(s.id))
       .map((s) => {
@@ -195,8 +195,8 @@
       })
       .sort((a, b) => b.holders.length - a.holders.length || a.name.localeCompare(b.name));
   });
-  const cardsFiltered = $derived(
-    cardCatalog.filter((c) =>
+  const badgesFiltered = $derived(
+    badgeCatalog.filter((c) =>
       c.name.toLowerCase().includes(q.toLowerCase()) || c.domain.toLowerCase().includes(q.toLowerCase()))
   );
 
@@ -209,7 +209,7 @@
   type DrawerSel =
     | { kind: 'person'; row: Row }
     | { kind: 'unit'; unit: UnitRow; unitKind: 'chapter' | 'working_group' }
-    | { kind: 'card'; card: CardType };
+    | { kind: 'badge'; badge: BadgeType };
   let sel = $state<DrawerSel | null>(null);
   let drawerBusy = $state(false);
   let drawerErr = $state('');
@@ -217,7 +217,7 @@
   const drawerOpen = $derived(sel !== null);
   function openPerson(r: Row) { sel = { kind: 'person', row: r }; drawerErr = ''; drawerMsg = ''; }
   function openUnit(u: UnitRow) { sel = { kind: 'unit', unit: u, unitKind: tab === 'chapters' ? 'chapter' : 'working_group' }; drawerErr = ''; drawerMsg = ''; }
-  function openCardType(c: CardType) { sel = { kind: 'card', card: c }; drawerErr = ''; drawerMsg = ''; }
+  function openBadge(c: BadgeType) { sel = { kind: 'badge', badge: c }; drawerErr = ''; drawerMsg = ''; }
   function closeDrawer() { sel = null; }
 
   // ---- permission-aware actions ----
@@ -246,7 +246,7 @@
       <span class="muted" style="font-size:.85rem;">
         {#if tab === 'people'}{$t('Everyone in the community — open a card to see their work, skills & standing.')}
         {:else if tab === 'chapters'}{$t('The three regional chapters. Open one to apply to join.')}
-        {:else if tab === 'cards'}{$t('The role-card catalog — every certifiable skill. Open one to see who holds it.')}
+        {:else if tab === 'badges'}{$t('The badge catalog — every certifiable skill. Open one to see who holds it.')}
         {:else}{$t('The working groups driving the research agenda. Open one to apply to join.')}{/if}
       </span>
     </div>
@@ -297,15 +297,15 @@
       </div>
     {/if}
 
-  <!-- ============ ROLE-CARD CATALOG ============ -->
-  {:else if tab === 'cards'}
-    {#if cardsFiltered.length === 0}
-      <div class="card"><p class="muted">{$t('No role cards yet.')}</p></div>
+  <!-- ============ BADGE CATALOG ============ -->
+  {:else if tab === 'badges'}
+    {#if badgesFiltered.length === 0}
+      <div class="card"><p class="muted">{$t('No badges yet.')}</p></div>
     {:else}
       <div class="card-grid">
-        {#each cardsFiltered as c (c.id)}
+        {#each badgesFiltered as c (c.id)}
           <EntityCard
-            type="Role card"
+            type="Badge"
             title={c.name}
             subtitle={c.domain || '—'}
             status={c.holders.length ? $t('{n} holders', { n: c.holders.length }) : $t('No holders yet')}
@@ -376,17 +376,17 @@
       {/snippet}
     </CardDrawer>
   {:else}
-    {@const c = sel.card}
+    {@const c = sel.badge}
     <CardDrawer
       open={drawerOpen}
-      type="Role card"
+      type="Badge"
       title={c.name}
       subtitle={c.domain || '—'}
       onClose={closeDrawer}
     >
       <div class="stack">
         <p class="muted" style="font-size:.85rem; margin:0;">
-          {$t('A certified skill, ranked Apprentice → Journeyman → Craftsman → Master. In Phase 1, officers mint cards onto their members for review.')}
+          {$t('A certified skill, ranked Apprentice → Journeyman → Craftsman → Master. In Phase 1, officers award badges to their members for review.')}
         </p>
         <h3 style="margin:.3rem 0 0;">{$t('Holders')}{#if c.holders.length}<span class="muted" style="font-weight:400;"> · {c.holders.length}</span>{/if}</h3>
         {#if c.holders.length === 0}

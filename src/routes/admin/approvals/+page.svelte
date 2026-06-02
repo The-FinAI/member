@@ -151,7 +151,7 @@
   <p><a href="/admin">← {$t('Admin')}</a></p>
   <h1>{$t('Approvals')}</h1>
   <p class="muted" style="margin-top:-.75rem;">
-    {$t('Every request waiting on a decision, in one place — member resources, role cards, project milestones, chapter & working-group applications, and over-capacity monthly commitments.')}
+    {$t('Every request waiting on a decision, in one place — member resources, badges, project milestones, chapter & working-group applications, and over-capacity monthly commitments.')}
   </p>
 
   {#if error}<p class="banner err">{error}</p>{/if}
@@ -280,11 +280,11 @@
       </div>
     {/if}
 
-    <!-- Role cards -->
+    <!-- Badges -->
     {#if canCards}
       <div class="card stack" style="gap:.6rem;">
         <h2 style="margin:0; font-size:1.05rem;">
-          {$t('Role cards')}
+          {$t('Badges')}
           {#if cards.length}<span class="badge warn">{cards.length}</span>{/if}
         </h2>
         <p class="muted" style="margin:0; font-size:.85rem;">

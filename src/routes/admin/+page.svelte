@@ -5,7 +5,7 @@
   import { PHASE2 } from '$lib/phase';
 
   const allSections = [
-    { href: '/admin/approvals', title: 'Approvals', desc: 'One queue for everything awaiting a decision — resources, role cards, unit applications & over-capacity commitments' },
+    { href: '/admin/approvals', title: 'Approvals', desc: 'One queue for everything awaiting a decision — resources, badges, unit applications & over-capacity commitments' },
     { href: '/admin/announcements', title: 'Announcements', desc: 'Post, pin & retire the site-wide notice board' },
     { href: '/admin/invites', title: PHASE2 ? 'Invite Members' : 'Invite Officers', desc: PHASE2 ? 'Pre-create members by email (invite-only)' : 'Phase 1: invite chapter chairs, secretaries & working-group leaders by email' },
     { href: '/admin/org-units', title: 'Chapters & Working Groups', desc: 'Assign chairs, secretaries & leaders to the 3 chapters + 3 working groups' },
@@ -39,7 +39,7 @@
   // things that want an admin's attention
   const attention = $derived([
     { n: pendingResources, label: 'resources awaiting review', href: '/admin/approvals' },
-    { n: examsInReview, label: 'role cards awaiting review', href: '/admin/approvals' },
+    { n: examsInReview, label: 'badges awaiting review', href: '/admin/approvals' },
     { n: pendingMilestones, label: 'milestones awaiting review', href: '/admin/approvals' },
     { n: pendingCommits, label: 'over-capacity commitments to review', href: '/admin/approvals' },
     { n: openNeeds, label: 'open needs on the market', href: '/projects?tab=needs' }

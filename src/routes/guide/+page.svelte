@@ -111,7 +111,7 @@
           <li>{@html $t("Open your unit from <a href='/community?tab=chapters'>Community</a> and <strong>forge a card</strong> for each person who works under you — their identity, the skills they bring, the resources they offer (compute, API, funding, data) and their monthly hours, all in one batch. <strong>Each person is forged only once.</strong>")}</li>
           <li>{@html $t("<strong>Claim your existing projects.</strong> Open the <a href='/projects'>Projects</a> your chapter or group already runs and use <strong>“Add a member directly”</strong> to seat your cards onto each roster — no application, no bond.")}</li>
           <li>{@html $t("Act as a card to <strong>declare its monthly contributions</strong> on the projects it joins. Value accrues to the card and stays custodial until the real person signs up and claims it.")}</li>
-          <li>{@html $t("Clear your <a href='/admin/approvals'>Approvals</a> queue — it's the single place where everything waiting on you lands: role-card requests, chapter & working-group applications, member resources, project milestones, and any over-capacity monthly commitments. Approve or reject each in place.")}</li>
+          <li>{@html $t("Clear your <a href='/admin/approvals'>Approvals</a> queue — it's the single place where everything waiting on you lands: badge requests, chapter & working-group applications, member resources, project milestones, and any over-capacity monthly commitments. Approve or reject each in place.")}</li>
         </ol>
       </div>
       <div class="track">
@@ -119,7 +119,7 @@
         <p class="tlead">{$t('Researchers, once they are invited.')}</p>
         <ol class="start">
           <li>{@html $t("Sign in with your invite and <strong>claim your card</strong> — the identity, skills and resources your officer forged for you become yours.")}</li>
-          <li>{@html $t("Fill in or adjust <strong>What I can bring</strong> on your <a href='/'>Home / Portfolio</a>, and request any role cards your officer hasn't already staged.")}</li>
+          <li>{@html $t("Fill in or adjust <strong>What I can bring</strong> on your <a href='/'>Home / Portfolio</a>, and request any badges your officer hasn't already staged.")}</li>
           <li>{@html $t("Join projects, apply to open needs, and the contributions custodied on your card convert into your own balance.")}</li>
         </ol>
       </div>
@@ -140,9 +140,9 @@
         <tr><td><a href="/projects">{$t('Projects')}</a></td><td>{$t('Every research project as a market board. Open one to see its roster, open needs, records, meetings, history and settlement.')}</td></tr>
         <tr><td><a href="/projects?tab=needs">{$t('Open needs')}</a></td><td>{$t('The task market — every open need across all projects, typed by labor or resource and filterable by skill. Apply here. (Now the “Open needs” view of Projects.)')}</td></tr>
         <tr><td><a href="/community">{$t('Community')}</a></td><td>{$t('Everyone’s public profiles and the leaderboard, plus the 3 Chapters and 3 Working Groups — switch tabs for People, Chapters and Working Groups.')}</td></tr>
-        <tr><td><a href="/community?tab=cards">{$t('Role cards')}</a></td><td>{$t('The role-card catalog — every certifiable skill. Open one to see who holds it and at what level.')}</td></tr>
+        <tr><td><a href="/community?tab=badges">{$t('Badges')}</a></td><td>{$t('The badge catalog — every certifiable skill. Open one to see who holds it and at what level.')}</td></tr>
         <tr><td><a href="/wallet">{$t('Wallet')}</a></td><td>{$t('Your STR balance — liquid vs. nominal — and your full transaction history.')}</td></tr>
-        <tr><td>{$t('Approvals')}</td><td>{$t('Officers & reviewers. One queue for every pending decision — role-card requests, chapter & working-group applications, member resources, project milestones, and over-capacity monthly commitments. Approve or reject each in place.')}</td></tr>
+        <tr><td>{$t('Approvals')}</td><td>{$t('Officers & reviewers. One queue for every pending decision — badge requests, chapter & working-group applications, member resources, project milestones, and over-capacity monthly commitments. Approve or reject each in place.')}</td></tr>
         <tr><td>{$t('Admin')}</td><td>{$t('Admins only. Every configurable knob: announcements, invites, positions, capabilities, venues, the skill tree, resources and the STR economy.')}</td></tr>
       </tbody>
     </table>
@@ -158,7 +158,7 @@
     <div class="two">
       <div class="mini">
         <h3 id="term-liquid">{$t('Liquid STR')}</h3>
-        <p>{@html $t("The spendable balance in your wallet. You use it to post bonds and pay role-card fees. This is what the <span class='chip-ish'>STR</span> chip in the top bar shows.")}</p>
+        <p>{@html $t("The spendable balance in your wallet. You use it to post bonds and pay badge fees. This is what the <span class='chip-ish'>STR</span> chip in the top bar shows.")}</p>
       </div>
       <div class="mini">
         <h3 id="term-nominal">{$t('Nominal STR')}</h3>
@@ -236,7 +236,7 @@
   <section id="guild" class="card stack">
     <h2>{$t('5 · The Guild — skills & certification')}</h2>
     <p>
-      {@html $t("Skills are organised as a <strong>tree</strong> (domain → branch → concrete leaf skill). A certified skill is a <strong id='term-certification'>role card</strong> — this is what sets your <em>skill rate</em> (and thus how much your labor mints).")}
+      {@html $t("Skills are organised as a <strong>tree</strong> (domain → branch → concrete leaf skill). A certified skill is a <strong id='term-certification'>badge</strong> — this is what sets your <em>skill rate</em> (and thus how much your labor mints).")}
     </p>
     <h3 id="term-master">{$t('The guild ladder')}</h3>
     <div class="ladder">
@@ -246,7 +246,7 @@
       <span class="rung crown">{$t('Master')}</span>
     </div>
     <p>
-      {@html $t('A certified skill is a <strong>role card</strong>. There are two ways one is forged. A chapter officer can <strong>mint</strong> cards onto a member (genesis, first cards, bootstrap) — free, but staged as a batch awaiting review. Or you <strong>request</strong> a card yourself, paying the mint or update fee (escrowed, refunded if rejected). Either way a reviewer with the review capability approves or rejects it. There is no exam and no per-skill master.')}
+      {@html $t('A certified skill is a <strong>badge</strong>. There are two ways one is awarded. A chapter officer can <strong>mint</strong> badges onto a member (genesis, first badges, bootstrap) — free, but staged as a batch awaiting review. Or you <strong>request</strong> a badge yourself, paying the mint or update fee (escrowed, refunded if rejected). Either way a reviewer with the review capability approves or rejects it. There is no exam and no per-skill master.')}
     </p>
   </section>
 
@@ -257,7 +257,7 @@
       {@html $t("Your standing isn't your bank balance. The <a href='/community'>Leaderboard</a> has several boards: <strong>Contribution</strong> (lifetime minted work — the default), <strong>Net worth</strong> (liquid + nominal), and <strong>Wealth</strong> (liquid only).")}
     </p>
     <p class="muted">
-      {@html $t('Your <strong>public member page</strong> shows reputation — certified role-card medals, offered resources, project history and milestones — but <strong>never</strong> your liquid balance or ledger. Money is private; reputation is public.')}
+      {@html $t('Your <strong>public member page</strong> shows reputation — certified badges, offered resources, project history and milestones — but <strong>never</strong> your liquid balance or ledger. Money is private; reputation is public.')}
     </p>
   </section>
 
@@ -268,7 +268,7 @@
       <li>{@html $t("<strong>Set up your profile.</strong> List what you can bring — your monthly labor capacity and any resources. <a href='/'>Open your portfolio →</a>")}</li>
       <li>{@html $t("<strong>Browse opportunities.</strong> Find a project that needs your skills. <a href='/projects?tab=needs'>Open opportunities →</a>")}</li>
       <li>{@html $t("<strong>Join a project.</strong> Apply to a need; once accepted, post the 20 STR bond and start declaring monthly hours. <a href='/projects'>Browse projects →</a>")}</li>
-      <li>{@html $t("<strong>Certify a skill.</strong> Request a role card to turn a skill into a certified credential and raise your labor rate. <a href='/community?tab=cards'>Visit the Guild →</a>")}</li>
+      <li>{@html $t("<strong>Certify a skill.</strong> Request a badge to turn a skill into a certified credential and raise your labor rate. <a href='/community?tab=badges'>Visit the Guild →</a>")}</li>
     </ol>
   </section>
 
@@ -277,7 +277,7 @@
     <h2>{$t('Glossary')}</h2>
     <dl class="glossary">
       <dt id="term-str-g">{$t('STR')}</dt><dd>{@html $t("The community's internal token; minted from delivered work, used to measure and reward contribution. <a href='#str'>More →</a>")}</dd>
-      <dt id="term-liquid-g">{$t('Liquid STR')}</dt><dd>{$t('Spendable balance in your wallet. Used for bonds and role-card fees.')}</dd>
+      <dt id="term-liquid-g">{$t('Liquid STR')}</dt><dd>{$t('Spendable balance in your wallet. Used for bonds and badge fees.')}</dd>
       <dt id="term-nominal-g">{$t('Nominal STR')}</dt><dd>{$t('Minted but locked in a project pool — a provisional claim that becomes liquid only at settlement.')}</dd>
       <dt id="term-stake-g">{$t('Stake')}</dt><dd>{@html $t('Your minted claim on a project pool. Your contribution <em>is</em> your stake.')}</dd>
       <dt id="term-bond-g">{$t('Bond')}</dt><dd>{$t('Real liquid STR escrowed to join a project (20 contributor / 50 leader). Funds the pool, seeds your claim, slashable if you flake.')}</dd>
@@ -285,7 +285,7 @@
       <dt id="term-milestone-g">{$t('Milestone')}</dt><dd>{$t('A verifiable achievement (submission, acceptance, release…). Verifying it mints nominal STR and raises the settlement multiplier.')}</dd>
       <dt id="term-settlement-g">{$t('Settlement')}</dt><dd>{$t('The joint sign-off (leader + Stater manager) that splits a finished project\'s pool into liquid STR by agreed weights, plus a finish bonus.')}</dd>
       <dt id="term-need-g">{$t('Need')}</dt><dd>{$t('A typed request a project posts for a contribution (labor / resource), shown on the Opportunities board.')}</dd>
-      <dt id="term-certification-g">{$t('Certification')}</dt><dd>{$t('A hard, reviewed credential for a leaf skill — a role card minted or requested, then approved by a reviewer. Sets your labor rate.')}</dd>
+      <dt id="term-certification-g">{$t('Certification')}</dt><dd>{$t('A hard, reviewed credential for a leaf skill — a badge minted or requested, then approved by a reviewer. Sets your labor rate.')}</dd>
       <dt id="term-master-g">{$t('Master')}</dt><dd>{$t('The top rung of the guild ladder (Apprentice → Journeyman → Craftsman → Master).')}</dd>
     </dl>
   </section>

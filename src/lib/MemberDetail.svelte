@@ -218,7 +218,7 @@
     if (id && id !== lastId) { lastId = id; load(id); }
   });
 
-  // certified role cards (medals) — guild-certified skills, ordered by rank
+  // certified badges (medals) — guild-certified skills, ordered by rank
   const RANK: Record<string, number> = { apprentice: 0, journeyman: 1, craftsman: 2, master: 3 };
   const cards = $derived(
     skills.filter((s) => s.certified_level)
@@ -229,7 +229,7 @@
   const sections = $derived([
     ...(canEditCatalog ? [{ id: 'catalog', label: isMe ? 'What I can bring' : 'What this card can bring' }] : []),
     { id: 'stats', label: 'Overview' },
-    { id: 'role-cards', label: 'Role cards' },
+    { id: 'badges', label: 'Badges' },
     { id: 'projects', label: 'Projects' }
   ]);
 </script>
@@ -377,10 +377,10 @@
       </div>
     </div>
 
-    <!-- role cards: a certified skill IS a role card (medal); uncertified skills
-         are listed as awaiting a card. One section, no duplicate skills table. -->
-    <div class="card stack" id="role-cards">
-      <h2 style="margin:0;">{$t('Role cards')}</h2>
+    <!-- badges: a certified skill IS a badge (medal); uncertified skills
+         are listed as awaiting a badge. One section, no duplicate skills table. -->
+    <div class="card stack" id="badges">
+      <h2 style="margin:0;">{$t('Badges')}</h2>
       {#if skills.length === 0}
         <p class="muted">{$t('No skills listed yet.')}</p>
       {:else}
@@ -392,7 +392,7 @@
         {@const pending = skills.filter((s) => !s.certified_level)}
         {#if pending.length > 0}
           <div class="stack" style="gap:.35rem;">
-            <span class="muted" style="font-size:.78rem;">{$t('Skills awaiting a card')}</span>
+            <span class="muted" style="font-size:.78rem;">{$t('Skills awaiting a badge')}</span>
             <div class="row" style="gap:.35rem; flex-wrap:wrap;">
               {#each pending as s}<span class="badge dim">{s.skill?.name ?? s.skill_id}</span>{/each}
             </div>
