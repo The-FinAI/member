@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { supabase, supabaseConfigured } from '$lib/supabase';
-  import { member, actingAs } from '$lib/session';
+  import { member } from '$lib/session';
   import Hint from '$lib/Hint.svelte';
   import { t } from '$lib/i18n';
   import { get } from 'svelte/store';
@@ -104,9 +104,8 @@
       }));
   }
 
-  // act on behalf of a card (officer proxy) when one is selected
-  const effId = $derived($actingAs?.id ?? $member?.id ?? null);
-  const asArg = $derived($actingAs?.id ?? null);
+  const effId = $derived($member?.id ?? null);
+  const asArg = null;
 
   onMount(() => {
     if (!supabaseConfigured) { loading = false; return; }

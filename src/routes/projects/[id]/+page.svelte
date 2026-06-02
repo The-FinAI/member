@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { supabase, supabaseConfigured } from '$lib/supabase';
-  import { member, capabilities, actingAs } from '$lib/session';
+  import { member, capabilities } from '$lib/session';
   import CountUp from '$lib/CountUp.svelte';
   import Hint from '$lib/Hint.svelte';
   import SectionNav from '$lib/SectionNav.svelte';
@@ -253,8 +253,7 @@
       workingGroups = (wg as { id: string; code: string; name: string }[]) ?? [];
     }
 
-    // act on behalf of a card (officer proxy) when one is selected
-    const me = $actingAs?.id ?? $member?.id;
+    const me = $member?.id;
     iManage =
       $capabilities.has('edit_any_project') ||
       participants.some((x) => x.member_id === me && x.project_role?.can_manage);
@@ -707,14 +706,8 @@
 
   onMount(load);
 
-  // p_as for member-scoped RPCs; reload me-relative state when the acting card changes
-  const asArg = $derived($actingAs?.id ?? null);
-  let actingMounted = false;
-  $effect(() => {
-    const _ = $actingAs?.id; // track
-    if (actingMounted) load();
-    actingMounted = true;
-  });
+  // member-scoped RPCs act as the signed-in officer themselves
+  const asArg = null;
 
   function currentMonth() { return new Date().toISOString().slice(0, 7); }
   function fmtMonth(ym: string) {
@@ -837,7 +830,7 @@
 
   async function apply(needId: string) {
     error = '';
-    if (!$member && !$actingAs) return;
+    if (!$member) return;
     const { error: err } = await supabase.rpc('apply_to_need', {
       p_need: needId, p_message: applyMsg[needId]?.trim() || null, p_as: asArg
     });
@@ -860,7 +853,7 @@
 
   async function claimLeadership() {
     error = '';
-    if (!$member && !$actingAs) return;
+    if (!$member) return;
     if (!leaderReady) { error = get(t)('You don’t yet meet the leader skill requirements.'); return; }
     if (!confirm(get(t)('Take the lead on this project? This stakes {n} STR from your balance into the project escrow and seats you as Leader.', { n: leaderStake }))) return;
     claiming = true;

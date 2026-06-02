@@ -269,7 +269,7 @@
       <ol class="checklist">
         <li>{$t('Forge a card for each person who works under you — fill in who they are, stage the skills they bring and the resources they offer (compute, API, funding, data) and their monthly hours. Each person is forged only once.')}</li>
         <li>{@html $t("Claim your chapter's existing projects — open <a href='/projects'>Projects</a>, and on each one your chapter already runs use <strong>“Add a member directly”</strong> to seat your cards onto its roster (no application, no bond).")}</li>
-        <li>{$t('Act as a card to declare its monthly contributions on the projects it joins — value accrues to the card until the person claims it.')}</li>
+        <li>{$t('Click any card below to open it and edit directly — adjust its monthly hours, mint role cards and stage resources. No mode-switching; the drawer is the card.')}</li>
         <li>{$t('Review your roster below: every card you forged is listed, with its balance and staged skills.')}</li>
         <li>{$t('Clear your Approvals queue — over-capacity commitments from your chapter members wait for you there.')} <a href="/admin/approvals">{$t('Open Approvals →')}</a></li>
       </ol>
@@ -403,7 +403,7 @@
           {/each}
         </div>
         <p class="muted" style="font-size:.8rem; margin:.2rem 0 0;">
-          {$t('Click a card to inspect it, then act on its behalf — join projects, apply to needs, mint contributions and request role cards. Money moves on the card’s balance.')}
+          {$t('Click a card to open it and edit directly — its monthly hours, role cards and resources. Money moves on the card’s balance.')}
         </p>
       {/if}
     </div>

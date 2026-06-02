@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { supabase, supabaseConfigured } from '$lib/supabase';
-  import { member, capabilities, actingAs } from '$lib/session';
+  import { member, capabilities } from '$lib/session';
   import { PHASE2 } from '$lib/phase';
   import Hint from '$lib/Hint.svelte';
   import Medal from '$lib/Medal.svelte';
@@ -38,9 +38,8 @@
 
   const canReview = $derived($capabilities.has('review_skillcard'));
   const canMint = $derived($capabilities.has('mint_skillcard'));
-  // effective identity: act for a card (officer proxy) when one is selected
-  const effId = $derived($actingAs?.id ?? $member?.id ?? null);
-  const asArg = $derived($actingAs?.id ?? null);
+  const effId = $derived($member?.id ?? null);
+  const asArg = null;
 
   // direct mint (forge / update any member's skill profile — staged as one batch)
   let members = $state<Mem[]>([]);
@@ -216,10 +215,6 @@
 
   {#if error}<p class="neg" style="font-size:.85rem;">{error}</p>{/if}
 
-  {#if PHASE2 && $actingAs}
-    <p class="muted" style="font-size:.82rem; margin:0;">{$t('Requesting role cards for card {name}; the fee is paid from the card’s balance.', { name: $actingAs.full_name })}</p>
-  {/if}
-
   <!-- 审 role-card review queue — grouped by batch, approved/rejected as one -->
   {#if canReview && cardBatches.length > 0}
     <div class="card stack" style="gap:.5rem;">
@@ -311,7 +306,7 @@
   <!-- my role-card requests (self-service — Phase 2) -->
   {#if PHASE2 && myCardReqs.length > 0}
     <div class="card stack" style="gap:.4rem;">
-      <h2 style="margin:0;">{$actingAs ? $t('{name}’s role-card requests', { name: $actingAs.full_name }) : $t('My role-card requests')}</h2>
+      <h2 style="margin:0;">{$t('My role-card requests')}</h2>
       {#each myCardReqs as r}
         <div class="row" style="justify-content:space-between; align-items:center; padding:.35rem .2rem; border-top:1px solid var(--border-2);">
           <span>{r.skill?.name} · {$t(LEVEL_LABEL[r.target_level])} · <span class="muted" style="font-size:.78rem;">{r.fee} STR</span></span>

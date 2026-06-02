@@ -1,5 +1,5 @@
 import { supabase, supabaseConfigured } from './supabase';
-import { member, capabilities, officerUnits, actingAs, type Member, type OfficerUnit } from './session';
+import { member, capabilities, officerUnits, type Member, type OfficerUnit } from './session';
 
 /** Bind a pre-created (invited) member row to the just-authenticated user. */
 export async function claimMembership(): Promise<void> {
@@ -59,5 +59,4 @@ export function clearProfile(): void {
   member.set(null);
   capabilities.set(new Set());
   officerUnits.set([]);
-  actingAs.set(null);
 }

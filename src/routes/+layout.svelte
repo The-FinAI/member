@@ -4,7 +4,7 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { supabase, supabaseConfigured } from '$lib/supabase';
-  import { session, member, capabilities, officerUnits, actingAs, authReady, authError } from '$lib/session';
+  import { session, member, capabilities, officerUnits, authReady, authError } from '$lib/session';
   import { loadProfile, clearProfile, claimMembership } from '$lib/profile';
   import { theme, toggleTheme } from '$lib/theme';
   import { t } from '$lib/i18n';
@@ -196,12 +196,6 @@
 
     <main class="container">
       {#if $session && $member}<LaunchBanner />{/if}
-      {#if $actingAs}
-        <div class="acting-banner">
-          <span>{$t('Acting as card')} <strong>{$actingAs.full_name}</strong> — {$t('actions and STR apply to this card.')}</span>
-          <button class="icon-btn" onclick={() => actingAs.set(null)}>{$t('Stop acting')}</button>
-        </div>
-      {/if}
       {#if !supabaseConfigured}
         <p class="banner">
           Supabase is not configured. Copy <code>.env.example</code> to <code>.env</code> and add your
