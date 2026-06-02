@@ -5,8 +5,8 @@
   import { t } from '$lib/i18n';
   import { get } from 'svelte/store';
   import EntityCard from '$lib/EntityCard.svelte';
+  import CardDrawer from '$lib/CardDrawer.svelte';
   import TaskMarket from '$lib/TaskMarket.svelte';
-  import { goto } from '$app/navigation';
   import { page } from '$app/stores';
 
   // top-level segment: the project portfolio vs the open-needs task market.
@@ -49,6 +49,10 @@
 
   // card grid is the default face; the dense table stays one click away
   let view = $state<'cards' | 'table'>('cards');
+  // quick-view drawer
+  let sel = $state<Grid | null>(null);
+  function openProject(r: Grid) { sel = r; }
+  function closeDrawer() { sel = null; }
   // status name → EntityCard status dot kind
   function projKind(name: string): 'pos' | 'warn' | 'dim' {
     if (name === 'Finished') return 'pos';
@@ -630,7 +634,7 @@
             { label: 'members', value: String(r.members) },
             ...(r.multiplier > 1 ? [{ label: '×Mult', value: '×' + r.multiplier.toFixed(2) }] : [])
           ]}
-          onclick={() => goto(`/projects/${r.id}`)}
+          onclick={() => openProject(r)}
         />
       {/each}
     </div>
@@ -765,8 +769,52 @@
   {/if}
 </div>
 
+<!-- quick-view drawer -->
+{#if sel}
+  {@const r = sel}
+  <CardDrawer
+    open={sel !== null}
+    type={r.type}
+    title={r.name}
+    subtitle={r.venue || ''}
+    onClose={closeDrawer}
+  >
+    <div class="row" style="gap:.4rem; flex-wrap:wrap;">
+      <span class="status {statusClass(r.status)}"><span class="sdot" style="background:currentColor;"></span>{$t(r.status)}</span>
+      {#if r.claimable}<span class="badge warn">{$t('lead open')}</span>{/if}
+    </div>
+    <div class="dstats">
+      <div class="dstat"><span class="dv accent">{r.pool.toLocaleString()}</span><span class="dl">{$t('Nominal pool')}</span></div>
+      <div class="dstat"><span class="dv">×{r.multiplier.toFixed(2)}</span><span class="dl">{$t('×Mult')}</span></div>
+      <div class="dstat"><span class="dv">{r.openNeeds}</span><span class="dl">{$t('Open needs')}</span></div>
+      <div class="dstat"><span class="dv">{r.members}</span><span class="dl">{$t('Members')}</span></div>
+    </div>
+    {#if r.msTotal > 0}
+      <div><span class="dl">{$t('Milestones')}</span><div><span class="up">✓{r.msVerified}</span><span class="dim">/{r.msTotal}</span></div></div>
+    {/if}
+    {#if r.leader}
+      <div><span class="dl">{$t('Team')}</span><div>{r.leader} · {r.members} {r.members === 1 ? $t('member') : $t('members')}</div></div>
+    {/if}
+    {#if r.deadline}
+      <div><span class="dl">{$t('Target deadline')}</span><div class="mono {ddlClass(r.deadline)}">{fmtDate(r.deadline)} <span class="rel">{relDays(r.deadline)}</span></div></div>
+    {/if}
+    {#snippet actions()}
+      <a class="btn" href={`/projects/${r.id}`}>{$t('Open full page')} →</a>
+    {/snippet}
+  </CardDrawer>
+{/if}
+
 <style>
   .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: .8rem; }
+  .dstats { display: flex; flex-wrap: wrap; gap: 1.2rem; }
+  .dstat { display: flex; flex-direction: column; gap: .1rem; }
+  .dstat .dv { font-family: var(--font-mono); font-weight: 700; font-size: 1.1rem; }
+  .dstat .dv.accent { color: var(--accent); }
+  .dl { font-size: .7rem; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
+  .btn {
+    display: inline-flex; align-items: center; gap: .3rem; padding: .5rem .9rem;
+    background: var(--accent); color: #fff; border-radius: 8px; text-decoration: none; font-weight: 600;
+  }
   .viewtoggle { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
   .viewtoggle button {
     background: transparent; border: none; padding: .35rem .6rem; cursor: pointer;

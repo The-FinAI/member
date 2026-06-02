@@ -1,10 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { member } from '$lib/session';
   import EntityCard from '$lib/EntityCard.svelte';
+  import CardDrawer from '$lib/CardDrawer.svelte';
   import CountUp from '$lib/CountUp.svelte';
   import { t } from '$lib/i18n';
 
@@ -197,6 +197,16 @@
     q = '';
     if (tk !== 'people') metric = 'networth';
   }
+
+  // ---- quick-view drawer ----
+  type DrawerSel =
+    | { kind: 'person'; row: Row }
+    | { kind: 'unit'; unit: UnitRow; unitKind: 'chapter' | 'working_group' };
+  let sel = $state<DrawerSel | null>(null);
+  const drawerOpen = $derived(sel !== null);
+  function openPerson(r: Row) { sel = { kind: 'person', row: r }; }
+  function openUnit(u: UnitRow) { sel = { kind: 'unit', unit: u, unitKind: tab === 'chapters' ? 'chapter' : 'working_group' }; }
+  function closeDrawer() { sel = null; }
 </script>
 
 <div class="stack">
@@ -265,7 +275,7 @@
                 { label: 'Nominal', value: (nominalOf[r.id] ?? 0).toLocaleString() },
                 { label: 'Net worth', value: netWorthOf(r.id).toLocaleString() }
               ]}
-              onclick={() => goto(`/members/${r.id}`)}
+              onclick={() => openPerson(r)}
             />
           {/each}
         </div>
@@ -336,7 +346,7 @@
               stats={tab === 'chapters'
                 ? [{ label: 'Members', value: String(u.count) }, { label: 'Combined net worth', value: u.total.toLocaleString() }]
                 : [{ label: 'Projects', value: String(u.count) }, { label: 'Staked STR', value: u.total.toLocaleString() }]}
-              onclick={() => goto(`/units/${u.id}`)}
+              onclick={() => openUnit(u)}
             />
           {/each}
         </div>
@@ -377,8 +387,69 @@
   {/if}
 </div>
 
+<!-- quick-view drawer -->
+{#if sel}
+  {#if sel.kind === 'person'}
+    {@const r = sel.row}
+    <CardDrawer
+      open={drawerOpen}
+      type={r.kind === 'card' ? 'Member card' : 'Member'}
+      title={r.full_name}
+      subtitle={r.affiliation ?? '—'}
+      onClose={closeDrawer}
+    >
+      <div class="dstats">
+        <div class="dstat"><span class="dv">{(nominalOf[r.id] ?? 0).toLocaleString()}</span><span class="dl">{$t('Nominal')}</span></div>
+        <div class="dstat"><span class="dv">{(balanceOf[r.id] ?? 0).toLocaleString()}</span><span class="dl">{$t('Liquid')}</span></div>
+        <div class="dstat"><span class="dv accent">{netWorthOf(r.id).toLocaleString()}</span><span class="dl">{$t('Net worth')}</span></div>
+      </div>
+      {#if positionsOf(r)}
+        <div><span class="dl">{$t('Position')}</span><div>{positionsOf(r)}</div></div>
+      {/if}
+      {#if r.kind === 'card'}
+        <p class="muted" style="font-size:.8rem; margin:0;">{$t('A member-card: managed by a chapter officer; value is custodial until the person signs up.')}</p>
+      {/if}
+      {#snippet actions()}
+        <a class="btn" href={`/members/${r.id}`}>{$t('Open full page')} →</a>
+      {/snippet}
+    </CardDrawer>
+  {:else}
+    {@const u = sel.unit}
+    <CardDrawer
+      open={drawerOpen}
+      type={sel.unitKind === 'chapter' ? 'Chapter' : 'Working Group'}
+      title={u.name}
+      subtitle={u.description ?? u.code}
+      onClose={closeDrawer}
+    >
+      <div class="dstats">
+        {#if sel.unitKind === 'chapter'}
+          <div class="dstat"><span class="dv">{u.count}</span><span class="dl">{$t('Members')}</span></div>
+          <div class="dstat"><span class="dv accent">{u.total.toLocaleString()}</span><span class="dl">{$t('Combined net worth')}</span></div>
+        {:else}
+          <div class="dstat"><span class="dv">{u.count}</span><span class="dl">{$t('Projects')}</span></div>
+          <div class="dstat"><span class="dv accent">{u.total.toLocaleString()}</span><span class="dl">{$t('Staked STR')}</span></div>
+        {/if}
+      </div>
+      <div><span class="dl">{$t('Code')}</span><div class="mono">{u.code}</div></div>
+      {#snippet actions()}
+        <a class="btn" href={`/units/${u.id}`}>{$t('Open full page')} →</a>
+      {/snippet}
+    </CardDrawer>
+  {/if}
+{/if}
+
 <style>
   .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: .8rem; }
+  .dstats { display: flex; flex-wrap: wrap; gap: 1.2rem; }
+  .dstat { display: flex; flex-direction: column; gap: .1rem; }
+  .dstat .dv { font-family: var(--font-mono); font-weight: 700; font-size: 1.1rem; }
+  .dstat .dv.accent { color: var(--accent); }
+  .dl { font-size: .7rem; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
+  .btn {
+    display: inline-flex; align-items: center; gap: .3rem; padding: .5rem .9rem;
+    background: var(--accent); color: #fff; border-radius: 8px; text-decoration: none; font-weight: 600;
+  }
   .viewtoggle { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
   .viewtoggle button {
     background: var(--card); border: none; color: var(--muted);
