@@ -37,11 +37,15 @@
 
   const canResources = $derived($capabilities.has('manage_resources'));
   const canCards = $derived($capabilities.has('review_skillcard'));
-  const canCommit = $derived(
+  // commitment review is open to capability holders AND to officers of the
+  // member's unit — the queue view itself filters each officer to their own
+  // members, so showing the section for any officer is safe.
+  const canCommitCap = $derived(
     $capabilities.has('manage_stater') ||
       $capabilities.has('manage_resources') ||
       $capabilities.has('manage_members')
   );
+  const canCommit = $derived(canCommitCap || $officerUnits.length > 0);
   const canMilestone = $derived(
     $capabilities.has('manage_stater') ||
       $capabilities.has('manage_resources') ||
