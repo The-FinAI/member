@@ -570,6 +570,9 @@ const zh: Table = {
   'Guild certification': '公会认证',
   'Uncertified — request a card →': '未认证 — 申请角色卡 →',
   'What I can bring': '我能贡献什么',
+  'What this card can bring': '这张卡牌能贡献什么',
+  "This card’s offerable catalog — its monthly time and resources. You’re editing it as an officer; new entries go to a steward for review.":
+    '这张卡牌可提供的清单——每月时间与资源。你正以干事身份编辑;新增项会交给管理员审核。',
   'Time I can commit': '我能投入的时间',
   '✓ approved': '✓ 已批准',
   '✕ rejected': '✕ 已拒绝',
@@ -1606,6 +1609,9 @@ const ja: Table = {
   'Guild certification': 'ギルド認定',
   'Uncertified — request a card →': '未認定 — ロールカードを申請 →',
   'What I can bring': '提供できるもの',
+  'What this card can bring': 'このカードが提供できるもの',
+  "This card’s offerable catalog — its monthly time and resources. You’re editing it as an officer; new entries go to a steward for review.":
+    'このカードが提供できる一覧——毎月の時間とリソース。あなたは幹事として編集しています。新規項目はスチュワードの審査に回ります。',
   'Time I can commit': 'コミットできる時間',
   '✓ approved': '✓ 承認済み',
   '✕ rejected': '✕ 却下',
@@ -2642,6 +2648,9 @@ const fr: Table = {
   'Guild certification': 'Certification de guilde',
   'Uncertified — request a card →': 'Non certifié — demander une carte →',
   'What I can bring': 'Ce que je peux apporter',
+  'What this card can bring': 'Ce que cette carte peut apporter',
+  "This card’s offerable catalog — its monthly time and resources. You’re editing it as an officer; new entries go to a steward for review.":
+    'Le catalogue proposé par cette carte — son temps mensuel et ses ressources. Vous l’éditez en tant que responsable ; les nouveaux éléments passent en revue par un intendant.',
   'Time I can commit': 'Temps que je peux consacrer',
   '✓ approved': '✓ approuvé',
   '✕ rejected': '✕ rejeté',
