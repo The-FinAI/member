@@ -4,6 +4,8 @@
   import { member } from '$lib/session';
   import { t } from '$lib/i18n';
   import { get } from 'svelte/store';
+  import EntityCard from '$lib/EntityCard.svelte';
+  import { goto } from '$app/navigation';
 
   type PType = { id: string; name: string; leader_stake: number; join_stake: number; finish_bonus: number };
   type PStatus = { id: string; name: string; rank: number };
@@ -38,6 +40,15 @@
   let venues = $state<Venue[]>([]);
   let workingGroups = $state<WGroup[]>([]);
   let loading = $state(true);
+
+  // card grid is the default face; the dense table stays one click away
+  let view = $state<'cards' | 'table'>('cards');
+  // status name → EntityCard status dot kind
+  function projKind(name: string): 'pos' | 'warn' | 'dim' {
+    if (name === 'Finished') return 'pos';
+    if (name === 'Hold' || name === 'Under review') return 'warn';
+    return 'dim';
+  }
 
   // filters / search / sort
   let q = $state('');
@@ -569,14 +580,38 @@
     {#if q || typeFilter || statusFilter || venueFilter}
       <button class="ghost" onclick={() => { q = ''; typeFilter = ''; statusFilter = ''; venueFilter = ''; }}>{$t('Reset')}</button>
     {/if}
+    <div class="viewtoggle">
+      <button class:on={view === 'cards'} onclick={() => (view = 'cards')} title={$t('Card view')} aria-label={$t('Card view')}>▤</button>
+      <button class:on={view === 'table'} onclick={() => (view = 'table')} title={$t('Table view')} aria-label={$t('Table view')}>≣</button>
+    </div>
   </div>
 
-  <div class="card" style="padding:0; overflow-x:auto;">
-    {#if loading}
-      <p class="muted" style="padding:1rem;">{$t('Loading…')}</p>
-    {:else if rows.length === 0}
-      <p class="muted" style="padding:1rem;">{$t('No projects match.')}</p>
-    {:else}
+  {#if loading}
+    <div class="card"><p class="muted" style="padding:1rem;">{$t('Loading…')}</p></div>
+  {:else if rows.length === 0}
+    <div class="card"><p class="muted" style="padding:1rem;">{$t('No projects match.')}</p></div>
+  {:else if view === 'cards'}
+    <div class="card-grid">
+      {#each pageRows as r}
+        <EntityCard
+          type={r.type}
+          title={r.name}
+          subtitle={r.venue || ''}
+          status={r.claimable ? $t('lead open') : r.status}
+          statusKind={r.claimable ? 'warn' : projKind(r.status)}
+          accent={r.claimable}
+          stats={[
+            { label: 'Nominal pool', value: r.pool.toLocaleString() },
+            { label: 'Open needs', value: String(r.openNeeds) },
+            { label: 'members', value: String(r.members) },
+            ...(r.multiplier > 1 ? [{ label: '×Mult', value: '×' + r.multiplier.toFixed(2) }] : [])
+          ]}
+          onclick={() => goto(`/projects/${r.id}`)}
+        />
+      {/each}
+    </div>
+  {:else}
+    <div class="card" style="padding:0; overflow-x:auto;">
       <table>
         <thead class="sticky">
           <tr>
@@ -681,8 +716,8 @@
           </tr>
         </tfoot>
       </table>
-    {/if}
-  </div>
+    </div>
+  {/if}
 
   {#if !loading && rows.length > 0}
     <div class="row" style="justify-content:space-between; align-items:center;">
@@ -706,6 +741,14 @@
 </div>
 
 <style>
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: .8rem; }
+  .viewtoggle { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .viewtoggle button {
+    background: transparent; border: none; padding: .35rem .6rem; cursor: pointer;
+    color: var(--muted); font-size: 1rem; line-height: 1;
+  }
+  .viewtoggle button.on { background: var(--accent-soft); color: var(--accent); }
+
   .hof { padding: 0; overflow: hidden; }
   .hof-head {
     display: flex; align-items: center; justify-content: space-between;

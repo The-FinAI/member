@@ -7,6 +7,8 @@
   import Hint from '$lib/Hint.svelte';
   import GettingStarted from '$lib/GettingStarted.svelte';
   import Medal from '$lib/Medal.svelte';
+  import EntityCard from '$lib/EntityCard.svelte';
+  import { goto } from '$app/navigation';
   import { t } from '$lib/i18n';
   import { get } from 'svelte/store';
 
@@ -205,6 +207,17 @@
     if (name === 'Hold') return 'warn';
     return '';
   }
+  function statusKindOf(name: string | null | undefined): 'pos' | 'warn' | 'dim' {
+    if (name === 'Finished') return 'pos';
+    if (name === 'Hold' || name === 'Under review') return 'warn';
+    return 'dim';
+  }
+  function appKind(status: string): 'pos' | 'warn' | 'down' | 'dim' {
+    if (status === 'joined') return 'pos';
+    if (status === 'accepted') return 'warn';
+    if (status === 'declined') return 'down';
+    return 'dim';
+  }
   const certifiedCount = $derived(mySkills.filter((s) => s.certified_level).length);
   const myCards = $derived(mySkills.filter((s) => s.certified_level));
   const catalogResources = $derived(myResources.filter((r) => r.resource_type?.name !== 'Labor'));
@@ -274,54 +287,48 @@
 
   {#if error}<p style="color:var(--down);">{error}</p>{/if}
 
-  <!-- positions -->
-  <div class="card">
-    <h2>{$t('My positions')}</h2>
+  <!-- positions: each seat I hold, as a project card -->
+  <div class="card stack">
+    <h2 style="margin:0;">{$t('My positions')}</h2>
     {#if loading}
       <p class="muted">{$t('Loading…')}</p>
     {:else if myProjects.length === 0}
       <p class="muted">{$t('No positions yet. Browse')} <a href="/opportunities">{$t('Open Opportunities')}</a> {$t('to stake into a project, or')} <a href="/guide">{$t('read how it works')}</a>{$t('first.')}</p>
     {:else}
-      <table>
-        <thead><tr><th>{$t('Project')}</th><th>{$t('Role')}</th><th>{$t('Status')}</th></tr></thead>
-        <tbody>
-          {#each myProjects as p}
-            <tr>
-              <td>{#if p.project}<a href={`/projects/${p.project.id}`}>{p.project.name}</a>{:else}—{/if}</td>
-              <td class="dim">{p.project_role?.name ?? '—'}</td>
-              <td><span class="badge {statusClass(p.project?.project_status?.name)}">{p.project?.project_status?.name ?? '—'}</span></td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
+      <div class="card-grid">
+        {#each myProjects as p}
+          <EntityCard
+            type="Project"
+            title={p.project?.name ?? '—'}
+            status={p.project?.project_status?.name ?? ''}
+            statusKind={statusKindOf(p.project?.project_status?.name)}
+            stats={[{ label: 'Role', value: p.project_role?.name ?? '—' }]}
+            onclick={() => p.project && goto(`/projects/${p.project.id}`)}
+          />
+        {/each}
+      </div>
     {/if}
   </div>
 
-  <!-- applications -->
-  <div class="card">
-    <h2>{$t('My applications')}</h2>
+  <!-- applications: open orders into projects, as cards -->
+  <div class="card stack">
+    <h2 style="margin:0;">{$t('My applications')}</h2>
     {#if loading}
       <p class="muted">{$t('Loading…')}</p>
     {:else if myApps.length === 0}
       <p class="muted">{$t('No open orders.')}</p>
     {:else}
-      <table>
-        <thead><tr><th>{$t('Project')}</th><th>{$t('Status')}</th></tr></thead>
-        <tbody>
-          {#each myApps as a}
-            <tr>
-              <td>{#if a.open_need?.project}<a href={`/projects/${a.open_need.project.id}`}>{a.open_need.project.name}</a>{:else}—{/if}</td>
-              <td>
-                {#if a.status === 'accepted'}
-                  <a href={`/projects/${a.open_need?.project?.id}`}><span class="badge info">{$t('accepted · confirm to join →')}</span></a>
-                {:else}
-                  <span class="badge {a.status === 'joined' ? 'pos' : a.status === 'declined' ? 'neg' : 'dim'}">{a.status}</span>
-                {/if}
-              </td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
+      <div class="card-grid">
+        {#each myApps as a}
+          <EntityCard
+            type="Application"
+            title={a.open_need?.project?.name ?? '—'}
+            status={a.status === 'accepted' ? $t('accepted · confirm to join →') : a.status}
+            statusKind={appKind(a.status)}
+            onclick={() => a.open_need?.project && goto(`/projects/${a.open_need.project.id}`)}
+          />
+        {/each}
+      </div>
     {/if}
   </div>
 
@@ -483,3 +490,7 @@
     </div>
   {/if}
 </div>
+
+<style>
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: .8rem; }
+</style>
