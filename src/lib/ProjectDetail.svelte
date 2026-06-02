@@ -13,17 +13,23 @@
   // page. Pass `breadcrumbs={false}` inside a drawer.
   let { id, breadcrumbs = true }: { id: string; breadcrumbs?: boolean } = $props();
 
-  const sections = [
+  // in-page tab strip — every section id here must wrap a top-level block in
+  // `.detail-body`, and every top-level block must have one of these ids, or it
+  // leaks into view under every tab. The Contribute tab only shows when there's
+  // actually something to do there.
+  const sections = $derived([
     { id: 'status', label: 'Status' },
     { id: 'overview', label: 'Overview' },
+    ...(((!hasLeader && $member) || canContribute || iManage) ? [{ id: 'contribute', label: 'Contribute' }] : []),
     { id: 'milestones', label: 'Milestones' },
+    { id: 'records', label: 'Records & meetings' },
     { id: 'commitments', label: 'Stake commitments' },
     { id: 'settlement', label: 'Settlement' },
     { id: 'roster', label: 'Roster' },
     { id: 'needs', label: 'Open needs' },
     { id: 'resource-needs', label: 'Resource needs' },
     { id: 'history', label: 'History' }
-  ];
+  ]);
 
   type Project = {
     id: string; name: string; target_venue: string | null; summary: string | null;
@@ -1012,6 +1018,7 @@
       </div>
     </div>
 
+    <div id="contribute" class="stack" style="gap:1rem;">
     {#if !hasLeader && $member}
       <div class="stake-cta rise">
         <div class="row" style="justify-content:space-between; align-items:center; gap:.8rem; flex-wrap:wrap;">
@@ -1171,6 +1178,7 @@
         </div>
       </div>
     {/if}
+    </div><!-- /#contribute -->
 
     <!-- MILESTONES (outcome minting: nominal + multiplier) -->
     <div class="card stack" id="milestones">
@@ -1222,7 +1230,7 @@
       {/if}
     </div>
 
-    <div class="row" style="align-items:stretch; gap:1rem;">
+    <div class="row" id="records" style="align-items:stretch; gap:1rem;">
       <!-- RECORDS / LINKS -->
       <div class="card stack" style="flex:1; min-width:320px;">
         <h2 style="margin:0;">{$t('Records & links')}</h2>
