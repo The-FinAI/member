@@ -132,6 +132,7 @@
       </p>
       <ol class="checklist">
         <li>{$t('Forge a card for each researcher in your chapter — fill in who they are and stage the skills they bring (form below).')}</li>
+        <li>{@html $t("Claim your chapter's existing projects — open <a href='/projects'>Projects</a>, and on each one your chapter already runs use <strong>“Add a member directly”</strong> to seat your cards onto its roster (no application, no bond).")}</li>
         <li>{$t('Act as a card to declare its monthly contributions on the projects it joins — value accrues to the card until the person claims it.')}</li>
         <li>{$t('Review your roster below: every card you forged is listed, with its balance and staged skills.')}</li>
         <li>{$t('Clear your Approvals queue — over-capacity commitments from your chapter members wait for you there.')} <a href="/admin/approvals">{$t('Open Approvals →')}</a></li>

@@ -234,7 +234,7 @@
     <div class="card row" style="justify-content:space-between; align-items:center; gap:.75rem; border-left:3px solid var(--accent); flex-wrap:wrap;">
       <div class="stack" style="gap:.2rem;">
         <strong style="font-size:.95rem;">{$t("You're an officer — your chapter needs you")}</strong>
-        <span class="muted" style="font-size:.82rem;">{$t('Phase 1: forge a card for each researcher, declare their monthly work, and clear your approvals. Your checklist is on My Chapter.')}</span>
+        <span class="muted" style="font-size:.82rem;">{$t('Phase 1: forge a card for each researcher, claim your existing projects, declare their monthly work, and clear your approvals. Your checklist is on My Chapter.')}</span>
       </div>
       <a href="/my-chapter"><button>{$t('Go to My Chapter →')}</button></a>
     </div>

@@ -109,7 +109,7 @@
         <ol class="start">
           <li>{@html $t("Open <a href='/my-chapter'>My Chapter</a> and review your roster — every member who belongs to your chapter or group.")}</li>
           <li>{@html $t("<strong>Mint starter role cards</strong> onto each member for the skills you know they have. Cards are staged as a batch for review — nothing is final until approved.")}</li>
-          <li>{@html $t("Need someone on a seed project right away? On the project page use <strong>“Add a member directly”</strong> to place them on the roster — no application, no bond.")}</li>
+          <li>{@html $t("<strong>Claim your existing projects.</strong> Open the <a href='/projects'>Projects</a> your chapter or group already runs and use <strong>“Add a member directly”</strong> to seat your members and cards onto each roster — no application, no bond.")}</li>
           <li>{@html $t("Post a heads-up on the <a href='/admin/announcements'>announcement board</a> (admins) so your members know what to do.")}</li>
           <li>{@html $t("Clear your <a href='/admin/approvals'>Approvals</a> queue — it's the single place where everything waiting on you lands: role-card requests, chapter & working-group applications, member resources, project milestones, and any over-capacity monthly commitments. Approve or reject each in place.")}</li>
         </ol>
