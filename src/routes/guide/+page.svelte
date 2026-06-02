@@ -111,7 +111,7 @@
           <li>{@html $t("<strong>Mint starter role cards</strong> onto each member for the skills you know they have. Cards are staged as a batch for review — nothing is final until approved.")}</li>
           <li>{@html $t("Need someone on a seed project right away? On the project page use <strong>“Add a member directly”</strong> to place them on the roster — no application, no bond.")}</li>
           <li>{@html $t("Post a heads-up on the <a href='/admin/announcements'>announcement board</a> (admins) so your members know what to do.")}</li>
-          <li>{@html $t("If you hold the review capability, clear the queue of <a href='/skills'>card requests</a> your members submit.")}</li>
+          <li>{@html $t("Clear your <a href='/admin/approvals'>Approvals</a> queue — it's the single place where everything waiting on you lands: role-card requests, chapter & working-group applications, member resources, project milestones, and any over-capacity monthly commitments. Approve or reject each in place.")}</li>
         </ol>
       </div>
       <div class="track">
@@ -145,6 +145,7 @@
         <tr><td><a href="/units">{$t('Units')}</a></td><td>{$t('The 3 Chapters and 3 Working Groups — their officers, rosters and attached projects.')}</td></tr>
         <tr><td><a href="/wallet">{$t('Wallet')}</a></td><td>{$t('Your STR balance — liquid vs. nominal — and your full transaction history.')}</td></tr>
         <tr><td>{$t('My Chapter')}</td><td>{$t('Officers only. Mint role cards onto your members and manage your chapter’s cards.')}</td></tr>
+        <tr><td>{$t('Approvals')}</td><td>{$t('Officers & reviewers. One queue for every pending decision — role-card requests, chapter & working-group applications, member resources, project milestones, and over-capacity monthly commitments. Approve or reject each in place.')}</td></tr>
         <tr><td>{$t('Admin')}</td><td>{$t('Admins only. Every configurable knob: announcements, invites, positions, capabilities, venues, the skill tree, resources and the STR economy.')}</td></tr>
       </tbody>
     </table>
