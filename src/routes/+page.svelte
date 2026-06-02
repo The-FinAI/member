@@ -332,14 +332,14 @@
     {/if}
   </div>
 
-  <!-- certifications: read-only. Acquisition happens in the Guild. -->
+  <!-- certifications: read-only. The craft ladder lives in Community → Crafts. -->
   <div class="card stack">
     <div class="row" style="justify-content:space-between; align-items:center;">
       <h2 style="margin:0;">{$t('Certifications')}</h2>
-      <a href="/skills"><button>{$t('Go to the Guild →')}</button></a>
+      <a href="/community?tab=crafts"><button>{$t('Browse the craft ladder →')}</button></a>
     </div>
     <p class="muted" style="font-size:.82rem; margin-top:-.35rem;">
-      {@html $t("Skills aren't self-rated — they're <strong>earned</strong>. Request a reviewed role card in <a href='/skills'>the Guild</a> to climb Apprentice → Journeyman → Craftsman → Master.")}
+      {@html $t("Skills aren't self-rated — they're <strong>earned</strong>. Request a reviewed role card in <a href='/community?tab=crafts'>the Guild</a> to climb Apprentice → Journeyman → Craftsman → Master.")}
     </p>
     {#if myCards.length > 0}
       <div class="row" style="gap:.5rem; flex-wrap:wrap;">
@@ -349,7 +349,7 @@
     {#if skillsLoading}
       <p class="muted">{$t('Loading…')}</p>
     {:else if mySkills.length === 0}
-      <p class="muted">{@html $t("No certifications yet. Visit <a href='/skills'>the Guild</a> to request your first role card.")}</p>
+      <p class="muted">{@html $t("No certifications yet. Visit <a href='/community?tab=crafts'>the Guild</a> to request your first role card.")}</p>
     {:else}
       <table>
         <thead><tr><th>{$t('Skill')}</th><th>{$t('Guild certification')}</th></tr></thead>
@@ -361,7 +361,7 @@
                 {#if s.certified_level}
                   <Medal name={skillName(s.skill_id)} level={s.certified_level} size="sm" />
                 {:else}
-                  <a href="/skills" class="badge dim" style="text-decoration:none;">{$t('Uncertified — request a card →')}</a>
+                  <a href="/community?tab=crafts" class="badge dim" style="text-decoration:none;">{$t('Uncertified — request a card →')}</a>
                 {/if}
               </td>
             </tr>
