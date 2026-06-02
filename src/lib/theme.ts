@@ -7,7 +7,7 @@ function initial(): Theme {
     const t = document.documentElement.getAttribute('data-theme');
     if (t === 'light' || t === 'dark') return t;
   }
-  return 'dark';
+  return 'light';
 }
 
 export const theme = writable<Theme>(initial());

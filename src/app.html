@@ -4,16 +4,16 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>The Fin AI · Community</title>
-    <meta name="theme-color" content="#0a0d12" />
+    <meta name="theme-color" content="#f6f7f9" />
     <link rel="icon" type="image/png" href="/logo.png" />
     <script>
-      // No-FOUC theme: apply saved theme before first paint (default dark).
+      // No-FOUC theme: apply saved theme before first paint (default light · editorial).
       try {
         var t = localStorage.getItem('theme');
-        if (t !== 'light' && t !== 'dark') t = 'dark';
+        if (t !== 'light' && t !== 'dark') t = 'light';
         document.documentElement.setAttribute('data-theme', t);
       } catch (e) {
-        document.documentElement.setAttribute('data-theme', 'dark');
+        document.documentElement.setAttribute('data-theme', 'light');
       }
       // Apply saved locale to <html lang> before first paint so i18n picks it up.
       try {

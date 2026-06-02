@@ -40,31 +40,37 @@
 }
 
 :root[data-theme="light"] {
-  --bg:        #f4f7fb;
-  --bg-2:      #eef2f8;
+  /* Direction C · 极简研究台 — editorial light: airy neutrals, restrained teal */
+  --bg:        #f6f7f9;
+  --bg-2:      #eef1f5;
   --card:      #ffffff;
-  --card-2:    #f7f9fc;
+  --card-2:    #fbfcfd;
   --elevate:   #ffffff;
-  --border:    #e3e9f1;
-  --border-2:  #d2dbe7;
-  --text:      #0c1626;
-  --text-dim:  #33415a;
-  --muted:     #64748b;
-  --accent:    #07a98b;
-  --accent-2:  #059478;
+  --border:    #e6e9ee;
+  --border-2:  #d6dce4;
+  --text:      #16202e;
+  --text-dim:  #38465a;
+  --muted:     #5a6878;
+  --accent:    #0a9c80;
+  --accent-2:  #07866d;
   --accent-ink:#ffffff;
-  --accent-soft: rgba(7, 169, 139, .10);
-  --up:        #0f9d58;
-  --up-soft:   rgba(15, 157, 88, .10);
-  --down:      #e02d4b;
-  --down-soft: rgba(224, 45, 75, .09);
-  --warn:      #c98a04;
-  --warn-soft: rgba(201, 138, 4, .12);
-  --info:      #2563eb;
-  --info-soft: rgba(37, 99, 235, .10);
-  --shadow:    0 1px 2px rgba(16,24,40,.04), 0 8px 24px rgba(16,24,40,.06);
-  --ring:      0 0 0 3px rgba(7, 169, 139, .18);
+  --accent-soft: rgba(10, 156, 128, .09);
+  --up:        #138a5a;
+  --up-soft:   rgba(19, 138, 90, .10);
+  --down:      #d83a52;
+  --down-soft: rgba(216, 58, 82, .09);
+  --warn:      #b8860b;
+  --warn-soft: rgba(184, 134, 11, .12);
+  --info:      #2f6fed;
+  --info-soft: rgba(47, 111, 237, .10);
+  --shadow:    0 1px 2px rgba(16,24,40,.03), 0 6px 20px rgba(16,24,40,.05);
+  --ring:      0 0 0 3px rgba(10, 156, 128, .18);
   color-scheme: light;
+}
+
+/* Editorial: drop the dark theme's accent glow for a flat, calm canvas */
+:root[data-theme="light"] body {
+  background: var(--bg);
 }
 
 * { box-sizing: border-box; }

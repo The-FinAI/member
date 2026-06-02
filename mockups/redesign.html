@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>The Fin AI · Community — 重设计提案</title>
+<style>
+/* ============================================================
+   全站重设计 · 视觉方向提案（3 选 1）
+   切换顶部按钮即可在三种方向间对比。
+   信息架构是共享的；变的是设计语言（配色/排版/质感/卡片形态）。
+   ============================================================ */
+
+/* ---- 共享几何 ---- */
+:root{
+  --r-lg:16px; --r-md:11px; --r-sm:8px;
+  --gap:14px;
+  --sidebar:236px;
+  --maxw:1180px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:var(--font, "Inter", system-ui, sans-serif);
+  background:var(--bg); color:var(--text);
+  -webkit-font-smoothing:antialiased;
+  transition:background .25s ease, color .25s ease;
+}
+.mono{font-family:"SF Mono", "JetBrains Mono", ui-monospace, monospace; font-variant-numeric:tabular-nums;}
+
+/* =====================================================================
+   方向 A — TERMINAL（暗色交易终端 Pro）：演化现有风格，更冷更密更精
+   ===================================================================== */
+body[data-theme="terminal"]{
+  --font:"Inter", system-ui, sans-serif;
+  --bg:#0a0e14; --panel:#111723; --panel-2:#0d1320; --line:#1d2738;
+  --text:#e8edf6; --muted:#8a99b0; --dim:#5d6b82;
+  --teal:#00d3a7; --gold:#f0b90b; --green:#16c784; --blue:#4c8dff; --red:#f6465d; --violet:#a371f7;
+  --accent:var(--teal); --accent-soft:rgba(0,211,167,.12);
+  --card-bg:#0f1622; --card-line:#22304a;
+  --display-font:var(--font); --display-weight:700; --display-spacing:-.01em;
+  --texture:none;
+  --chip-radius:999px;
+}
+/* =====================================================================
+   方向 B — ARCANE（密教卡桌）：温暖墨色羊皮，卡片有实体质感，概念忠实
+   ===================================================================== */
+body[data-theme="arcane"]{
+  --font:"Inter", system-ui, sans-serif;
+  --bg:#15110c; --panel:#1f1812; --panel-2:#1a140e; --line:#332518;
+  --text:#f0e6d4; --muted:#b29c7e; --dim:#7d6a50;
+  --teal:#5fb0a0; --gold:#d9a441; --green:#7fae5a; --blue:#6f97c4; --red:#c5604f; --violet:#a888c4;
+  --accent:var(--gold); --accent-soft:rgba(217,164,65,.13);
+  --card-bg:#241b12; --card-line:#4a371f;
+  --display-font:"Cormorant Garamond", "Georgia", serif; --display-weight:600; --display-spacing:.01em;
+  --texture:radial-gradient(circle at 20% 0%, rgba(217,164,65,.05), transparent 60%);
+  --chip-radius:6px;
+}
+/* =====================================================================
+   方向 C — LAB（极简研究台）：明亮、编辑感、留白、克制配色，机构专业
+   ===================================================================== */
+body[data-theme="lab"]{
+  --font:"Inter", system-ui, sans-serif;
+  --bg:#f6f7f9; --panel:#ffffff; --panel-2:#fbfcfd; --line:#e6e9ee;
+  --text:#16202e; --muted:#5a6878; --dim:#9aa6b4;
+  --teal:#0a9c80; --gold:#b8860b; --green:#138a5a; --blue:#2f6fed; --red:#d83a52; --violet:#7a52d6;
+  --accent:var(--teal); --accent-soft:rgba(10,156,128,.09);
+  --card-bg:#ffffff; --card-line:#e6e9ee;
+  --display-font:var(--font); --display-weight:700; --display-spacing:-.02em;
+  --texture:none;
+  --chip-radius:999px;
+}
+
+/* ---- 顶部方向切换条 ---- */
+.switcher{
+  position:sticky; top:0; z-index:50;
+  display:flex; align-items:center; gap:12px;
+  padding:10px 18px; background:var(--panel); border-bottom:1px solid var(--line);
+  backdrop-filter:blur(8px);
+}
+.switcher .lbl{font-size:.74rem; letter-spacing:.08em; text-transform:uppercase; color:var(--dim);}
+.switcher .seg{display:inline-flex; border:1px solid var(--line); border-radius:999px; overflow:hidden;}
+.switcher .seg button{
+  background:transparent; border:none; color:var(--muted); cursor:pointer;
+  padding:7px 16px; font:inherit; font-size:.84rem; font-weight:600;
+}
+.switcher .seg button.on{background:var(--accent); color:#fff;}
+body[data-theme="lab"] .switcher .seg button.on{color:#fff;}
+.switcher .note{margin-left:auto; font-size:.78rem; color:var(--dim);}
+
+/* ---- 应用外壳 ---- */
+.app{display:grid; grid-template-columns:var(--sidebar) 1fr; min-height:calc(100vh - 45px);}
+
+/* 侧边导航 */
+.side{
+  background:var(--panel-2); border-right:1px solid var(--line);
+  padding:18px 14px; display:flex; flex-direction:column; gap:4px;
+}
+.brand{display:flex; align-items:center; gap:10px; padding:6px 8px 16px;}
+.brand .mark{
+  width:30px; height:30px; border-radius:9px; flex:none;
+  background:linear-gradient(135deg, var(--teal), var(--blue));
+  display:grid; place-items:center; color:#fff; font-weight:800; font-size:.95rem;
+}
+.brand .bt{font-family:var(--display-font); font-weight:var(--display-weight); font-size:1.04rem; letter-spacing:var(--display-spacing);}
+.brand .bs{font-size:.7rem; color:var(--dim); letter-spacing:.04em;}
+.nav-group{margin-top:12px;}
+.nav-group .gt{font-size:.66rem; letter-spacing:.1em; text-transform:uppercase; color:var(--dim); padding:4px 10px;}
+.nav a{
+  display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:var(--r-sm);
+  color:var(--muted); text-decoration:none; font-size:.88rem; font-weight:500;
+}
+.nav a .ic{width:18px; text-align:center; opacity:.85;}
+.nav a:hover{background:var(--accent-soft); color:var(--text);}
+.nav a.active{background:var(--accent-soft); color:var(--accent); font-weight:600;}
+.nav a .badge-n{margin-left:auto; font-size:.7rem; background:var(--accent); color:#fff; border-radius:999px; padding:1px 7px;}
+.side .wallet{
+  margin-top:auto; border:1px solid var(--line); border-radius:var(--r-md); padding:11px;
+  background:var(--card-bg);
+}
+.wallet .wr{display:flex; justify-content:space-between; align-items:baseline;}
+.wallet .wl{font-size:.72rem; color:var(--muted);}
+.wallet .wv{font-weight:700;}
+
+/* 主区 */
+.main{padding:22px 26px; overflow:auto; background-image:var(--texture);}
+.wrap{max-width:var(--maxw); margin:0 auto;}
+.hello h1{font-family:var(--display-font); font-weight:var(--display-weight); letter-spacing:var(--display-spacing); margin:0; font-size:1.7rem;}
+.hello p{margin:.3rem 0 0; color:var(--muted); font-size:.9rem;}
+
+/* 相位 KPI（技艺/信誉/流动） */
+.aspects{display:grid; grid-template-columns:repeat(3,1fr); gap:var(--gap); margin-top:20px;}
+.aspect{
+  border:1px solid var(--line); border-radius:var(--r-lg); padding:16px 18px; background:var(--panel);
+  position:relative; overflow:hidden;
+}
+.aspect::before{content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--c);}
+.aspect .al{font-size:.74rem; color:var(--muted); display:flex; align-items:center; gap:7px;}
+.aspect .al .dot{width:8px;height:8px;border-radius:50%; background:var(--c);}
+.aspect .av{font-size:1.9rem; font-weight:700; margin-top:6px; letter-spacing:-.02em;}
+.aspect .as{font-size:.76rem; color:var(--dim); margin-top:2px;}
+.aspect.teal{--c:var(--teal)} .aspect.gold{--c:var(--gold)} .aspect.green{--c:var(--green)}
+
+/* 三动词 行动卡 */
+.sec-t{font-family:var(--display-font); font-weight:var(--display-weight); font-size:1.05rem; margin:26px 0 12px; letter-spacing:var(--display-spacing);}
+.verbs{display:grid; grid-template-columns:repeat(3,1fr); gap:var(--gap);}
+.verb{
+  border:1px solid var(--line); border-radius:var(--r-lg); padding:16px; background:var(--panel);
+  cursor:pointer; transition:transform .12s ease, border-color .12s ease;
+}
+.verb:hover{transform:translateY(-2px); border-color:var(--accent);}
+.verb .vh{display:flex; align-items:center; gap:10px;}
+.verb .vi{width:34px;height:34px;border-radius:10px; display:grid;place-items:center; font-size:1.1rem; background:var(--accent-soft); color:var(--accent);}
+.verb .vn{font-weight:700;}
+.verb .vsub{font-size:.78rem; color:var(--muted); margin-top:10px; line-height:1.45;}
+.verb .varrow{margin-top:12px; font-size:.8rem; color:var(--accent); font-weight:600;}
+
+/* 三种核心卡片样板 */
+.specimens{display:grid; grid-template-columns:repeat(3,1fr); gap:var(--gap); align-items:start;}
+
+/* 成员卡 */
+.card{
+  border:1px solid var(--card-line); border-radius:var(--r-lg); background:var(--card-bg);
+  overflow:hidden; position:relative;
+}
+.card .ct{font-size:.64rem; letter-spacing:.12em; text-transform:uppercase; color:var(--dim); padding:11px 14px 0;}
+.member .top{display:flex; gap:11px; align-items:center; padding:8px 14px 12px;}
+.member .ava{
+  width:44px;height:44px;border-radius:12px;flex:none; display:grid;place-items:center;
+  font-weight:700; color:#fff; background:linear-gradient(135deg,var(--violet),var(--blue));
+}
+.member .nm{font-weight:700; font-size:.98rem;}
+.member .af{font-size:.76rem; color:var(--muted);}
+.medals{display:flex; gap:6px; padding:0 14px 12px; flex-wrap:wrap;}
+.medal{font-size:.7rem; padding:3px 9px; border-radius:var(--chip-radius); border:1px solid var(--card-line); display:inline-flex; gap:5px; align-items:center;}
+.medal .m{width:7px;height:7px;border-radius:50%;}
+.medal.t{color:var(--teal);} .medal.t .m{background:var(--teal);}
+.medal.g{color:var(--gold);} .medal.g .m{background:var(--gold);}
+.capbar{margin:0 14px 6px; height:7px; border-radius:4px; background:var(--line); overflow:hidden;}
+.capbar i{display:block; height:100%;}
+.capbar i.l{background:var(--green); width:62%; float:left;}
+.capbar i.b{background:var(--gold); width:23%; float:left; opacity:.8;}
+.capnote{padding:0 14px 14px; font-size:.72rem; color:var(--dim);}
+
+/* 项目槽卡 */
+.slot .top{padding:8px 14px 10px;}
+.slot .pn{font-weight:700; font-size:.98rem; line-height:1.25;}
+.slot .pv{font-size:.76rem; color:var(--muted); margin-top:3px;}
+.seats{padding:4px 14px 14px; display:flex; flex-direction:column; gap:7px;}
+.seat{display:flex; align-items:center; gap:9px; padding:7px 9px; border:1px solid var(--card-line); border-radius:var(--r-sm); font-size:.8rem;}
+.seat .sk{width:9px;height:9px;border-radius:50%; flex:none;}
+.seat.filled .sk{background:var(--green);}
+.seat.open .sk{background:var(--gold);}
+.seat .srole{color:var(--text); font-weight:600;}
+.seat .swho{color:var(--muted); margin-left:auto; font-size:.76rem;}
+.seat.open{border-style:dashed;}
+.seat.open .swho{color:var(--gold);}
+
+/* 徽章/铸造卡 */
+.cred .top{padding:8px 14px 12px;}
+.cred .skill{font-weight:700; font-size:.98rem;}
+.cred .lvl{font-size:.78rem; color:var(--gold); margin-top:3px; font-weight:600;}
+.cred .gauge{display:flex; gap:4px; padding:0 14px 12px;}
+.cred .gauge i{flex:1; height:6px; border-radius:3px; background:var(--line);}
+.cred .gauge i.on{background:var(--gold);}
+.cred .meta{padding:0 14px 14px; font-size:.73rem; color:var(--dim);}
+
+/* 铸造队列 strip */
+.forge-strip{
+  margin-top:22px; border:1px solid var(--line); border-radius:var(--r-lg); background:var(--panel); overflow:hidden;
+}
+.fs-head{display:flex; align-items:center; gap:10px; padding:13px 16px; border-bottom:1px solid var(--line);}
+.fs-head .ft{font-weight:700;}
+.fs-head .fn{font-size:.72rem; background:var(--red); color:#fff; border-radius:999px; padding:1px 8px;}
+.fs-head .more{margin-left:auto; font-size:.8rem; color:var(--accent); font-weight:600; cursor:pointer;}
+.fs-row{display:flex; align-items:center; gap:12px; padding:11px 16px; border-bottom:1px solid var(--line); font-size:.84rem;}
+.fs-row:last-child{border-bottom:none;}
+.fs-row .tag{font-size:.68rem; padding:2px 8px; border-radius:var(--chip-radius); border:1px solid var(--card-line); color:var(--muted);}
+.fs-row .tag.badge{color:var(--teal); border-color:var(--teal);}
+.fs-row .tag.need{color:var(--blue); border-color:var(--blue);}
+.fs-row .tag.cap{color:var(--gold); border-color:var(--gold);}
+.fs-row .who{color:var(--muted);}
+.fs-row .act{margin-left:auto; display:flex; gap:7px;}
+.fs-row .act button{font:inherit; font-size:.76rem; border-radius:var(--r-sm); padding:5px 12px; cursor:pointer; border:1px solid var(--card-line); background:transparent; color:var(--muted);}
+.fs-row .act button.ok{background:var(--green); border-color:var(--green); color:#fff;}
+
+.foot{margin:26px 0 10px; text-align:center; color:var(--dim); font-size:.76rem;}
+@media (max-width:880px){
+  .app{grid-template-columns:1fr;} .side{display:none;}
+  .aspects,.verbs,.specimens{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body data-theme="terminal">
+
+<div class="switcher">
+  <span class="lbl">视觉方向</span>
+  <div class="seg">
+    <button data-set="terminal" class="on">A · 交易终端</button>
+    <button data-set="arcane">B · 密教卡桌</button>
+    <button data-set="lab">C · 极简研究台</button>
+  </div>
+  <span class="note">同一套信息架构，三种设计语言 — 选一个方向，我再铺到全站 34 个页面</span>
+</div>
+
+<div class="app">
+  <!-- 侧边导航：按「卡 / 槽 / 动词」概念重组 -->
+  <aside class="side">
+    <div class="brand">
+      <div class="mark">Fin</div>
+      <div>
+        <div class="bt">The Fin AI</div>
+        <div class="bs">Research Community</div>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <a class="active"><span class="ic">◎</span> 总览 Overview</a>
+
+      <div class="nav-group"><div class="gt">卡 · Cards</div></div>
+      <a><span class="ic">👤</span> 卡册 Binder</a>
+      <a><span class="ic">🎖</span> 徽章 Credentials</a>
+      <a><span class="ic">🧩</span> 资源 Resources</a>
+
+      <div class="nav-group"><div class="gt">槽 · Slots</div></div>
+      <a><span class="ic">▦</span> 槽板 Projects</a>
+      <a><span class="ic">⊡</span> 开放需求 Needs <span class="badge-n">12</span></a>
+
+      <div class="nav-group"><div class="gt">动词 · Verbs</div></div>
+      <a><span class="ic">⚒</span> 铸造 Forge</a>
+      <a><span class="ic">✦</span> 审批队列 Queue <span class="badge-n">5</span></a>
+      <a><span class="ic">⚖</span> 结算 Settle</a>
+
+      <div class="nav-group"><div class="gt">社区</div></div>
+      <a><span class="ic">🏛</span> 分会 & 工作组</a>
+      <a><span class="ic">⚙</span> Admin</a>
+    </nav>
+
+    <div class="wallet">
+      <div class="wr"><span class="wl">流动 STR</span><span class="wv mono">12,480</span></div>
+      <div class="wr" style="margin-top:6px;"><span class="wl">名义(锁定)</span><span class="wv mono" style="color:var(--blue)">3,200</span></div>
+    </div>
+  </aside>
+
+  <!-- 主区：首页/总览 -->
+  <main class="main">
+    <div class="wrap">
+      <div class="hello">
+        <h1>晚上好，黄金敏</h1>
+        <p>你是 NLP 工作组干事 · 上海分会会长 — 本月有 5 项铸造待你审批</p>
+      </div>
+
+      <!-- 两相位 + 流动 -->
+      <div class="aspects">
+        <div class="aspect teal">
+          <div class="al"><span class="dot"></span>技艺 · Access</div>
+          <div class="av mono">7</div>
+          <div class="as">已认证徽章 · 最高 Master 级 ×2</div>
+        </div>
+        <div class="aspect gold">
+          <div class="al"><span class="dot"></span>信誉 · Authority</div>
+          <div class="av mono">Craftsman</div>
+          <div class="as">行会等级 · 可主理项目 · 可发需求</div>
+        </div>
+        <div class="aspect green">
+          <div class="al"><span class="dot"></span>流动 · Liquid STR</div>
+          <div class="av mono">12,480</div>
+          <div class="as">另有 3,200 名义锁定，待项目铸成结算</div>
+        </div>
+      </div>
+
+      <!-- 三动词 -->
+      <div class="sec-t">动词 · 你能做什么</div>
+      <div class="verbs">
+        <div class="verb">
+          <div class="vh"><div class="vi">⚒</div><div class="vn">Forge · 铸卡</div></div>
+          <div class="vsub">造一张新成员卡、提交徽章、登记资源、或为项目发一条需求。每次铸造进统一审批队列。</div>
+          <div class="varrow">开始铸造 →</div>
+        </div>
+        <div class="verb">
+          <div class="vh"><div class="vi">▶</div><div class="vn">Work · 进槽</div></div>
+          <div class="vsub">把一张卡投入项目的开放槽位，承诺本月工时/资源额度，实时铸出名义 STR。</div>
+          <div class="varrow">投入项目 →</div>
+        </div>
+        <div class="verb">
+          <div class="vh"><div class="vi">⚖</div><div class="vn">Settle · 结算</div></div>
+          <div class="vsub">项目铸成时，把锁定的名义 STR 按作者次序与贡献兑现为流动 STR，落入账本。</div>
+          <div class="varrow">查看结算 →</div>
+        </div>
+      </div>
+
+      <!-- 三种核心卡片样板 -->
+      <div class="sec-t">设计语言 · 三类核心卡片</div>
+      <div class="specimens">
+        <!-- 成员卡 -->
+        <div class="card member">
+          <div class="ct">成员卡 · Agent</div>
+          <div class="top">
+            <div class="ava">ZW</div>
+            <div>
+              <div class="nm">张未</div>
+              <div class="af">复旦大学 · NLP 工作组</div>
+            </div>
+          </div>
+          <div class="medals">
+            <span class="medal t"><span class="m"></span>NLP · Craftsman</span>
+            <span class="medal g"><span class="m"></span>统计 · Journeyman</span>
+          </div>
+          <div class="capbar"><i class="l"></i><i class="b"></i></div>
+          <div class="capnote">本月工时 62% 已承诺 · 23% 锁定待结算 · 余 15h 可投</div>
+        </div>
+
+        <!-- 项目槽卡 -->
+        <div class="card slot">
+          <div class="ct">项目 · Slot</div>
+          <div class="top">
+            <div class="pn">多语言金融情绪基准 v2</div>
+            <div class="pv">📚 EMNLP 2026 · 截止 6 月 15 日</div>
+          </div>
+          <div class="seats">
+            <div class="seat filled"><span class="sk"></span><span class="srole">一作 / Leader</span><span class="swho">张未</span></div>
+            <div class="seat filled"><span class="sk"></span><span class="srole">工时 · 标注</span><span class="swho">李航</span></div>
+            <div class="seat open"><span class="sk"></span><span class="srole">资源 · GPU 集群</span><span class="swho">需 Journeyman ↑</span></div>
+          </div>
+        </div>
+
+        <!-- 徽章卡 -->
+        <div class="card cred">
+          <div class="ct">徽章 · Credential</div>
+          <div class="top">
+            <div class="skill">大规模预训练</div>
+            <div class="lvl">Master · 第 4 级</div>
+          </div>
+          <div class="gauge"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div>
+          <div class="meta">由 NLP 工作组干事铸造 · 2026-03 · 解锁主理资格</div>
+        </div>
+      </div>
+
+      <!-- 审批队列 -->
+      <div class="forge-strip">
+        <div class="fs-head">
+          <span class="ft">铸造队列 · 待你审批</span>
+          <span class="fn">5</span>
+          <span class="more">全部 →</span>
+        </div>
+        <div class="fs-row">
+          <span class="tag badge">徽章</span>
+          <span>陈思 申请 <b>时序预测 · Journeyman</b></span>
+          <span class="who">· 由 上海分会 提交</span>
+          <span class="act"><button>退回</button><button class="ok">批准</button></span>
+        </div>
+        <div class="fs-row">
+          <span class="tag need">需求</span>
+          <span><b>低资源翻译</b> 新增 工时槽 ×2</span>
+          <span class="who">· NLP 工作组</span>
+          <span class="act"><button>退回</button><button class="ok">批准</button></span>
+        </div>
+        <div class="fs-row">
+          <span class="tag cap">越容量</span>
+          <span>李航 本月承诺超出 GPU 额度 18%</span>
+          <span class="who">· 待裁定</span>
+          <span class="act"><button>退回</button><button class="ok">批准</button></span>
+        </div>
+      </div>
+
+      <div class="foot">样板提案 · 仅展示首页 + 导航 + 三类卡片 — 选定方向后铺到全部 34 个页面</div>
+    </div>
+  </main>
+</div>
+
+<script>
+  const btns = document.querySelectorAll('.switcher .seg button');
+  btns.forEach(b => b.addEventListener('click', () => {
+    document.body.dataset.theme = b.dataset.set;
+    btns.forEach(x => x.classList.toggle('on', x === b));
+  }));
+</script>
+</body>
+</html>
