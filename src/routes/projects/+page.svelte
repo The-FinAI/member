@@ -83,7 +83,10 @@
   let statusFilter = $state('');
   let venueFilter = $state('');
   type SortKey = 'name' | 'type' | 'status' | 'leader' | 'members' | 'openNeeds' | 'escrow' | 'pool' | 'multiplier' | 'msVerified' | 'venue' | 'deadline';
-  let sortKey = $state<SortKey>('pool');
+  // Default to the deadline board: papers whose target venue/meeting is
+  // soonest float to the top (current time is the cutoff — past-due and
+  // dateless projects sink below), so the nearest submissions get attention.
+  let sortKey = $state<SortKey>('deadline');
   let sortDir = $state<1 | -1>(1);
 
   // create form
