@@ -70,7 +70,7 @@
 
 <div class="stack" style="max-width: 420px; margin: 4rem auto;">
   <div class="row" style="justify-content:space-between; gap:.55rem; margin-bottom:.25rem;">
-    <span class="brand" style="font-size:1.2rem;"><span class="dot"></span>The&nbsp;Fin&nbsp;AI <span class="muted" style="font-weight:500;">· Stater</span></span>
+    <span class="brand" style="font-size:1.2rem;"><span class="dot"></span>The&nbsp;Fin&nbsp;AI <span class="muted" style="font-weight:500;">· Community</span></span>
     <LangSwitcher />
   </div>
   <div class="card stack">
