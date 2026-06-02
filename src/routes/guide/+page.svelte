@@ -100,33 +100,31 @@
   <section id="phase1" class="card stack">
     <h2>{$t('Phase 1 playbook — exactly what to do now')}</h2>
     <p>
-      {@html $t("Phase 1 has one job: <strong>build the Guild</strong>. We forge everyone's role cards and set each person's labor rate, so that when the project economy opens in Phase 2 the numbers are already real. There are two tracks — pick the one that's you. (Many people are both.)")}
+      {@html $t("<strong>Phase 1 is officers only.</strong> Ordinary researchers aren't invited yet — right now the only people in the system are chapter chairs, secretaries and working-group leaders. Your job is to bring in the people who already work under you as <strong>cards</strong> and to claim the projects your chapter already runs, so that when the economy opens in Phase 2 the skill graph and rosters are already real.")}
     </p>
     <div class="tracks">
       <div class="track">
-        <span class="tlabel">{$t('Officers')}</span>
+        <span class="tlabel">{$t('Officers — now')}</span>
         <p class="tlead">{$t('Chapter chairs & secretaries, working-group leaders.')}</p>
         <ol class="start">
-          <li>{@html $t("Open <a href='/my-chapter'>My Chapter</a> and review your roster — every member who belongs to your chapter or group.")}</li>
-          <li>{@html $t("<strong>Mint starter role cards</strong> onto each member for the skills you know they have. Cards are staged as a batch for review — nothing is final until approved.")}</li>
-          <li>{@html $t("<strong>Claim your existing projects.</strong> Open the <a href='/projects'>Projects</a> your chapter or group already runs and use <strong>“Add a member directly”</strong> to seat your members and cards onto each roster — no application, no bond.")}</li>
-          <li>{@html $t("Post a heads-up on the <a href='/admin/announcements'>announcement board</a> (admins) so your members know what to do.")}</li>
+          <li>{@html $t("Open <a href='/my-chapter'>My Chapter</a> and <strong>forge a card</strong> for each person who works under you — their identity, the skills they bring, the resources they offer (compute, API, funding, data) and their monthly hours, all in one batch. <strong>Each person is forged only once.</strong>")}</li>
+          <li>{@html $t("<strong>Claim your existing projects.</strong> Open the <a href='/projects'>Projects</a> your chapter or group already runs and use <strong>“Add a member directly”</strong> to seat your cards onto each roster — no application, no bond.")}</li>
+          <li>{@html $t("Act as a card to <strong>declare its monthly contributions</strong> on the projects it joins. Value accrues to the card and stays custodial until the real person signs up and claims it.")}</li>
           <li>{@html $t("Clear your <a href='/admin/approvals'>Approvals</a> queue — it's the single place where everything waiting on you lands: role-card requests, chapter & working-group applications, member resources, project milestones, and any over-capacity monthly commitments. Approve or reject each in place.")}</li>
         </ol>
       </div>
       <div class="track">
-        <span class="tlabel">{$t('Everyone')}</span>
-        <p class="tlead">{$t('Every member, officer or not.')}</p>
+        <span class="tlabel">{$t('Members — Phase 2')}</span>
+        <p class="tlead">{$t('Researchers, once they are invited.')}</p>
         <ol class="start">
-          <li>{@html $t("Open your <a href='/'>Home / Portfolio</a> and fill in <strong>What I can bring</strong>: your monthly labor hours and any resources (compute, API, funding, data).")}</li>
-          <li>{@html $t("Go to the <a href='/skills'>Guild</a> and <strong>request the role cards</strong> that match your real skills. Each request goes to a reviewer.")}</li>
-          <li>{@html $t("Once approved, your cards appear as medals on your <a href='/members'>public page</a> and set your labor rate.")}</li>
-          <li>{@html $t("Watch your Chapter / Working Group climb the <a href='/members'>People</a> boards as cards are forged across the community.")}</li>
+          <li>{@html $t("Sign in with your invite and <strong>claim your card</strong> — the identity, skills and resources your officer forged for you become yours.")}</li>
+          <li>{@html $t("Fill in or adjust <strong>What I can bring</strong> on your <a href='/'>Home / Portfolio</a>, and request any role cards your officer hasn't already staged.")}</li>
+          <li>{@html $t("Join projects, apply to open needs, and the contributions custodied on your card convert into your own balance.")}</li>
         </ol>
       </div>
     </div>
     <div class="note">
-      <p style="margin:0;">{@html $t("<strong>No STR moves in Phase 1.</strong> There are no bonds, no project pools and no payouts yet — minting cards is free. This phase is purely about building an honest skill graph. The full economy below switches on in Phase 2.")}</p>
+      <p style="margin:0;">{@html $t("<strong>No STR moves in Phase 1.</strong> There are no bonds, no project pools and no payouts yet — forging cards is free. This phase is purely about building an honest skill graph and seeding the rosters. The full economy below switches on in Phase 2.")}</p>
     </div>
   </section>
 

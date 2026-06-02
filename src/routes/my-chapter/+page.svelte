@@ -12,6 +12,8 @@
   };
   type Skill = { id: string; name: string; parent_id: string | null };
   type CardSkill = { member_id: string; certified_level: string | null; skill: { name: string } | null };
+  type ResType = { id: string; name: string; unit: string | null };
+  type StagedRes = { typeId: string; capacity: string };
 
   const LEVELS = ['apprentice', 'journeyman', 'craftsman', 'master'];
   const LEVEL_LABEL: Record<string, string> = {
@@ -29,9 +31,22 @@
   let msg = $state('');
   let busy = $state('');
 
-  // forge-card form: identity + staged skills
+  // forge-card form: identity + staged skills + resources
   let cName = $state(''); let cEmail = $state(''); let cAffil = $state(''); let cUnit = $state('');
   let staged = $state<Record<string, string>>({}); // skillId -> level
+  let cHours = $state(''); // monthly labor hours for this card
+  let resTypes = $state<ResType[]>([]);
+  let stagedRes = $state<StagedRes[]>([]); // non-labor resources to attach
+  let rType = $state(''); let rCap = $state('');
+  const laborType = $derived(resTypes.find((r) => r.name === 'Labor') ?? null);
+  const offerTypes = $derived(resTypes.filter((r) => r.name !== 'Labor'));
+  function resTypeName(id: string) { return resTypes.find((r) => r.id === id)?.name ?? '—'; }
+  function addStagedRes() {
+    if (!rType) return;
+    stagedRes = [...stagedRes, { typeId: rType, capacity: rCap.trim() }];
+    rType = ''; rCap = '';
+  }
+  function removeStagedRes(i: number) { stagedRes = stagedRes.filter((_, j) => j !== i); }
 
   // chapters this user is a chair/secretary of (cards belong to chapters only)
   const chapters = $derived($officerUnits.filter((u) => u.kind === 'chapter'));
@@ -55,13 +70,15 @@
     if (!supabaseConfigured || chapters.length === 0) { loading = false; return; }
     loading = true;
     const ids = chapters.map((c) => c.unit_id);
-    const [{ data: cs, error: err }, { data: sk }] = await Promise.all([
+    const [{ data: cs, error: err }, { data: sk }, { data: rt }] = await Promise.all([
       supabase.from('member')
         .select('id, full_name, email, affiliation, status, home_unit_id')
         .eq('kind', 'card').in('home_unit_id', ids).order('full_name'),
-      supabase.from('skill').select('id, name, parent_id').order('name')
+      supabase.from('skill').select('id, name, parent_id').order('name'),
+      supabase.from('resource_type').select('id, name, unit').order('rank')
     ]);
     skills = ((sk as any[]) ?? []).map((s) => ({ id: s.id, name: s.name, parent_id: s.parent_id }));
+    resTypes = ((rt as any[]) ?? []).map((r) => ({ id: r.id, name: r.name, unit: r.unit }));
     if (err) { error = err.message; loading = false; return; }
     cards = (cs as Card[]) ?? [];
 
@@ -93,18 +110,36 @@
   async function forgeCard() {
     error = ''; msg = '';
     if (!cName.trim() || !cEmail.trim() || !cUnit) return;
+    // a person is forged once: catch the obvious duplicate before the round-trip
+    const dup = cards.find((c) => c.email.toLowerCase() === cEmail.trim().toLowerCase());
+    if (dup) { error = get(t)('{name} is already a card — each person is forged only once.', { name: dup.full_name }); return; }
     busy = 'forge';
     const items = Object.entries(staged).map(([skill, level]) => ({ skill, level }));
-    const { error: err } = await supabase.rpc('forge_card', {
+    const { data: newId, error: err } = await supabase.rpc('forge_card', {
       p_full_name: cName.trim(), p_email: cEmail.trim(), p_unit: cUnit,
       p_affiliation: cAffil.trim() || null, p_items: items
     });
+    if (err) { busy = ''; error = err.message; return; }
+
+    // attach resources to the new card (steward review applies, same as members)
+    const rows: any[] = [];
+    const hrs = parseInt(cHours, 10);
+    if (Number.isFinite(hrs) && hrs > 0 && laborType) {
+      rows.push({ name: get(t)('Monthly time'), type_id: laborType.id, scope: 'member',
+        holder_member_id: newId, capacity: `${hrs} hrs/mo`, availability: 'available' });
+    }
+    for (const r of stagedRes) {
+      rows.push({ name: resTypeName(r.typeId), type_id: r.typeId, scope: 'member',
+        holder_member_id: newId, capacity: r.capacity || null, availability: 'available' });
+    }
+    if (rows.length) {
+      const { error: rErr } = await supabase.from('resource').insert(rows);
+      if (rErr) { busy = ''; error = rErr.message; await load(); return; }
+    }
     busy = '';
-    if (err) { error = err.message; return; }
-    msg = items.length
-      ? get(t)('Card forged for {name} with {n} skill(s) staged for review.', { name: cName.trim(), n: items.length })
-      : get(t)('Card forged for {name}.', { name: cName.trim() });
-    cName = ''; cEmail = ''; cAffil = ''; staged = {};
+    msg = get(t)('Card forged for {name} — {s} skill(s), {r} resource(s) staged for review.',
+      { name: cName.trim(), s: items.length, r: rows.length });
+    cName = ''; cEmail = ''; cAffil = ''; staged = {}; cHours = ''; stagedRes = [];
     await load();
   }
 
@@ -128,10 +163,10 @@
     <div class="card stack" style="gap:.55rem; border-left:3px solid var(--accent);">
       <h2 style="margin:0; font-size:1rem;">{$t('Your Phase 1 checklist')}</h2>
       <p class="muted" style="font-size:.82rem; margin:0;">
-        {$t("We're seeding the community. As an officer, here's what gets your chapter live — work down the list.")}
+        {$t("Phase 1 is officers only — ordinary researchers aren't invited yet. Your job is to bring in the people who work under you as cards, then claim your projects. Work down the list.")}
       </p>
       <ol class="checklist">
-        <li>{$t('Forge a card for each researcher in your chapter — fill in who they are and stage the skills they bring (form below).')}</li>
+        <li>{$t('Forge a card for each person who works under you — fill in who they are, stage the skills they bring and the resources they offer (compute, API, funding, data) and their monthly hours. Each person is forged only once.')}</li>
         <li>{@html $t("Claim your chapter's existing projects — open <a href='/projects'>Projects</a>, and on each one your chapter already runs use <strong>“Add a member directly”</strong> to seat your cards onto its roster (no application, no bond).")}</li>
         <li>{$t('Act as a card to declare its monthly contributions on the projects it joins — value accrues to the card until the person claims it.')}</li>
         <li>{$t('Review your roster below: every card you forged is listed, with its balance and staged skills.')}</li>
@@ -146,7 +181,7 @@
     <div class="card stack" style="gap:.7rem;">
       <h2 style="margin:0; font-size:1rem;">{$t('Forge a card')}</h2>
       <p class="muted" style="font-size:.82rem; margin:0;">
-        {$t('A card is one researcher — their identity and their skill profile, forged together. Fill in who they are, then stage the skills they bring. The whole card goes to review as one batch.')}
+        {$t('A card is one person who works under you — their identity, skills and resources, forged together. Each person is forged only once; the email is how they later claim the card. The whole card goes to review as one batch.')}
       </p>
       <div class="row" style="align-items:flex-end; flex-wrap:wrap; gap:.5rem;">
         <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">{$t('Full name')}</span>
@@ -157,6 +192,9 @@
         </label>
         <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">{$t('Affiliation')}</span>
           <input bind:value={cAffil} placeholder={$t('Affiliation')} />
+        </label>
+        <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">{$t('Monthly hours')}</span>
+          <input bind:value={cHours} type="number" min="0" placeholder="40" style="width:6rem;" />
         </label>
         {#if chapters.length > 1}
           <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">{$t('Chapter')}</span>
@@ -198,10 +236,41 @@
         {/if}
       </div>
 
+      <!-- resource picker: stage the card's offerable resources -->
+      <div class="stack" style="gap:.4rem; border-top:1px solid var(--border-2); padding-top:.55rem;">
+        <span class="muted" style="font-size:.78rem;">{$t('Stage their resources (optional) — compute, API, funding, data… each goes to a steward for review.')}</span>
+        {#if stagedRes.length > 0}
+          <div class="row" style="flex-wrap:wrap; gap:.3rem;">
+            {#each stagedRes as r, i}
+              <span class="badge dim" style="font-size:.74rem;">
+                {$t(resTypeName(r.typeId))}{#if r.capacity} · {r.capacity}{/if}
+                <button class="x" onclick={() => removeStagedRes(i)} aria-label={$t('Remove')}>×</button>
+              </span>
+            {/each}
+          </div>
+        {/if}
+        <div class="row" style="align-items:flex-end; gap:.5rem; flex-wrap:wrap;">
+          <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">{$t('Resource type')}</span>
+            <select bind:value={rType}>
+              <option value="">{$t('Pick a type…')}</option>
+              {#each offerTypes as ot}<option value={ot.id}>{$t(ot.name)}</option>{/each}
+            </select>
+          </label>
+          <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">{$t('Capacity / detail')}</span>
+            <input bind:value={rCap} placeholder={$t('e.g. 4× A100, $5k, 2 datasets')} />
+          </label>
+          <button onclick={addStagedRes} disabled={!rType}>{$t('Add resource')}</button>
+        </div>
+      </div>
+
       <div class="row" style="gap:.5rem; align-items:center; border-top:1px solid var(--border-2); padding-top:.6rem;">
         <button class="stake" disabled={!cName.trim() || !cEmail.trim() || busy === 'forge'} onclick={forgeCard}>
-          {busy === 'forge' ? $t('Forging…') : (stagedCount > 0 ? $t('Forge card · {n} skill(s)', { n: stagedCount }) : $t('Forge card'))}</button>
-        {#if stagedCount > 0}<button onclick={() => (staged = {})} disabled={busy === 'forge'}>{$t('Clear')}</button>{/if}
+          {busy === 'forge' ? $t('Forging…') : $t('Forge card')}</button>
+        {#if stagedCount > 0 || stagedRes.length > 0 || cHours}
+          <span class="muted" style="font-size:.78rem;">
+            {$t('{s} skill(s), {r} resource(s) staged', { s: stagedCount, r: stagedRes.length + (cHours ? 1 : 0) })}</span>
+          <button onclick={() => { staged = {}; stagedRes = []; cHours = ''; }} disabled={busy === 'forge'}>{$t('Clear')}</button>
+        {/if}
       </div>
     </div>
 
@@ -249,6 +318,11 @@
 <style>
   .checklist { margin: 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: .4rem; }
   .checklist li { font-size: .85rem; line-height: 1.45; }
+  .badge .x {
+    background: transparent; border: none; cursor: pointer; color: inherit;
+    font-size: .9rem; line-height: 1; padding: 0 0 0 .25rem; opacity: .65;
+  }
+  .badge .x:hover { opacity: 1; }
   .talent {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     gap: .9rem 1.4rem;
