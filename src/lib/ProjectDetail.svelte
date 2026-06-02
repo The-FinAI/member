@@ -471,6 +471,8 @@
   const pipeline = $derived([...statuses].filter((s) => s.name !== 'Hold').sort((a, b) => a.rank - b.rank));
   const holdStatus = $derived(statuses.find((s) => s.name === 'Hold') ?? null);
   const isHold = $derived(project?.project_status?.name === 'Hold');
+  // settlement can only be drafted once the project reaches Finished
+  const isFinished = $derived(project?.project_status?.name === 'Finished');
   const curIdx = $derived(pipeline.findIndex((s) => s.id === project?.status_id));
   const nextStatus = $derived(!isHold && curIdx >= 0 && curIdx < pipeline.length - 1 ? pipeline[curIdx + 1] : null);
   const prevStatus = $derived(!isHold && curIdx > 0 ? pipeline[curIdx - 1] : null);
@@ -1344,7 +1346,9 @@
     <div class="card" id="settlement">
       <h2>{$t('Settlement')}</h2>
       {#if !settlement}
-        {#if iManage}
+        {#if iManage && !isFinished}
+          <p class="muted">{$t('Settlement opens once the project is Finished. Advance the project to Finished to draft the payout split.')}</p>
+        {:else if iManage}
           <p class="muted" style="font-size:.82rem;">
             {@html $t("Draft the split. Weights are <strong>pre-filled from each member's accrued nominal</strong> (bonds + labor + resources) — adjust down anyone who declared but didn't deliver. On approval the pool mints to <strong class='mono' style='color:var(--accent);'>{n}</strong> STR (nominal ×{m}) and splits by these weights. <strong>Both you and a Stater manager must sign</strong> (you submit; they approve).", { n: Math.floor(nominalPool * multiplier).toLocaleString(), m: multiplier.toFixed(3).replace(/0+$/,'').replace(/\.$/,'') })}
           </p>
@@ -1363,7 +1367,7 @@
           </table>
           <label class="stack" style="gap:.2rem; margin-top:.5rem;"><span class="muted" style="font-size:.75rem;">{$t('Meeting notes (optional)')}</span>
             <textarea bind:value={sNotes} rows="2" placeholder={$t('Rationale / meeting decision')}></textarea></label>
-          <div class="row"><button onclick={submitSettlement} disabled={submitting}>{submitting ? $t('Submitting…') : $t('Submit settlement')}</button></div>
+          <div class="row"><button onclick={submitSettlement} disabled={submitting || !isFinished}>{submitting ? $t('Submitting…') : $t('Submit settlement')}</button></div>
         {:else}
           <p class="muted">{$t('No settlement submitted yet.')}</p>
         {/if}
