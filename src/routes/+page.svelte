@@ -221,6 +221,21 @@
   // the officer's home unit — prefer a chapter (where cards are forged) over a
   // working group, so the banner links straight to where the Phase 1 work is.
   const myUnit = $derived($officerUnits.find((u) => u.kind === 'chapter') ?? $officerUnits[0] ?? null);
+  // community-wide stewards: anyone holding an admin/approval capability runs the
+  // WHOLE community (not a single unit), so they get a banner that mirrors the
+  // officer one but points at the community-wide admin & approval surfaces.
+  const canAdmin = $derived(
+    $capabilities.has('manage_taxonomy') ||
+      $capabilities.has('manage_members') ||
+      $capabilities.has('edit_any_project')
+  );
+  const canApprove = $derived(
+    $capabilities.has('manage_resources') ||
+      $capabilities.has('manage_stater') ||
+      $capabilities.has('manage_members') ||
+      $capabilities.has('review_skillcard')
+  );
+  const isSteward = $derived(canAdmin || canApprove);
   const certifiedCount = $derived(mySkills.filter((s) => s.certified_level).length);
   const myCards = $derived(mySkills.filter((s) => s.certified_level));
   const catalogResources = $derived(myResources.filter((r) => r.resource_type?.name !== 'Labor'));
@@ -258,6 +273,23 @@
           <a href={`/units/${myUnit.unit_id}#forge`}><button>{$t('Forge a member card →')}</button></a>
         {/if}
         <a href={`/units/${myUnit.unit_id}`}><button class="ghost">{$t('Open my unit →')}</button></a>
+      </div>
+    </div>
+  {/if}
+
+  {#if isSteward}
+    <div class="card row" style="justify-content:space-between; align-items:center; gap:.75rem; border-left:3px solid var(--warn); flex-wrap:wrap;">
+      <div class="stack" style="gap:.2rem;">
+        <strong style="font-size:.95rem;">{$t('You help steward the whole community')}</strong>
+        <span class="muted" style="font-size:.82rem;">{$t('Phase 1: invite officers, set up the chapters & working groups, and keep every approval queue clear across the community.')}</span>
+      </div>
+      <div class="row" style="gap:.5rem; flex-wrap:wrap;">
+        {#if canApprove}
+          <a href="/admin/approvals"><button>{$t('Review approvals →')}</button></a>
+        {/if}
+        {#if canAdmin}
+          <a href="/admin"><button class="ghost">{$t('Admin dashboard →')}</button></a>
+        {/if}
       </div>
     </div>
   {/if}
