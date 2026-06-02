@@ -142,8 +142,13 @@
     }
     return [];
   });
+  // units the current user serves as an officer of — pinned to the top of the
+  // list and badged, so an officer lands on their own unit without hunting.
+  const myUnitIds = $derived(new Set($officerUnits.map((o) => o.unit_id)));
   const unitFiltered = $derived(
-    unitRanked.filter((u) => u.name.toLowerCase().includes(q.toLowerCase()) || u.code.toLowerCase().includes(q.toLowerCase()))
+    unitRanked
+      .filter((u) => u.name.toLowerCase().includes(q.toLowerCase()) || u.code.toLowerCase().includes(q.toLowerCase()))
+      .sort((a, b) => Number(myUnitIds.has(b.id)) - Number(myUnitIds.has(a.id)))
   );
 
   function onTab(tk: Tab) {
@@ -251,8 +256,9 @@
             type={tab === 'chapters' ? 'Chapter' : 'Working Group'}
             title={u.name}
             subtitle={u.description ?? u.code}
-            status={u.code}
-            statusKind="dim"
+            status={myUnitIds.has(u.id) ? $t('Your unit') : u.code}
+            statusKind={myUnitIds.has(u.id) ? 'warn' : 'dim'}
+            accent={myUnitIds.has(u.id)}
             stats={tab === 'chapters'
               ? [{ label: 'Members', value: String(u.count) }, { label: 'Combined net worth', value: u.total.toLocaleString() }]
               : [{ label: 'Projects', value: String(u.count) }, { label: 'Staked STR', value: u.total.toLocaleString() }]}

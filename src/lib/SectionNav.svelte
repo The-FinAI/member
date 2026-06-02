@@ -34,8 +34,14 @@
     const scope = scopeOf();
     if (!scope) return;
     const ids = sections.map((s) => s.id);
+    // on first paint, honour a #section hash in the URL so callers can deep-link
+    // straight to a tab (e.g. the home banner → a chapter's "Forge" tab). Once
+    // the user picks a tab, `active` is set and the hash is ignored thereafter.
+    const fromHash = (typeof location !== 'undefined' && location.hash) ? decodeURIComponent(location.hash.slice(1)) : '';
     // keep `active` valid as conditional sections appear/disappear
-    const cur = active && ids.includes(active) ? active : ids[0];
+    const cur = active && ids.includes(active)
+      ? active
+      : (fromHash && ids.includes(fromHash) ? fromHash : ids[0]);
     if (cur !== active) active = cur;
     // show only the active section, hide the others
     for (const s of sections) {

@@ -218,6 +218,9 @@
     if (status === 'declined') return 'down';
     return 'dim';
   }
+  // the officer's home unit — prefer a chapter (where cards are forged) over a
+  // working group, so the banner links straight to where the Phase 1 work is.
+  const myUnit = $derived($officerUnits.find((u) => u.kind === 'chapter') ?? $officerUnits[0] ?? null);
   const certifiedCount = $derived(mySkills.filter((s) => s.certified_level).length);
   const myCards = $derived(mySkills.filter((s) => s.certified_level));
   const catalogResources = $derived(myResources.filter((r) => r.resource_type?.name !== 'Labor'));
@@ -244,13 +247,18 @@
     </div>
   </div>
 
-  {#if $officerUnits.length > 0}
+  {#if myUnit}
     <div class="card row" style="justify-content:space-between; align-items:center; gap:.75rem; border-left:3px solid var(--accent); flex-wrap:wrap;">
       <div class="stack" style="gap:.2rem;">
-        <strong style="font-size:.95rem;">{$t("You're an officer — your chapter needs you")}</strong>
-        <span class="muted" style="font-size:.82rem;">{$t('Phase 1: forge a card for each researcher, claim your existing projects, declare their monthly work, and clear your approvals. Manage your unit from Community.')}</span>
+        <strong style="font-size:.95rem;">{$t("You're an officer of {unit}", { unit: myUnit.name })}</strong>
+        <span class="muted" style="font-size:.82rem;">{$t('Phase 1: forge a card for each researcher, claim your existing projects, declare their monthly work, and clear your approvals.')}</span>
       </div>
-      <a href="/community?tab=chapters"><button>{$t('Open my unit →')}</button></a>
+      <div class="row" style="gap:.5rem; flex-wrap:wrap;">
+        {#if myUnit.kind === 'chapter'}
+          <a href={`/units/${myUnit.unit_id}#forge`}><button>{$t('Forge a member card →')}</button></a>
+        {/if}
+        <a href={`/units/${myUnit.unit_id}`}><button class="ghost">{$t('Open my unit →')}</button></a>
+      </div>
     </div>
   {/if}
 
