@@ -1,14 +1,12 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { supabase, supabaseConfigured } from '$lib/supabase';
-  import { member, capabilities } from '$lib/session';
+  import { member } from '$lib/session';
   import { t } from '$lib/i18n';
   import { get } from 'svelte/store';
   import EntityCard from '$lib/EntityCard.svelte';
   import CardDrawer from '$lib/CardDrawer.svelte';
-  import TaskMarket from '$lib/TaskMarket.svelte';
   import Leaderboard from '$lib/Leaderboard.svelte';
-  import ProjectDetail from '$lib/ProjectDetail.svelte';
   import { page } from '$app/stores';
 
   // Market = the Member ⟷ Project broker. Three segments: the project portfolio,
@@ -53,23 +51,8 @@
   let view = $state<'cards' | 'table'>('cards');
   // quick-view drawer
   let sel = $state<Grid | null>(null);
-  let drawerBusy = $state(false);
-  let drawerErr = $state('');
-  let drawerMsg = $state('');
-  function openProject(r: Grid) { sel = r; drawerErr = ''; drawerMsg = ''; }
+  function openProject(r: Grid) { sel = r; }
   function closeDrawer() { sel = null; }
-  // permission-gated drawer actions
-  const canEditAny = $derived($capabilities.has('edit_any_project'));
-  const selLeaderStake = $derived(sel ? (types.find((t) => t.name === sel!.type)?.leader_stake ?? 0) : 0);
-  function gotoNeeds() { closeDrawer(); surface = 'needs'; }
-  async function claimLead() {
-    if (!sel) return;
-    drawerBusy = true; drawerErr = '';
-    const { error: err } = await supabase.rpc('claim_leadership', { p: sel.id, p_as: null });
-    drawerBusy = false;
-    if (err) { drawerErr = err.message; return; }
-    window.location.href = `/projects/${sel.id}`;
-  }
   // status name → EntityCard status dot kind
   function projKind(name: string): 'pos' | 'warn' | 'dim' {
     if (name === 'Finished') return 'pos';
@@ -433,7 +416,10 @@
   </div>
 
   {#if surface === 'needs'}
-    <TaskMarket showHeader={false} />
+    <div class="card stack moved-panel">
+      <p class="mp-text">{$t('Open needs are now posted and filled in the working-group slot board.')}</p>
+      <a class="chip toggle" href="/officer">{$t('Open officer console')} →</a>
+    </div>
   {:else if surface === 'leaderboard'}
     <Leaderboard />
   {:else}
@@ -793,15 +779,19 @@
     subtitle={r.venue || ''}
     onClose={closeDrawer}
   >
-    <ProjectDetail id={r.id} breadcrumbs={false} />
+    <div class="stack moved-panel">
+      <p class="mp-text">{$t('Project records and management now live in the officer console.')}</p>
+    </div>
     {#snippet actions()}
-      <a class="btn ghost" href={`/projects/${r.id}`}>{canEditAny ? $t('Manage') : $t('Open full page')} →</a>
+      <a class="btn ghost" href="/officer">{$t('Open officer console')} →</a>
     {/snippet}
   </CardDrawer>
 {/if}
 
 <style>
   .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: .8rem; }
+  .moved-panel { align-items: flex-start; gap: .7rem; padding: 1.4rem; }
+  .moved-panel .mp-text { margin: 0; color: var(--muted); font-size: .9rem; line-height: 1.5; }
   .btn {
     display: inline-flex; align-items: center; gap: .3rem; padding: .5rem .9rem;
     background: var(--accent); color: #fff; border: 1px solid transparent; border-radius: 8px;

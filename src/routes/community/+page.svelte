@@ -8,7 +8,6 @@
   import CardDrawer from '$lib/CardDrawer.svelte';
   import CountUp from '$lib/CountUp.svelte';
   import MemberDetail from '$lib/MemberDetail.svelte';
-  import UnitDetail from '$lib/UnitDetail.svelte';
   import Medal from '$lib/Medal.svelte';
   import { t } from '$lib/i18n';
 
@@ -370,9 +369,13 @@
       subtitle={u.description ?? u.code}
       onClose={closeDrawer}
     >
-      <UnitDetail id={u.id} breadcrumbs={false} />
+      <div class="moved-note">
+        <p class="mn-name">{u.name}</p>
+        <p class="mn-sub">{u.description ?? u.code}</p>
+        <p class="mn-text">{$t('Management for this unit lives in the officer console.')}</p>
+      </div>
       {#snippet actions()}
-        <a class="btn ghost" href={`/units/${u.id}`}>{$t('Open full page')} →</a>
+        <a class="btn ghost" href={sel.unitKind === 'chapter' ? `/officer/chapter/${u.id}` : `/officer/wg/${u.id}`}>{$t('Open officer console')} →</a>
       {/snippet}
     </CardDrawer>
   {:else}
@@ -416,4 +419,8 @@
   .btn:disabled { opacity: .55; cursor: not-allowed; }
   .btn.ghost { background: transparent; color: var(--accent); border-color: var(--border); }
   .search input { width: 100%; }
+  .moved-note { display: flex; flex-direction: column; gap: .35rem; padding: 1rem 0; }
+  .moved-note .mn-name { font-weight: 600; color: var(--text); margin: 0; }
+  .moved-note .mn-sub { font-size: .82rem; color: var(--muted); margin: 0; }
+  .moved-note .mn-text { font-size: .88rem; color: var(--text-dim); margin: .5rem 0 0; }
 </style>

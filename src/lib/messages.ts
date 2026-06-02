@@ -7,6 +7,15 @@ import type { Locale } from './i18n';
 type Table = Record<string, string>;
 
 const zh: Table = {
+  // ── Phase 1 rebuild: retired routes → officer console redirects ──
+  "Taking you to the officer console…": "正在前往干事控制台…",
+  "Unit management has moved to the officer console.": "单位管理已迁移至干事控制台。",
+  "Open officer console": "打开干事控制台",
+  "Taking you to the slot board…": "正在前往槽位板…",
+  "Project management has moved to the working-group slot board.": "项目管理已迁移至工作组槽位板。",
+  "Management for this unit lives in the officer console.": "本单位的管理已迁移至干事控制台。",
+  "Open needs are now posted and filled in the working-group slot board.": "开放需求现在在工作组槽位板发布和认领。",
+  "Project records and management now live in the officer console.": "项目记录与管理现在位于干事控制台。",
   // ── Phase 1 rebuild: officer consoles (卡牌册 / 槽位板 / 铸造队列) ──
   "Officer": "干事",
   "Officer console": "干事控制台",
