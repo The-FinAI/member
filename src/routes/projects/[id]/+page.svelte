@@ -106,6 +106,9 @@
   // my-contribution (set next month's labor)
   let clSkill = $state(''); let clHours = $state(0); let clMonth = $state(currentMonth());
   let settingLabor = $state(false);
+  // soft over-capacity warning shown after a mint (declare never blocks)
+  let capacityWarn = $state('');
+  let capacityWarnKind = $state<'labor' | 'resource' | ''>('');
   // leader first-author writing duty (20h/month)
   let myWriting = $state<MyWritingRow[]>([]);
   let writeHours = $state(20); let writeMonth = $state(currentMonth());
@@ -728,15 +731,34 @@
       .reduce((a, m) => a + Number(m.milestone_catalog?.multiplier_bonus ?? 0), 0)
   );
 
+  // Soft capacity check: after a mint, the period comes back flagged
+  // 'needs_review' if the member's cross-project monthly total now exceeds
+  // the capacity they declared. We never block — just warn and let it route
+  // to the approval portal.
+  async function checkCapacity(cid: string | null, ym: string, kind: 'labor' | 'resource') {
+    capacityWarn = ''; capacityWarnKind = '';
+    if (!cid) return;
+    const { data } = await supabase
+      .from('stater_commitment_period')
+      .select('approval').eq('commitment_id', cid).eq('year_month', ym).maybeSingle();
+    if ((data as { approval: string } | null)?.approval === 'needs_review') {
+      capacityWarnKind = kind;
+      capacityWarn = kind === 'labor'
+        ? get(t)('Heads up: your committed hours this month across all projects now exceed the capacity you declared. This was still minted, but an officer will review it.')
+        : get(t)('Heads up: your committed quantity for this resource this month across all projects now exceeds its declared capacity. This was still minted, but an officer will review it.');
+    }
+  }
+
   async function setLabor() {
-    error = '';
+    error = ''; capacityWarn = '';
     if (!clSkill) { error = get(t)('Pick a skill for your labor.'); return; }
     if (!/^\d{4}-\d{2}$/.test(clMonth)) { error = get(t)('Month must be YYYY-MM.'); return; }
     settingLabor = true;
-    const { error: err } = await supabase.rpc('set_labor_commitment',
+    const { data: cid, error: err } = await supabase.rpc('set_labor_commitment',
       { p: id, sk: clSkill, ym: clMonth, hours: Number(clHours), p_as: asArg });
     settingLabor = false;
     if (err) { error = err.message; return; }
+    await checkCapacity(cid as string | null, clMonth, 'labor');
     await load();
   }
 
@@ -777,14 +799,15 @@
   const rcPreview = $derived(rcSelected ? resValueStr(rcSelected, Number(rcQty) || 0) : 0);
 
   async function setResource() {
-    error = '';
+    error = ''; capacityWarn = '';
     if (!rcRes) { error = get(t)('Pick a resource to contribute.'); return; }
     if (!/^\d{4}-\d{2}$/.test(rcMonth)) { error = get(t)('Month must be YYYY-MM.'); return; }
     settingRes = true;
-    const { error: err } = await supabase.rpc('set_resource_commitment',
+    const { data: cid, error: err } = await supabase.rpc('set_resource_commitment',
       { p: id, res: rcRes, ym: rcMonth, qty: Number(rcQty), p_as: asArg });
     settingRes = false;
     if (err) { error = err.message; return; }
+    await checkCapacity(cid as string | null, rcMonth, 'resource');
     await load();
   }
 
@@ -1058,6 +1081,7 @@
             <input type="number" min="0" step="1" bind:value={clHours} style="width:110px;" /></label>
           <button onclick={setLabor} disabled={settingLabor}>{settingLabor ? $t('Minting…') : $t('Set & mint')}</button>
         </div>
+        {#if capacityWarn && capacityWarnKind === 'labor'}<p class="banner warn" style="margin:.3rem 0 0;">{capacityWarn}</p>{/if}
       </div>
     {/if}
 
@@ -1107,6 +1131,7 @@
         {:else}
           <p class="muted" style="font-size:.8rem;">{@html $t('You have no approved resources yet. Add one under <a href="/">your portfolio</a>, or use a community resource.')}</p>
         {/if}
+        {#if capacityWarn && capacityWarnKind === 'resource'}<p class="banner warn" style="margin:.3rem 0 0;">{capacityWarn}</p>{/if}
       </div>
     {/if}
 

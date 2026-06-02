@@ -4,6 +4,7 @@
   import { t } from '$lib/i18n';
 
   const sections = [
+    { href: '/admin/approvals', title: 'Approvals', desc: 'One queue for everything awaiting a decision — resources, role cards, unit applications & over-capacity commitments' },
     { href: '/admin/announcements', title: 'Announcements', desc: 'Post, pin & retire the site-wide notice board' },
     { href: '/admin/invites', title: 'Invite Members', desc: 'Pre-create members by email (invite-only)' },
     { href: '/admin/org-units', title: 'Chapters & Working Groups', desc: 'Assign chairs, secretaries & leaders to the 3 chapters + 3 working groups' },
@@ -27,26 +28,29 @@
   let openNeeds = $state(0);
   let pendingResources = $state(0);
   let examsInReview = $state(0);
+  let pendingCommits = $state(0);
   let skillLeaves = $state(0);
   let circulating = $state(0);
 
   // things that want an admin's attention
   const attention = $derived([
-    { n: pendingResources, label: 'resources awaiting review', href: '/admin/resources' },
-    { n: examsInReview, label: 'role cards awaiting review', href: '/skills' },
+    { n: pendingResources, label: 'resources awaiting review', href: '/admin/approvals' },
+    { n: examsInReview, label: 'role cards awaiting review', href: '/admin/approvals' },
+    { n: pendingCommits, label: 'over-capacity commitments to review', href: '/admin/approvals' },
     { n: openNeeds, label: 'open needs on the market', href: '/opportunities' }
   ].filter((a) => a.n > 0));
 
   async function load() {
     if (!supabaseConfigured) { loading = false; return; }
     const c = (q: any) => q.select('id', { count: 'exact', head: true });
-    const [m, am, p, on, pr, ex, sk, bal] = await Promise.all([
+    const [m, am, p, on, pr, ex, cm, sk, bal] = await Promise.all([
       c(supabase.from('member')),
       c(supabase.from('member')).eq('status', 'active'),
       c(supabase.from('project')),
       c(supabase.from('open_need')).eq('status', 'open'),
       c(supabase.from('resource')).eq('approval_status', 'pending'),
       c(supabase.from('skillcard_request')).eq('status', 'submitted'),
+      c(supabase.from('commitment_review_queue')),
       supabase.from('skill').select('id', { count: 'exact', head: true }).not('parent_id', 'is', null),
       supabase.from('stater_balance').select('balance')
     ]);
@@ -56,6 +60,7 @@
     openNeeds = on.count ?? 0;
     pendingResources = pr.count ?? 0;
     examsInReview = ex.count ?? 0;
+    pendingCommits = cm.count ?? 0;
     skillLeaves = sk.count ?? 0;
     circulating = ((bal.data as { balance: number }[]) ?? []).reduce((a, b) => a + (Number(b.balance) || 0), 0);
     loading = false;

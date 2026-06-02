@@ -121,6 +121,14 @@
   );
   // chapter officers get a "My chapter" entry (cards belong to chapters)
   const isChapterOfficer = $derived($officerUnits.some((u) => u.kind === 'chapter'));
+  // anyone who can act on at least one approval queue gets the Approvals entry
+  const canApprove = $derived(
+    $officerUnits.length > 0 ||
+      $capabilities.has('manage_resources') ||
+      $capabilities.has('manage_stater') ||
+      $capabilities.has('manage_members') ||
+      $capabilities.has('review_skillcard')
+  );
 </script>
 
 <div class="app-shell">
@@ -137,6 +145,9 @@
         {/each}
         {#if isChapterOfficer}
           <a href="/my-chapter" class="side-link" class:active={isActive('/my-chapter', $page.url.pathname)}>{$t('My Chapter')}</a>
+        {/if}
+        {#if canApprove}
+          <a href="/admin/approvals" class="side-link" class:active={isActive('/admin/approvals', $page.url.pathname)}>{$t('Approvals')}</a>
         {/if}
         {#if canAdmin}
           <a href="/admin" class="side-link" class:active={isActive('/admin', $page.url.pathname)}>{$t('Admin')}</a>
