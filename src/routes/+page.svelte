@@ -36,7 +36,9 @@
   type MyResource = {
     id: string; name: string; description: string | null; capacity: string | null;
     availability: string; approval_status: string; type_id: string | null;
-    resource_type: { name: string } | null;
+    resource_type: { name: string; unit: string | null } | null;
+    gpu_model: { name: string } | null;
+    api_model: { provider: string; name: string } | null;
   };
 
   const AVAIL = ['available', 'limited', 'committed'];
@@ -105,7 +107,7 @@
       supabase.from('member_skill').select('skill_id, certified_level').eq('member_id', memberId),
       supabase.from('resource_type').select('id, name, valuation_method').order('rank'),
       supabase.from('resource')
-        .select('id, name, description, capacity, availability, approval_status, type_id, resource_type(name)')
+        .select('id, name, description, capacity, availability, approval_status, type_id, resource_type(name, unit), gpu_model(name), api_model(provider, name)')
         .eq('scope', 'member').eq('holder_member_id', memberId).order('name'),
       supabase.from('stater_project_member_nominal').select('nominal').eq('member_id', memberId),
       supabase.from('gpu_model').select('id, name, tflops').eq('is_active', true).order('rank'),
@@ -367,7 +369,7 @@
           <input type="number" min="0" bind:value={laborHours} placeholder={$t('e.g. 40')} style="width:120px;" /></label>
         <button onclick={saveLabor} disabled={laborBusy}>{laborBusy ? $t('Saving…') : myLabor ? $t('Update time') : $t('Set time')}</button>
       </div>
-      <p class="muted" style="font-size:.75rem; margin:0;">{@html $t('Valued at <code>hours × your skill rate</code> and minted monthly into a project once you pledge it.')}</p>
+      <p class="muted" style="font-size:.75rem; margin:0;">{@html $t('Valued at the community’s monthly <code>labor rate</code> and minted into a project once you pledge the hours.')}</p>
     </div>
 
     <div class="res-pending-note">{$t('⏳ New resources are reviewed by a steward before they can be offered to projects.')}</div>
@@ -382,9 +384,9 @@
           <tbody>
             {#each catalogResources as r}
               <tr>
-                <td>{r.name}</td>
+                <td>{r.name}{#if r.gpu_model || r.api_model}<div class="muted" style="font-size:.75rem;">{r.gpu_model?.name ?? `${r.api_model?.provider} ${r.api_model?.name}`}</div>{/if}</td>
                 <td>{r.resource_type?.name ?? '—'}</td>
-                <td>{r.capacity ?? '—'}</td>
+                <td>{r.capacity ?? '—'}{#if r.capacity && r.resource_type?.unit}<span class="muted" style="font-size:.75rem;"> {r.resource_type.unit}</span>{/if}</td>
                 <td><span class="badge dim">{$t(r.availability)}</span></td>
                 <td><span class="badge {r.approval_status}">{r.approval_status === 'approved' ? $t('✓ approved') : r.approval_status === 'rejected' ? $t('✕ rejected') : $t('⏳ pending')}</span></td>
                 <td><button class="danger" onclick={() => removeResource(r.id)}>{$t('Remove')}</button></td>

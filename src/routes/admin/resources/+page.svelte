@@ -13,7 +13,9 @@
     id: string; name: string; description: string | null; capacity: string | null;
     availability: string; type_id: string | null; holder_member_id: string | null;
     approval_status: string; scope: string;
-    resource_type: { name: string } | null; member: { full_name: string } | null;
+    resource_type: { name: string; unit: string | null } | null;
+    gpu_model: { name: string } | null; api_model: { provider: string; name: string } | null;
+    member: { full_name: string } | null;
   };
 
   const AVAIL = ['available', 'limited', 'committed'];
@@ -44,7 +46,7 @@
   async function load() {
     if (!supabaseConfigured) { loading = false; return; }
     loading = true;
-    const sel = 'id, name, description, capacity, availability, type_id, holder_member_id, approval_status, scope, resource_type(name), member:holder_member_id(full_name)';
+    const sel = 'id, name, description, capacity, availability, type_id, holder_member_id, approval_status, scope, resource_type(name, unit), gpu_model(name), api_model(provider, name), member:holder_member_id(full_name)';
     const [{ data: r }, { data: pq }, { data: t }, { data: gm }, { data: am }, { data: m }] = await Promise.all([
       supabase.from('resource').select(sel).eq('scope', 'community').order('name'),
       supabase.from('resource').select(sel).eq('approval_status', 'pending').order('created_at', { ascending: false }),
@@ -180,10 +182,10 @@
         <tbody>
           {#each resources as r}
             <tr>
-              <td><strong>{r.name}</strong>{#if r.description}<div class="muted" style="font-size:.8rem;">{r.description}</div>{/if}</td>
+              <td><strong>{r.name}</strong>{#if r.gpu_model || r.api_model}<div class="muted" style="font-size:.78rem;">{r.gpu_model?.name ?? `${r.api_model?.provider} ${r.api_model?.name}`}</div>{/if}{#if r.description}<div class="muted" style="font-size:.8rem;">{r.description}</div>{/if}</td>
               <td>{r.resource_type?.name ?? '—'}</td>
               <td>{r.member?.full_name ?? '—'}</td>
-              <td>{r.capacity ?? '—'}</td>
+              <td>{r.capacity ?? '—'}{#if r.capacity && r.resource_type?.unit}<span class="muted" style="font-size:.75rem;"> {r.resource_type.unit}</span>{/if}</td>
               <td><span class="badge">{$t(r.availability)}</span></td>
               <td><button class="danger" onclick={() => remove(r.id)}>{$t('Delete')}</button></td>
             </tr>

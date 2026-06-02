@@ -38,7 +38,10 @@
   type ApiModel = { id: string; provider: string; name: string; usd_per_million: number };
   type CardResource = {
     id: string; name: string; capacity: string | null; availability: string;
-    approval_status: string; type_id: string | null; resource_type: { name: string } | null;
+    approval_status: string; type_id: string | null;
+    resource_type: { name: string; unit: string | null } | null;
+    gpu_model: { name: string } | null;
+    api_model: { provider: string; name: string } | null;
   };
   const AVAIL = ['available', 'limited', 'committed'];
 
@@ -63,7 +66,7 @@
     const [{ data: rt }, { data: mr }, { data: gm }, { data: am }] = await Promise.all([
       supabase.from('resource_type').select('id, name, valuation_method').order('rank'),
       supabase.from('resource')
-        .select('id, name, capacity, availability, approval_status, type_id, resource_type(name)')
+        .select('id, name, capacity, availability, approval_status, type_id, resource_type(name, unit), gpu_model(name), api_model(provider, name)')
         .eq('scope', 'member').eq('holder_member_id', cardId).order('name'),
       supabase.from('gpu_model').select('id, name, tflops').eq('is_active', true).order('rank'),
       supabase.from('api_model').select('id, provider, name, usd_per_million').eq('is_active', true).order('rank')
@@ -256,9 +259,9 @@
             <tbody>
               {#each catalogResources as r}
                 <tr>
-                  <td>{r.name}</td>
+                  <td>{r.name}{#if r.gpu_model || r.api_model}<div class="muted" style="font-size:.75rem;">{r.gpu_model?.name ?? `${r.api_model?.provider} ${r.api_model?.name}`}</div>{/if}</td>
                   <td>{r.resource_type?.name ?? '—'}</td>
-                  <td>{r.capacity ?? '—'}</td>
+                  <td>{r.capacity ?? '—'}{#if r.capacity && r.resource_type?.unit}<span class="muted" style="font-size:.75rem;"> {r.resource_type.unit}</span>{/if}</td>
                   <td><span class="badge dim">{$t(r.availability)}</span></td>
                   <td><span class="badge {r.approval_status}">{r.approval_status === 'approved' ? $t('✓ approved') : r.approval_status === 'rejected' ? $t('✕ rejected') : $t('⏳ pending')}</span></td>
                   <td><button class="danger" onclick={() => removeResource(r.id)}>{$t('Remove')}</button></td>
