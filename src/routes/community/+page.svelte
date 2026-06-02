@@ -1,8 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { get } from 'svelte/store';
   import { page } from '$app/stores';
   import { supabase, supabaseConfigured } from '$lib/supabase';
-  import { member } from '$lib/session';
+  import { member, capabilities, officerUnits } from '$lib/session';
   import EntityCard from '$lib/EntityCard.svelte';
   import CardDrawer from '$lib/CardDrawer.svelte';
   import CountUp from '$lib/CountUp.svelte';
@@ -32,6 +33,8 @@
   let loading = $state(true);
   let q = $state('');
   let myBalance = $state(0);
+  // current user's membership status per unit (org_unit_id -> 'active' | 'pending' | …)
+  let myUnitStatus = $state<Record<string, string>>({});
 
   // top-level tab over the three card families in the community
   type Tab = 'people' | 'chapters' | 'wgroups';
@@ -69,6 +72,15 @@
     myBalance = Number((bal as { balance: number } | null)?.balance ?? 0);
   }
 
+  async function loadMyUnits() {
+    if (!$member) return;
+    const { data } = await supabase.from('org_unit_member')
+      .select('org_unit_id, status').eq('member_id', $member.id);
+    const m: Record<string, string> = {};
+    for (const r of (data as { org_unit_id: string; status: string }[]) ?? []) m[r.org_unit_id] = r.status;
+    myUnitStatus = m;
+  }
+
   onMount(async () => {
     const initial = $page.url.searchParams.get('tab');
     if (initial === 'chapters' || initial === 'wgroups' || initial === 'people') tab = initial;
@@ -100,7 +112,7 @@
     for (const p of (prj as { id: string; org_unit_id: string | null }[]) ?? []) pumap[p.id] = p.org_unit_id ?? null;
     projectUnitOf = pumap;
     loading = false;
-    const unsub = member.subscribe((m) => { if (m) loadMyBalance(); });
+    const unsub = member.subscribe((m) => { if (m) { loadMyBalance(); loadMyUnits(); } });
     return unsub;
   });
 
@@ -203,10 +215,31 @@
     | { kind: 'person'; row: Row }
     | { kind: 'unit'; unit: UnitRow; unitKind: 'chapter' | 'working_group' };
   let sel = $state<DrawerSel | null>(null);
+  let drawerBusy = $state(false);
+  let drawerErr = $state('');
+  let drawerMsg = $state('');
   const drawerOpen = $derived(sel !== null);
-  function openPerson(r: Row) { sel = { kind: 'person', row: r }; }
-  function openUnit(u: UnitRow) { sel = { kind: 'unit', unit: u, unitKind: tab === 'chapters' ? 'chapter' : 'working_group' }; }
+  function openPerson(r: Row) { sel = { kind: 'person', row: r }; drawerErr = ''; drawerMsg = ''; }
+  function openUnit(u: UnitRow) { sel = { kind: 'unit', unit: u, unitKind: tab === 'chapters' ? 'chapter' : 'working_group' }; drawerErr = ''; drawerMsg = ''; }
   function closeDrawer() { sel = null; }
+
+  // ---- permission-aware actions ----
+  const isMe = (id: string) => !!($member && id === $member.id);
+  function isOfficerOf(unitId: string) {
+    return $capabilities.has('manage_members') || $officerUnits.some((u) => u.unit_id === unitId);
+  }
+  function canManagePerson(r: Row) {
+    return isMe(r.id) || $capabilities.has('manage_members') ||
+      (!!r.home_unit_id && $officerUnits.some((u) => u.unit_id === r.home_unit_id));
+  }
+  async function applyUnit(unitId: string) {
+    drawerBusy = true; drawerErr = ''; drawerMsg = '';
+    const { error: err } = await supabase.rpc('apply_to_unit', { p_unit: unitId });
+    drawerBusy = false;
+    if (err) { drawerErr = err.message; return; }
+    drawerMsg = get(t)('Application sent — an officer will review it.');
+    await loadMyUnits();
+  }
 </script>
 
 <div class="stack">
@@ -311,7 +344,7 @@
                 <tr class={$member && r.id === $member.id ? 'me-row' : ''}>
                   <td class="num"><span class="rank {rank <= 3 ? 'r' + rank : ''}">{rank}</span></td>
                   <td>
-                    <a href={`/members/${r.id}`} class="proj">
+                    <a href={`/members/${r.id}`} class="proj" onclick={(e) => { e.preventDefault(); openPerson(r); }}>
                       <span class="pname">{r.full_name}{#if $member && r.id === $member.id}<span class="badge dim" style="margin-left:.4rem;">{$t('you')}</span>{/if}{#if r.kind === 'card'}<span class="badge dim" style="margin-left:.4rem;" title={$t('A member-card: managed by a chapter officer; value is custodial until the person signs up.')}>{$t('card')}</span>{/if}</span>
                       <span class="psub">{r.affiliation ?? '—'}</span>
                     </a>
@@ -369,7 +402,7 @@
                 <tr>
                   <td class="num"><span class="rank {rank <= 3 ? 'r' + rank : ''}">{rank}</span></td>
                   <td>
-                    <a href={`/units/${u.id}`} class="proj">
+                    <a href={`/units/${u.id}`} class="proj" onclick={(e) => { e.preventDefault(); openUnit(u); }}>
                       <span class="pname">{u.name}</span>
                       <span class="psub">{u.code}</span>
                     </a>
@@ -410,7 +443,14 @@
         <p class="muted" style="font-size:.8rem; margin:0;">{$t('A member-card: managed by a chapter officer; value is custodial until the person signs up.')}</p>
       {/if}
       {#snippet actions()}
-        <a class="btn" href={`/members/${r.id}`}>{$t('Open full page')} →</a>
+        {#if isMe(r.id)}
+          <a class="btn" href="/">{$t('Edit my profile')} →</a>
+          <a class="btn ghost" href={`/members/${r.id}`}>{$t('Open full page')} →</a>
+        {:else if canManagePerson(r)}
+          <a class="btn" href={`/members/${r.id}`}>{$t('Manage')} →</a>
+        {:else}
+          <a class="btn" href={`/members/${r.id}`}>{$t('Open full page')} →</a>
+        {/if}
       {/snippet}
     </CardDrawer>
   {:else}
@@ -432,8 +472,25 @@
         {/if}
       </div>
       <div><span class="dl">{$t('Code')}</span><div class="mono">{u.code}</div></div>
+      {#if isOfficerOf(u.id)}
+        <p class="muted" style="font-size:.8rem; margin:0;">{$t('You serve here — manage members, applications & projects from the full page.')}</p>
+      {:else if myUnitStatus[u.id] === 'active'}
+        <span class="badge up" style="align-self:flex-start;">{$t('You are a member')}</span>
+      {:else if myUnitStatus[u.id] === 'pending'}
+        <span class="badge warn" style="align-self:flex-start;">{$t('Application pending')}</span>
+      {/if}
+      {#if drawerErr}<p class="neg" style="font-size:.82rem; margin:0;">{drawerErr}</p>{/if}
+      {#if drawerMsg}<p class="up" style="font-size:.82rem; margin:0;">{drawerMsg}</p>{/if}
       {#snippet actions()}
-        <a class="btn" href={`/units/${u.id}`}>{$t('Open full page')} →</a>
+        {#if isOfficerOf(u.id)}
+          <a class="btn" href={`/units/${u.id}`}>{$t('Manage')} →</a>
+        {:else if $member && !myUnitStatus[u.id]}
+          <button class="btn" onclick={() => applyUnit(u.id)} disabled={drawerBusy}>
+            {drawerBusy ? $t('Sending…') : $t('Apply to join')}</button>
+          <a class="btn ghost" href={`/units/${u.id}`}>{$t('Open full page')} →</a>
+        {:else}
+          <a class="btn" href={`/units/${u.id}`}>{$t('Open full page')} →</a>
+        {/if}
       {/snippet}
     </CardDrawer>
   {/if}
@@ -448,8 +505,11 @@
   .dl { font-size: .7rem; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
   .btn {
     display: inline-flex; align-items: center; gap: .3rem; padding: .5rem .9rem;
-    background: var(--accent); color: #fff; border-radius: 8px; text-decoration: none; font-weight: 600;
+    background: var(--accent); color: #fff; border: 1px solid transparent; border-radius: 8px;
+    text-decoration: none; font: inherit; font-weight: 600; cursor: pointer;
   }
+  .btn:disabled { opacity: .55; cursor: not-allowed; }
+  .btn.ghost { background: transparent; color: var(--accent); border-color: var(--border); }
   .viewtoggle { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
   .viewtoggle button {
     background: var(--card); border: none; color: var(--muted);

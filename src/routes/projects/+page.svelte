@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { supabase, supabaseConfigured } from '$lib/supabase';
-  import { member } from '$lib/session';
+  import { member, capabilities } from '$lib/session';
   import { t } from '$lib/i18n';
   import { get } from 'svelte/store';
   import EntityCard from '$lib/EntityCard.svelte';
@@ -51,8 +51,23 @@
   let view = $state<'cards' | 'table'>('cards');
   // quick-view drawer
   let sel = $state<Grid | null>(null);
-  function openProject(r: Grid) { sel = r; }
+  let drawerBusy = $state(false);
+  let drawerErr = $state('');
+  let drawerMsg = $state('');
+  function openProject(r: Grid) { sel = r; drawerErr = ''; drawerMsg = ''; }
   function closeDrawer() { sel = null; }
+  // permission-gated drawer actions
+  const canEditAny = $derived($capabilities.has('edit_any_project'));
+  const selLeaderStake = $derived(sel ? (types.find((t) => t.name === sel!.type)?.leader_stake ?? 0) : 0);
+  function gotoNeeds() { closeDrawer(); surface = 'needs'; }
+  async function claimLead() {
+    if (!sel) return;
+    drawerBusy = true; drawerErr = '';
+    const { error: err } = await supabase.rpc('claim_leadership', { p: sel.id, p_as: null });
+    drawerBusy = false;
+    if (err) { drawerErr = err.message; return; }
+    window.location.href = `/projects/${sel.id}`;
+  }
   // status name → EntityCard status dot kind
   function projKind(name: string): 'pos' | 'warn' | 'dim' {
     if (name === 'Finished') return 'pos';
@@ -525,7 +540,7 @@
       {#if showHof}
         <div class="hof-grid">
           {#each finished as r}
-            <a href={`/projects/${r.id}`} class="hof-card">
+            <a href={`/projects/${r.id}`} class="hof-card" onclick={(e) => { e.preventDefault(); openProject(r); }}>
               <div class="hof-card-top">
                 <span class="hof-name">{r.name}</span>
                 <span class="badge up">✓ {$t('shipped')}</span>
@@ -658,7 +673,7 @@
           {#each pageRows as r}
             <tr>
               <td>
-                <a href={`/projects/${r.id}`} class="proj">
+                <a href={`/projects/${r.id}`} class="proj" onclick={(e) => { e.preventDefault(); openProject(r); }}>
                   <span class="pname">{r.name}{#if r.claimable}<span class="badge warn" style="margin-left:.4rem; font-size:.66rem; vertical-align:middle;">{$t('lead open')}</span>{/if}</span>
                   <span class="psub">
                     <span>{r.type}</span>
@@ -798,8 +813,25 @@
     {#if r.deadline}
       <div><span class="dl">{$t('Target deadline')}</span><div class="mono {ddlClass(r.deadline)}">{fmtDate(r.deadline)} <span class="rel">{relDays(r.deadline)}</span></div></div>
     {/if}
+    {#if r.claimable && $member}
+      <div><span class="dl">{$t('Claim leadership')}</span>
+        <div class="muted" style="font-size:.82rem;">
+          {#if leaderReady}{$t('Stakes {n} STR from your balance to take the lead.', { n: selLeaderStake.toLocaleString() })}
+          {:else}{$t('Requires certified leader skills — request a role card first.')}{/if}
+        </div>
+      </div>
+    {/if}
+    {#if drawerErr}<p class="neg" style="font-size:.82rem; margin:0;">{drawerErr}</p>{/if}
+    {#if drawerMsg}<p class="up" style="font-size:.82rem; margin:0;">{drawerMsg}</p>{/if}
     {#snippet actions()}
-      <a class="btn" href={`/projects/${r.id}`}>{$t('Open full page')} →</a>
+      {#if r.claimable && $member && leaderReady}
+        <button class="btn" onclick={claimLead} disabled={drawerBusy || selLeaderStake > myBalance}>
+          {drawerBusy ? $t('Claiming…') : $t('Claim leadership')}</button>
+      {/if}
+      {#if r.openNeeds > 0}
+        <button class="btn ghost" onclick={gotoNeeds}>{$t('See {n} open needs', { n: r.openNeeds })} →</button>
+      {/if}
+      <a class="btn ghost" href={`/projects/${r.id}`}>{canEditAny ? $t('Manage') : $t('Open full page')} →</a>
     {/snippet}
   </CardDrawer>
 {/if}
@@ -813,8 +845,11 @@
   .dl { font-size: .7rem; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
   .btn {
     display: inline-flex; align-items: center; gap: .3rem; padding: .5rem .9rem;
-    background: var(--accent); color: #fff; border-radius: 8px; text-decoration: none; font-weight: 600;
+    background: var(--accent); color: #fff; border: 1px solid transparent; border-radius: 8px;
+    text-decoration: none; font: inherit; font-weight: 600; cursor: pointer;
   }
+  .btn:disabled { opacity: .55; cursor: not-allowed; }
+  .btn.ghost { background: transparent; color: var(--accent); border-color: var(--border); }
   .viewtoggle { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
   .viewtoggle button {
     background: transparent; border: none; padding: .35rem .6rem; cursor: pointer;
