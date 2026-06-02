@@ -34,7 +34,7 @@
 </script>
 
 {#if sections.length > 1}
-  <nav class="detail-nav" role="tablist" aria-label={$t(title)}>
+  <div class="detail-nav" role="tablist" aria-label={$t(title)}>
     {#each sections as s (s.id)}
       <a
         href={`#${s.id}`}
@@ -44,5 +44,5 @@
         onclick={(e) => go(e, s.id)}
       >{$t(s.label)}</a>
     {/each}
-  </nav>
+  </div>
 {/if}

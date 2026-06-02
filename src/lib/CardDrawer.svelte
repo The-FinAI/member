@@ -20,7 +20,7 @@
 
 {#if open}
   <div class="drawer-backdrop" onclick={onClose} role="presentation"></div>
-  <aside class="drawer" role="dialog" aria-modal="true">
+  <div class="drawer" role="dialog" aria-modal="true">
     <header class="drawer-head">
       <div class="dh-text">
         {#if type}<span class="dh-type">{$t(type)}</span>{/if}
@@ -33,7 +33,7 @@
     {#if actions}
       <footer class="drawer-foot">{@render actions()}</footer>
     {/if}
-  </aside>
+  </div>
 {/if}
 
 <style>

@@ -655,7 +655,6 @@
   .kv dd { margin: 0; font-size: .85rem; }
   .dlist { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: .4rem; }
   .dlist li { display: flex; align-items: center; justify-content: space-between; gap: .5rem; font-size: .85rem; }
-  .dlist a { color: var(--accent); text-decoration: none; }
   .pcommit-list { display: flex; flex-direction: column; gap: .6rem; }
   .pcommit {
     display: flex; flex-direction: column; gap: .35rem;

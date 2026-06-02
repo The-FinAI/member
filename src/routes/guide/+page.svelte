@@ -92,7 +92,7 @@
         <li>{@html $t("<strong>Forge a card</strong> for each person who works under you from <a href='/my-chapter'>My Chapter</a> — their skills, resources and monthly hours in one batch. Each person is forged only once.")}</li>
         <li>{@html $t("<strong>Claim your existing projects</strong> from <a href='/projects'>Projects</a> and seat your cards onto each roster.")}</li>
         <li>{@html $t("<strong>Clear your <a href='/admin/approvals'>Approvals</a></strong> — the single queue for everything waiting on you.")}</li>
-        <li>{@html $t("Watch your Chapter / Working Group climb the <a href='/members'>Leaderboard</a> as cards are forged.")}</li>
+        <li>{@html $t("Watch your Chapter / Working Group climb the <a href='/community'>Leaderboard</a> as cards are forged.")}</li>
       </ol>
     </div>
   </section>
@@ -228,7 +228,7 @@
   <section id="opportunities" class="card stack">
     <h2>{$t('4 · Finding work — Opportunities')}</h2>
     <p>
-      {@html $t("The <a href='/opportunities'>Opportunities</a> board is the task market. Every project posts <strong id='term-need'>needs</strong> — typed requests for a contribution, e.g. <em>“Labor — 40 hrs/mo of NLP, ≥ Advanced”</em> or <em>“Compute — 200 GPU-hrs/mo.”</em> Filter by kind and skill, apply with a short pitch. Leaderless projects appear here too, as “claim leadership.”")}
+      {@html $t("The <a href='/projects?tab=needs'>Opportunities</a> board is the task market. Every project posts <strong id='term-need'>needs</strong> — typed requests for a contribution, e.g. <em>“Labor — 40 hrs/mo of NLP, ≥ Advanced”</em> or <em>“Compute — 200 GPU-hrs/mo.”</em> Filter by kind and skill, apply with a short pitch. Leaderless projects appear here too, as “claim leadership.”")}
     </p>
     <p class="muted">{$t("Accepted → you confirm by posting the join bond, then you're on the roster and can start declaring monthly contributions.")}</p>
   </section>
@@ -255,7 +255,7 @@
   <section id="reputation" class="card stack">
     <h2>{$t('6 · Reputation & the leaderboard')}</h2>
     <p>
-      {@html $t("Your standing isn't your bank balance. The <a href='/members'>Leaderboard</a> has several boards: <strong>Contribution</strong> (lifetime minted work — the default), <strong>Net worth</strong> (liquid + nominal), and <strong>Wealth</strong> (liquid only).")}
+      {@html $t("Your standing isn't your bank balance. The <a href='/community'>Leaderboard</a> has several boards: <strong>Contribution</strong> (lifetime minted work — the default), <strong>Net worth</strong> (liquid + nominal), and <strong>Wealth</strong> (liquid only).")}
     </p>
     <p class="muted">
       {@html $t('Your <strong>public member page</strong> shows reputation — certified role-card medals, offered resources, project history and milestones — but <strong>never</strong> your liquid balance or ledger. Money is private; reputation is public.')}
@@ -267,7 +267,7 @@
     <h2>{$t('7 · How to start')}</h2>
     <ol class="start">
       <li>{@html $t("<strong>Set up your profile.</strong> List what you can bring — your monthly labor capacity and any resources. <a href='/'>Open your portfolio →</a>")}</li>
-      <li>{@html $t("<strong>Browse opportunities.</strong> Find a project that needs your skills. <a href='/opportunities'>Open opportunities →</a>")}</li>
+      <li>{@html $t("<strong>Browse opportunities.</strong> Find a project that needs your skills. <a href='/projects?tab=needs'>Open opportunities →</a>")}</li>
       <li>{@html $t("<strong>Join a project.</strong> Apply to a need; once accepted, post the 20 STR bond and start declaring monthly hours. <a href='/projects'>Browse projects →</a>")}</li>
       <li>{@html $t("<strong>Certify a skill.</strong> Request a role card to turn a skill into a certified credential and raise your labor rate. <a href='/skills'>Visit the Guild →</a>")}</li>
     </ol>
@@ -307,7 +307,6 @@
   .note { border: 1px solid var(--accent-soft); border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 10px; padding: .85rem 1rem; }
   .note h3 { color: var(--accent); font-size: .95rem; }
   .note p { font-size: .88rem; }
-  .chip-ish { font-family: var(--font-mono); font-size: .72rem; background: var(--accent-soft); color: var(--accent); padding: .05rem .35rem; border-radius: 5px; }
   .flow, .ladder { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
   .step, .rung { background: var(--elevate); border: 1px solid var(--border); border-radius: 999px; padding: .3rem .7rem; font-size: .8rem; }
   .rung.crown { background: var(--accent-soft); border-color: transparent; color: var(--accent); font-weight: 600; }
@@ -317,12 +316,9 @@
   .ph .n { display: inline-block; font-weight: 700; color: var(--accent); margin-bottom: .3rem; font-size: .9rem; }
   .ph p { margin: 0; font-size: .85rem; }
   ol.start { margin: 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: .55rem; line-height: 1.55; }
-  ol.start a { color: var(--accent); text-decoration: none; white-space: nowrap; }
-  ol.start a:hover { text-decoration: underline; }
   .glossary { display: grid; grid-template-columns: max-content 1fr; gap: .5rem 1rem; margin: 0; }
   .glossary dt { font-weight: 700; color: var(--text); scroll-margin-top: 80px; }
   .glossary dd { margin: 0; color: var(--text-dim); font-size: .9rem; }
-  .glossary a { color: var(--accent); text-decoration: none; }
   /* Phase-1 launch callout */
   .launch { border: 1px solid var(--accent); border-left: 3px solid var(--accent);
     background: var(--accent-soft); display: flex; flex-direction: column; gap: .15rem; }
@@ -343,7 +339,6 @@
     background: var(--accent-soft); padding: .15rem .5rem; border-radius: 6px; }
   .track .tlead { margin: .4rem 0 .6rem; font-size: .82rem; color: var(--muted); }
   .track ol.start { gap: .45rem; }
-  .track ol.start a { white-space: normal; }
   /* rollout roadmap */
   .roadmap { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; }
   .pcard { background: var(--elevate); border: 1px solid var(--border); border-radius: 10px; padding: .8rem .9rem; display: flex; flex-direction: column; gap: .25rem; }
