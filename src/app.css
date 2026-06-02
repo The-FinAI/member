@@ -99,7 +99,7 @@ h1, h2, h3 {
   margin: 0 0 .5em;
   letter-spacing: -.01em;
 }
-h1 { font-size: 1.45rem; }
+h1 { font-size: 1.55rem; letter-spacing: -.015em; }
 h2 { font-size: 1.12rem; }
 h3 { font-size: .98rem; }
 
@@ -109,8 +109,8 @@ h3 { font-size: .98rem; }
 .card {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 1rem 1.15rem;
+  border-radius: 16px;
+  padding: 1.1rem 1.25rem;
   box-shadow: var(--shadow);
 }
 
