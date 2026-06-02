@@ -1,43 +1,75 @@
 <script lang="ts">
-  // Pinned, site-wide Phase-1 announcement. Rendered from the layout so it sits
-  // at the top of every page. Stays pinned across navigation; a member can
-  // collapse it for the current visit (sessionStorage), and it returns next visit.
-  // Bump KEY to re-broadcast after a member has collapsed it.
+  // Pinned, site-wide announcements. Rendered from the layout so they sit at the
+  // top of every page. Rows come from the `announcement` table (admins curate
+  // them at /admin/announcements). A member can collapse a notice for the
+  // current visit (sessionStorage, keyed by row id + updated_at, so editing a
+  // notice re-broadcasts it); it returns next visit.
+  import { onMount } from 'svelte';
+  import { supabase, supabaseConfigured } from '$lib/supabase';
   import { t } from '$lib/i18n';
 
-  const KEY = 'phase1_pin_collapsed_v1';
-  let collapsed = $state(false);
+  type Notice = {
+    id: string; title: string; body: string | null;
+    href: string | null; cta_label: string | null; level: string;
+    updated_at: string;
+  };
 
-  $effect(() => {
-    if (typeof window === 'undefined') return;
-    collapsed = window.sessionStorage.getItem(KEY) === '1';
+  let notices = $state<Notice[]>([]);
+  let dismissed = $state<Set<string>>(new Set());
+
+  function keyOf(n: Notice) { return `ann_${n.id}_${n.updated_at}`; }
+
+  onMount(async () => {
+    if (!supabaseConfigured) return;
+    const { data } = await supabase
+      .from('announcement')
+      .select('id, title, body, href, cta_label, level, updated_at')
+      .eq('is_active', true).eq('pinned', true)
+      .order('created_at', { ascending: false });
+    notices = (data as Notice[]) ?? [];
+    if (typeof window !== 'undefined') {
+      const d = new Set<string>();
+      for (const n of notices) if (window.sessionStorage.getItem(keyOf(n)) === '1') d.add(n.id);
+      dismissed = d;
+    }
   });
 
-  function setCollapsed(v: boolean) {
-    collapsed = v;
-    if (typeof window !== 'undefined') {
-      if (v) window.sessionStorage.setItem(KEY, '1');
-      else window.sessionStorage.removeItem(KEY);
-    }
+  function dismiss(n: Notice) {
+    const d = new Set(dismissed); d.add(n.id); dismissed = d;
+    if (typeof window !== 'undefined') window.sessionStorage.setItem(keyOf(n), '1');
   }
+  function restore(n: Notice) {
+    const d = new Set(dismissed); d.delete(n.id); dismissed = d;
+    if (typeof window !== 'undefined') window.sessionStorage.removeItem(keyOf(n));
+  }
+
+  const visible = $derived(notices.filter((n) => !dismissed.has(n.id)));
+  const hidden = $derived(notices.filter((n) => dismissed.has(n.id)));
 </script>
 
-{#if collapsed}
-  <button class="pin-tab" onclick={() => setCollapsed(false)} title={$t('Show the Phase 1 notice')}>
-    <span class="pin-dot">📣</span> {$t('Phase 1 · live now')}
-  </button>
-{:else}
-  <div class="pin-bar">
-    <span class="pin-badge">{$t('Phase 1 · live now')}</span>
+{#each visible as n (n.id)}
+  <div class="pin-bar lvl-{n.level}">
+    <span class="pin-badge">{$t('Notice')}</span>
     <span class="pin-text">
-      <strong>{$t('The Guild is open — mint & claim your role cards')}</strong>
-      <span class="pin-sub">{$t('Every Chapter and Working Group bootstraps the Guild first.')}</span>
+      <strong>{n.title}</strong>
+      {#if n.body}<span class="pin-sub">{n.body}</span>{/if}
     </span>
-    <span class="pin-actions">
-      <a class="pin-btn" href="/skills">{$t('Open the Guild →')}</a>
-      <a class="pin-link" href="/guide#rollout">{$t('Details →')}</a>
-    </span>
-    <button class="pin-x" aria-label={$t('Dismiss')} title={$t('Hide for now')} onclick={() => setCollapsed(true)}>×</button>
+    {#if n.href}
+      <span class="pin-actions">
+        <a class="pin-btn" href={n.href}>{n.cta_label || $t('Open →')}</a>
+      </span>
+    {/if}
+    <button class="pin-x" aria-label={$t('Dismiss')} title={$t('Hide for now')} onclick={() => dismiss(n)}>×</button>
+  </div>
+{/each}
+
+{#if hidden.length}
+  <div class="pin-tabs">
+    {#each hidden as n (n.id)}
+      <button class="pin-tab" onclick={() => restore(n)} title={$t('Show this notice')}>
+        <span class="pin-dot">📣</span> {n.title}
+      </button>
+    {/each}
   </div>
 {/if}
 
@@ -49,6 +81,10 @@
     background: var(--accent-soft); border-radius: 10px;
     padding: .55rem 2.3rem .55rem .9rem; margin-bottom: 1rem;
   }
+  .pin-bar.lvl-success { border-color: var(--up, #2e9e5b); }
+  .pin-bar.lvl-success { border-left-color: var(--up, #2e9e5b); }
+  .pin-bar.lvl-warn { border-color: var(--warn, #c9851f); }
+  .pin-bar.lvl-warn { border-left-color: var(--warn, #c9851f); }
   .pin-badge {
     font-family: var(--font-mono); font-size: .66rem; font-weight: 700;
     letter-spacing: .03em; text-transform: uppercase; color: var(--accent);
@@ -57,7 +93,7 @@
   }
   .pin-text { flex: 1; min-width: 220px; font-size: .9rem; line-height: 1.4; }
   .pin-text strong { font-weight: 600; }
-  .pin-sub { color: var(--text-dim); }
+  .pin-sub { color: var(--text-dim); margin-left: .4rem; }
   .pin-actions { display: flex; align-items: center; gap: .8rem; flex-wrap: wrap; }
   .pin-btn {
     display: inline-block; background: var(--accent); color: #fff;
@@ -65,8 +101,6 @@
     border-radius: 8px; text-decoration: none; white-space: nowrap;
   }
   .pin-btn:hover { filter: brightness(1.08); }
-  .pin-link { color: var(--accent); font-size: .82rem; text-decoration: none; white-space: nowrap; }
-  .pin-link:hover { text-decoration: underline; }
   .pin-x {
     position: absolute; top: .4rem; right: .55rem;
     background: none; border: none; color: var(--muted);
@@ -74,13 +108,13 @@
   }
   .pin-x:hover { color: var(--text); }
 
-  /* collapsed pill */
+  /* collapsed pills */
+  .pin-tabs { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1rem; }
   .pin-tab {
     display: inline-flex; align-items: center; gap: .35rem;
     border: 1px solid var(--accent); background: var(--accent-soft);
     color: var(--accent); font-size: .76rem; font-weight: 600;
     padding: .25rem .65rem; border-radius: 999px; cursor: pointer;
-    margin-bottom: 1rem;
   }
   .pin-tab:hover { filter: brightness(1.05); }
   .pin-dot { font-size: .8rem; }

@@ -4,6 +4,7 @@
   import { t } from '$lib/i18n';
 
   const sections = [
+    { href: '/admin/announcements', title: 'Announcements', desc: 'Post, pin & retire the site-wide notice board' },
     { href: '/admin/invites', title: 'Invite Members', desc: 'Pre-create members by email (invite-only)' },
     { href: '/admin/org-units', title: 'Chapters & Working Groups', desc: 'Assign chairs, secretaries & leaders to the 3 chapters + 3 working groups' },
     { href: '/admin/positions', title: 'Positions', desc: 'Community-level titles + ordering' },
