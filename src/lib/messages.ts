@@ -535,6 +535,8 @@ const zh: Table = {
   '{n} leaderless': '{n} 个无领导',
   'These projects have no managing leader. Stake the leader bond to take the lead seat and start staffing it.':
     '这些项目没有管理领导者。质押领导保证金以接任领导席位并开始组建团队。',
+  'No managing leader yet. Stake the leader bond to take the lead seat and start staffing it.':
+    '尚无管理领导者。质押领导保证金以接任领导席位并开始组建团队。',
   'member': '名成员',
   'members': '名成员',
   'Claiming…': '认领中…',
@@ -543,6 +545,7 @@ const zh: Table = {
   'Insufficient balance ({bal} STR) to lead {name}.': '余额不足({bal} STR),无法主导 {name}。',
   'All': '全部',
   'Seat': '席位',
+  'Lead': '领导',
   'Labor': '工时',
   'Resource': '资源',
   'Search project, role, skill…': '搜索项目、角色、技能…',
@@ -1784,6 +1787,8 @@ const ja: Table = {
   '{n} leaderless': 'リーダー不在 {n} 件',
   'These projects have no managing leader. Stake the leader bond to take the lead seat and start staffing it.':
     'これらのプロジェクトには管理リーダーがいません。リーダーボンドをステークしてリーダー席に就き、人員配置を始めましょう。',
+  'No managing leader yet. Stake the leader bond to take the lead seat and start staffing it.':
+    'まだ管理リーダーがいません。リーダーボンドをステークしてリーダー席に就き、人員配置を始めましょう。',
   'member': '名',
   'members': '名',
   'Claiming…': '取得中…',
@@ -1792,6 +1797,7 @@ const ja: Table = {
   'Insufficient balance ({bal} STR) to lead {name}.': '残高不足（{bal} STR)のため {name} を主導できません。',
   'All': 'すべて',
   'Seat': '席',
+  'Lead': 'リード',
   'Labor': '稼働',
   'Resource': 'リソース',
   'Search project, role, skill…': 'プロジェクト・役割・スキルを検索…',
@@ -3033,6 +3039,8 @@ const fr: Table = {
   '{n} leaderless': '{n} sans chef',
   'These projects have no managing leader. Stake the leader bond to take the lead seat and start staffing it.':
     'Ces projets n’ont pas de chef. Engagez la caution de chef pour prendre la tête et commencer à recruter.',
+  'No managing leader yet. Stake the leader bond to take the lead seat and start staffing it.':
+    'Pas encore de chef. Engagez la caution de chef pour prendre la tête et commencer à recruter.',
   'member': 'membre',
   'members': 'membres',
   'Claiming…': 'Prise en cours…',
@@ -3041,6 +3049,7 @@ const fr: Table = {
   'Insufficient balance ({bal} STR) to lead {name}.': 'Solde insuffisant ({bal} STR) pour diriger {name}.',
   'All': 'Tout',
   'Seat': 'Siège',
+  'Lead': 'Direction',
   'Labor': 'Travail',
   'Resource': 'Ressource',
   'Search project, role, skill…': 'Rechercher projet, rôle, compétence…',
