@@ -5,6 +5,9 @@
   import { member, officerUnits, actingAs } from '$lib/session';
   import { t } from '$lib/i18n';
   import { get } from 'svelte/store';
+  import EntityCard from '$lib/EntityCard.svelte';
+  import CardDrawer from '$lib/CardDrawer.svelte';
+  import Medal from '$lib/Medal.svelte';
 
   type Card = {
     id: string; full_name: string; email: string; affiliation: string | null;
@@ -147,6 +150,31 @@
     actingAs.set({ id: c.id, full_name: c.full_name });
     goto('/projects');
   }
+
+  // ── card drawer: one place to inspect & act on a person-card ──
+  type DrawerRes = { id: string; name: string; capacity: string | null; availability: string; approval_status: string; resource_type: { name: string } | null };
+  type DrawerProj = { project: { id: string; name: string; project_status: { name: string } | null } | null; project_role: { name: string } | null };
+  let selected = $state<Card | null>(null);
+  let selRes = $state<DrawerRes[]>([]);
+  let selProjects = $state<DrawerProj[]>([]);
+  let selLoading = $state(false);
+
+  async function openCard(c: Card) {
+    selected = c; selLoading = true; selRes = []; selProjects = [];
+    const [{ data: rs }, { data: pm }] = await Promise.all([
+      supabase.from('resource')
+        .select('id, name, capacity, availability, approval_status, resource_type(name)')
+        .eq('scope', 'member').eq('holder_member_id', c.id).order('name'),
+      supabase.from('project_member')
+        .select('project(id, name, project_status!project_status_id_fkey(name)), project_role(name)')
+        .eq('member_id', c.id)
+    ]);
+    selRes = (rs as DrawerRes[]) ?? [];
+    selProjects = (pm as DrawerProj[]) ?? [];
+    selLoading = false;
+  }
+  function closeCard() { selected = null; }
+  const cap = (s: string | null) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
 </script>
 
 <div class="stack">
@@ -282,40 +310,120 @@
       {:else if cards.length === 0}
         <p class="muted">{$t('No cards yet. Forge one above.')}</p>
       {:else}
-        <ul style="margin:0; padding:0; list-style:none;">
+        <div class="card-grid">
           {#each cards as c}
-            <li class="stack" style="gap:.3rem; border-top:1px solid var(--border); padding:.6rem 0;">
-              <div class="row" style="justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.5rem;">
-                <div>
-                  <strong>{c.full_name}</strong>
-                  <span class="muted" style="font-size:.8rem;">· {c.email}</span>
-                  {#if chapters.length > 1}<span class="badge dim" style="font-size:.7rem; margin-left:.3rem;">{unitName(c.home_unit_id)}</span>{/if}
-                  <span class="badge {c.status === 'active' ? 'pos' : 'warn'}" style="font-size:.7rem; margin-left:.3rem;">{$t(c.status)}</span>
-                </div>
-                <div class="row" style="gap:.5rem; align-items:center;">
-                  <span class="chip"><span class="amt">{(balances[c.id] ?? 0).toLocaleString()}</span> STR</span>
-                  <button onclick={() => actAs(c)}>{$t('Act as this card →')}</button>
-                </div>
-              </div>
-              {#if (cardSkills[c.id] ?? []).length > 0}
-                <div class="row" style="flex-wrap:wrap; gap:.3rem;">
-                  {#each cardSkills[c.id] as s}
-                    <span class="badge dim" style="font-size:.7rem;">{$t(s.skill?.name ?? '—')} · {$t((s.certified_level ?? '').charAt(0).toUpperCase() + (s.certified_level ?? '').slice(1))}</span>
-                  {/each}
-                </div>
-              {/if}
-            </li>
+            <EntityCard
+              type="Person"
+              title={c.full_name}
+              subtitle={c.email}
+              status={cap(c.status)}
+              statusKind={c.status === 'active' ? 'pos' : 'warn'}
+              stats={[{ label: 'STR', value: (balances[c.id] ?? 0).toLocaleString() }]}
+              onclick={() => openCard(c)}
+            >
+              {#snippet badges()}
+                {#each (cardSkills[c.id] ?? []) as s}
+                  <Medal name={$t(s.skill?.name ?? '—')} level={s.certified_level ?? 'apprentice'} size="sm" />
+                {/each}
+              {/snippet}
+            </EntityCard>
           {/each}
-        </ul>
+        </div>
         <p class="muted" style="font-size:.8rem; margin:.2rem 0 0;">
-          {$t('“Act as this card” lets you join projects, apply to needs, mint contributions and request role cards on the card’s behalf. Money moves on the card’s balance.')}
+          {$t('Click a card to inspect it, then act on its behalf — join projects, apply to needs, mint contributions and request role cards. Money moves on the card’s balance.')}
         </p>
       {/if}
     </div>
   {/if}
 </div>
 
+<!-- person-card drawer: the one place to inspect and act on a card -->
+<CardDrawer
+  open={selected !== null}
+  type="Person"
+  title={selected?.full_name ?? ''}
+  subtitle={selected?.email ?? ''}
+  onClose={closeCard}
+>
+  {#if selected}
+    <section class="dsec">
+      <h3>{$t('Identity')}</h3>
+      <dl class="kv">
+        <dt>{$t('Status')}</dt><dd><span class="badge {selected.status === 'active' ? 'pos' : 'warn'}">{$t(cap(selected.status))}</span></dd>
+        {#if selected.affiliation}<dt>{$t('Affiliation')}</dt><dd>{selected.affiliation}</dd>{/if}
+        {#if chapters.length > 1}<dt>{$t('Chapter')}</dt><dd>{unitName(selected.home_unit_id)}</dd>{/if}
+        <dt>{$t('Balance')}</dt><dd><span class="chip"><span class="amt">{(balances[selected.id] ?? 0).toLocaleString()}</span> STR</span></dd>
+      </dl>
+    </section>
+
+    <section class="dsec">
+      <h3>{$t('Role cards')}</h3>
+      {#if (cardSkills[selected.id] ?? []).length > 0}
+        <div class="row" style="flex-wrap:wrap; gap:.3rem;">
+          {#each cardSkills[selected.id] as s}
+            <Medal name={$t(s.skill?.name ?? '—')} level={s.certified_level ?? 'apprentice'} size="sm" />
+          {/each}
+        </div>
+      {:else}
+        <p class="muted" style="font-size:.82rem; margin:0;">{$t('No role cards yet. Act as this card to request them in the Guild.')}</p>
+      {/if}
+    </section>
+
+    <section class="dsec">
+      <h3>{$t('Resources')}</h3>
+      {#if selLoading}
+        <p class="muted" style="font-size:.82rem; margin:0;">{$t('Loading…')}</p>
+      {:else if selRes.length > 0}
+        <ul class="dlist">
+          {#each selRes as r}
+            <li>
+              <span>{$t(r.resource_type?.name ?? r.name)}{#if r.capacity} · {r.capacity}{/if}</span>
+              <span class="badge {r.approval_status === 'approved' ? 'pos' : r.approval_status === 'rejected' ? 'down' : 'warn'}" style="font-size:.68rem;">{$t(cap(r.approval_status))}</span>
+            </li>
+          {/each}
+        </ul>
+      {:else}
+        <p class="muted" style="font-size:.82rem; margin:0;">{$t('No resources staged yet.')}</p>
+      {/if}
+    </section>
+
+    <section class="dsec">
+      <h3>{$t('Projects')}</h3>
+      {#if selLoading}
+        <p class="muted" style="font-size:.82rem; margin:0;">{$t('Loading…')}</p>
+      {:else if selProjects.length > 0}
+        <ul class="dlist">
+          {#each selProjects as p}
+            <li>
+              <a href={`/projects/${p.project?.id}`}>{p.project?.name}</a>
+              <span class="muted" style="font-size:.72rem;">{$t(p.project_role?.name ?? '')} · {$t(p.project?.project_status?.name ?? '')}</span>
+            </li>
+          {/each}
+        </ul>
+      {:else}
+        <p class="muted" style="font-size:.82rem; margin:0;">{$t('Not on any project yet — act as this card to join one.')}</p>
+      {/if}
+    </section>
+  {/if}
+
+  {#snippet actions()}
+    {#if selected}
+      <button class="stake" onclick={() => actAs(selected!)}>{$t('Act as this card →')}</button>
+      <span class="muted" style="font-size:.74rem;">{$t('Actions and STR will apply to this card.')}</span>
+    {/if}
+  {/snippet}
+</CardDrawer>
+
 <style>
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: .8rem; }
+  .dsec { display: flex; flex-direction: column; gap: .4rem; }
+  .dsec h3 { margin: 0; font-size: .82rem; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
+  .kv { display: grid; grid-template-columns: max-content 1fr; gap: .3rem .8rem; margin: 0; }
+  .kv dt { color: var(--muted); font-size: .82rem; }
+  .kv dd { margin: 0; font-size: .85rem; }
+  .dlist { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: .4rem; }
+  .dlist li { display: flex; align-items: center; justify-content: space-between; gap: .5rem; font-size: .85rem; }
+  .dlist a { color: var(--accent); text-decoration: none; }
   .checklist { margin: 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: .4rem; }
   .checklist li { font-size: .85rem; line-height: 1.45; }
   .badge .x {
