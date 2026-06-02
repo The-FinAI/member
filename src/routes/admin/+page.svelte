@@ -7,7 +7,7 @@
   const allSections = [
     { href: '/admin/approvals', title: 'Approvals', desc: 'One queue for everything awaiting a decision — resources, role cards, unit applications & over-capacity commitments' },
     { href: '/admin/announcements', title: 'Announcements', desc: 'Post, pin & retire the site-wide notice board' },
-    { href: '/admin/invites', title: 'Invite Members', desc: 'Pre-create members by email (invite-only)', phase2: true },
+    { href: '/admin/invites', title: PHASE2 ? 'Invite Members' : 'Invite Officers', desc: PHASE2 ? 'Pre-create members by email (invite-only)' : 'Phase 1: invite chapter chairs, secretaries & working-group leaders by email' },
     { href: '/admin/org-units', title: 'Chapters & Working Groups', desc: 'Assign chairs, secretaries & leaders to the 3 chapters + 3 working groups' },
     { href: '/admin/positions', title: 'Positions', desc: 'Community-level titles + ordering' },
     { href: '/admin/capabilities', title: 'Capabilities', desc: 'Grant capabilities to positions (permission matrix)' },

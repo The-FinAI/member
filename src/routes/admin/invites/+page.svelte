@@ -4,6 +4,7 @@
   import { t } from '$lib/i18n';
   import { get } from 'svelte/store';
   import { member } from '$lib/session';
+  import { PHASE2 } from '$lib/phase';
 
   type Pending = { id: string; full_name: string; email: string; affiliation: string | null };
   type Position = { id: string; name: string };
@@ -66,9 +67,13 @@
 
 <div class="stack">
   <p><a href="/admin">← {$t('Admin')}</a></p>
-  <h1>{$t('Invite members')}</h1>
+  <h1>{PHASE2 ? $t('Invite members') : $t('Invite officers')}</h1>
   <p class="muted" style="margin-top:-.75rem;">
-    {$t('Add a member by email and we send them a branded invitation letter with a sign-in link. Their account binds to this record the first time they sign in. Anyone not added here cannot get in.')}
+    {#if PHASE2}
+      {$t('Add a member by email and we send them a branded invitation letter with a sign-in link. Their account binds to this record the first time they sign in. Anyone not added here cannot get in.')}
+    {:else}
+      {$t('Phase 1 is officers only. Invite chapter chairs, secretaries and working-group leaders here — give each one an officer position so they can forge cards and claim projects. Ordinary researchers are not invited yet; their officers forge cards for them instead. Anyone not added here cannot sign in.')}
+    {/if}
   </p>
 
   {#if error}<p style="color:var(--down);">{error}</p>{/if}
