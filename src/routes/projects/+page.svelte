@@ -340,8 +340,6 @@
   const totalEscrow = $derived(rows.reduce((a, r) => a + r.escrow, 0));
   const totalNeeds = $derived(rows.reduce((a, r) => a + r.openNeeds, 0));
   const totalPool = $derived(rows.reduce((a, r) => a + r.pool, 0));
-  const maxEscrow = $derived(Math.max(1, ...rows.map((r) => r.escrow)));
-  const maxPool = $derived(Math.max(1, ...rows.map((r) => r.pool)));
 
   // pagination
   let pageSize = $state(10);
@@ -690,14 +688,9 @@
                 </a>
               </td>
               <td>
-                <span class="status {statusClass(r.status)}">
+                <span class="status {statusClass(r.status)}" title={pipeIndex(r.status) >= 0 && r.status !== 'Hold' ? $t('Step {n} of {total}', { n: pipeIndex(r.status) + 1, total: pipeline.length }) : undefined}>
                   <span class="sdot" style="background:currentColor;"></span>{$t(r.status)}
                 </span>
-                {#if pipeIndex(r.status) >= 0 && r.status !== 'Hold'}
-                  <span class="pipe {statusClass(r.status)}" title={$t('Step {n} of {total}', { n: pipeIndex(r.status) + 1, total: pipeline.length })}>
-                    {#each pipeline as _, i}<i class:fill={i <= pipeIndex(r.status)}></i>{/each}
-                  </span>
-                {/if}
               </td>
               <td>
                 {#if r.leader}
@@ -714,20 +707,14 @@
               </td>
               <td class="num">
                 {#if r.openNeeds > 0}
-                  <span class="row" style="gap:.25rem; justify-content:flex-end;">
-                    {#if r.laborNeeds > 0}<span class="badge info" title={$t('labor needs')}>{r.laborNeeds}L</span>{/if}
-                    {#if r.resourceNeeds > 0}<span class="badge dim" title={$t('resource needs')}>{r.resourceNeeds}R</span>{/if}
-                    {#if r.openNeeds - r.laborNeeds - r.resourceNeeds > 0}<span class="badge" title={$t('seat needs')}>{r.openNeeds - r.laborNeeds - r.resourceNeeds}S</span>{/if}
-                  </span>
+                  <span class="badge info" title={`${r.laborNeeds} ${$t('labor needs')} · ${r.resourceNeeds} ${$t('resource needs')} · ${r.openNeeds - r.laborNeeds - r.resourceNeeds} ${$t('seat needs')}`}>{r.openNeeds}</span>
                 {:else}<span class="muted">—</span>{/if}
               </td>
               <td class="num">
-                <span class="mono">{r.pool.toLocaleString()}</span>
-                {#if r.pool > 0}<span class="bar"><i style={`width:${Math.round((r.pool / maxPool) * 100)}%`}></i></span>{/if}
-                {#if r.escrow > 0}<span class="rel dim" style="display:block;">{$t('{n} bonded', { n: r.escrow.toLocaleString() })}</span>{/if}
+                <span class="mono" title={r.escrow > 0 ? $t('{n} bonded', { n: r.escrow.toLocaleString() }) : undefined}>{r.pool.toLocaleString()}</span>
               </td>
               <td class="num mono">
-                {#if r.multiplier > 1}<span class="badge {r.multiplier >= 2 ? 'up' : 'info'}">×{r.multiplier.toFixed(2)}</span>{:else}<span class="muted">×1.00</span>{/if}
+                {#if r.multiplier > 1}<span class="badge {r.multiplier >= 2 ? 'up' : 'info'}">×{r.multiplier.toFixed(2)}</span>{:else}<span class="muted">—</span>{/if}
               </td>
               <td class="num mono">
                 {#if r.msTotal > 0}
@@ -812,11 +799,6 @@
 
 <style>
   .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: .8rem; }
-  .dstats { display: flex; flex-wrap: wrap; gap: 1.2rem; }
-  .dstat { display: flex; flex-direction: column; gap: .1rem; }
-  .dstat .dv { font-family: var(--font-mono); font-weight: 700; font-size: 1.1rem; }
-  .dstat .dv.accent { color: var(--accent); }
-  .dl { font-size: .7rem; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
   .btn {
     display: inline-flex; align-items: center; gap: .3rem; padding: .5rem .9rem;
     background: var(--accent); color: #fff; border: 1px solid transparent; border-radius: 8px;
