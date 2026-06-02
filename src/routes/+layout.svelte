@@ -20,19 +20,25 @@
   const OPEN_ROUTES = ['/guide'];
 
   let balance = $state<number | null>(null);
+  let nominal = $state(0);
+  // net value = liquid STR + nominal STR still accruing in live projects
+  const netValue = $derived(balance === null ? null : balance + nominal);
 
   async function loadBalance(memberId: string) {
-    const { data } = await supabase
-      .from('stater_balance').select('balance').eq('owner_member_id', memberId).maybeSingle();
-    balance = Number((data as { balance: number } | null)?.balance ?? 0);
+    const [{ data: bal }, { data: nom }] = await Promise.all([
+      supabase.from('stater_balance').select('balance').eq('owner_member_id', memberId).maybeSingle(),
+      supabase.from('stater_project_member_nominal').select('nominal').eq('member_id', memberId)
+    ]);
+    balance = Number((bal as { balance: number } | null)?.balance ?? 0);
+    nominal = ((nom as { nominal: number }[]) ?? []).reduce((s, r) => s + (Number(r.nominal) || 0), 0);
   }
 
-  $effect(() => { if ($member) loadBalance($member.id); else balance = null; });
+  $effect(() => { if ($member) loadBalance($member.id); else { balance = null; nominal = 0; } });
 
+  // top of the left nav: the browse / matching surfaces
   const navItems = [
     { href: '/projects', label: 'Market' },
     { href: '/community', label: 'Community' },
-    { href: '/wallet', label: 'Wallet' },
     { href: '/guide', label: 'Guide' }
   ];
   function isActive(href: string, path: string) {
@@ -146,44 +152,43 @@
           <a href="/admin" class="side-link" class:active={isActive('/admin', $page.url.pathname)}>{$t('Admin')}</a>
         {/if}
       </nav>
+
+      <!-- pinned footer: the member's own corner — net value (→ Wallet) + avatar (→ Profile) -->
+      <div class="side-user">
+        <a href="/wallet" class="su-wallet" class:active={isActive('/wallet', $page.url.pathname)} title={$t('Open your wallet')}>
+          <span class="su-amt">{(netValue ?? 0).toLocaleString()}</span>
+          <span class="su-unit">STR</span>
+          <span class="su-tag">{$t('Net value')}</span>
+        </a>
+        <div class="usermenu">
+          <button class="su-id" onclick={() => (menuOpen = !menuOpen)} title={$t('Account')} aria-haspopup="true" aria-expanded={menuOpen}>
+            <span class="su-ava">{initials($member?.full_name)}</span>
+            <span class="su-meta">
+              <span class="su-name">{$member?.full_name ?? 'Account'}</span>
+              <span class="su-mail">{$session.user.email}</span>
+            </span>
+          </button>
+          {#if menuOpen}
+            <div class="menu-backdrop" onclick={() => (menuOpen = false)} role="presentation"></div>
+            <div class="menu menu-up">
+              <button class="menu-item" onclick={() => go('/')}><span class="mi-ico">⚙</span> {$t('Portfolio & profile')}</button>
+              <div class="menu-sep"></div>
+              <button class="menu-item" onclick={signOut}><span class="mi-ico">⏻</span> {$t('Sign out')}</button>
+            </div>
+          {/if}
+        </div>
+      </div>
     {/if}
   </aside>
 
   <div class="main-col">
     <header class="topbar">
       <div class="container row" style="justify-content: flex-end; padding-block: .55rem; gap: 1rem;">
-        {#if $session && balance !== null}
-          <a href="/wallet" class="chip" title={$t('Open your wallet')}>
-            <span class="amt">{balance.toLocaleString()}</span> STR
-          </a>
-        {/if}
-
         <LangSwitcher />
 
         <button class="icon-btn" onclick={toggleTheme} title={$t('Toggle theme')} aria-label={$t('Toggle theme')}>
           {$theme === 'dark' ? '☀' : '☾'}
         </button>
-
-        {#if $session}
-          <div class="usermenu">
-            <button class="avatar-btn" onclick={() => (menuOpen = !menuOpen)} title={$t('Account')} aria-label={$t('Account menu')} aria-haspopup="true" aria-expanded={menuOpen}>
-              {initials($member?.full_name)}
-            </button>
-            {#if menuOpen}
-              <div class="menu-backdrop" onclick={() => (menuOpen = false)} role="presentation"></div>
-              <div class="menu">
-                <div class="menu-head">
-                  <div class="mh-name">{$member?.full_name ?? 'Account'}</div>
-                  <div class="mh-mail">{$session.user.email}</div>
-                </div>
-                <div class="menu-sep"></div>
-                <button class="menu-item" onclick={() => go('/')}><span class="mi-ico">⚙</span> {$t('Portfolio & profile')}</button>
-                <div class="menu-sep"></div>
-                <button class="menu-item" onclick={signOut}><span class="mi-ico">⏻</span> {$t('Sign out')}</button>
-              </div>
-            {/if}
-          </div>
-        {/if}
       </div>
     </header>
 

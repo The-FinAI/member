@@ -337,6 +337,8 @@ thead.sticky th { position: sticky; top: 0; background: var(--card); z-index: 2;
   min-width: 220px; background: var(--card); border: 1px solid var(--border-2);
   border-radius: 12px; box-shadow: var(--shadow); padding: .4rem; overflow: hidden;
 }
+/* open the popover UPWARD (used by the pinned sidebar-footer account menu) */
+.menu.menu-up { top: auto; bottom: calc(100% + .5rem); right: auto; left: 0; }
 .menu .menu-head { padding: .5rem .6rem .55rem; }
 .menu .menu-head .mh-name { font-weight: 600; color: var(--text); font-size: .9rem; }
 .menu .menu-head .mh-mail { color: var(--muted); font-size: .76rem; word-break: break-all; }
@@ -633,6 +635,38 @@ button.stake:not(:disabled) { animation: pulseRing 2.6s ease-out infinite; }
 }
 .side-link:hover { background: var(--card-2); color: var(--text); }
 .side-link.active { color: var(--accent); background: var(--accent-soft); border-left-color: var(--accent); }
+
+/* ---------- pinned sidebar footer: net value (→wallet) + account ---------- */
+.side-user {
+  margin-top: auto; display: flex; flex-direction: column; gap: .35rem;
+  padding-top: .6rem; border-top: 1px solid var(--border);
+}
+.su-wallet {
+  display: grid; grid-template-columns: auto auto 1fr; align-items: baseline; gap: .3rem;
+  padding: .5rem .6rem; border-radius: 9px; text-decoration: none;
+  color: var(--text); border-left: 2px solid transparent;
+  transition: background .12s ease, color .12s ease;
+}
+.su-wallet:hover { background: var(--card-2); }
+.su-wallet.active { background: var(--accent-soft); border-left-color: var(--accent); }
+.su-amt { font-weight: 700; font-size: 1.02rem; color: var(--text); }
+.su-unit { font-size: .72rem; font-weight: 600; color: var(--muted); }
+.su-tag { grid-column: 1 / -1; font-size: .7rem; color: var(--muted); letter-spacing: .02em; }
+.su-id {
+  display: flex; align-items: center; gap: .55rem; width: 100%;
+  padding: .4rem .5rem; border-radius: 9px;
+  background: transparent; border: 1px solid var(--border-2); cursor: pointer; text-align: left;
+}
+.su-id:hover { background: var(--card-2); filter: none; }
+.su-ava {
+  flex: none; width: 30px; height: 30px; border-radius: 50%;
+  background: var(--accent); color: var(--accent-ink);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: .78rem; letter-spacing: .02em;
+}
+.su-meta { min-width: 0; display: flex; flex-direction: column; }
+.su-name { font-weight: 600; font-size: .84rem; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.su-mail { font-size: .72rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .main-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 
 /* ---------- utility top bar ---------- */
@@ -685,4 +719,12 @@ button.stake:not(:disabled) { animation: pulseRing 2.6s ease-out infinite; }
   .side-nav { flex-direction: row; gap: .25rem; }
   .side-link { border-left: 0; padding: .4rem .6rem; white-space: nowrap; }
   .side-link.active { border-left: 0; }
+  .side-user {
+    margin-top: 0; margin-left: auto; flex-direction: row; align-items: center;
+    gap: .4rem; padding-top: 0; border-top: 0;
+  }
+  .su-wallet { grid-template-columns: auto auto; padding: .35rem .5rem; }
+  .su-wallet .su-tag { display: none; }
+  .su-meta { display: none; }
+  .menu.menu-up { left: auto; right: 0; }
 }
