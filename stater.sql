@@ -485,6 +485,14 @@ returns uuid language plpgsql security definer set search_path = public as $$
 declare sid uuid; hrs integer;
 begin
   if not manages_project(p) and not has_capability('edit_any_project') then raise exception 'not authorized'; end if;
+  -- settlement can only be drafted once the project has reached Finished
+  if not exists (
+    select 1 from project pr
+    join project_status ps on ps.id = pr.status_id
+    where pr.id = p and ps.name = 'Finished'
+  ) then
+    raise exception 'settlement can only be submitted for a Finished project';
+  end if;
   hrs := stater_policy_int('review_window_hours', 72);
   insert into stater_settlement (project_id, submitted_by, status, meeting_notes, review_window_ends_at)
   values (p, current_member_id(), 'submitted', notes, now() + (hrs || ' hours')::interval)
