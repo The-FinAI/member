@@ -11,10 +11,6 @@
   import Medal from '$lib/Medal.svelte';
   import { t } from '$lib/i18n';
 
-  function initials(name: string) {
-    return name.split(' ').filter(Boolean).slice(0, 2).map((s) => s[0]?.toUpperCase() ?? '').join('') || '?';
-  }
-
   type Row = {
     id: string;
     full_name: string;
@@ -55,16 +51,6 @@
   // top-level tab over the card families in the community
   type Tab = 'people' | 'chapters' | 'wgroups' | 'crafts';
   let tab = $state<Tab>('people');
-  // within a tab: card grid (default) or the ranked leaderboard
-  let view = $state<'cards' | 'ranked'>('cards');
-  // people sub-board metric (only meaningful on the people tab)
-  type Metric = 'contribution' | 'networth' | 'wealth';
-  let metric = $state<Metric>('networth');
-  const METRICS: { key: Metric; label: string; blurb: string }[] = [
-    { key: 'contribution', label: 'Contribution', blurb: 'Lifetime nominal STR minted through declared work & verified milestones.' },
-    { key: 'networth', label: 'Net worth', blurb: 'Liquid STR plus nominal STR still accruing in live projects.' },
-    { key: 'wealth', label: 'Wealth', blurb: 'Liquid, spendable STR held right now.' }
-  ];
 
   const TABS: { key: Tab; label: string }[] = [
     { key: 'people', label: 'People' },
@@ -73,15 +59,7 @@
     { key: 'crafts', label: 'Crafts' }
   ];
 
-  const isUnitTab = $derived(tab === 'chapters' || tab === 'wgroups');
   const netWorthOf = (id: string) => (balanceOf[id] ?? 0) + (nominalOf[id] ?? 0);
-  function metricOf(id: string): number {
-    switch (metric) {
-      case 'contribution': return nominalOf[id] ?? 0;
-      case 'networth': return netWorthOf(id);
-      case 'wealth': return balanceOf[id] ?? 0;
-    }
-  }
 
   async function loadMyBalance() {
     if (!$member) return;
@@ -159,19 +137,11 @@
   });
 
   // ---- people ----
-  const ranked = $derived(
-    [...rows].sort((a, b) =>
-      metricOf(b.id) - metricOf(a.id) ||
-      netWorthOf(b.id) - netWorthOf(a.id) ||
-      a.full_name.localeCompare(b.full_name)
-    )
-  );
   const peopleFiltered = $derived(
-    ranked
-      .map((r, i) => ({ row: r, rank: i + 1 }))
-      .filter(({ row }) => row.full_name.toLowerCase().includes(q.toLowerCase()))
+    [...rows]
+      .sort((a, b) => netWorthOf(b.id) - netWorthOf(a.id) || a.full_name.localeCompare(b.full_name))
+      .filter((r) => r.full_name.toLowerCase().includes(q.toLowerCase()))
   );
-  const maxMetric = $derived(Math.max(1, ...ranked.map((r) => metricOf(r.id))));
   function positionsOf(r: Row) {
     return r.member_position?.map((p) => p.position?.name).filter(Boolean).join(', ') || '';
   }
@@ -213,43 +183,12 @@
     return [];
   });
   const unitFiltered = $derived(
-    unitRanked
-      .map((u, i) => ({ unit: u, rank: i + 1 }))
-      .filter(({ unit }) => unit.name.toLowerCase().includes(q.toLowerCase()) || unit.code.toLowerCase().includes(q.toLowerCase()))
+    unitRanked.filter((u) => u.name.toLowerCase().includes(q.toLowerCase()) || u.code.toLowerCase().includes(q.toLowerCase()))
   );
-  const maxUnitMetric = $derived(Math.max(1, ...unitRanked.map((u) => u.total)));
-
-  // podium for the ranked view (2nd · 1st · 3rd)
-  const podium = $derived.by(() => {
-    if (isUnitTab) {
-      if (unitRanked.length < 3) return [];
-      const noun = tab === 'chapters' ? '{n} members' : '{n} projects';
-      const mkU = (u: UnitRow, rank: number, cls: string) => ({
-        id: u.id, name: u.name, sub: $t(noun, { n: u.count }), metric: u.total, rank, cls, me: false
-      });
-      return [mkU(unitRanked[1], 2, 'p2'), mkU(unitRanked[0], 1, 'p1'), mkU(unitRanked[2], 3, 'p3')];
-    }
-    if (ranked.length < 3) return [];
-    const mk = (r: Row, rank: number, cls: string) => ({
-      id: r.id, name: r.full_name, sub: r.affiliation ?? '—', metric: metricOf(r.id), rank, cls,
-      me: !!($member && r.id === $member.id)
-    });
-    return [mk(ranked[1], 2, 'p2'), mk(ranked[0], 1, 'p1'), mk(ranked[2], 3, 'p3')];
-  });
-  const MEDAL = ['🥇', '🥈', '🥉'];
-
-  // status dot for a person card by metric standing
-  function personKind(rank: number): 'pos' | 'warn' | 'dim' {
-    if (rank === 1) return 'pos';
-    if (rank <= 3) return 'warn';
-    return 'dim';
-  }
 
   function onTab(tk: Tab) {
     tab = tk;
-    view = 'cards';
     q = '';
-    if (tk !== 'people') metric = 'networth';
   }
 
   // ---- crafts catalog: domains → leaf skills ----
@@ -331,27 +270,11 @@
     {/each}
   </div>
 
-  <!-- controls: search + cards/ranked toggle, and (people only) the metric sub-board -->
+  <!-- controls: search -->
   <div class="row" style="gap:.6rem; flex-wrap:wrap; align-items:center;">
     <div class="search" style="flex:1; min-width:220px; max-width:340px;">
       <input placeholder={tab === 'people' ? $t('Search by name…') : $t('Search…')} bind:value={q} />
     </div>
-    {#if tab !== 'crafts'}
-      <div class="viewtoggle">
-        <button class:on={view === 'cards'} onclick={() => (view = 'cards')} title={$t('Card view')}>▤</button>
-        <button class:on={view === 'ranked'} onclick={() => (view = 'ranked')} title={$t('Ranked')}>≣</button>
-      </div>
-    {/if}
-    {#if tab === 'people' && view === 'ranked'}
-      <div class="row" style="gap:.4rem; flex-wrap:wrap;">
-        {#each METRICS as m}
-          <span class="chip toggle {metric === m.key ? 'on' : ''}" role="button" tabindex="0"
-            onclick={() => (metric = m.key)}
-            onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') metric = m.key; }}
-          >{$t(m.label)}</span>
-        {/each}
-      </div>
-    {/if}
   </div>
 
   {#if loading}
@@ -359,74 +282,25 @@
 
   <!-- ============ PEOPLE ============ -->
   {:else if tab === 'people'}
-    {#if view === 'cards'}
-      {#if peopleFiltered.length === 0}
-        <div class="card"><p class="muted">{$t('No members.')}</p></div>
-      {:else}
-        <div class="card-grid">
-          {#each peopleFiltered as { row: r, rank } (r.id)}
-            <EntityCard
-              type={r.kind === 'card' ? 'Member card' : 'Member'}
-              title={r.full_name}
-              subtitle={r.affiliation ?? '—'}
-              status={positionsOf(r) || ($member && r.id === $member.id ? 'you' : '')}
-              statusKind={positionsOf(r) ? 'dim' : 'pos'}
-              accent={!!($member && r.id === $member.id)}
-              stats={[
-                { label: 'Nominal', value: (nominalOf[r.id] ?? 0).toLocaleString() },
-                { label: 'Net worth', value: netWorthOf(r.id).toLocaleString() }
-              ]}
-              onclick={() => openPerson(r)}
-            />
-          {/each}
-        </div>
-      {/if}
+    {#if peopleFiltered.length === 0}
+      <div class="card"><p class="muted">{$t('No members.')}</p></div>
     {:else}
-      <span class="muted" style="font-size:.82rem; margin-top:-.4rem;">{$t(METRICS.find((m) => m.key === metric)?.blurb ?? '')}</span>
-      {#if podium.length === 3 && !q}
-        <div class="podium">
-          {#each podium as p}
-            <div class="pod {p.cls}">
-              <div class="medal">{MEDAL[p.rank - 1]}</div>
-              <div class="pod-ava">{initials(p.name)}</div>
-              <div class="pod-name">{p.name}{#if p.me}<span class="badge dim" style="margin-left:.3rem;">{$t('you')}</span>{/if}</div>
-              <div class="pod-sub">{p.sub}</div>
-              <div class="pod-str"><CountUp value={p.metric} /><span class="u">{$t('STR')}</span></div>
-            </div>
-          {/each}
-        </div>
-      {/if}
-      <div class="card" style="padding:0; overflow-x:auto;">
-        {#if peopleFiltered.length === 0}
-          <p class="muted" style="padding:1rem;">{$t('No members.')}</p>
-        {:else}
-          <table>
-            <thead><tr>
-              <th class="num">#</th><th>{$t('Member')}</th><th>{$t('Position')}</th><th style="min-width:90px;">{$t('Share')}</th>
-              <th class="num" class:accent={metric === 'wealth'}>{$t('Liquid')}</th>
-              <th class="num" class:accent={metric === 'contribution'}>{$t('Nominal')}</th>
-              <th class="num" class:accent={metric === 'networth'}>{$t('Net worth')}</th>
-            </tr></thead>
-            <tbody>
-              {#each peopleFiltered as { row: r, rank } (r.id)}
-                <tr class={$member && r.id === $member.id ? 'me-row' : ''}>
-                  <td class="num"><span class="rank {rank <= 3 ? 'r' + rank : ''}">{rank}</span></td>
-                  <td>
-                    <a href={`/members/${r.id}`} class="proj" onclick={(e) => { e.preventDefault(); openPerson(r); }}>
-                      <span class="pname">{r.full_name}{#if $member && r.id === $member.id}<span class="badge dim" style="margin-left:.4rem;">{$t('you')}</span>{/if}{#if r.kind === 'card'}<span class="badge dim" style="margin-left:.4rem;" title={$t('A member-card: managed by a chapter officer; value is custodial until the person signs up.')}>{$t('card')}</span>{/if}</span>
-                      <span class="psub">{r.affiliation ?? '—'}</span>
-                    </a>
-                  </td>
-                  <td class="dim">{positionsOf(r) || '—'}</td>
-                  <td><span class="lb-bar"><i style="width:{Math.max(3, (metricOf(r.id) / maxMetric) * 100)}%"></i></span></td>
-                  <td class="num mono" class:accent={metric === 'wealth'} style={metric === 'wealth' ? 'color:var(--accent);' : ''}>{(balanceOf[r.id] ?? 0).toLocaleString()}</td>
-                  <td class="num mono" class:accent={metric === 'contribution'} style={metric === 'contribution' ? 'color:var(--accent);' : ''}>{(nominalOf[r.id] ?? 0).toLocaleString()}</td>
-                  <td class="num mono" class:accent={metric === 'networth'} style={metric === 'networth' ? 'color:var(--accent);' : ''}>{netWorthOf(r.id).toLocaleString()}</td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
-        {/if}
+      <div class="card-grid">
+        {#each peopleFiltered as r (r.id)}
+          <EntityCard
+            type={r.kind === 'card' ? 'Member card' : 'Member'}
+            title={r.full_name}
+            subtitle={r.affiliation ?? '—'}
+            status={positionsOf(r) || ($member && r.id === $member.id ? 'you' : '')}
+            statusKind={positionsOf(r) ? 'dim' : 'pos'}
+            accent={!!($member && r.id === $member.id)}
+            stats={[
+              { label: 'Nominal', value: (nominalOf[r.id] ?? 0).toLocaleString() },
+              { label: 'Net worth', value: netWorthOf(r.id).toLocaleString() }
+            ]}
+            onclick={() => openPerson(r)}
+          />
+        {/each}
       </div>
     {/if}
 
@@ -463,57 +337,23 @@
 
   <!-- ============ CHAPTERS / WORKING GROUPS ============ -->
   {:else}
-    {#if view === 'cards'}
-      {#if unitFiltered.length === 0}
-        <div class="card"><p class="muted">{tab === 'chapters' ? $t('No chapters.') : $t('No working groups.')}</p></div>
-      {:else}
-        <div class="card-grid">
-          {#each unitFiltered as { unit: u } (u.id)}
-            <EntityCard
-              type={tab === 'chapters' ? 'Chapter' : 'Working Group'}
-              title={u.name}
-              subtitle={u.description ?? u.code}
-              status={u.code}
-              statusKind="dim"
-              stats={tab === 'chapters'
-                ? [{ label: 'Members', value: String(u.count) }, { label: 'Combined net worth', value: u.total.toLocaleString() }]
-                : [{ label: 'Projects', value: String(u.count) }, { label: 'Staked STR', value: u.total.toLocaleString() }]}
-              onclick={() => openUnit(u)}
-            />
-          {/each}
-        </div>
-      {/if}
+    {#if unitFiltered.length === 0}
+      <div class="card"><p class="muted">{tab === 'chapters' ? $t('No chapters.') : $t('No working groups.')}</p></div>
     {:else}
-      <div class="card" style="padding:0; overflow-x:auto;">
-        {#if unitFiltered.length === 0}
-          <p class="muted" style="padding:1rem;">{tab === 'chapters' ? $t('No chapters.') : $t('No working groups.')}</p>
-        {:else}
-          <table>
-            <thead><tr>
-              <th class="num">#</th>
-              <th>{tab === 'chapters' ? $t('Chapter') : $t('Working Group')}</th>
-              <th class="num">{tab === 'chapters' ? $t('Members') : $t('Projects')}</th>
-              <th style="min-width:90px;">{$t('Share')}</th>
-              <th class="num accent">{tab === 'chapters' ? $t('Combined net worth') : $t('Staked STR')}</th>
-            </tr></thead>
-            <tbody>
-              {#each unitFiltered as { unit: u, rank } (u.id)}
-                <tr>
-                  <td class="num"><span class="rank {rank <= 3 ? 'r' + rank : ''}">{rank}</span></td>
-                  <td>
-                    <a href={`/units/${u.id}`} class="proj" onclick={(e) => { e.preventDefault(); openUnit(u); }}>
-                      <span class="pname">{u.name}</span>
-                      <span class="psub">{u.code}</span>
-                    </a>
-                  </td>
-                  <td class="num dim">{u.count}</td>
-                  <td><span class="lb-bar"><i style="width:{Math.max(3, (u.total / maxUnitMetric) * 100)}%"></i></span></td>
-                  <td class="num mono accent" style="color:var(--accent);">{u.total.toLocaleString()}</td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
-        {/if}
+      <div class="card-grid">
+        {#each unitFiltered as u (u.id)}
+          <EntityCard
+            type={tab === 'chapters' ? 'Chapter' : 'Working Group'}
+            title={u.name}
+            subtitle={u.description ?? u.code}
+            status={u.code}
+            statusKind="dim"
+            stats={tab === 'chapters'
+              ? [{ label: 'Members', value: String(u.count) }, { label: 'Combined net worth', value: u.total.toLocaleString() }]
+              : [{ label: 'Projects', value: String(u.count) }, { label: 'Staked STR', value: u.total.toLocaleString() }]}
+            onclick={() => openUnit(u)}
+          />
+        {/each}
       </div>
     {/if}
   {/if}
@@ -654,11 +494,5 @@
     background: transparent; border: 1px solid transparent; color: inherit; cursor: pointer; font-size: .85rem;
   }
   .tree-leaf:hover { background: var(--card-2); }
-  .viewtoggle { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
-  .viewtoggle button {
-    background: var(--card); border: none; color: var(--muted);
-    padding: .3rem .6rem; cursor: pointer; font-size: .95rem; line-height: 1;
-  }
-  .viewtoggle button.on { background: var(--accent-soft); color: var(--accent); }
   .search input { width: 100%; }
 </style>

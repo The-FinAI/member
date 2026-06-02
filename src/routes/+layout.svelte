@@ -30,8 +30,9 @@
   $effect(() => { if ($member) loadBalance($member.id); else balance = null; });
 
   const navItems = [
-    { href: '/projects', label: 'Projects' },
+    { href: '/projects', label: 'Market' },
     { href: '/community', label: 'Community' },
+    { href: '/wallet', label: 'Wallet' },
     { href: '/guide', label: 'Guide' }
   ];
   function isActive(href: string, path: string) {

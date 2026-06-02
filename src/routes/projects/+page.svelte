@@ -7,11 +7,12 @@
   import EntityCard from '$lib/EntityCard.svelte';
   import CardDrawer from '$lib/CardDrawer.svelte';
   import TaskMarket from '$lib/TaskMarket.svelte';
+  import Leaderboard from '$lib/Leaderboard.svelte';
   import { page } from '$app/stores';
 
-  // top-level segment: the project portfolio vs the open-needs task market.
-  // A "need" is an open slot on a project card, so both live on this surface.
-  let surface = $state<'projects' | 'needs'>('projects');
+  // Market = the Member ⟷ Project broker. Three segments: the project portfolio,
+  // the open-needs task market, and the standing leaderboard.
+  let surface = $state<'projects' | 'needs' | 'leaderboard'>('projects');
 
   type PType = { id: string; name: string; leader_stake: number; join_stake: number; finish_bonus: number };
   type PStatus = { id: string; name: string; rank: number };
@@ -191,6 +192,7 @@
   onMount(async () => {
     const initial = $page.url.searchParams.get('tab');
     if (initial === 'needs') surface = 'needs';
+    else if (initial === 'leaderboard') surface = 'leaderboard';
     if (!supabaseConfigured) { loading = false; return; }
     const [, { data: ty }, { data: st }, { data: vn }, { data: wg }] = await Promise.all([
       loadGrid(),
@@ -404,7 +406,7 @@
 <div class="stack">
   <div class="row" style="justify-content:space-between; align-items:center;">
     <div>
-      <h1 style="margin:0;">{$t('Projects')}</h1>
+      <h1 style="margin:0;">{$t('Market')}</h1>
       <span class="muted" style="font-size:.85rem;">{$t('{n} research projects · contribution pools, milestones & open needs', { n: grid.length })}</span>
     </div>
     {#if $member && surface === 'projects'}
@@ -422,10 +424,16 @@
       onclick={() => (surface = 'needs')}
       onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') surface = 'needs'; }}
     >{$t('Open needs')} <span class="ct">{kNeeds}</span></span>
+    <span class="chip toggle {surface === 'leaderboard' ? 'on' : ''}" role="button" tabindex="0"
+      onclick={() => (surface = 'leaderboard')}
+      onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') surface = 'leaderboard'; }}
+    >{$t('Leaderboard')}</span>
   </div>
 
   {#if surface === 'needs'}
     <TaskMarket showHeader={false} />
+  {:else if surface === 'leaderboard'}
+    <Leaderboard />
   {:else}
 
   {#if error}<p class="neg" style="font-size:.85rem;">{error}</p>{/if}
