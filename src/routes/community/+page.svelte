@@ -9,6 +9,7 @@
   import CountUp from '$lib/CountUp.svelte';
   import MemberDetail from '$lib/MemberDetail.svelte';
   import UnitDetail from '$lib/UnitDetail.svelte';
+  import Medal from '$lib/Medal.svelte';
   import { t } from '$lib/i18n';
 
   type Row = {
@@ -35,14 +36,27 @@
   let myUnitStatus = $state<Record<string, string>>({});
 
   // top-level tab over the card families in the community
-  type Tab = 'people' | 'chapters' | 'wgroups';
+  type Tab = 'people' | 'chapters' | 'wgroups' | 'cards';
   let tab = $state<Tab>('people');
 
   const TABS: { key: Tab; label: string }[] = [
     { key: 'people', label: 'People' },
     { key: 'chapters', label: 'Chapters' },
-    { key: 'wgroups', label: 'Working Groups' }
+    { key: 'wgroups', label: 'Working Groups' },
+    { key: 'cards', label: 'Role cards' }
   ];
+
+  // ---- role-card catalog (the former "Guild / crafts") ----
+  // A certified skill IS a role card. The catalog lists every certifiable skill
+  // (a leaf in the skill tree) as a card type, with the members who hold it.
+  type Skill = { id: string; name: string; parent_id: string | null };
+  type Holder = { member_id: string; full_name: string; level: string };
+  let skills = $state<Skill[]>([]);
+  let holdersOf = $state<Record<string, Holder[]>>({});
+  const RANK: Record<string, number> = { apprentice: 0, journeyman: 1, craftsman: 2, master: 3 };
+  const LEVEL_LABEL: Record<string, string> = {
+    apprentice: 'Apprentice', journeyman: 'Journeyman', craftsman: 'Craftsman', master: 'Master'
+  };
 
   const netWorthOf = (id: string) => (balanceOf[id] ?? 0) + (nominalOf[id] ?? 0);
 
@@ -63,7 +77,7 @@
 
   onMount(async () => {
     const initial = $page.url.searchParams.get('tab');
-    if (initial === 'chapters' || initial === 'wgroups' || initial === 'people') tab = initial;
+    if (initial === 'chapters' || initial === 'wgroups' || initial === 'people' || initial === 'cards') tab = initial;
     if (!supabaseConfigured) { loading = false; return; }
     const [{ data }, { data: bals }, { data: nom }, { data: ou }, { data: prj }] = await Promise.all([
       supabase.from('member')
@@ -92,6 +106,20 @@
     for (const p of (prj as { id: string; org_unit_id: string | null }[]) ?? []) pumap[p.id] = p.org_unit_id ?? null;
     projectUnitOf = pumap;
     loading = false;
+
+    // role-card catalog data (skill tree + certified holders)
+    const [{ data: sk }, { data: msk }] = await Promise.all([
+      supabase.from('skill').select('id, name, parent_id').order('name'),
+      supabase.from('member_skill')
+        .select('skill_id, member_id, certified_level, member:member_id(full_name)')
+        .not('certified_level', 'is', null)
+    ]);
+    skills = (sk as Skill[]) ?? [];
+    const hmap: Record<string, Holder[]> = {};
+    for (const r of (msk as { skill_id: string; member_id: string; certified_level: string; member: { full_name: string } | null }[]) ?? []) {
+      (hmap[r.skill_id] ??= []).push({ member_id: r.member_id, full_name: r.member?.full_name ?? '—', level: r.certified_level });
+    }
+    holdersOf = hmap;
     const unsub = member.subscribe((m) => { if (m) { loadMyBalance(); loadMyUnits(); } });
     return unsub;
   });
@@ -151,6 +179,27 @@
       .sort((a, b) => Number(myUnitIds.has(b.id)) - Number(myUnitIds.has(a.id)))
   );
 
+  // ---- role-card catalog ----
+  type CardType = { id: string; name: string; domain: string; holders: Holder[]; top: string };
+  const cardCatalog = $derived.by<CardType[]>(() => {
+    if (!skills.length) return [];
+    const parentIds = new Set(skills.map((s) => s.parent_id).filter(Boolean));
+    const nameOf = (id: string | null) => (id ? (skills.find((s) => s.id === id)?.name ?? '') : '');
+    // a leaf (certifiable craft) is any skill that is nobody's parent
+    return skills
+      .filter((s) => !parentIds.has(s.id))
+      .map((s) => {
+        const holders = (holdersOf[s.id] ?? []).slice()
+          .sort((a, b) => (RANK[b.level] ?? 0) - (RANK[a.level] ?? 0) || a.full_name.localeCompare(b.full_name));
+        return { id: s.id, name: s.name, domain: nameOf(s.parent_id), holders, top: holders[0]?.level ?? '' };
+      })
+      .sort((a, b) => b.holders.length - a.holders.length || a.name.localeCompare(b.name));
+  });
+  const cardsFiltered = $derived(
+    cardCatalog.filter((c) =>
+      c.name.toLowerCase().includes(q.toLowerCase()) || c.domain.toLowerCase().includes(q.toLowerCase()))
+  );
+
   function onTab(tk: Tab) {
     tab = tk;
     q = '';
@@ -159,7 +208,8 @@
   // ---- quick-view drawer ----
   type DrawerSel =
     | { kind: 'person'; row: Row }
-    | { kind: 'unit'; unit: UnitRow; unitKind: 'chapter' | 'working_group' };
+    | { kind: 'unit'; unit: UnitRow; unitKind: 'chapter' | 'working_group' }
+    | { kind: 'card'; card: CardType };
   let sel = $state<DrawerSel | null>(null);
   let drawerBusy = $state(false);
   let drawerErr = $state('');
@@ -167,6 +217,7 @@
   const drawerOpen = $derived(sel !== null);
   function openPerson(r: Row) { sel = { kind: 'person', row: r }; drawerErr = ''; drawerMsg = ''; }
   function openUnit(u: UnitRow) { sel = { kind: 'unit', unit: u, unitKind: tab === 'chapters' ? 'chapter' : 'working_group' }; drawerErr = ''; drawerMsg = ''; }
+  function openCardType(c: CardType) { sel = { kind: 'card', card: c }; drawerErr = ''; drawerMsg = ''; }
   function closeDrawer() { sel = null; }
 
   // ---- permission-aware actions ----
@@ -195,6 +246,7 @@
       <span class="muted" style="font-size:.85rem;">
         {#if tab === 'people'}{$t('Everyone in the community — open a card to see their work, skills & standing.')}
         {:else if tab === 'chapters'}{$t('The three regional chapters. Open one to apply to join.')}
+        {:else if tab === 'cards'}{$t('The role-card catalog — every certifiable skill. Open one to see who holds it.')}
         {:else}{$t('The working groups driving the research agenda. Open one to apply to join.')}{/if}
       </span>
     </div>
@@ -245,6 +297,29 @@
       </div>
     {/if}
 
+  <!-- ============ ROLE-CARD CATALOG ============ -->
+  {:else if tab === 'cards'}
+    {#if cardsFiltered.length === 0}
+      <div class="card"><p class="muted">{$t('No role cards yet.')}</p></div>
+    {:else}
+      <div class="card-grid">
+        {#each cardsFiltered as c (c.id)}
+          <EntityCard
+            type="Role card"
+            title={c.name}
+            subtitle={c.domain || '—'}
+            status={c.holders.length ? $t('{n} holders', { n: c.holders.length }) : $t('No holders yet')}
+            statusKind={c.holders.length ? 'pos' : 'dim'}
+            stats={[
+              { label: 'Holders', value: String(c.holders.length) },
+              { label: 'Top level', value: c.top ? $t(LEVEL_LABEL[c.top]) : '—' }
+            ]}
+            onclick={() => openCardType(c)}
+          />
+        {/each}
+      </div>
+    {/if}
+
   <!-- ============ CHAPTERS / WORKING GROUPS ============ -->
   {:else}
     {#if unitFiltered.length === 0}
@@ -286,7 +361,7 @@
         <a class="btn ghost" href={`/members/${r.id}`}>{$t('Open full page')} →</a>
       {/snippet}
     </CardDrawer>
-  {:else}
+  {:else if sel.kind === 'unit'}
     {@const u = sel.unit}
     <CardDrawer
       open={drawerOpen}
@@ -299,6 +374,34 @@
       {#snippet actions()}
         <a class="btn ghost" href={`/units/${u.id}`}>{$t('Open full page')} →</a>
       {/snippet}
+    </CardDrawer>
+  {:else}
+    {@const c = sel.card}
+    <CardDrawer
+      open={drawerOpen}
+      type="Role card"
+      title={c.name}
+      subtitle={c.domain || '—'}
+      onClose={closeDrawer}
+    >
+      <div class="stack">
+        <p class="muted" style="font-size:.85rem; margin:0;">
+          {$t('A certified skill, ranked Apprentice → Journeyman → Craftsman → Master. In Phase 1, officers mint cards onto their members for review.')}
+        </p>
+        <h3 style="margin:.3rem 0 0;">{$t('Holders')}{#if c.holders.length}<span class="muted" style="font-weight:400;"> · {c.holders.length}</span>{/if}</h3>
+        {#if c.holders.length === 0}
+          <p class="muted" style="margin:0;">{$t('No holders yet.')}</p>
+        {:else}
+          <ul style="margin:0; padding:0; list-style:none;">
+            {#each c.holders as h}
+              <li class="row" style="justify-content:space-between; align-items:center; gap:.5rem; border-top:1px solid var(--border); padding:.45rem 0;">
+                <a href={`/members/${h.member_id}`} class="p-name">{h.full_name}</a>
+                <Medal level={h.level} size="sm" />
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </div>
     </CardDrawer>
   {/if}
 {/if}

@@ -314,9 +314,9 @@
       <span class="sub">{$t('nominal STR minted through work')}</span>
     </div>
     <div class="tile" style="flex:1; min-width:150px;">
-      <span class="label">{$t('Certifications')}</span>
+      <span class="label">{$t('Role cards')}</span>
       <span class="value">{certifiedCount}</span>
-      <span class="sub">{$t(certifiedCount === 1 ? 'skill certified' : 'skills certified')}</span>
+      <span class="sub">{$t(certifiedCount === 1 ? 'card earned' : 'cards earned')}</span>
     </div>
     <a class="tile" href="/projects?tab=needs" style="flex:1; min-width:150px;">
       <span class="label">{$t('Open needs')}</span>
@@ -372,39 +372,34 @@
     {/if}
   </div>
 
-  <!-- certifications: read-only. Role cards are certified by reviewers. -->
+  <!-- role cards: read-only. A certified skill IS a role card; reviewers mint them. -->
   <div class="card stack">
-    <h2 style="margin:0;">{$t('Certifications')}</h2>
+    <div class="row" style="justify-content:space-between; align-items:center;">
+      <h2 style="margin:0;">{$t('Role cards')}</h2>
+      <a href="/community?tab=cards"><button class="ghost">{$t('Card catalog →')}</button></a>
+    </div>
     <p class="muted" style="font-size:.82rem; margin-top:-.35rem;">
       {@html $t("Skills aren't self-rated — they're <strong>earned</strong>. A reviewer certifies each role card, climbing Apprentice → Journeyman → Craftsman → Master.")}
     </p>
-    {#if myCards.length > 0}
-      <div class="row" style="gap:.5rem; flex-wrap:wrap;">
-        {#each myCards as s}<Medal name={skillName(s.skill_id)} level={s.certified_level!} />{/each}
-      </div>
-    {/if}
     {#if skillsLoading}
       <p class="muted">{$t('Loading…')}</p>
     {:else if mySkills.length === 0}
-      <p class="muted">{$t('No certifications yet — a reviewer certifies your role cards as you demonstrate skill.')}</p>
+      <p class="muted">{$t('No role cards yet — a reviewer certifies your cards as you demonstrate skill.')}</p>
     {:else}
-      <table>
-        <thead><tr><th>{$t('Skill')}</th><th>{$t('Guild certification')}</th></tr></thead>
-        <tbody>
-          {#each mySkills as s}
-            <tr>
-              <td><strong>{skillName(s.skill_id)}</strong></td>
-              <td>
-                {#if s.certified_level}
-                  <Medal name={skillName(s.skill_id)} level={s.certified_level} size="sm" />
-                {:else}
-                  <span class="badge dim">{$t('Uncertified')}</span>
-                {/if}
-              </td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
+      {#if myCards.length > 0}
+        <div class="row" style="gap:.5rem; flex-wrap:wrap;">
+          {#each myCards as s}<Medal name={skillName(s.skill_id)} level={s.certified_level!} />{/each}
+        </div>
+      {/if}
+      {@const pending = mySkills.filter((s) => !s.certified_level)}
+      {#if pending.length > 0}
+        <div class="stack" style="gap:.35rem;">
+          <span class="muted" style="font-size:.78rem;">{$t('Skills awaiting a card')}</span>
+          <div class="row" style="gap:.35rem; flex-wrap:wrap;">
+            {#each pending as s}<span class="badge dim">{skillName(s.skill_id)}</span>{/each}
+          </div>
+        </div>
+      {/if}
     {/if}
   </div>
 

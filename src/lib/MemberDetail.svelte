@@ -229,8 +229,7 @@
   const sections = $derived([
     ...(canEditCatalog ? [{ id: 'catalog', label: isMe ? 'What I can bring' : 'What this card can bring' }] : []),
     { id: 'stats', label: 'Overview' },
-    ...(cards.length ? [{ id: 'role-cards', label: 'Role cards' }] : []),
-    { id: 'skills', label: 'Skills' },
+    { id: 'role-cards', label: 'Role cards' },
     { id: 'projects', label: 'Projects' }
   ]);
 </script>
@@ -378,33 +377,27 @@
       </div>
     </div>
 
-    <!-- certified role cards (medals) -->
-    {#if cards.length > 0}
-      <div class="card stack" id="role-cards">
-        <h2 style="margin:0;">{$t('Role cards')}</h2>
-        <div class="row" style="gap:.5rem; flex-wrap:wrap;">
-          {#each cards as c}<Medal name={c.skill?.name ?? c.skill_id} level={c.certified_level!} />{/each}
-        </div>
-      </div>
-    {/if}
-
-    <!-- skills -->
-    <div class="card stack" id="skills">
-      <h2 style="margin:0;">{$t('Skills')}</h2>
+    <!-- role cards: a certified skill IS a role card (medal); uncertified skills
+         are listed as awaiting a card. One section, no duplicate skills table. -->
+    <div class="card stack" id="role-cards">
+      <h2 style="margin:0;">{$t('Role cards')}</h2>
       {#if skills.length === 0}
         <p class="muted">{$t('No skills listed yet.')}</p>
       {:else}
-        <table>
-          <thead><tr><th>{$t('Skill')}</th><th>{$t('Role card')}</th></tr></thead>
-          <tbody>
-            {#each skills as s}
-              <tr>
-                <td><strong>{s.skill?.name ?? s.skill_id}</strong></td>
-                <td>{#if s.certified_level}<Medal level={s.certified_level} size="sm" />{:else}<span class="muted">—</span>{/if}</td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
+        {#if cards.length > 0}
+          <div class="row" style="gap:.5rem; flex-wrap:wrap;">
+            {#each cards as c}<Medal name={c.skill?.name ?? c.skill_id} level={c.certified_level!} />{/each}
+          </div>
+        {/if}
+        {@const pending = skills.filter((s) => !s.certified_level)}
+        {#if pending.length > 0}
+          <div class="stack" style="gap:.35rem;">
+            <span class="muted" style="font-size:.78rem;">{$t('Skills awaiting a card')}</span>
+            <div class="row" style="gap:.35rem; flex-wrap:wrap;">
+              {#each pending as s}<span class="badge dim">{s.skill?.name ?? s.skill_id}</span>{/each}
+            </div>
+          </div>
+        {/if}
       {/if}
     </div>
 

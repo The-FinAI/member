@@ -93,7 +93,7 @@
   <p><a href="/admin">← {$t('Admin')}</a></p>
   <h1>{$t('Skill Tree')}</h1>
   <p class="muted" style="margin-top:-.75rem;">
-    {@html $t('Hierarchical skills. Leaves are certifiable crafts in <a href="/community?tab=crafts">the Guild</a>; needs filter on these.')}
+    {@html $t('Hierarchical skills. Leaves are certifiable crafts in <a href="/community?tab=cards">the Guild</a>; needs filter on these.')}
   </p>
 
   {#if error}<p style="color:var(--down);">{error}</p>{/if}

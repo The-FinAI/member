@@ -140,7 +140,7 @@
         <tr><td><a href="/projects">{$t('Projects')}</a></td><td>{$t('Every research project as a market board. Open one to see its roster, open needs, records, meetings, history and settlement.')}</td></tr>
         <tr><td><a href="/projects?tab=needs">{$t('Open needs')}</a></td><td>{$t('The task market — every open need across all projects, typed by labor or resource and filterable by skill. Apply here. (Now the “Open needs” view of Projects.)')}</td></tr>
         <tr><td><a href="/community">{$t('Community')}</a></td><td>{$t('Everyone’s public profiles and the leaderboard, plus the 3 Chapters and 3 Working Groups — switch tabs for People, Chapters and Working Groups.')}</td></tr>
-        <tr><td><a href="/community?tab=crafts">{$t('Crafts')}</a></td><td>{$t('The skill tree. Request or claim role cards, see your medals, and track the cards awaiting review.')}</td></tr>
+        <tr><td><a href="/community?tab=cards">{$t('Role cards')}</a></td><td>{$t('The role-card catalog — every certifiable skill. Open one to see who holds it and at what level.')}</td></tr>
         <tr><td><a href="/wallet">{$t('Wallet')}</a></td><td>{$t('Your STR balance — liquid vs. nominal — and your full transaction history.')}</td></tr>
         <tr><td>{$t('Approvals')}</td><td>{$t('Officers & reviewers. One queue for every pending decision — role-card requests, chapter & working-group applications, member resources, project milestones, and over-capacity monthly commitments. Approve or reject each in place.')}</td></tr>
         <tr><td>{$t('Admin')}</td><td>{$t('Admins only. Every configurable knob: announcements, invites, positions, capabilities, venues, the skill tree, resources and the STR economy.')}</td></tr>
@@ -268,7 +268,7 @@
       <li>{@html $t("<strong>Set up your profile.</strong> List what you can bring — your monthly labor capacity and any resources. <a href='/'>Open your portfolio →</a>")}</li>
       <li>{@html $t("<strong>Browse opportunities.</strong> Find a project that needs your skills. <a href='/projects?tab=needs'>Open opportunities →</a>")}</li>
       <li>{@html $t("<strong>Join a project.</strong> Apply to a need; once accepted, post the 20 STR bond and start declaring monthly hours. <a href='/projects'>Browse projects →</a>")}</li>
-      <li>{@html $t("<strong>Certify a skill.</strong> Request a role card to turn a skill into a certified credential and raise your labor rate. <a href='/community?tab=crafts'>Visit the Guild →</a>")}</li>
+      <li>{@html $t("<strong>Certify a skill.</strong> Request a role card to turn a skill into a certified credential and raise your labor rate. <a href='/community?tab=cards'>Visit the Guild →</a>")}</li>
     </ol>
   </section>
 
