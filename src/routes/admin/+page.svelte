@@ -29,6 +29,7 @@
   let pendingResources = $state(0);
   let examsInReview = $state(0);
   let pendingCommits = $state(0);
+  let pendingMilestones = $state(0);
   let skillLeaves = $state(0);
   let circulating = $state(0);
 
@@ -36,6 +37,7 @@
   const attention = $derived([
     { n: pendingResources, label: 'resources awaiting review', href: '/admin/approvals' },
     { n: examsInReview, label: 'role cards awaiting review', href: '/admin/approvals' },
+    { n: pendingMilestones, label: 'milestones awaiting review', href: '/admin/approvals' },
     { n: pendingCommits, label: 'over-capacity commitments to review', href: '/admin/approvals' },
     { n: openNeeds, label: 'open needs on the market', href: '/opportunities' }
   ].filter((a) => a.n > 0));
@@ -43,7 +45,7 @@
   async function load() {
     if (!supabaseConfigured) { loading = false; return; }
     const c = (q: any) => q.select('id', { count: 'exact', head: true });
-    const [m, am, p, on, pr, ex, cm, sk, bal] = await Promise.all([
+    const [m, am, p, on, pr, ex, cm, mi, sk, bal] = await Promise.all([
       c(supabase.from('member')),
       c(supabase.from('member')).eq('status', 'active'),
       c(supabase.from('project')),
@@ -51,6 +53,7 @@
       c(supabase.from('resource')).eq('approval_status', 'pending'),
       c(supabase.from('skillcard_request')).eq('status', 'submitted'),
       c(supabase.from('commitment_review_queue')),
+      c(supabase.from('project_milestone')).in('status', ['claimed', 'under_review']),
       supabase.from('skill').select('id', { count: 'exact', head: true }).not('parent_id', 'is', null),
       supabase.from('stater_balance').select('balance')
     ]);
@@ -61,6 +64,7 @@
     pendingResources = pr.count ?? 0;
     examsInReview = ex.count ?? 0;
     pendingCommits = cm.count ?? 0;
+    pendingMilestones = mi.count ?? 0;
     skillLeaves = sk.count ?? 0;
     circulating = ((bal.data as { balance: number }[]) ?? []).reduce((a, b) => a + (Number(b.balance) || 0), 0);
     loading = false;
