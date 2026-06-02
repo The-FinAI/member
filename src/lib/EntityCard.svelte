@@ -44,6 +44,7 @@
     display: flex; flex-direction: column; gap: .4rem; text-align: left;
     background: var(--card); border: 1px solid var(--border); border-radius: 12px;
     padding: .8rem .9rem; cursor: pointer; width: 100%;
+    color: var(--text); font: inherit;
     transition: border-color .12s, box-shadow .12s, transform .12s;
   }
   .ecard:hover { border-color: var(--accent); box-shadow: 0 4px 16px -8px var(--accent); transform: translateY(-1px); }
@@ -61,7 +62,7 @@
   .ec-status.pos { color: var(--up); background: color-mix(in srgb, var(--up) 14%, transparent); }
   .ec-status.warn { color: var(--accent); background: var(--accent-soft); }
   .ec-status.down { color: var(--down); background: color-mix(in srgb, var(--down) 14%, transparent); }
-  .ec-title { font-weight: 700; font-size: 1rem; line-height: 1.2; }
+  .ec-title { font-weight: 700; font-size: 1rem; line-height: 1.2; color: var(--text); }
   .ec-sub { font-size: .8rem; color: var(--text-dim); margin-top: -.15rem; word-break: break-word; }
   .ec-badges { display: flex; flex-wrap: wrap; gap: .3rem; }
   .ec-stats {
