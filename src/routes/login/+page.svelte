@@ -50,7 +50,7 @@
     error = '';
     authError.set(null);
     const token = code.trim();
-    if (token.length < 6) { error = 'Enter the 6-digit code from your email.'; return; }
+    if (token.length < 6) { error = 'Enter the code from your email.'; return; }
     verifying = true;
     const { error: err } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
     verifying = false;
@@ -91,15 +91,15 @@
 
     {#if sent}
       <p class="muted" style="margin-top:-.25rem;">
-        {$t('We emailed a 6-digit code to {email}. Enter it below to sign in.', { email })}
+        {$t('We emailed a sign-in code to {email}. Enter it below to sign in.', { email })}
       </p>
       <form class="stack" onsubmit={verify}>
         <input
           type="text"
           inputmode="numeric"
           autocomplete="one-time-code"
-          maxlength="6"
-          placeholder="123456"
+          maxlength="10"
+          placeholder="••••••"
           bind:value={code}
           style="letter-spacing:.4em; font-size:1.2rem; text-align:center;"
           required
