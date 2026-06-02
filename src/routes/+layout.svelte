@@ -35,12 +35,6 @@
 
   $effect(() => { if ($member) loadBalance($member.id); else { balance = null; nominal = 0; } });
 
-  // top of the left nav: the browse / matching surfaces
-  const navItems = [
-    { href: '/projects', label: 'Market' },
-    { href: '/community', label: 'Community' },
-    { href: '/guide', label: 'Guide' }
-  ];
   function isActive(href: string, path: string) {
     return href === '/' ? path === '/' : path.startsWith(href);
   }
@@ -137,20 +131,29 @@
   <aside class="sidebar">
     <a href="/" class="side-brand">
       <img src="/logo.png" alt="The Fin AI" class="brand-logo" />
-      <span>The&nbsp;Fin&nbsp;AI <span class="muted" style="font-weight:500;">· Stater</span></span>
+      <span>The&nbsp;Fin&nbsp;AI <span class="muted" style="font-weight:500;">· Community</span></span>
     </a>
 
     {#if $session}
       <nav class="side-nav">
-        {#each navItems as n}
-          <a href={n.href} class="side-link" class:active={isActive(n.href, $page.url.pathname)}>{$t(n.label)}</a>
-        {/each}
-        {#if $officerUnits.length > 0 || canAdmin}
-          <a href="/officer" class="side-link" class:active={isActive('/officer', $page.url.pathname)}>{$t('Officer')}</a>
+        <a href="/" class="side-link" class:active={$page.url.pathname === '/'}>{$t('Overview')}</a>
+
+        <div class="side-section">{$t('Browse')}</div>
+        <a href="/projects" class="side-link" class:active={isActive('/projects', $page.url.pathname)}>{$t('Projects')}</a>
+        <a href="/community" class="side-link" class:active={isActive('/community', $page.url.pathname)}>{$t('Community')}</a>
+
+        {#if $officerUnits.length > 0 || canApprove || canAdmin}
+          <div class="side-section">{$t('Operate')}</div>
+          {#if $officerUnits.length > 0 || canAdmin}
+            <a href="/officer" class="side-link" class:active={isActive('/officer', $page.url.pathname)}>{$t('Officer console')}</a>
+          {/if}
+          {#if canApprove}
+            <a href="/admin/forge-queue" class="side-link" class:active={isActive('/admin/forge-queue', $page.url.pathname)}>{$t('Forge queue')}</a>
+          {/if}
         {/if}
-        {#if canApprove}
-          <a href="/admin/forge-queue" class="side-link" class:active={isActive('/admin/forge-queue', $page.url.pathname)}>{$t('Forge queue')}</a>
-        {/if}
+
+        <div class="side-section">{$t('More')}</div>
+        <a href="/guide" class="side-link" class:active={isActive('/guide', $page.url.pathname)}>{$t('Guide')}</a>
         {#if canAdmin}
           <a href="/admin" class="side-link" class:active={isActive('/admin', $page.url.pathname)}>{$t('Admin')}</a>
         {/if}

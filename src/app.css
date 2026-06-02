@@ -668,6 +668,12 @@ button.stake:not(:disabled) { animation: pulseRing 2.6s ease-out infinite; }
   padding: .3rem .55rem .85rem; text-decoration: none;
 }
 .side-nav { display: flex; flex-direction: column; gap: 2px; }
+.side-section {
+  font-size: .64rem; letter-spacing: .11em; text-transform: uppercase;
+  color: var(--muted); font-weight: 600; padding: .85rem .6rem .25rem;
+}
+.side-section:first-child { padding-top: .15rem; }
+.side-link .sl-cn { margin-left: auto; font-size: .68rem; color: var(--muted); }
 .side-link {
   display: flex; align-items: center; gap: .6rem;
   padding: .5rem .6rem; border-radius: 9px;

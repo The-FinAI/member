@@ -7,6 +7,13 @@ import type { Locale } from './i18n';
 type Table = Record<string, string>;
 
 const zh: Table = {
+  // ── Redesign: navigation spine (concept IA) ──
+  "Overview": "总览",
+  "Browse": "浏览",
+  "Operate": "干事",
+  "More": "更多",
+  "Projects": "项目",
+  "Guide": "指南",
   // ── Phase 1 rebuild: retired routes → officer console redirects ──
   "Taking you to the officer console…": "正在前往干事控制台…",
   "Unit management has moved to the officer console.": "单位管理已迁移至干事控制台。",
