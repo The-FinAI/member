@@ -315,6 +315,10 @@ const zh: Table = {
 
   // ── wallet ──
   'Wallet': '钱包',
+  'Home': '主页',
+  'People': '成员',
+  'Menu': '菜单',
+  'Open your wallet': '打开钱包',
   'Your Stater (STR) balance and transaction history.': '你的 Stater(STR)余额与交易记录。',
   'No member record linked to this account yet.': '该账户尚未关联会员记录。',
   'Net worth': '净值',
@@ -1382,6 +1386,10 @@ const ja: Table = {
 
   // ── wallet ──
   'Wallet': 'ウォレット',
+  'Home': 'ホーム',
+  'People': 'メンバー',
+  'Menu': 'メニュー',
+  'Open your wallet': 'ウォレットを開く',
   'Your Stater (STR) balance and transaction history.': 'あなたの Stater（STR）残高と取引履歴。',
   'No member record linked to this account yet.': 'このアカウントにはまだメンバー記録が紐づいていません。',
   'Net worth': '純資産',
@@ -2449,6 +2457,10 @@ const fr: Table = {
 
   // ── wallet ──
   'Wallet': 'Portefeuille',
+  'Home': 'Accueil',
+  'People': 'Membres',
+  'Menu': 'Menu',
+  'Open your wallet': 'Ouvrir le portefeuille',
   'Your Stater (STR) balance and transaction history.': 'Votre solde Stater (STR) et l’historique des transactions.',
   'No member record linked to this account yet.': 'Aucun membre n’est encore lié à ce compte.',
   'Net worth': 'Valeur nette',

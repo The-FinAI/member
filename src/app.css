@@ -635,3 +635,72 @@ button.stake:not(:disabled) { animation: pulseRing 2.6s ease-out infinite; }
   display: inline-flex; align-items: center; justify-content: center; font-size: .95rem;
 }
 .icon-btn:hover { background: var(--card-2); filter: none; }
+
+/* ============================================================
+   App shell — left sidebar rail + content column
+   ============================================================ */
+.shell { min-height: 100vh; }
+.shell.has-rail { display: flex; align-items: stretch; }
+
+.rail {
+  width: 232px; flex: none;
+  position: sticky; top: 0; align-self: flex-start;
+  height: 100vh;
+  display: flex; flex-direction: column; gap: .15rem;
+  background: var(--bg-2);
+  border-right: 1px solid var(--border);
+  padding: .85rem .7rem;
+  z-index: 45;
+}
+.rail-brand {
+  display: flex; align-items: center; gap: .55rem;
+  padding: .25rem .5rem .7rem; font-weight: 700; color: var(--text);
+}
+.rail-brand-name { display: flex; flex-direction: column; line-height: 1.08; font-size: .92rem; }
+.rail-brand-name small {
+  color: var(--muted); font-weight: 500; font-size: .68rem; letter-spacing: .06em; text-transform: uppercase;
+}
+.rail-nav { display: flex; flex-direction: column; gap: 2px; overflow-y: auto; flex: 1; }
+.rail-link {
+  display: flex; align-items: center; gap: .65rem;
+  padding: .5rem .62rem; border-radius: 9px;
+  color: var(--muted); font-weight: 500; font-size: .9rem;
+  transition: background .12s ease, color .12s ease;
+}
+.rail-link:hover { background: var(--card-2); color: var(--text); }
+.rail-link.active { background: var(--accent-soft); color: var(--accent); }
+.rail-sep { height: 1px; background: var(--border); margin: .5rem .45rem; }
+.rail-wallet {
+  margin-top: .35rem; display: flex; align-items: center; gap: .55rem;
+  padding: .55rem .62rem; border-radius: 10px;
+  border: 1px solid var(--border); background: var(--card);
+  color: var(--text-dim); font-size: .85rem;
+  transition: border-color .12s ease, color .12s ease;
+}
+.rail-wallet:hover { border-color: var(--border-2); color: var(--text); }
+.rail-wallet .rw-label { font-weight: 500; }
+.rail-wallet .rw-amt { margin-left: auto; font-weight: 700; color: var(--accent); }
+.rail-wallet .amt { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+.shell-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+.topbar-inner {
+  max-width: 1180px; margin: 0 auto; width: 100%;
+  display: flex; align-items: center; gap: 1rem;
+  padding: .5rem 1.5rem;
+}
+.topbar-brand { display: inline-flex; }
+.rail-toggle { display: none; font-size: 1.05rem; }
+.has-rail .topbar-brand { display: none; }   /* brand lives in the rail on desktop */
+
+@media (max-width: 900px) {
+  .rail {
+    position: fixed; left: 0; top: 0; bottom: 0; height: 100dvh;
+    transform: translateX(-100%); transition: transform .2s ease;
+    box-shadow: var(--shadow);
+  }
+  .rail.open { transform: none; }
+  .rail-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 44; }
+  .has-rail .topbar-brand { display: inline-flex; }   /* show brand again on mobile */
+  .rail-toggle { display: inline-flex; }
+}

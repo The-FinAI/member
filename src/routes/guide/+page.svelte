@@ -6,6 +6,8 @@
   const toc = [
     { id: 'mental-model', label: 'The big picture' },
     { id: 'rollout', label: 'Rollout — where we are now' },
+    { id: 'phase1', label: 'Phase 1 playbook — what to do now' },
+    { id: 'using', label: 'Using the site — every page' },
     { id: 'str', label: '1 · STR — the unit' },
     { id: 'contribution', label: '2 · Contribution = stake' },
     { id: 'projects', label: '3 · Projects & their lifecycle' },
@@ -92,6 +94,60 @@
         <li>{@html $t("Watch your Chapter / Working Group climb the <a href='/members'>Leaderboard</a> as cards are forged.")}</li>
       </ol>
     </div>
+  </section>
+
+  <!-- ───────────────────────── phase 1 playbook ───────────────────────── -->
+  <section id="phase1" class="card stack">
+    <h2>{$t('Phase 1 playbook — exactly what to do now')}</h2>
+    <p>
+      {@html $t("Phase 1 has one job: <strong>build the Guild</strong>. We forge everyone's role cards and set each person's labor rate, so that when the project economy opens in Phase 2 the numbers are already real. There are two tracks — pick the one that's you. (Many people are both.)")}
+    </p>
+    <div class="tracks">
+      <div class="track">
+        <span class="tlabel">{$t('Officers')}</span>
+        <p class="tlead">{$t('Chapter chairs & secretaries, working-group leaders.')}</p>
+        <ol class="start">
+          <li>{@html $t("Open <a href='/my-chapter'>My Chapter</a> and review your roster — every member who belongs to your chapter or group.")}</li>
+          <li>{@html $t("<strong>Mint starter role cards</strong> onto each member for the skills you know they have. Cards are staged as a batch for review — nothing is final until approved.")}</li>
+          <li>{@html $t("Need someone on a seed project right away? On the project page use <strong>“Add a member directly”</strong> to place them on the roster — no application, no bond.")}</li>
+          <li>{@html $t("Post a heads-up on the <a href='/admin/announcements'>announcement board</a> (admins) so your members know what to do.")}</li>
+          <li>{@html $t("If you hold the review capability, clear the queue of <a href='/skills'>card requests</a> your members submit.")}</li>
+        </ol>
+      </div>
+      <div class="track">
+        <span class="tlabel">{$t('Everyone')}</span>
+        <p class="tlead">{$t('Every member, officer or not.')}</p>
+        <ol class="start">
+          <li>{@html $t("Open your <a href='/'>Home / Portfolio</a> and fill in <strong>What I can bring</strong>: your monthly labor hours and any resources (compute, API, funding, data).")}</li>
+          <li>{@html $t("Go to the <a href='/skills'>Guild</a> and <strong>request the role cards</strong> that match your real skills. Each request goes to a reviewer.")}</li>
+          <li>{@html $t("Once approved, your cards appear as medals on your <a href='/members'>public page</a> and set your labor rate.")}</li>
+          <li>{@html $t("Watch your Chapter / Working Group climb the <a href='/members'>People</a> boards as cards are forged across the community.")}</li>
+        </ol>
+      </div>
+    </div>
+    <div class="note">
+      <p style="margin:0;">{@html $t("<strong>No STR moves in Phase 1.</strong> There are no bonds, no project pools and no payouts yet — minting cards is free. This phase is purely about building an honest skill graph. The full economy below switches on in Phase 2.")}</p>
+    </div>
+  </section>
+
+  <!-- ───────────────────────── using the site ───────────────────────── -->
+  <section id="using" class="card stack">
+    <h2>{$t('Using the site — every page, what it’s for')}</h2>
+    <p>{$t('The left sidebar is your map. Here is what each destination does.')}</p>
+    <table>
+      <thead><tr><th>{$t('Page')}</th><th>{$t('What it’s for')}</th></tr></thead>
+      <tbody>
+        <tr><td><a href="/">{$t('Home')}</a></td><td>{$t('Your portfolio: positions, applications, certifications, recent STR activity, and the “What I can bring” editor for your monthly hours & resources.')}</td></tr>
+        <tr><td><a href="/projects">{$t('Projects')}</a></td><td>{$t('Every research project as a market board. Open one to see its roster, open needs, records, meetings, history and settlement.')}</td></tr>
+        <tr><td><a href="/opportunities">{$t('Opportunities')}</a></td><td>{$t('The task market — every open need across all projects, typed by labor or resource and filterable by skill. Apply here.')}</td></tr>
+        <tr><td><a href="/members">{$t('People')}</a></td><td>{$t('The leaderboard plus everyone’s public profile — their certified role-card medals, resources and project history.')}</td></tr>
+        <tr><td><a href="/skills">{$t('Guild')}</a></td><td>{$t('The skill tree. Request or claim role cards, see your medals, and track the cards awaiting review.')}</td></tr>
+        <tr><td><a href="/units">{$t('Units')}</a></td><td>{$t('The 3 Chapters and 3 Working Groups — their officers, rosters and attached projects.')}</td></tr>
+        <tr><td><a href="/wallet">{$t('Wallet')}</a></td><td>{$t('Your STR balance — liquid vs. nominal — and your full transaction history.')}</td></tr>
+        <tr><td>{$t('My Chapter')}</td><td>{$t('Officers only. Mint role cards onto your members and manage your chapter’s cards.')}</td></tr>
+        <tr><td>{$t('Admin')}</td><td>{$t('Admins only. Every configurable knob: announcements, invites, positions, capabilities, venues, the skill tree, resources and the STR economy.')}</td></tr>
+      </tbody>
+    </table>
   </section>
 
   <!-- ───────────────────────── STR ───────────────────────── -->
@@ -280,6 +336,15 @@
   .lbtn:hover { filter: brightness(1.08); }
   .llink { align-self: center; color: var(--accent); font-size: .85rem; text-decoration: none; }
   .llink:hover { text-decoration: underline; }
+  /* phase 1 playbook tracks */
+  .tracks { display: grid; grid-template-columns: 1fr 1fr; gap: .9rem; }
+  .track { background: var(--elevate); border: 1px solid var(--border); border-radius: 10px; padding: .85rem .95rem; }
+  .track .tlabel { display: inline-block; font-family: var(--font-mono); font-size: .72rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .04em; color: var(--accent);
+    background: var(--accent-soft); padding: .15rem .5rem; border-radius: 6px; }
+  .track .tlead { margin: .4rem 0 .6rem; font-size: .82rem; color: var(--muted); }
+  .track ol.start { gap: .45rem; }
+  .track ol.start a { white-space: normal; }
   /* rollout roadmap */
   .roadmap { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; }
   .pcard { background: var(--elevate); border: 1px solid var(--border); border-radius: 10px; padding: .8rem .9rem; display: flex; flex-direction: column; gap: .25rem; }
@@ -291,7 +356,7 @@
   .pgo { margin-top: auto; color: var(--accent); font-size: .82rem; text-decoration: none; font-weight: 600; }
   .pgo:hover { text-decoration: underline; }
   @media (max-width: 620px) {
-    .two, .phases, .roadmap { grid-template-columns: 1fr; }
+    .two, .phases, .roadmap, .tracks { grid-template-columns: 1fr; }
     .glossary { grid-template-columns: 1fr; gap: .15rem 0; }
     .glossary dd { margin-bottom: .5rem; }
   }
