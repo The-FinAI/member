@@ -9,6 +9,8 @@
   import CardDrawer from '$lib/CardDrawer.svelte';
   import CountUp from '$lib/CountUp.svelte';
   import Medal from '$lib/Medal.svelte';
+  import MemberDetail from '$lib/MemberDetail.svelte';
+  import UnitDetail from '$lib/UnitDetail.svelte';
   import { t } from '$lib/i18n';
 
   type Row = {
@@ -370,26 +372,12 @@
       subtitle={r.affiliation ?? '—'}
       onClose={closeDrawer}
     >
-      <div class="dstats">
-        <div class="dstat"><span class="dv">{(nominalOf[r.id] ?? 0).toLocaleString()}</span><span class="dl">{$t('Nominal')}</span></div>
-        <div class="dstat"><span class="dv">{(balanceOf[r.id] ?? 0).toLocaleString()}</span><span class="dl">{$t('Liquid')}</span></div>
-        <div class="dstat"><span class="dv accent">{netWorthOf(r.id).toLocaleString()}</span><span class="dl">{$t('Net worth')}</span></div>
-      </div>
-      {#if positionsOf(r)}
-        <div><span class="dl">{$t('Position')}</span><div>{positionsOf(r)}</div></div>
-      {/if}
-      {#if r.kind === 'card'}
-        <p class="muted" style="font-size:.8rem; margin:0;">{$t('A member-card: managed by a chapter officer; value is custodial until the person signs up.')}</p>
-      {/if}
+      <MemberDetail id={r.id} breadcrumbs={false} />
       {#snippet actions()}
         {#if isMe(r.id)}
           <a class="btn" href="/">{$t('Edit my profile')} →</a>
-          <a class="btn ghost" href={`/members/${r.id}`}>{$t('Open full page')} →</a>
-        {:else if canManagePerson(r)}
-          <a class="btn" href={`/members/${r.id}`}>{$t('Manage')} →</a>
-        {:else}
-          <a class="btn" href={`/members/${r.id}`}>{$t('Open full page')} →</a>
         {/if}
+        <a class="btn ghost" href={`/members/${r.id}`}>{$t('Open full page')} →</a>
       {/snippet}
     </CardDrawer>
   {:else if sel.kind === 'skill'}
@@ -439,35 +427,9 @@
       subtitle={u.description ?? u.code}
       onClose={closeDrawer}
     >
-      <div class="dstats">
-        {#if sel.unitKind === 'chapter'}
-          <div class="dstat"><span class="dv">{u.count}</span><span class="dl">{$t('Members')}</span></div>
-          <div class="dstat"><span class="dv accent">{u.total.toLocaleString()}</span><span class="dl">{$t('Combined net worth')}</span></div>
-        {:else}
-          <div class="dstat"><span class="dv">{u.count}</span><span class="dl">{$t('Projects')}</span></div>
-          <div class="dstat"><span class="dv accent">{u.total.toLocaleString()}</span><span class="dl">{$t('Staked STR')}</span></div>
-        {/if}
-      </div>
-      <div><span class="dl">{$t('Code')}</span><div class="mono">{u.code}</div></div>
-      {#if isOfficerOf(u.id)}
-        <p class="muted" style="font-size:.8rem; margin:0;">{$t('You serve here — manage members, applications & projects from the full page.')}</p>
-      {:else if myUnitStatus[u.id] === 'active'}
-        <span class="badge up" style="align-self:flex-start;">{$t('You are a member')}</span>
-      {:else if myUnitStatus[u.id] === 'pending'}
-        <span class="badge warn" style="align-self:flex-start;">{$t('Application pending')}</span>
-      {/if}
-      {#if drawerErr}<p class="neg" style="font-size:.82rem; margin:0;">{drawerErr}</p>{/if}
-      {#if drawerMsg}<p class="up" style="font-size:.82rem; margin:0;">{drawerMsg}</p>{/if}
+      <UnitDetail id={u.id} breadcrumbs={false} />
       {#snippet actions()}
-        {#if isOfficerOf(u.id)}
-          <a class="btn" href={`/units/${u.id}`}>{$t('Manage')} →</a>
-        {:else if $member && !myUnitStatus[u.id]}
-          <button class="btn" onclick={() => applyUnit(u.id)} disabled={drawerBusy}>
-            {drawerBusy ? $t('Sending…') : $t('Apply to join')}</button>
-          <a class="btn ghost" href={`/units/${u.id}`}>{$t('Open full page')} →</a>
-        {:else}
-          <a class="btn" href={`/units/${u.id}`}>{$t('Open full page')} →</a>
-        {/if}
+        <a class="btn ghost" href={`/units/${u.id}`}>{$t('Open full page')} →</a>
       {/snippet}
     </CardDrawer>
   {/if}

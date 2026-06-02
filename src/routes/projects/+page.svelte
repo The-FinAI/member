@@ -8,6 +8,7 @@
   import CardDrawer from '$lib/CardDrawer.svelte';
   import TaskMarket from '$lib/TaskMarket.svelte';
   import Leaderboard from '$lib/Leaderboard.svelte';
+  import ProjectDetail from '$lib/ProjectDetail.svelte';
   import { page } from '$app/stores';
 
   // Market = the Member ⟷ Project broker. Three segments: the project portfolio,
@@ -802,43 +803,8 @@
     subtitle={r.venue || ''}
     onClose={closeDrawer}
   >
-    <div class="row" style="gap:.4rem; flex-wrap:wrap;">
-      <span class="status {statusClass(r.status)}"><span class="sdot" style="background:currentColor;"></span>{$t(r.status)}</span>
-      {#if r.claimable}<span class="badge warn">{$t('lead open')}</span>{/if}
-    </div>
-    <div class="dstats">
-      <div class="dstat"><span class="dv accent">{r.pool.toLocaleString()}</span><span class="dl">{$t('Nominal pool')}</span></div>
-      <div class="dstat"><span class="dv">×{r.multiplier.toFixed(2)}</span><span class="dl">{$t('×Mult')}</span></div>
-      <div class="dstat"><span class="dv">{r.openNeeds}</span><span class="dl">{$t('Open needs')}</span></div>
-      <div class="dstat"><span class="dv">{r.members}</span><span class="dl">{$t('Members')}</span></div>
-    </div>
-    {#if r.msTotal > 0}
-      <div><span class="dl">{$t('Milestones')}</span><div><span class="up">✓{r.msVerified}</span><span class="dim">/{r.msTotal}</span></div></div>
-    {/if}
-    {#if r.leader}
-      <div><span class="dl">{$t('Team')}</span><div>{r.leader} · {r.members} {r.members === 1 ? $t('member') : $t('members')}</div></div>
-    {/if}
-    {#if r.deadline}
-      <div><span class="dl">{$t('Target deadline')}</span><div class="mono {ddlClass(r.deadline)}">{fmtDate(r.deadline)} <span class="rel">{relDays(r.deadline)}</span></div></div>
-    {/if}
-    {#if r.claimable && $member}
-      <div><span class="dl">{$t('Claim leadership')}</span>
-        <div class="muted" style="font-size:.82rem;">
-          {#if leaderReady}{$t('Stakes {n} STR from your balance to take the lead.', { n: selLeaderStake.toLocaleString() })}
-          {:else}{$t('Requires certified leader skills — request a role card first.')}{/if}
-        </div>
-      </div>
-    {/if}
-    {#if drawerErr}<p class="neg" style="font-size:.82rem; margin:0;">{drawerErr}</p>{/if}
-    {#if drawerMsg}<p class="up" style="font-size:.82rem; margin:0;">{drawerMsg}</p>{/if}
+    <ProjectDetail id={r.id} breadcrumbs={false} />
     {#snippet actions()}
-      {#if r.claimable && $member && leaderReady}
-        <button class="btn" onclick={claimLead} disabled={drawerBusy || selLeaderStake > myBalance}>
-          {drawerBusy ? $t('Claiming…') : $t('Claim leadership')}</button>
-      {/if}
-      {#if r.openNeeds > 0}
-        <button class="btn ghost" onclick={gotoNeeds}>{$t('See {n} open needs', { n: r.openNeeds })} →</button>
-      {/if}
       <a class="btn ghost" href={`/projects/${r.id}`}>{canEditAny ? $t('Manage') : $t('Open full page')} →</a>
     {/snippet}
   </CardDrawer>
