@@ -136,11 +136,11 @@
     if (isUnitBoard) {
       if (unitRanked.length < 3) return [];
       const noun = board === 'chapters' ? '{n} members' : '{n} projects';
-      const mkU = (u: UnitRow, rank: number, cls: string) => ({ id: u.id, name: u.name, sub: $t(noun, { n: u.count }), metric: u.total, rank, cls, me: false });
+      const mkU = (u: UnitRow, rank: number, cls: string) => ({ id: u.id, name: u.name, sub: $t(noun, { n: u.count }), metric: u.total, rank, cls, me: false, href: `/units/${u.id}` });
       return [mkU(unitRanked[1], 2, 'p2'), mkU(unitRanked[0], 1, 'p1'), mkU(unitRanked[2], 3, 'p3')];
     }
     if (ranked.length < 3) return [];
-    const mk = (r: Row, rank: number, cls: string) => ({ id: r.id, name: r.full_name, sub: r.affiliation ?? '—', metric: metricOf(r.id), rank, cls, me: !!($member && r.id === $member.id) });
+    const mk = (r: Row, rank: number, cls: string) => ({ id: r.id, name: r.full_name, sub: r.affiliation ?? '—', metric: metricOf(r.id), rank, cls, me: !!($member && r.id === $member.id), href: `/members/${r.id}` });
     return [mk(ranked[1], 2, 'p2'), mk(ranked[0], 1, 'p1'), mk(ranked[2], 3, 'p3')];
   });
   const MEDAL = ['🥇', '🥈', '🥉'];
@@ -181,19 +181,7 @@
 
   {:else if board === 'people'}
     <span class="muted" style="font-size:.82rem; margin-top:-.4rem;">{$t(METRICS.find((m) => m.key === metric)?.blurb ?? '')}</span>
-    {#if podium.length === 3 && !q}
-      <div class="podium">
-        {#each podium as p}
-          <a class="pod {p.cls}" href={`/members/${p.id}`}>
-            <div class="medal">{MEDAL[p.rank - 1]}</div>
-            <div class="pod-ava">{initials(p.name)}</div>
-            <div class="pod-name">{p.name}{#if p.me}<span class="badge dim" style="margin-left:.3rem;">{$t('you')}</span>{/if}</div>
-            <div class="pod-sub">{p.sub}</div>
-            <div class="pod-str"><CountUp value={p.metric} /><span class="u">{$t('STR')}</span></div>
-          </a>
-        {/each}
-      </div>
-    {/if}
+    {@render podiumBlock()}
     <div class="card" style="padding:0; overflow-x:auto;">
       {#if peopleFiltered.length === 0}
         <p class="muted" style="padding:1rem;">{$t('No members.')}</p>
@@ -228,6 +216,7 @@
     </div>
 
   {:else}
+    {@render podiumBlock()}
     <div class="card" style="padding:0; overflow-x:auto;">
       {#if unitFiltered.length === 0}
         <p class="muted" style="padding:1rem;">{board === 'chapters' ? $t('No chapters.') : $t('No working groups.')}</p>
@@ -261,6 +250,22 @@
     </div>
   {/if}
 </div>
+
+{#snippet podiumBlock()}
+  {#if podium.length === 3 && !q}
+    <div class="podium">
+      {#each podium as p}
+        <a class="pod {p.cls}" href={p.href}>
+          <div class="medal">{MEDAL[p.rank - 1]}</div>
+          <div class="pod-ava">{initials(p.name)}</div>
+          <div class="pod-name">{p.name}{#if p.me}<span class="badge dim" style="margin-left:.3rem;">{$t('you')}</span>{/if}</div>
+          <div class="pod-sub">{p.sub}</div>
+          <div class="pod-str"><CountUp value={p.metric} /><span class="u">{$t('STR')}</span></div>
+        </a>
+      {/each}
+    </div>
+  {/if}
+{/snippet}
 
 <style>
   .search input { width: 100%; }
