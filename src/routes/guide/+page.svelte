@@ -30,12 +30,12 @@
   <!-- ───────────────────────── Phase 1 launch callout ───────────────────────── -->
   <div class="launch card">
     <span class="lbadge">{$t('Phase 1 · live now')}</span>
-    <h2 style="margin:.1rem 0 0;">{$t('The Guild is open — mint & claim your role cards')}</h2>
+    <h2 style="margin:.1rem 0 0;">{$t('Officers — forge your cards & claim your projects')}</h2>
     <p style="margin:.2rem 0 0;">
-      {@html $t("We're switching this economy on in stages. <strong>Right now, in Phase 1, every Chapter and Working Group bootstraps the Guild</strong>: officers mint role cards onto their members, and you claim or request your own. This builds the skill graph and sets everyone's labor rate <em>before</em> the project economy opens in Phase 2.")}
+      {@html $t("We're switching this economy on in stages. <strong>Phase 1 is officers only — ordinary researchers aren't invited yet.</strong> Your job is to forge a card for each person who works under you (their skills, resources and monthly hours) and to claim the projects your chapter already runs. This builds an honest skill graph and seeds the rosters <em>before</em> the member economy opens in Phase 2.")}
     </p>
     <div class="row" style="gap:.6rem; flex-wrap:wrap; margin-top:.3rem;">
-      <a class="lbtn" href="/skills">{$t('Open the Guild →')}</a>
+      <a class="lbtn" href="/my-chapter">{$t('Go to My Chapter →')}</a>
       <a class="llink" href="#rollout">{$t('See the full rollout →')}</a>
     </div>
   </div>
@@ -71,9 +71,9 @@
     <div class="roadmap">
       <div class="pcard now">
         <span class="pn">{$t('Phase 1 · now')}</span>
-        <h3>{$t('Guild bootstrap')}</h3>
-        <p>{@html $t("<strong>Chapters & Working Groups mint and claim role cards.</strong> Officers mint starter cards onto their members; everyone claims or requests their own. We build the skill graph and set each member's labor rate. No bonds, no project pools yet — this is the foundation.")}</p>
-        <a class="pgo" href="/skills">{$t('Open the Guild →')}</a>
+        <h3>{$t('Officer bootstrap')}</h3>
+        <p>{@html $t("<strong>Officers only — no ordinary researchers yet.</strong> Each officer forges a card for every person under them (skills, resources, monthly hours) and claims the projects their chapter already runs, seating cards onto the rosters. This builds the skill graph and sets each member's labor rate before the economy opens.")}</p>
+        <a class="pgo" href="/my-chapter">{$t('Go to My Chapter →')}</a>
       </div>
       <div class="pcard">
         <span class="pn">{$t('Phase 2 · next')}</span>
@@ -89,8 +89,9 @@
     <div class="note">
       <h3 style="margin-top:0;">{$t('What to do in Phase 1')}</h3>
       <ol class="start" style="margin:.2rem 0 0;">
-        <li>{@html $t("<strong>Officers:</strong> mint role cards onto your Chapter / Working Group members from <a href='/my-chapter'>My Chapter</a> — a batch staged for review.")}</li>
-        <li>{@html $t("<strong>Everyone:</strong> set up your profile and <a href='/skills'>request the role cards</a> that match your skills. A reviewer approves them.")}</li>
+        <li>{@html $t("<strong>Forge a card</strong> for each person who works under you from <a href='/my-chapter'>My Chapter</a> — their skills, resources and monthly hours in one batch. Each person is forged only once.")}</li>
+        <li>{@html $t("<strong>Claim your existing projects</strong> from <a href='/projects'>Projects</a> and seat your cards onto each roster.")}</li>
+        <li>{@html $t("<strong>Clear your <a href='/admin/approvals'>Approvals</a></strong> — the single queue for everything waiting on you.")}</li>
         <li>{@html $t("Watch your Chapter / Working Group climb the <a href='/members'>Leaderboard</a> as cards are forged.")}</li>
       </ol>
     </div>
@@ -124,7 +125,7 @@
       </div>
     </div>
     <div class="note">
-      <p style="margin:0;">{@html $t("<strong>No STR moves in Phase 1.</strong> There are no bonds, no project pools and no payouts yet — forging cards is free. This phase is purely about building an honest skill graph and seeding the rosters. The full economy below switches on in Phase 2.")}</p>
+      <p style="margin:0;">{@html $t("<strong>Forging cards is free in Phase 1</strong> — no card fees, no payouts yet. Project bonds stay live, so claiming and leading projects still posts the usual stake. This phase is about building an honest skill graph and seeding the rosters; the full member economy below switches on in Phase 2.")}</p>
     </div>
   </section>
 

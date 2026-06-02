@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { member, capabilities, actingAs } from '$lib/session';
+  import { PHASE2 } from '$lib/phase';
   import Hint from '$lib/Hint.svelte';
   import Medal from '$lib/Medal.svelte';
   import { t } from '$lib/i18n';
@@ -205,13 +206,17 @@
   <div>
     <h1 style="margin-bottom:.15rem;">{$t('The Guild')} <Hint term="certification" text={$t('Certification turns a skill into a hard, reviewed credential — and sets your labor rate, which is how much your monthly hours mint.')} /></h1>
     <span class="muted" style="font-size:.85rem;">
-      {$t("Skills are a craft ladder — Apprentice → Journeyman → Craftsman → Master. A certified skill is a role card: request one (paying the mint or update fee) and a reviewer approves it.")}
+      {#if PHASE2}
+        {$t("Skills are a craft ladder — Apprentice → Journeyman → Craftsman → Master. A certified skill is a role card: request one (paying the mint or update fee) and a reviewer approves it.")}
+      {:else}
+        {$t("Skills are a craft ladder — Apprentice → Journeyman → Craftsman → Master. A certified skill is a role card. In Phase 1, officers mint cards onto their members for review; self-service requests open in Phase 2.")}
+      {/if}
     </span>
   </div>
 
   {#if error}<p class="neg" style="font-size:.85rem;">{error}</p>{/if}
 
-  {#if $actingAs}
+  {#if PHASE2 && $actingAs}
     <p class="muted" style="font-size:.82rem; margin:0;">{$t('Requesting role cards for card {name}; the fee is paid from the card’s balance.', { name: $actingAs.full_name })}</p>
   {/if}
 
@@ -303,8 +308,8 @@
     </div>
   {/if}
 
-  <!-- my role-card requests -->
-  {#if myCardReqs.length > 0}
+  <!-- my role-card requests (self-service — Phase 2) -->
+  {#if PHASE2 && myCardReqs.length > 0}
     <div class="card stack" style="gap:.4rem;">
       <h2 style="margin:0;">{$actingAs ? $t('{name}’s role-card requests', { name: $actingAs.full_name }) : $t('My role-card requests')}</h2>
       {#each myCardReqs as r}
@@ -347,7 +352,7 @@
     <!-- detail -->
     <div class="card stack" style="flex:1.2; min-width:300px; gap:.8rem;">
       {#if !sel}
-        <p class="muted">{$t('Pick a skill from the tree to request a role card.')}</p>
+        <p class="muted">{PHASE2 ? $t('Pick a skill from the tree to request a role card.') : $t('Pick a skill from the tree to see who holds it.')}</p>
       {:else}
         <div>
           <h2 style="margin:0;">{sel.name}</h2>
@@ -357,8 +362,8 @@
           </p>
         </div>
 
-        <!-- request a role card (mint / update) — the certification path -->
-        {#if effId}
+        <!-- request a role card (mint / update) — self-service, Phase 2 -->
+        {#if PHASE2 && effId}
           <div class="card" style="background:var(--card-2); border-color:transparent; padding:.6rem .8rem;">
             <div class="row" style="align-items:flex-end; gap:.5rem; flex-wrap:wrap;">
               <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">{$t('Request role card at')}</span>

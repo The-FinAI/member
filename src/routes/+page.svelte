@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { member, capabilities, officerUnits } from '$lib/session';
+  import { PHASE2 } from '$lib/phase';
   import CountUp from '$lib/CountUp.svelte';
   import Hint from '$lib/Hint.svelte';
   import GettingStarted from '$lib/GettingStarted.svelte';
@@ -240,7 +241,7 @@
     </div>
   {/if}
 
-  {#if $member}<GettingStarted memberId={$member.id} />{/if}
+  {#if PHASE2 && $member}<GettingStarted memberId={$member.id} />{/if}
 
   <!-- economy snapshot -->
   <div class="row rise-stagger" style="align-items:stretch; flex-wrap:wrap;">

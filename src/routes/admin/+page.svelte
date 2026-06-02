@@ -2,11 +2,12 @@
   import { onMount } from 'svelte';
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { t } from '$lib/i18n';
+  import { PHASE2 } from '$lib/phase';
 
-  const sections = [
+  const allSections = [
     { href: '/admin/approvals', title: 'Approvals', desc: 'One queue for everything awaiting a decision — resources, role cards, unit applications & over-capacity commitments' },
     { href: '/admin/announcements', title: 'Announcements', desc: 'Post, pin & retire the site-wide notice board' },
-    { href: '/admin/invites', title: 'Invite Members', desc: 'Pre-create members by email (invite-only)' },
+    { href: '/admin/invites', title: 'Invite Members', desc: 'Pre-create members by email (invite-only)', phase2: true },
     { href: '/admin/org-units', title: 'Chapters & Working Groups', desc: 'Assign chairs, secretaries & leaders to the 3 chapters + 3 working groups' },
     { href: '/admin/positions', title: 'Positions', desc: 'Community-level titles + ordering' },
     { href: '/admin/capabilities', title: 'Capabilities', desc: 'Grant capabilities to positions (permission matrix)' },
@@ -20,6 +21,7 @@
     { href: '/admin/stater', title: 'STR Economy', desc: 'Supply at a glance, mint/sink flow, treasury ledger, health flags — plus mint, grant, allowance & policy knobs' },
     { href: '/admin/writing', title: 'First-author Writing', desc: "Leaders short on this month's writing hours — remind them by email" }
   ];
+  const sections = allSections.filter((s) => PHASE2 || !s.phase2);
 
   let loading = $state(true);
   let members = $state(0);
