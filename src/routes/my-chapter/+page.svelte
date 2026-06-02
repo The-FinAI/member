@@ -148,9 +148,17 @@
   // ── card drawer: the one place to inspect & directly edit a person-card ──
   type DrawerRes = { id: string; name: string; capacity: string | null; availability: string; approval_status: string; type_id: string | null; resource_type: { name: string } | null };
   type DrawerProj = { project: { id: string; name: string; project_status: { name: string } | null } | null; project_role: { name: string } | null };
+  type CommitPeriod = { year_month: string; committed_amount: number; token_equivalent: number; status: string; approval: string };
+  type CommitRow = {
+    id: string; project_id: string; commitment_type: string;
+    skill_id: string | null; resource_id: string | null;
+    skill: { name: string } | null; resource: { name: string } | null;
+    stater_commitment_period: CommitPeriod[];
+  };
   let selected = $state<Card | null>(null);
   let selRes = $state<DrawerRes[]>([]);
   let selProjects = $state<DrawerProj[]>([]);
+  let selCommits = $state<Record<string, CommitRow[]>>({}); // project_id -> this card's commitments
   let selLoading = $state(false);
   let dMsg = $state(''); let dErr = $state(''); let dBusy = $state('');
 
@@ -161,6 +169,57 @@
   let dNewSkill = $state(''); let dNewLevel = $state('apprentice');
   function skillNameOf(sid: string) { return skills.find((s) => s.id === sid)?.name ?? '—'; }
 
+  // per-project monthly contributions (labor + resource), declared for the card
+  function currentMonth() { return new Date().toISOString().slice(0, 7); }
+  let dMonth = $state(currentMonth());
+  let dpSkill = $state<Record<string, string>>({});  // project_id -> skill_id
+  let dpHours = $state<Record<string, string>>({});  // project_id -> hours
+  let dpRes = $state<Record<string, string>>({});    // project_id -> resource_id
+  let dpQty = $state<Record<string, string>>({});    // project_id -> qty
+  // approved, non-labor resources this card holds — committable to a project
+  const committableRes = $derived(selRes.filter((r) => r.approval_status === 'approved' && r.resource_type?.name !== 'Labor'));
+  // the card's certified skills — the only ones a labor commitment can use
+  const cardCertSkills = $derived(selected ? (cardSkills[selected.id] ?? []) : []);
+  function periodFor(rows: CommitRow[] | undefined, ym: string) {
+    const out: { label: string; amount: number; str: number; approval: string }[] = [];
+    for (const r of rows ?? []) {
+      const p = r.stater_commitment_period.find((x) => x.year_month === ym);
+      if (!p) continue;
+      out.push({
+        label: r.commitment_type === 'labor' ? (r.skill?.name ?? '—') : (r.resource?.name ?? '—'),
+        amount: Number(p.committed_amount), str: Number(p.token_equivalent), approval: p.approval
+      });
+    }
+    return out;
+  }
+
+  async function saveLabor(pid: string) {
+    if (!selected) return;
+    const sk = dpSkill[pid]; const hours = dpHours[pid];
+    if (!sk || hours === undefined || hours === '') return;
+    dErr = ''; dMsg = ''; dBusy = 'labor:' + pid;
+    const { error: err } = await supabase.rpc('set_labor_commitment',
+      { p: pid, sk, ym: dMonth, hours: Number(hours), p_as: selected.id });
+    dBusy = '';
+    if (err) { dErr = err.message; return; }
+    dpHours = { ...dpHours, [pid]: '' };
+    dMsg = get(t)('Monthly contribution recorded.');
+    await refreshSel(selected);
+  }
+  async function saveResCommit(pid: string) {
+    if (!selected) return;
+    const res = dpRes[pid]; const qty = dpQty[pid];
+    if (!res || qty === undefined || qty === '') return;
+    dErr = ''; dMsg = ''; dBusy = 'rescommit:' + pid;
+    const { error: err } = await supabase.rpc('set_resource_commitment',
+      { p: pid, res, ym: dMonth, qty: Number(qty), p_as: selected.id });
+    dBusy = '';
+    if (err) { dErr = err.message; return; }
+    dpQty = { ...dpQty, [pid]: '' };
+    dMsg = get(t)('Monthly contribution recorded.');
+    await refreshSel(selected);
+  }
+
   const laborRes = $derived(selRes.find((r) => r.resource_type?.name === 'Labor') ?? null);
   const dStagedCount = $derived(Object.keys(dStaged).length);
   function dStageAt(skillId: string, level: string) {
@@ -169,21 +228,28 @@
   }
 
   async function refreshSel(c: Card) {
-    const [{ data: rs }, { data: pm }] = await Promise.all([
+    const [{ data: rs }, { data: pm }, { data: cm }] = await Promise.all([
       supabase.from('resource')
         .select('id, name, capacity, availability, approval_status, type_id, resource_type(name)')
         .eq('scope', 'member').eq('holder_member_id', c.id).order('name'),
       supabase.from('project_member')
         .select('project(id, name, project_status!project_status_id_fkey(name)), project_role(name)')
+        .eq('member_id', c.id),
+      supabase.from('stater_project_stake_commitment')
+        .select('id, project_id, commitment_type, skill_id, resource_id, skill(name), resource(name), stater_commitment_period(year_month, committed_amount, token_equivalent, status, approval)')
         .eq('member_id', c.id)
     ]);
     selRes = (rs as DrawerRes[]) ?? [];
     selProjects = (pm as DrawerProj[]) ?? [];
+    const byProj: Record<string, CommitRow[]> = {};
+    for (const r of (cm as CommitRow[]) ?? []) (byProj[r.project_id] ??= []).push(r);
+    selCommits = byProj;
   }
 
   async function openCard(c: Card) {
-    selected = c; selLoading = true; selRes = []; selProjects = [];
+    selected = c; selLoading = true; selRes = []; selProjects = []; selCommits = {};
     dMsg = ''; dErr = ''; dStaged = {}; dResType = ''; dResCap = '';
+    dMonth = currentMonth(); dpSkill = {}; dpHours = {}; dpRes = {}; dpQty = {};
     await refreshSel(c);
     // seed monthly-hours editor from the card's Labor resource
     const m = (laborRes?.capacity ?? '').match(/\d+/);
@@ -269,7 +335,7 @@
       <ol class="checklist">
         <li>{$t('Forge a card for each person who works under you — fill in who they are, stage the skills they bring and the resources they offer (compute, API, funding, data) and their monthly hours. Each person is forged only once.')}</li>
         <li>{@html $t("Claim your chapter's existing projects — open <a href='/projects'>Projects</a>, and on each one your chapter already runs use <strong>“Add a member directly”</strong> to seat your cards onto its roster (no application, no bond).")}</li>
-        <li>{$t('Click any card below to open it and edit directly — adjust its monthly hours, mint role cards and stage resources. No mode-switching; the drawer is the card.')}</li>
+        <li>{$t('Click any card below to open it and edit directly — adjust its monthly hours, mint role cards, stage resources, and declare its monthly contributions on each project it has joined. No mode-switching; the drawer is the card.')}</li>
         <li>{$t('Review your roster below: every card you forged is listed, with its balance and staged skills.')}</li>
         <li>{$t('Clear your Approvals queue — over-capacity commitments from your chapter members wait for you there.')} <a href="/admin/approvals">{$t('Open Approvals →')}</a></li>
       </ol>
@@ -515,18 +581,64 @@
     </section>
 
     <section class="dsec">
-      <h3>{$t('Projects')}</h3>
+      <div class="row" style="justify-content:space-between; align-items:center; gap:.5rem;">
+        <h3 style="margin:0;">{$t('Projects')}</h3>
+        {#if selProjects.length > 0}
+          <label class="row" style="gap:.3rem; align-items:center;"><span class="muted" style="font-size:.72rem;">{$t('Month')}</span>
+            <input type="month" bind:value={dMonth} style="font-size:.78rem;" />
+          </label>
+        {/if}
+      </div>
       {#if selLoading}
         <p class="muted" style="font-size:.82rem; margin:0;">{$t('Loading…')}</p>
       {:else if selProjects.length > 0}
-        <ul class="dlist">
+        <p class="muted" style="font-size:.74rem; margin:0;">{$t('Declare this card’s monthly contributions per project. STR accrues to the card; over-capacity months go to an officer for review.')}</p>
+        <div class="pcommit-list">
           {#each selProjects as p}
-            <li>
-              <a href={`/projects/${p.project?.id}`}>{p.project?.name}</a>
-              <span class="muted" style="font-size:.72rem;">{$t(p.project_role?.name ?? '')} · {$t(p.project?.project_status?.name ?? '')}</span>
-            </li>
+            {@const pid = p.project?.id ?? ''}
+            {@const declared = periodFor(selCommits[pid], dMonth)}
+            <div class="pcommit">
+              <div class="row" style="justify-content:space-between; align-items:baseline; gap:.5rem;">
+                <a href={`/projects/${pid}`}>{p.project?.name}</a>
+                <span class="muted" style="font-size:.7rem;">{$t(p.project_role?.name ?? '')} · {$t(p.project?.project_status?.name ?? '')}</span>
+              </div>
+              {#if declared.length > 0}
+                <div class="row" style="flex-wrap:wrap; gap:.3rem;">
+                  {#each declared as d}
+                    <span class="badge {d.approval === 'needs_review' ? 'warn' : 'pos'}" style="font-size:.68rem;">
+                      {$t(d.label)} · {d.amount} · {d.str} STR{#if d.approval === 'needs_review'} · {$t('review')}{/if}
+                    </span>
+                  {/each}
+                </div>
+              {/if}
+              <!-- labor commitment: pick one of the card's certified skills + hours -->
+              {#if cardCertSkills.length > 0}
+                <div class="row" style="gap:.3rem; align-items:flex-end; flex-wrap:wrap;">
+                  <select bind:value={dpSkill[pid]} style="font-size:.78rem; flex:1; min-width:110px;">
+                    <option value="">{$t('Skill (labor)…')}</option>
+                    {#each cardCertSkills as s}<option value={s.skill_id}>{$t(s.skill?.name ?? '—')}</option>{/each}
+                  </select>
+                  <input type="number" min="0" bind:value={dpHours[pid]} placeholder={$t('hrs')} style="width:4.5rem; font-size:.78rem;" />
+                  <button onclick={() => saveLabor(pid)} disabled={!dpSkill[pid] || dpHours[pid] === undefined || dpHours[pid] === '' || dBusy === 'labor:' + pid}>{dBusy === 'labor:' + pid ? $t('Saving…') : $t('Mint')}</button>
+                </div>
+              {/if}
+              <!-- resource commitment: pick one of the card's approved resources + qty -->
+              {#if committableRes.length > 0}
+                <div class="row" style="gap:.3rem; align-items:flex-end; flex-wrap:wrap;">
+                  <select bind:value={dpRes[pid]} style="font-size:.78rem; flex:1; min-width:110px;">
+                    <option value="">{$t('Resource…')}</option>
+                    {#each committableRes as r}<option value={r.id}>{$t(r.resource_type?.name ?? r.name)}{#if r.capacity} · {r.capacity}{/if}</option>{/each}
+                  </select>
+                  <input type="number" min="0" bind:value={dpQty[pid]} placeholder={$t('qty')} style="width:4.5rem; font-size:.78rem;" />
+                  <button onclick={() => saveResCommit(pid)} disabled={!dpRes[pid] || dpQty[pid] === undefined || dpQty[pid] === '' || dBusy === 'rescommit:' + pid}>{dBusy === 'rescommit:' + pid ? $t('Saving…') : $t('Mint')}</button>
+                </div>
+              {/if}
+              {#if cardCertSkills.length === 0 && committableRes.length === 0}
+                <p class="muted" style="font-size:.72rem; margin:0;">{$t('Add a role card or an approved resource above to mint contributions here.')}</p>
+              {/if}
+            </div>
           {/each}
-        </ul>
+        </div>
       {:else}
         <p class="muted" style="font-size:.82rem; margin:0;">{$t('Not on any project yet. Seat this card onto a project from its Projects page.')}</p>
       {/if}
@@ -544,6 +656,12 @@
   .dlist { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: .4rem; }
   .dlist li { display: flex; align-items: center; justify-content: space-between; gap: .5rem; font-size: .85rem; }
   .dlist a { color: var(--accent); text-decoration: none; }
+  .pcommit-list { display: flex; flex-direction: column; gap: .6rem; }
+  .pcommit {
+    display: flex; flex-direction: column; gap: .35rem;
+    border: 1px solid var(--border); border-radius: 10px; padding: .55rem .6rem;
+  }
+  .pcommit a { color: var(--accent); text-decoration: none; font-size: .85rem; }
   .checklist { margin: 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: .4rem; }
   .checklist li { font-size: .85rem; line-height: 1.45; }
   .badge .x {
