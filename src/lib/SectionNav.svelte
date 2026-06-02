@@ -26,7 +26,7 @@
           .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
         if (vis[0]) active = vis[0].target.id;
       },
-      { rootMargin: '-72px 0px -65% 0px', threshold: 0 }
+      { rootMargin: '-104px 0px -65% 0px', threshold: 0 }
     );
     els.forEach((el) => obs.observe(el));
     return () => obs.disconnect();

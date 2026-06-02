@@ -123,83 +123,87 @@
   const isChapterOfficer = $derived($officerUnits.some((u) => u.kind === 'chapter'));
 </script>
 
-<header class="topbar">
-  <div class="container row" style="justify-content: space-between; padding-block: .65rem; gap: 1rem;">
-    <a href="/" class="brand">
+<div class="app-shell">
+  <aside class="sidebar">
+    <a href="/" class="side-brand">
       <img src="/logo.png" alt="The Fin AI" class="brand-logo" />
-      The&nbsp;Fin&nbsp;AI <span class="muted" style="font-weight:500;">· Stater</span>
+      <span>The&nbsp;Fin&nbsp;AI <span class="muted" style="font-weight:500;">· Stater</span></span>
     </a>
 
-    <div class="row" style="gap: 1.1rem;">
-      {#if $session}
-        <nav class="row" style="gap: 1.1rem;">
-          {#each navItems as n}
-            <a href={n.href} class="navlink" class:active={isActive(n.href, $page.url.pathname)}>{$t(n.label)}</a>
-          {/each}
-          {#if isChapterOfficer}
-            <a href="/my-chapter" class="navlink" class:active={isActive('/my-chapter', $page.url.pathname)}>{$t('My Chapter')}</a>
-          {/if}
-          {#if canAdmin}
-            <a href="/admin" class="navlink" class:active={isActive('/admin', $page.url.pathname)}>{$t('Admin')}</a>
-          {/if}
-        </nav>
+    {#if $session}
+      <nav class="side-nav">
+        {#each navItems as n}
+          <a href={n.href} class="side-link" class:active={isActive(n.href, $page.url.pathname)}>{$t(n.label)}</a>
+        {/each}
+        {#if isChapterOfficer}
+          <a href="/my-chapter" class="side-link" class:active={isActive('/my-chapter', $page.url.pathname)}>{$t('My Chapter')}</a>
+        {/if}
+        {#if canAdmin}
+          <a href="/admin" class="side-link" class:active={isActive('/admin', $page.url.pathname)}>{$t('Admin')}</a>
+        {/if}
+      </nav>
+    {/if}
+  </aside>
 
-        {#if balance !== null}
+  <div class="main-col">
+    <header class="topbar">
+      <div class="container row" style="justify-content: flex-end; padding-block: .55rem; gap: 1rem;">
+        {#if $session && balance !== null}
           <a href="/wallet" class="chip" title={$t('Open your wallet')}>
             <span class="amt">{balance.toLocaleString()}</span> STR
           </a>
         {/if}
-      {/if}
 
-      <LangSwitcher />
+        <LangSwitcher />
 
-      <button class="icon-btn" onclick={toggleTheme} title={$t('Toggle theme')} aria-label={$t('Toggle theme')}>
-        {$theme === 'dark' ? '☀' : '☾'}
-      </button>
+        <button class="icon-btn" onclick={toggleTheme} title={$t('Toggle theme')} aria-label={$t('Toggle theme')}>
+          {$theme === 'dark' ? '☀' : '☾'}
+        </button>
 
-      {#if $session}
-        <div class="usermenu">
-          <button class="avatar-btn" onclick={() => (menuOpen = !menuOpen)} title={$t('Account')} aria-label={$t('Account menu')} aria-haspopup="true" aria-expanded={menuOpen}>
-            {initials($member?.full_name)}
-          </button>
-          {#if menuOpen}
-            <div class="menu-backdrop" onclick={() => (menuOpen = false)} role="presentation"></div>
-            <div class="menu">
-              <div class="menu-head">
-                <div class="mh-name">{$member?.full_name ?? 'Account'}</div>
-                <div class="mh-mail">{$session.user.email}</div>
+        {#if $session}
+          <div class="usermenu">
+            <button class="avatar-btn" onclick={() => (menuOpen = !menuOpen)} title={$t('Account')} aria-label={$t('Account menu')} aria-haspopup="true" aria-expanded={menuOpen}>
+              {initials($member?.full_name)}
+            </button>
+            {#if menuOpen}
+              <div class="menu-backdrop" onclick={() => (menuOpen = false)} role="presentation"></div>
+              <div class="menu">
+                <div class="menu-head">
+                  <div class="mh-name">{$member?.full_name ?? 'Account'}</div>
+                  <div class="mh-mail">{$session.user.email}</div>
+                </div>
+                <div class="menu-sep"></div>
+                <button class="menu-item" onclick={() => go('/')}><span class="mi-ico">⚙</span> {$t('Portfolio & profile')}</button>
+                <div class="menu-sep"></div>
+                <button class="menu-item" onclick={signOut}><span class="mi-ico">⏻</span> {$t('Sign out')}</button>
               </div>
-              <div class="menu-sep"></div>
-              <button class="menu-item" onclick={() => go('/')}><span class="mi-ico">⚙</span> {$t('Portfolio & profile')}</button>
-              <div class="menu-sep"></div>
-              <button class="menu-item" onclick={signOut}><span class="mi-ico">⏻</span> {$t('Sign out')}</button>
-            </div>
-          {/if}
+            {/if}
+          </div>
+        {/if}
+      </div>
+    </header>
+
+    <main class="container">
+      {#if $session && $member}<LaunchBanner />{/if}
+      {#if $actingAs}
+        <div class="acting-banner">
+          <span>{$t('Acting as card')} <strong>{$actingAs.full_name}</strong> — {$t('actions and STR apply to this card.')}</span>
+          <button class="icon-btn" onclick={() => actingAs.set(null)}>{$t('Stop acting')}</button>
         </div>
       {/if}
-    </div>
+      {#if !supabaseConfigured}
+        <p class="banner">
+          Supabase is not configured. Copy <code>.env.example</code> to <code>.env</code> and add your
+          project URL + anon key, then restart the dev server. Pages render but data calls are disabled.
+        </p>
+      {/if}
+      {#if supabaseConfigured && $authReady && $session && !$member}
+        <p class="banner">
+          {$t("You're signed in as {email}, but this email isn't linked to a membership. Access is invite-only — please ask an admin to invite you. Meanwhile you can", { email: $session.user.email })}
+          <a href="/guide">{$t('read how the community works →')}</a>
+        </p>
+      {/if}
+      {@render children()}
+    </main>
   </div>
-</header>
-
-<main class="container">
-  {#if $session && $member}<LaunchBanner />{/if}
-  {#if $actingAs}
-    <div class="acting-banner">
-      <span>{$t('Acting as card')} <strong>{$actingAs.full_name}</strong> — {$t('actions and STR apply to this card.')}</span>
-      <button class="icon-btn" onclick={() => actingAs.set(null)}>{$t('Stop acting')}</button>
-    </div>
-  {/if}
-  {#if !supabaseConfigured}
-    <p class="banner">
-      Supabase is not configured. Copy <code>.env.example</code> to <code>.env</code> and add your
-      project URL + anon key, then restart the dev server. Pages render but data calls are disabled.
-    </p>
-  {/if}
-  {#if supabaseConfigured && $authReady && $session && !$member}
-    <p class="banner">
-      {$t("You're signed in as {email}, but this email isn't linked to a membership. Access is invite-only — please ask an admin to invite you. Meanwhile you can", { email: $session.user.email })}
-      <a href="/guide">{$t('read how the community works →')}</a>
-    </p>
-  {/if}
-  {@render children()}
-</main>
+</div>

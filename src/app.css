@@ -605,30 +605,44 @@ button.stake:not(:disabled) { animation: pulseRing 2.6s ease-out infinite; }
   .medal:hover { transform: none; }
 }
 
-/* ---------- top bar ---------- */
+/* ============================================================
+   App shell — fixed left main nav (trading-terminal style) + a
+   slim utility top bar over the scrolling main column.
+   ============================================================ */
+.app-shell { display: flex; align-items: stretch; min-height: 100vh; }
+.sidebar {
+  width: 212px; flex: none; position: sticky; top: 0; align-self: flex-start;
+  height: 100vh; overflow-y: auto;
+  display: flex; flex-direction: column; gap: .15rem;
+  padding: 1rem .75rem;
+  border-right: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg-2) 55%, transparent);
+}
+.side-brand {
+  display: flex; align-items: center; gap: .5rem;
+  font-weight: 700; letter-spacing: -.01em; color: var(--text);
+  padding: .3rem .55rem .85rem; text-decoration: none;
+}
+.side-nav { display: flex; flex-direction: column; gap: 2px; }
+.side-link {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .5rem .6rem; border-radius: 9px;
+  color: var(--muted); font-weight: 500; font-size: .92rem;
+  text-decoration: none; border-left: 2px solid transparent;
+  transition: background .12s ease, color .12s ease;
+}
+.side-link:hover { background: var(--card-2); color: var(--text); }
+.side-link.active { color: var(--accent); background: var(--accent-soft); border-left-color: var(--accent); }
+.main-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+/* ---------- utility top bar ---------- */
 .topbar {
   position: sticky; top: 0; z-index: 40;
   background: color-mix(in srgb, var(--bg-2) 86%, transparent);
   backdrop-filter: saturate(140%) blur(10px);
   border-bottom: 1px solid var(--border);
 }
-.brand {
-  display: inline-flex; align-items: center; gap: .55rem;
-  font-weight: 700; letter-spacing: -.01em; color: var(--text);
-}
-.brand .dot { width: 9px; height: 9px; border-radius: 50%;
-  background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
 .brand-logo { width: 26px; height: 26px; display: block; object-fit: contain; }
-.navlink {
-  color: var(--muted); font-weight: 500; font-size: .92rem;
-  padding: .35rem 0; position: relative;
-}
-.navlink:hover { color: var(--text); }
-.navlink.active { color: var(--text); }
-.navlink.active::after {
-  content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px;
-  background: var(--accent); border-radius: 2px;
-}
 .icon-btn {
   background: transparent; border: 1px solid var(--border-2); color: var(--text);
   width: 34px; height: 34px; padding: 0; border-radius: 9px;
@@ -637,33 +651,41 @@ button.stake:not(:disabled) { animation: pulseRing 2.6s ease-out infinite; }
 .icon-btn:hover { background: var(--card-2); filter: none; }
 
 /* ============================================================
-   Detail-page section nav — sticky left rail listing the cards on
-   a busy entity detail page (project / member / unit). Scroll-spy
-   highlights the section in view; click scrolls to it.
+   Detail-page section nav — sticky horizontal tab strip at the top
+   of a busy entity detail page (project / member / unit), sitting
+   just under the utility top bar. Scroll-spy highlights the section
+   in view; click scrolls to it.
    ============================================================ */
-.detail { display: grid; grid-template-columns: 184px minmax(0, 1fr); gap: 1.4rem; align-items: start; }
-.detail-nav { position: sticky; top: 74px; display: flex; flex-direction: column; gap: 1px; }
-.detail-nav .dn-title {
-  font-size: .68rem; letter-spacing: .07em; text-transform: uppercase;
-  color: var(--muted); font-weight: 700; padding: .2rem .6rem .4rem;
+.detail { display: block; }
+.detail-nav {
+  position: sticky; top: 50px; z-index: 20;
+  display: flex; align-items: center; gap: .35rem; flex-wrap: nowrap;
+  overflow-x: auto; margin: 0 0 1rem;
+  padding: .45rem 0; border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--bg) 90%, transparent);
+  backdrop-filter: saturate(140%) blur(8px);
 }
+.detail-nav .dn-title { display: none; }
 .detail-nav a {
-  display: block; padding: .4rem .6rem; border-radius: 8px;
+  padding: .35rem .7rem; border-radius: 8px;
   color: var(--muted); font-size: .85rem; font-weight: 500;
-  border-left: 2px solid transparent; transition: background .12s ease, color .12s ease;
+  text-decoration: none; white-space: nowrap;
+  transition: background .12s ease, color .12s ease;
 }
 .detail-nav a:hover { background: var(--card-2); color: var(--text); }
-.detail-nav a.active { color: var(--accent); border-left-color: var(--accent); background: var(--accent-soft); }
+.detail-nav a.active { color: var(--accent); background: var(--accent-soft); }
 .detail-body { min-width: 0; display: flex; flex-direction: column; gap: 1rem; }
-.detail-body > [id] { scroll-margin-top: 74px; }
+.detail-body > [id] { scroll-margin-top: 104px; }
 
 @media (max-width: 860px) {
-  .detail { grid-template-columns: 1fr; }
-  .detail-nav {
-    position: static; flex-direction: row; flex-wrap: wrap; gap: .35rem;
-    overflow-x: auto; padding-bottom: .2rem; margin-bottom: .2rem;
+  .app-shell { flex-direction: column; }
+  .sidebar {
+    width: auto; height: auto; flex-direction: row; align-items: center;
+    gap: .4rem; overflow-x: auto; padding: .5rem .75rem;
+    border-right: 0; border-bottom: 1px solid var(--border);
   }
-  .detail-nav .dn-title { display: none; }
-  .detail-nav a { border-left: 0; border-bottom: 2px solid transparent; white-space: nowrap; }
-  .detail-nav a.active { border-left: 0; border-bottom-color: var(--accent); }
+  .side-brand { padding: .2rem .4rem; flex: none; }
+  .side-nav { flex-direction: row; gap: .25rem; }
+  .side-link { border-left: 0; padding: .4rem .6rem; white-space: nowrap; }
+  .side-link.active { border-left: 0; }
 }

@@ -133,7 +133,7 @@
   <!-- ───────────────────────── using the site ───────────────────────── -->
   <section id="using" class="card stack">
     <h2>{$t('Using the site — every page, what it’s for')}</h2>
-    <p>{$t('The top navigation bar is your map. Here is what each destination does.')}</p>
+    <p>{$t('The left sidebar is your map. Here is what each destination does.')}</p>
     <table>
       <thead><tr><th>{$t('Page')}</th><th>{$t('What it’s for')}</th></tr></thead>
       <tbody>
