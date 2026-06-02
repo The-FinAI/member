@@ -1,8 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { goto } from '$app/navigation';
   import { supabase, supabaseConfigured } from '$lib/supabase';
-  import { member, officerUnits, actingAs } from '$lib/session';
+  import { officerUnits } from '$lib/session';
   import { t } from '$lib/i18n';
   import { get } from 'svelte/store';
   import EntityCard from '$lib/EntityCard.svelte';
@@ -14,7 +13,7 @@
     status: string; home_unit_id: string;
   };
   type Skill = { id: string; name: string; parent_id: string | null };
-  type CardSkill = { member_id: string; certified_level: string | null; skill: { name: string } | null };
+  type CardSkill = { member_id: string; certified_level: string | null; skill_id: string; skill: { name: string } | null };
   type ResType = { id: string; name: string; unit: string | null };
   type StagedRes = { typeId: string; capacity: string };
 
@@ -89,7 +88,7 @@
     if (cardIds.length) {
       const [{ data: bal }, { data: ms }] = await Promise.all([
         supabase.from('stater_balance').select('owner_member_id, balance').in('owner_member_id', cardIds),
-        supabase.from('member_skill').select('member_id, certified_level, skill(name)').in('member_id', cardIds).not('certified_level', 'is', null)
+        supabase.from('member_skill').select('member_id, certified_level, skill_id, skill(name)').in('member_id', cardIds).not('certified_level', 'is', null)
       ]);
       const b: Record<string, number> = {};
       for (const r of (bal as any[]) ?? []) b[r.owner_member_id] = Number(r.balance) || 0;
@@ -146,24 +145,33 @@
     await load();
   }
 
-  function actAs(c: Card) {
-    actingAs.set({ id: c.id, full_name: c.full_name });
-    goto('/projects');
-  }
-
-  // ── card drawer: one place to inspect & act on a person-card ──
-  type DrawerRes = { id: string; name: string; capacity: string | null; availability: string; approval_status: string; resource_type: { name: string } | null };
+  // ── card drawer: the one place to inspect & directly edit a person-card ──
+  type DrawerRes = { id: string; name: string; capacity: string | null; availability: string; approval_status: string; type_id: string | null; resource_type: { name: string } | null };
   type DrawerProj = { project: { id: string; name: string; project_status: { name: string } | null } | null; project_role: { name: string } | null };
   let selected = $state<Card | null>(null);
   let selRes = $state<DrawerRes[]>([]);
   let selProjects = $state<DrawerProj[]>([]);
   let selLoading = $state(false);
+  let dMsg = $state(''); let dErr = $state(''); let dBusy = $state('');
 
-  async function openCard(c: Card) {
-    selected = c; selLoading = true; selRes = []; selProjects = [];
+  // drawer edit fields
+  let dHours = $state('');
+  let dResType = $state(''); let dResCap = $state('');
+  let dStaged = $state<Record<string, string>>({}); // skillId -> level (new role cards to mint)
+  let dNewSkill = $state(''); let dNewLevel = $state('apprentice');
+  function skillNameOf(sid: string) { return skills.find((s) => s.id === sid)?.name ?? '—'; }
+
+  const laborRes = $derived(selRes.find((r) => r.resource_type?.name === 'Labor') ?? null);
+  const dStagedCount = $derived(Object.keys(dStaged).length);
+  function dStageAt(skillId: string, level: string) {
+    if (dStaged[skillId] === level) { const { [skillId]: _, ...rest } = dStaged; dStaged = rest; }
+    else dStaged = { ...dStaged, [skillId]: level };
+  }
+
+  async function refreshSel(c: Card) {
     const [{ data: rs }, { data: pm }] = await Promise.all([
       supabase.from('resource')
-        .select('id, name, capacity, availability, approval_status, resource_type(name)')
+        .select('id, name, capacity, availability, approval_status, type_id, resource_type(name)')
         .eq('scope', 'member').eq('holder_member_id', c.id).order('name'),
       supabase.from('project_member')
         .select('project(id, name, project_status!project_status_id_fkey(name)), project_role(name)')
@@ -171,10 +179,75 @@
     ]);
     selRes = (rs as DrawerRes[]) ?? [];
     selProjects = (pm as DrawerProj[]) ?? [];
+  }
+
+  async function openCard(c: Card) {
+    selected = c; selLoading = true; selRes = []; selProjects = [];
+    dMsg = ''; dErr = ''; dStaged = {}; dResType = ''; dResCap = '';
+    await refreshSel(c);
+    // seed monthly-hours editor from the card's Labor resource
+    const m = (laborRes?.capacity ?? '').match(/\d+/);
+    dHours = m ? m[0] : '';
     selLoading = false;
   }
   function closeCard() { selected = null; }
   const cap = (s: string | null) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : '');
+
+  // save monthly hours: update the card's Labor resource, or create it
+  async function saveHours() {
+    if (!selected) return;
+    dErr = ''; dMsg = ''; dBusy = 'hours';
+    const hrs = parseInt(dHours, 10);
+    const capacity = Number.isFinite(hrs) && hrs > 0 ? `${hrs} hrs/mo` : null;
+    let err;
+    if (laborRes) {
+      ({ error: err } = await supabase.from('resource').update({ capacity }).eq('id', laborRes.id));
+    } else if (laborType && capacity) {
+      ({ error: err } = await supabase.from('resource').insert({
+        name: get(t)('Monthly time'), type_id: laborType.id, scope: 'member',
+        holder_member_id: selected.id, capacity, availability: 'available'
+      }));
+    }
+    dBusy = '';
+    if (err) { dErr = err.message; return; }
+    dMsg = get(t)('Monthly hours updated.');
+    await refreshSel(selected);
+  }
+
+  // add / remove a resource directly on the card (steward review applies)
+  async function addResource() {
+    if (!selected || !dResType) return;
+    dErr = ''; dMsg = ''; dBusy = 'res';
+    const { error: err } = await supabase.from('resource').insert({
+      name: resTypeName(dResType), type_id: dResType, scope: 'member',
+      holder_member_id: selected.id, capacity: dResCap.trim() || null, availability: 'available'
+    });
+    dBusy = '';
+    if (err) { dErr = err.message; return; }
+    dResType = ''; dResCap = '';
+    dMsg = get(t)('Resource added — staged for review.');
+    await refreshSel(selected);
+  }
+  async function removeResource(resId: string) {
+    if (!selected) return;
+    dErr = ''; dMsg = ''; dBusy = 'res:' + resId;
+    const { error: err } = await supabase.from('resource').delete().eq('id', resId);
+    dBusy = '';
+    if (err) { dErr = err.message; return; }
+    await refreshSel(selected);
+  }
+
+  // mint additional role cards onto the card (officer mint, no fee, goes to review)
+  async function submitRoleCards() {
+    if (!selected || dStagedCount === 0) return;
+    dErr = ''; dMsg = ''; dBusy = 'cards';
+    const items = Object.entries(dStaged).map(([skill, level]) => ({ skill, level }));
+    const { error: err } = await supabase.rpc('mint_skillcard_batch', { p_member: selected.id, p_items: items });
+    dBusy = '';
+    if (err) { dErr = err.message; return; }
+    dMsg = get(t)('{n} role-card request(s) staged for review.', { n: items.length });
+    dStaged = {};
+  }
 </script>
 
 <div class="stack">
@@ -346,6 +419,9 @@
   onClose={closeCard}
 >
   {#if selected}
+    {#if dErr}<p style="color:var(--down); font-size:.82rem; margin:0;">{dErr}</p>{/if}
+    {#if dMsg}<p class="pos" style="font-size:.82rem; margin:0;">{dMsg}</p>{/if}
+
     <section class="dsec">
       <h3>{$t('Identity')}</h3>
       <dl class="kv">
@@ -356,6 +432,16 @@
       </dl>
     </section>
 
+    <!-- monthly hours: edit the card's Labor resource directly -->
+    <section class="dsec">
+      <h3>{$t('Monthly hours')}</h3>
+      <div class="row" style="gap:.4rem; align-items:flex-end;">
+        <input type="number" min="0" bind:value={dHours} placeholder="40" style="width:6rem;" />
+        <button onclick={saveHours} disabled={dBusy === 'hours'}>{dBusy === 'hours' ? $t('Saving…') : $t('Save')}</button>
+      </div>
+    </section>
+
+    <!-- role cards: mint additional ones directly onto the card -->
     <section class="dsec">
       <h3>{$t('Role cards')}</h3>
       {#if (cardSkills[selected.id] ?? []).length > 0}
@@ -365,26 +451,67 @@
           {/each}
         </div>
       {:else}
-        <p class="muted" style="font-size:.82rem; margin:0;">{$t('No role cards yet. Act as this card to request them in the Guild.')}</p>
+        <p class="muted" style="font-size:.82rem; margin:0;">{$t('No role cards yet.')}</p>
+      {/if}
+      <div class="row" style="gap:.4rem; align-items:flex-end; flex-wrap:wrap;">
+        <label class="stack" style="gap:.2rem; flex:1; min-width:120px;"><span class="muted" style="font-size:.72rem;">{$t('Skill')}</span>
+          <select bind:value={dNewSkill}>
+            <option value="">{$t('Pick a skill…')}</option>
+            {#each domains as d}
+              <optgroup label={d.name}>
+                {#each leavesOf(d.id) as s}<option value={s.id}>{s.name}</option>{/each}
+              </optgroup>
+            {/each}
+          </select>
+        </label>
+        <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">{$t('Level')}</span>
+          <select bind:value={dNewLevel}>{#each LEVELS as lv}<option value={lv}>{$t(LEVEL_LABEL[lv])}</option>{/each}</select>
+        </label>
+        <button onclick={() => { if (dNewSkill) { dStageAt(dNewSkill, dNewLevel); dNewSkill = ''; } }} disabled={!dNewSkill}>{$t('Stage')}</button>
+      </div>
+      {#if dStagedCount > 0}
+        <div class="row" style="flex-wrap:wrap; gap:.3rem; align-items:center;">
+          {#each Object.entries(dStaged) as [sid, lv]}
+            <span class="badge dim" style="font-size:.72rem;">{skillNameOf(sid)} · {$t(LEVEL_LABEL[lv])}
+              <button class="x" onclick={() => dStageAt(sid, lv)} aria-label={$t('Remove')}>×</button></span>
+          {/each}
+          <button class="stake" onclick={submitRoleCards} disabled={dBusy === 'cards'}>{dBusy === 'cards' ? $t('Submitting…') : $t('Submit for review')}</button>
+        </div>
       {/if}
     </section>
 
+    <!-- resources: add / remove directly on the card -->
     <section class="dsec">
       <h3>{$t('Resources')}</h3>
       {#if selLoading}
         <p class="muted" style="font-size:.82rem; margin:0;">{$t('Loading…')}</p>
-      {:else if selRes.length > 0}
+      {:else if selRes.filter((r) => r.resource_type?.name !== 'Labor').length > 0}
         <ul class="dlist">
-          {#each selRes as r}
+          {#each selRes.filter((r) => r.resource_type?.name !== 'Labor') as r}
             <li>
               <span>{$t(r.resource_type?.name ?? r.name)}{#if r.capacity} · {r.capacity}{/if}</span>
-              <span class="badge {r.approval_status === 'approved' ? 'pos' : r.approval_status === 'rejected' ? 'down' : 'warn'}" style="font-size:.68rem;">{$t(cap(r.approval_status))}</span>
+              <span class="row" style="gap:.4rem; align-items:center;">
+                <span class="badge {r.approval_status === 'approved' ? 'pos' : r.approval_status === 'rejected' ? 'down' : 'warn'}" style="font-size:.68rem;">{$t(cap(r.approval_status))}</span>
+                <button class="x" onclick={() => removeResource(r.id)} disabled={dBusy === 'res:' + r.id} aria-label={$t('Remove')}>×</button>
+              </span>
             </li>
           {/each}
         </ul>
       {:else}
         <p class="muted" style="font-size:.82rem; margin:0;">{$t('No resources staged yet.')}</p>
       {/if}
+      <div class="row" style="gap:.4rem; align-items:flex-end; flex-wrap:wrap;">
+        <label class="stack" style="gap:.2rem; flex:1; min-width:120px;"><span class="muted" style="font-size:.72rem;">{$t('Resource type')}</span>
+          <select bind:value={dResType}>
+            <option value="">{$t('Pick a type…')}</option>
+            {#each offerTypes as ot}<option value={ot.id}>{$t(ot.name)}</option>{/each}
+          </select>
+        </label>
+        <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">{$t('Capacity / detail')}</span>
+          <input bind:value={dResCap} placeholder={$t('e.g. 4× A100, $5k')} style="width:9rem;" />
+        </label>
+        <button onclick={addResource} disabled={!dResType || dBusy === 'res'}>{$t('Add')}</button>
+      </div>
     </section>
 
     <section class="dsec">
@@ -401,17 +528,10 @@
           {/each}
         </ul>
       {:else}
-        <p class="muted" style="font-size:.82rem; margin:0;">{$t('Not on any project yet — act as this card to join one.')}</p>
+        <p class="muted" style="font-size:.82rem; margin:0;">{$t('Not on any project yet. Seat this card onto a project from its Projects page.')}</p>
       {/if}
     </section>
   {/if}
-
-  {#snippet actions()}
-    {#if selected}
-      <button class="stake" onclick={() => actAs(selected!)}>{$t('Act as this card →')}</button>
-      <span class="muted" style="font-size:.74rem;">{$t('Actions and STR will apply to this card.')}</span>
-    {/if}
-  {/snippet}
 </CardDrawer>
 
 <style>
