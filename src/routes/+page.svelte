@@ -4,7 +4,6 @@
   import { member, capabilities, officerUnits } from '$lib/session';
   import { PHASE2 } from '$lib/phase';
   import CountUp from '$lib/CountUp.svelte';
-  import Hint from '$lib/Hint.svelte';
   import GettingStarted from '$lib/GettingStarted.svelte';
   import Medal from '$lib/Medal.svelte';
   import EntityCard from '$lib/EntityCard.svelte';
@@ -238,6 +237,17 @@
   const isSteward = $derived(canAdmin || canApprove);
   const certifiedCount = $derived(mySkills.filter((s) => s.certified_level).length);
   const myCards = $derived(mySkills.filter((s) => s.certified_level));
+  // mySkills is sorted rank-desc, so the first certified card carries the top tier.
+  const LEVEL_LABEL: Record<string, string> = {
+    apprentice: 'Apprentice', journeyman: 'Journeyman', craftsman: 'Craftsman', master: 'Master'
+  };
+  const topTierLabel = $derived(
+    myCards[0]?.certified_level ? (LEVEL_LABEL[myCards[0].certified_level] ?? '') : ''
+  );
+  function initials(name: string) {
+    const p = (name ?? '').trim().split(/\s+/).filter(Boolean);
+    return ((p[0]?.[0] ?? '') + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase() || '·';
+  }
   const catalogResources = $derived(myResources.filter((r) => r.resource_type?.name !== 'Labor'));
   const catalogTypes = $derived(resTypes.filter((t) => t.name !== 'Labor'));
 
@@ -251,16 +261,64 @@
 </script>
 
 <div class="stack">
-  <div class="row" style="justify-content:space-between; align-items:flex-end;">
-    <div>
-      <h1 style="margin-bottom:.15rem;">{$t('Portfolio')}{$member ? ` · ${$member.full_name.split(' ')[0]}` : ''}</h1>
-      <span class="muted" style="font-size:.85rem;">{$t('Your stake across the Stater research economy.')}</span>
+  <!-- self card: you, as a card — two aspects (Craft / Standing), the liquid
+       STR resource, and three verbs you can act with right now. -->
+  <section class="selfcard">
+    <div class="sc-head">
+      <span class="sc-ava">{$member ? initials($member.full_name) : '·'}</span>
+      <div class="sc-id">
+        <h1 class="sc-name">{$member ? $member.full_name.split(' ')[0] : $t('Portfolio')}</h1>
+        <span class="sc-sub muted">{$member?.affiliation || $member?.email || $t('Your stake across the Stater research economy.')}</span>
+      </div>
     </div>
-    <div class="row" style="gap:.5rem;">
-      {#if $member}<a href={`/members/${$member.id}`}><button class="ghost">{$t('Public page →')}</button></a>{/if}
-      <a href="/projects"><button>{$t('Start a project')}</button></a>
+
+    <div class="sc-aspects">
+      <div class="aspect">
+        <span class="asp-k">{$t('Craft')}</span>
+        <span class="asp-v">{certifiedCount}</span>
+        <span class="asp-sub">{topTierLabel ? $t(topTierLabel) + ' · ' : ''}{$t(certifiedCount === 1 ? 'badge earned' : 'badges earned')}</span>
+      </div>
+      <div class="aspect">
+        <span class="asp-k">{$t('Standing')}</span>
+        <span class="asp-v"><CountUp value={totalNominal} /></span>
+        <span class="asp-sub">{$t('nominal STR minted through work')}</span>
+      </div>
+      <div class="aspect liquid">
+        <span class="asp-k">{$t('Liquid STR')}</span>
+        <span class="asp-v accent"><CountUp value={balance} /></span>
+        <span class="asp-sub"><a href="/wallet">{$t('open wallet →')}</a></span>
+      </div>
     </div>
-  </div>
+
+    <div class="sc-verbs">
+      <a class="verb" href="/projects">
+        <span class="vb-ic">◷</span>
+        <span class="vb-tx"><strong>{$t('Browse projects')}</strong><span class="muted">{$t('{n} open needs across {m} projects', { n: openCount, m: projectCount })}</span></span>
+      </a>
+      {#if myUnit && myUnit.kind === 'chapter'}
+        <a class="verb" href={`/units/${myUnit.unit_id}#forge`}>
+          <span class="vb-ic">✦</span>
+          <span class="vb-tx"><strong>{$t('Forge a member card')}</strong><span class="muted">{myUnit.name}</span></span>
+        </a>
+      {:else if $member}
+        <a class="verb" href={`/members/${$member.id}`}>
+          <span class="vb-ic">◇</span>
+          <span class="vb-tx"><strong>{$t('Your public page')}</strong><span class="muted">{$t('how others see your card')}</span></span>
+        </a>
+      {/if}
+      {#if canApprove}
+        <a class="verb" href="/admin/forge-queue">
+          <span class="vb-ic">⊞</span>
+          <span class="vb-tx"><strong>{$t('Review forge queue')}</strong><span class="muted">{$t('clear pending approvals')}</span></span>
+        </a>
+      {:else}
+        <a class="verb" href="/guide">
+          <span class="vb-ic">❖</span>
+          <span class="vb-tx"><strong>{$t('Read the guide')}</strong><span class="muted">{$t('how the community works')}</span></span>
+        </a>
+      {/if}
+    </div>
+  </section>
 
   {#if myUnit}
     <div class="card row" style="justify-content:space-between; align-items:center; gap:.75rem; border-left:3px solid var(--accent); flex-wrap:wrap;">
@@ -296,34 +354,9 @@
 
   {#if PHASE2 && $member}<GettingStarted memberId={$member.id} />{/if}
 
-  <!-- economy snapshot -->
-  <div class="row rise-stagger" style="align-items:stretch; flex-wrap:wrap;">
-    <div class="tile" style="flex:1; min-width:150px;">
-      <span class="label">{$t('STR balance')} <Hint term="liquid" text={$t('Liquid STR — your spendable wallet balance. Used to post bonds and pay badge fees.')} /></span>
-      <span class="value accent"><CountUp value={balance} /></span>
-      <span class="sub"><a href="/wallet">{$t('open wallet →')}</a></span>
-    </div>
-    <div class="tile" style="flex:1; min-width:150px;">
-      <span class="label">{$t('Staked')} <Hint term="nominal" text={$t("Nominal STR you've minted into project pools — locked until each project settles, then it converts to liquid STR.")} /></span>
-      <span class="value"><CountUp value={staked} /></span>
-      <span class="sub">{$t('bonded in projects')}</span>
-    </div>
-    <div class="tile" style="flex:1; min-width:150px;">
-      <span class="label">{$t('Contribution')}</span>
-      <span class="value"><CountUp value={totalNominal} /></span>
-      <span class="sub">{$t('nominal STR minted through work')}</span>
-    </div>
-    <div class="tile" style="flex:1; min-width:150px;">
-      <span class="label">{$t('Badges')}</span>
-      <span class="value">{certifiedCount}</span>
-      <span class="sub">{$t(certifiedCount === 1 ? 'badge earned' : 'badges earned')}</span>
-    </div>
-    <a class="tile" href="/projects?tab=needs" style="flex:1; min-width:150px;">
-      <span class="label">{$t('Open needs')}</span>
-      <span class="value">{openCount}</span>
-      <span class="sub">{$t('across {n} projects', { n: projectCount })}</span>
-    </a>
-  </div>
+  {#if staked > 0}
+    <p class="sc-bonded muted">{$t('{s} STR bonded in live projects', { s: staked })}</p>
+  {/if}
 
   {#if error}<p style="color:var(--down);">{error}</p>{/if}
 
@@ -525,4 +558,55 @@
 
 <style>
   .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: .8rem; }
+
+  /* self card */
+  .selfcard {
+    border: 1px solid var(--border); border-radius: 16px; background: var(--card);
+    padding: 1.4rem 1.5rem; display: flex; flex-direction: column; gap: 1.25rem;
+    box-shadow: var(--shadow);
+  }
+  .sc-head { display: flex; align-items: center; gap: .9rem; }
+  .sc-ava {
+    width: 48px; height: 48px; border-radius: 14px; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 1.05rem; font-weight: 700; color: var(--accent-ink); background: var(--accent);
+  }
+  .sc-id { min-width: 0; display: flex; flex-direction: column; gap: .1rem; }
+  .sc-name { margin: 0; font-size: 1.5rem; line-height: 1.1; letter-spacing: -.01em; }
+  .sc-sub { font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .sc-aspects {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+    background: var(--border); border: 1px solid var(--border);
+    border-radius: 12px; overflow: hidden;
+  }
+  .aspect { background: var(--card-2); padding: .85rem 1rem; display: flex; flex-direction: column; gap: .25rem; }
+  .aspect.liquid { background: var(--accent-soft); }
+  .asp-k { font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .asp-v { font-size: 1.7rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; color: var(--text); }
+  .asp-v.accent { color: var(--accent); }
+  .asp-sub { font-size: .76rem; color: var(--muted); }
+  .asp-sub a { color: var(--accent); }
+
+  .sc-verbs { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; }
+  .verb {
+    display: flex; align-items: center; gap: .7rem; padding: .75rem .85rem;
+    border: 1px solid var(--border); border-radius: 11px; background: var(--card-2);
+    text-decoration: none; color: var(--text); transition: border-color .12s, background .12s, transform .12s;
+  }
+  .verb:hover { border-color: var(--accent); background: var(--card); transform: translateY(-1px); }
+  .vb-ic {
+    width: 32px; height: 32px; border-radius: 9px; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 1rem; color: var(--accent); background: var(--accent-soft);
+  }
+  .vb-tx { display: flex; flex-direction: column; gap: .05rem; min-width: 0; }
+  .vb-tx strong { font-size: .9rem; font-weight: 600; }
+  .vb-tx .muted { font-size: .74rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+  .sc-bonded { font-size: .82rem; margin: -.3rem 0 0; }
+
+  @media (max-width: 720px) {
+    .sc-aspects, .sc-verbs { grid-template-columns: 1fr; }
+  }
 </style>
