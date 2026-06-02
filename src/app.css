@@ -651,31 +651,28 @@ button.stake:not(:disabled) { animation: pulseRing 2.6s ease-out infinite; }
 .icon-btn:hover { background: var(--card-2); filter: none; }
 
 /* ============================================================
-   Detail-page section nav — sticky horizontal tab strip at the top
-   of a busy entity detail page (project / member / unit), sitting
-   just under the utility top bar. Scroll-spy highlights the section
-   in view; click scrolls to it.
+   Detail-page section nav — a horizontal TAB strip at the top of a
+   busy entity detail page (project / member / unit). Selecting a tab
+   shows only that section (SectionNav.svelte toggles element display),
+   so the page reads as tabs instead of one long scroll.
    ============================================================ */
 .detail { display: block; }
 .detail-nav {
-  position: sticky; top: 50px; z-index: 20;
-  display: flex; align-items: center; gap: .35rem; flex-wrap: nowrap;
-  overflow-x: auto; margin: 0 0 1rem;
-  padding: .45rem 0; border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--bg) 90%, transparent);
-  backdrop-filter: saturate(140%) blur(8px);
+  display: flex; align-items: center; gap: .15rem; flex-wrap: nowrap;
+  overflow-x: auto; margin: 0 0 1.1rem;
+  border-bottom: 1px solid var(--border);
 }
 .detail-nav .dn-title { display: none; }
 .detail-nav a {
-  padding: .35rem .7rem; border-radius: 8px;
-  color: var(--muted); font-size: .85rem; font-weight: 500;
+  padding: .55rem .85rem; margin-bottom: -1px;
+  color: var(--muted); font-size: .88rem; font-weight: 500;
   text-decoration: none; white-space: nowrap;
-  transition: background .12s ease, color .12s ease;
+  border-bottom: 2px solid transparent;
+  transition: color .12s ease, border-color .12s ease;
 }
-.detail-nav a:hover { background: var(--card-2); color: var(--text); }
-.detail-nav a.active { color: var(--accent); background: var(--accent-soft); }
+.detail-nav a:hover { color: var(--text); }
+.detail-nav a.active { color: var(--accent); border-bottom-color: var(--accent); }
 .detail-body { min-width: 0; display: flex; flex-direction: column; gap: 1rem; }
-.detail-body > [id] { scroll-margin-top: 104px; }
 
 @media (max-width: 860px) {
   .app-shell { flex-direction: column; }
