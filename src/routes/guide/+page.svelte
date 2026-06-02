@@ -35,7 +35,7 @@
       {@html $t("We're switching this economy on in stages. <strong>Phase 1 is officers only — ordinary researchers aren't invited yet.</strong> Your job is to forge a card for each person who works under you (their skills, resources and monthly hours) and to claim the projects your chapter already runs. This builds an honest skill graph and seeds the rosters <em>before</em> the member economy opens in Phase 2.")}
     </p>
     <div class="row" style="gap:.6rem; flex-wrap:wrap; margin-top:.3rem;">
-      <a class="lbtn" href="/my-chapter">{$t('Go to My Chapter →')}</a>
+      <a class="lbtn" href="/community?tab=chapters">{$t('Open my unit →')}</a>
       <a class="llink" href="#rollout">{$t('See the full rollout →')}</a>
     </div>
   </div>
@@ -73,7 +73,7 @@
         <span class="pn">{$t('Phase 1 · now')}</span>
         <h3>{$t('Officer bootstrap')}</h3>
         <p>{@html $t("<strong>Officers only — no ordinary researchers yet.</strong> Each officer forges a card for every person under them (skills, resources, monthly hours) and claims the projects their chapter already runs, seating cards onto the rosters. This builds the skill graph and sets each member's labor rate before the economy opens.")}</p>
-        <a class="pgo" href="/my-chapter">{$t('Go to My Chapter →')}</a>
+        <a class="pgo" href="/community?tab=chapters">{$t('Open my unit →')}</a>
       </div>
       <div class="pcard">
         <span class="pn">{$t('Phase 2 · next')}</span>
@@ -89,7 +89,7 @@
     <div class="note">
       <h3 style="margin-top:0;">{$t('What to do in Phase 1')}</h3>
       <ol class="start" style="margin:.2rem 0 0;">
-        <li>{@html $t("<strong>Forge a card</strong> for each person who works under you from <a href='/my-chapter'>My Chapter</a> — their skills, resources and monthly hours in one batch. Each person is forged only once.")}</li>
+        <li>{@html $t("<strong>Forge a card</strong> for each person who works under you from your unit's page in <a href='/community?tab=chapters'>Community</a> — their skills, resources and monthly hours in one batch. Each person is forged only once.")}</li>
         <li>{@html $t("<strong>Claim your existing projects</strong> from <a href='/projects'>Projects</a> and seat your cards onto each roster.")}</li>
         <li>{@html $t("<strong>Clear your <a href='/admin/approvals'>Approvals</a></strong> — the single queue for everything waiting on you.")}</li>
         <li>{@html $t("Watch your Chapter / Working Group climb the <a href='/community'>Leaderboard</a> as cards are forged.")}</li>
@@ -108,7 +108,7 @@
         <span class="tlabel">{$t('Officers — now')}</span>
         <p class="tlead">{$t('Chapter chairs & secretaries, working-group leaders.')}</p>
         <ol class="start">
-          <li>{@html $t("Open <a href='/my-chapter'>My Chapter</a> and <strong>forge a card</strong> for each person who works under you — their identity, the skills they bring, the resources they offer (compute, API, funding, data) and their monthly hours, all in one batch. <strong>Each person is forged only once.</strong>")}</li>
+          <li>{@html $t("Open your unit from <a href='/community?tab=chapters'>Community</a> and <strong>forge a card</strong> for each person who works under you — their identity, the skills they bring, the resources they offer (compute, API, funding, data) and their monthly hours, all in one batch. <strong>Each person is forged only once.</strong>")}</li>
           <li>{@html $t("<strong>Claim your existing projects.</strong> Open the <a href='/projects'>Projects</a> your chapter or group already runs and use <strong>“Add a member directly”</strong> to seat your cards onto each roster — no application, no bond.")}</li>
           <li>{@html $t("Act as a card to <strong>declare its monthly contributions</strong> on the projects it joins. Value accrues to the card and stays custodial until the real person signs up and claims it.")}</li>
           <li>{@html $t("Clear your <a href='/admin/approvals'>Approvals</a> queue — it's the single place where everything waiting on you lands: role-card requests, chapter & working-group applications, member resources, project milestones, and any over-capacity monthly commitments. Approve or reject each in place.")}</li>
@@ -140,9 +140,8 @@
         <tr><td><a href="/projects">{$t('Projects')}</a></td><td>{$t('Every research project as a market board. Open one to see its roster, open needs, records, meetings, history and settlement.')}</td></tr>
         <tr><td><a href="/projects?tab=needs">{$t('Open needs')}</a></td><td>{$t('The task market — every open need across all projects, typed by labor or resource and filterable by skill. Apply here. (Now the “Open needs” view of Projects.)')}</td></tr>
         <tr><td><a href="/community">{$t('Community')}</a></td><td>{$t('Everyone’s public profiles and the leaderboard, plus the 3 Chapters and 3 Working Groups — switch tabs for People, Chapters and Working Groups.')}</td></tr>
-        <tr><td><a href="/community?tab=crafts">{$t('Guild')}</a></td><td>{$t('The skill tree. Request or claim role cards, see your medals, and track the cards awaiting review.')}</td></tr>
+        <tr><td><a href="/community?tab=crafts">{$t('Crafts')}</a></td><td>{$t('The skill tree. Request or claim role cards, see your medals, and track the cards awaiting review.')}</td></tr>
         <tr><td><a href="/wallet">{$t('Wallet')}</a></td><td>{$t('Your STR balance — liquid vs. nominal — and your full transaction history.')}</td></tr>
-        <tr><td>{$t('My Chapter')}</td><td>{$t('Officers only. Mint role cards onto your members and manage your chapter’s cards.')}</td></tr>
         <tr><td>{$t('Approvals')}</td><td>{$t('Officers & reviewers. One queue for every pending decision — role-card requests, chapter & working-group applications, member resources, project milestones, and over-capacity monthly commitments. Approve or reject each in place.')}</td></tr>
         <tr><td>{$t('Admin')}</td><td>{$t('Admins only. Every configurable knob: announcements, invites, positions, capabilities, venues, the skill tree, resources and the STR economy.')}</td></tr>
       </tbody>

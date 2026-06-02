@@ -117,8 +117,6 @@
       $capabilities.has('manage_members') ||
       $capabilities.has('edit_any_project')
   );
-  // chapter officers get a "My chapter" entry (cards belong to chapters)
-  const isChapterOfficer = $derived($officerUnits.some((u) => u.kind === 'chapter'));
   // anyone who can act on at least one approval queue gets the Approvals entry
   const canApprove = $derived(
     $officerUnits.length > 0 ||
@@ -141,9 +139,6 @@
         {#each navItems as n}
           <a href={n.href} class="side-link" class:active={isActive(n.href, $page.url.pathname)}>{$t(n.label)}</a>
         {/each}
-        {#if isChapterOfficer}
-          <a href="/my-chapter" class="side-link" class:active={isActive('/my-chapter', $page.url.pathname)}>{$t('My Chapter')}</a>
-        {/if}
         {#if canApprove}
           <a href="/admin/approvals" class="side-link" class:active={isActive('/admin/approvals', $page.url.pathname)}>{$t('Approvals')}</a>
         {/if}
