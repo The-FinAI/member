@@ -354,9 +354,6 @@
   // KPI summary (whole portfolio, not just filtered rows)
   const kActive = $derived(grid.filter((r) => r.status !== 'Finished').length);
   const kFinished = $derived(grid.filter((r) => r.status === 'Finished').length);
-  const kEscrow = $derived(grid.reduce((a, r) => a + r.escrow, 0));
-  const kPool = $derived(grid.reduce((a, r) => a + r.pool, 0));
-  const kProjected = $derived(grid.reduce((a, r) => a + Math.floor(r.pool * r.multiplier), 0));
   const kNeeds = $derived(grid.reduce((a, r) => a + r.openNeeds, 0));
   const kUpcoming = $derived(grid.filter((r) => {
     if (!r.deadline) return false;
@@ -486,27 +483,17 @@
     </div>
   {/if}
 
-  <!-- KPI summary -->
-  <div class="kpis">
+  <!-- KPI summary: the three numbers that matter when browsing -->
+  <div class="kpis kpis-3">
     <div class="kpi">
-      <span class="k-label">{$t('Projects')}</span>
-      <span class="k-value">{grid.length}</span>
-      <span class="k-sub">{$t('{a} active · {f} finished', { a: kActive, f: kFinished })}</span>
+      <span class="k-label">{$t('Active projects')}</span>
+      <span class="k-value">{kActive}</span>
+      <span class="k-sub">{$t('{f} finished & settled', { f: kFinished })}</span>
     </div>
     <div class="kpi">
-      <span class="k-label">{$t('Nominal pool')}</span>
-      <span class="k-value accent">{kPool.toLocaleString()}</span>
-      <span class="k-sub">{$t('accrued contribution · {n} STR bonded', { n: kEscrow.toLocaleString() })}</span>
-    </div>
-    <div class="kpi">
-      <span class="k-label">{$t('Projected mint')}</span>
-      <span class="k-value">{kProjected.toLocaleString()}</span>
-      <span class="k-sub">{$t('at settlement, pool × multiplier')}</span>
-    </div>
-    <div class="kpi">
-      <span class="k-label">{$t('Open needs')}</span>
-      <span class="k-value">{kNeeds}</span>
-      <span class="k-sub">{$t('roles seeking contributors')}</span>
+      <span class="k-label">{$t('Open roles')}</span>
+      <span class="k-value accent">{kNeeds}</span>
+      <span class="k-sub">{$t('seats & resources to fill')}</span>
     </div>
     <div class="kpi">
       <span class="k-label">{$t('Deadlines ≤ 60d')}</span>
@@ -790,6 +777,8 @@
 
 <style>
   .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: .8rem; }
+  .kpis-3 { grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 720px) { .kpis-3 { grid-template-columns: 1fr; } }
   .moved-panel { align-items: flex-start; gap: .7rem; padding: 1.4rem; }
   .moved-panel .mp-text { margin: 0; color: var(--muted); font-size: .9rem; line-height: 1.5; }
   .btn {

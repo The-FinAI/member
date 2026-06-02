@@ -35,6 +35,12 @@ const zh: Table = {
   // ── Redesign: projects page (de-jargon from trading-terminal vocab) ──
   "Active": "进行中",
   "{n} projects across the community — pools, milestones, and open roles.": "社区中的 {n} 个项目 —— 贡献池、里程碑与开放角色。",
+  "Active projects": "进行中的项目",
+  "{f} finished & settled": "{f} 个已完成并结算",
+  "Open roles": "开放角色",
+  "seats & resources to fill": "待补的席位与资源",
+  "Deadlines ≤ 60d": "截止 ≤ 60 天",
+  "venues approaching": "临近的发表节点",
   // ── Phase 1 rebuild: retired routes → officer console redirects ──
   "Taking you to the officer console…": "正在前往干事控制台…",
   "Unit management has moved to the officer console.": "单位管理已迁移至干事控制台。",
