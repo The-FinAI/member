@@ -177,7 +177,8 @@
           {#if menuOpen}
             <div class="menu-backdrop" onclick={() => (menuOpen = false)} role="presentation"></div>
             <div class="menu menu-up">
-              <button class="menu-item" onclick={() => go('/')}><span class="mi-ico">⚙</span> {$t('Portfolio & profile')}</button>
+              <button class="menu-item" onclick={() => go('/')}><span class="mi-ico">◷</span> {$t('Overview')}</button>
+              <button class="menu-item" onclick={() => go('/profile')}><span class="mi-ico">⚙</span> {$t('Profile & resources')}</button>
               <div class="menu-sep"></div>
               <button class="menu-item" onclick={signOut}><span class="mi-ico">⏻</span> {$t('Sign out')}</button>
             </div>

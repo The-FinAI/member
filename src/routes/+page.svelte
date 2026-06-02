@@ -9,11 +9,25 @@
   import EntityCard from '$lib/EntityCard.svelte';
   import { goto } from '$app/navigation';
   import { t } from '$lib/i18n';
-  import { get } from 'svelte/store';
 
-  // ---- portfolio: positions, applications, economy snapshot ----
+  // ── Home is the overview台: only things you READ. Everything you EDIT
+  // (resources you can bring, identity/affiliation) lives on /profile; the full
+  // ledger lives on /wallet. This page answers "what's my standing, and what
+  // needs me next."
+
   type MyProject = { project: { id: string; name: string; project_status: { name: string } | null } | null; project_role: { name: string } | null };
   type MyApp = { id: string; status: string; open_need: { project: { id: string; name: string } | null } | null };
+  type Skill = { id: string; name: string; parent_id: string | null };
+  type MySkill = { skill_id: string; certified_level: string | null };
+  type LedgerRow = {
+    id: string; amount: number; entry_type: string; reason: string;
+    from_account: string | null; to_account: string | null; created_at: string;
+  };
+
+  const GUILD_RANK = ['apprentice', 'journeyman', 'craftsman', 'master'];
+  const LEVEL_LABEL: Record<string, string> = {
+    apprentice: 'Apprentice', journeyman: 'Journeyman', craftsman: 'Craftsman', master: 'Master'
+  };
 
   let myProjects = $state<MyProject[]>([]);
   let myApps = $state<MyApp[]>([]);
@@ -23,57 +37,12 @@
   let staked = $state(0);
   let loading = $state(true);
 
-  // ---- profile: certifications, resources, ledger, identity ----
-  const GUILD_RANK = ['apprentice', 'journeyman', 'craftsman', 'master'];
-
-  type Skill = { id: string; name: string; parent_id: string | null };
-  type MySkill = { skill_id: string; certified_level: string | null };
-  type LedgerRow = {
-    id: string; amount: number; entry_type: string; reason: string;
-    from_account: string | null; to_account: string | null; created_at: string;
-  };
-  type ResType = { id: string; name: string; valuation_method: string };
-  type GpuModel = { id: string; name: string; tflops: number };
-  type ApiModel = { id: string; provider: string; name: string; usd_per_million: number };
-  type MyResource = {
-    id: string; name: string; description: string | null; capacity: string | null;
-    availability: string; approval_status: string; type_id: string | null;
-    resource_type: { name: string; unit: string | null } | null;
-    gpu_model: { name: string } | null;
-    api_model: { provider: string; name: string } | null;
-  };
-
-  const AVAIL = ['available', 'limited', 'committed'];
-
-  let saving = $state(false);
-  let affiliation = $state('');
-  let saved = $state(false);
-
   let skills = $state<Skill[]>([]);
   let mySkills = $state<MySkill[]>([]);
   let accountId = $state('');
   let totalNominal = $state(0);
   let ledger = $state<LedgerRow[]>([]);
   let skillsLoading = $state(true);
-  let error = $state('');
-
-  let resTypes = $state<ResType[]>([]);
-  let myResources = $state<MyResource[]>([]);
-  let gpuModels = $state<GpuModel[]>([]);
-  let apiModels = $state<ApiModel[]>([]);
-  let rName = $state('');
-  let rType = $state('');
-  let rCapacity = $state('');
-  let rAvail = $state('available');
-  let rGpuModel = $state('');
-  let rApiModel = $state('');
-
-  const rSelType = $derived(resTypes.find((t) => t.id === rType) ?? null);
-  const rSelMethod = $derived(rSelType?.valuation_method ?? 'flat');
-  let laborHours = $state('');
-  let laborBusy = $state(false);
-
-  $effect(() => { if ($member) affiliation = $member.affiliation ?? ''; });
 
   async function loadPortfolio(memberId: string) {
     loading = true;
@@ -102,28 +71,19 @@
     loading = false;
   }
 
-  async function loadSkills(memberId: string) {
+  // badges (read-only craft), accrued contribution, and a short ledger preview
+  async function loadStanding(memberId: string) {
     skillsLoading = true;
-    const [{ data: tree }, { data: ms }, { data: rt }, { data: mr }, { data: nom }, { data: gm }, { data: am }] = await Promise.all([
+    const [{ data: tree }, { data: ms }, { data: nom }] = await Promise.all([
       supabase.from('skill').select('id, name, parent_id').order('name'),
       supabase.from('member_skill').select('skill_id, certified_level').eq('member_id', memberId),
-      supabase.from('resource_type').select('id, name, valuation_method').order('rank'),
-      supabase.from('resource')
-        .select('id, name, description, capacity, availability, approval_status, type_id, resource_type(name, unit), gpu_model(name), api_model(provider, name)')
-        .eq('scope', 'member').eq('holder_member_id', memberId).order('name'),
-      supabase.from('stater_project_member_nominal').select('nominal').eq('member_id', memberId),
-      supabase.from('gpu_model').select('id, name, tflops').eq('is_active', true).order('rank'),
-      supabase.from('api_model').select('id, provider, name, usd_per_million').eq('is_active', true).order('rank')
+      supabase.from('stater_project_member_nominal').select('nominal').eq('member_id', memberId)
     ]);
     skills = (tree as Skill[]) ?? [];
     mySkills = ((ms as MySkill[]) ?? []).sort(
       (a, b) => GUILD_RANK.indexOf(b.certified_level ?? '') - GUILD_RANK.indexOf(a.certified_level ?? '')
         || skillName(a.skill_id).localeCompare(skillName(b.skill_id))
     );
-    resTypes = (rt as ResType[]) ?? [];
-    myResources = (mr as MyResource[]) ?? [];
-    gpuModels = (gm as GpuModel[]) ?? [];
-    apiModels = (am as ApiModel[]) ?? [];
     totalNominal = ((nom as { nominal: number }[]) ?? []).reduce((a, n) => a + (Number(n.nominal) || 0), 0);
 
     const { data: bal } = await supabase.from('stater_balance').select('account_id').eq('owner_member_id', memberId).maybeSingle();
@@ -134,78 +94,22 @@
         .select('id, amount, entry_type, reason, from_account, to_account, created_at')
         .or(`from_account.eq.${accountId},to_account.eq.${accountId}`)
         .order('created_at', { ascending: false })
-        .limit(12);
+        .limit(6);
       ledger = (lg as LedgerRow[]) ?? [];
     }
     skillsLoading = false;
   }
 
-  // --- labor: a member's time, stored as a Labor-typed resource (hrs/month) ---
-  const laborTypeId = $derived(resTypes.find((t) => t.name === 'Labor')?.id ?? '');
-  const myLabor = $derived(myResources.find((r) => r.resource_type?.name === 'Labor') ?? null);
-  $effect(() => {
-    const cap = myLabor?.capacity ?? '';
-    const m = cap.match(/\d+/);
-    if (m && laborHours === '') laborHours = m[0];
-  });
-
-  async function saveLabor() {
-    error = '';
-    if (!$member) return;
-    const hrs = parseInt(laborHours, 10);
-    if (!Number.isFinite(hrs) || hrs < 0) { error = get(t)('Enter hours per month (a number).'); return; }
-    laborBusy = true;
-    const capacity = `${hrs} hrs/mo`;
-    let err;
-    if (myLabor) {
-      ({ error: err } = await supabase.from('resource').update({ capacity }).eq('id', myLabor.id));
-    } else {
-      ({ error: err } = await supabase.from('resource').insert({
-        name: 'My time', type_id: laborTypeId || null, scope: 'member',
-        holder_member_id: $member.id, capacity, availability: 'available'
-      }));
-    }
-    laborBusy = false;
-    if (err) { error = err.message; return; }
-    await loadSkills($member.id);
-  }
-
-  async function addResource() {
-    error = '';
-    if (!rName.trim() || !$member) return;
-    const { error: err } = await supabase.from('resource').insert({
-      name: rName.trim(), type_id: rType || null, scope: 'member',
-      holder_member_id: $member.id, capacity: rCapacity || null, availability: rAvail,
-      gpu_model_id: rSelMethod === 'gpu' ? (rGpuModel || null) : null,
-      api_model_id: rSelMethod === 'api' ? (rApiModel || null) : null
-    });
-    if (err) { error = err.message; return; }
-    rName = ''; rType = ''; rCapacity = ''; rAvail = 'available'; rGpuModel = ''; rApiModel = '';
-    await loadSkills($member.id);
-  }
-
-  async function removeResource(id: string) {
-    if (!$member) return;
-    const { error: err } = await supabase.from('resource').delete().eq('id', id);
-    if (err) { error = err.message; return; }
-    await loadSkills($member.id);
-  }
-
   onMount(() => {
     if (!supabaseConfigured) { loading = false; skillsLoading = false; return; }
     const unsub = member.subscribe((m) => {
-      if (m) { loadPortfolio(m.id); loadSkills(m.id); }
+      if (m) { loadPortfolio(m.id); loadStanding(m.id); }
       else { loading = false; skillsLoading = false; }
     });
     return unsub;
   });
 
   function skillName(skillId: string) { return skills.find((s) => s.id === skillId)?.name ?? skillId; }
-  function statusClass(name: string | null | undefined) {
-    if (name === 'Finished') return 'pos';
-    if (name === 'Hold') return 'warn';
-    return '';
-  }
   function statusKindOf(name: string | null | undefined): 'pos' | 'warn' | 'dim' {
     if (name === 'Finished') return 'pos';
     if (name === 'Hold' || name === 'Under review') return 'warn';
@@ -217,12 +121,13 @@
     if (status === 'declined') return 'down';
     return 'dim';
   }
-  // the officer's home unit — prefer a chapter (where cards are forged) over a
-  // working group, so the banner links straight to where the Phase 1 work is.
+  function initials(name: string | undefined) {
+    const p = (name ?? '').trim().split(/\s+/).filter(Boolean);
+    return ((p[0]?.[0] ?? '') + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase() || '·';
+  }
+
+  // the officer's home unit — prefer a chapter (where cards are forged)
   const myUnit = $derived($officerUnits.find((u) => u.kind === 'chapter') ?? $officerUnits[0] ?? null);
-  // community-wide stewards: anyone holding an admin/approval capability runs the
-  // WHOLE community (not a single unit), so they get a banner that mirrors the
-  // officer one but points at the community-wide admin & approval surfaces.
   const canAdmin = $derived(
     $capabilities.has('manage_taxonomy') ||
       $capabilities.has('manage_members') ||
@@ -235,48 +140,42 @@
       $capabilities.has('review_skillcard')
   );
   const isSteward = $derived(canAdmin || canApprove);
+
   const certifiedCount = $derived(mySkills.filter((s) => s.certified_level).length);
   const myCards = $derived(mySkills.filter((s) => s.certified_level));
+  const pendingSkills = $derived(mySkills.filter((s) => !s.certified_level));
   // mySkills is sorted rank-desc, so the first certified card carries the top tier.
-  const LEVEL_LABEL: Record<string, string> = {
-    apprentice: 'Apprentice', journeyman: 'Journeyman', craftsman: 'Craftsman', master: 'Master'
-  };
   const topTierLabel = $derived(
     myCards[0]?.certified_level ? (LEVEL_LABEL[myCards[0].certified_level] ?? '') : ''
   );
-  function initials(name: string) {
-    const p = (name ?? '').trim().split(/\s+/).filter(Boolean);
-    return ((p[0]?.[0] ?? '') + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase() || '·';
-  }
-  const catalogResources = $derived(myResources.filter((r) => r.resource_type?.name !== 'Labor'));
-  const catalogTypes = $derived(resTypes.filter((t) => t.name !== 'Labor'));
-
-  async function save() {
-    if (!supabaseConfigured || !$member) return;
-    saving = true; saved = false;
-    const { error: err } = await supabase.from('member').update({ affiliation }).eq('id', $member.id);
-    saving = false;
-    if (!err) { saved = true; member.update((m) => (m ? { ...m, affiliation } : m)); }
-  }
+  // the single most actionable thing: applications the team accepted, awaiting
+  // your confirmation to actually join.
+  const acceptedApps = $derived(myApps.filter((a) => a.status === 'accepted'));
 </script>
 
 <div class="stack">
-  <!-- self card: you, as a card — two aspects (Craft / Standing), the liquid
-       STR resource, and three verbs you can act with right now. -->
+  <!-- self card: you, as a card — identity + role, two aspects (Craft /
+       Standing), the liquid STR resource, and the verbs you act with. -->
   <section class="selfcard">
     <div class="sc-head">
-      <span class="sc-ava">{$member ? initials($member.full_name) : '·'}</span>
+      <span class="sc-ava">{initials($member?.full_name)}</span>
       <div class="sc-id">
-        <h1 class="sc-name">{$member ? $member.full_name.split(' ')[0] : $t('Portfolio')}</h1>
-        <span class="sc-sub muted">{$member?.affiliation || $member?.email || $t('Your stake across the Stater research economy.')}</span>
+        <h1 class="sc-name">{$member ? $member.full_name.split(' ')[0] : $t('Overview')}</h1>
+        <span class="sc-sub muted">{$member?.affiliation || $member?.email || ''}</span>
       </div>
+      {#if myUnit || isSteward}
+        <div class="sc-roles">
+          {#if myUnit}<span class="rolepill">{$t('Officer')} · {myUnit.name}</span>{/if}
+          {#if isSteward}<span class="rolepill warn">{$t('Community steward')}</span>{/if}
+        </div>
+      {/if}
     </div>
 
     <div class="sc-aspects">
       <div class="aspect">
         <span class="asp-k">{$t('Craft')}</span>
         <span class="asp-v">{certifiedCount}</span>
-        <span class="asp-sub">{topTierLabel ? $t(topTierLabel) + ' · ' : ''}{$t(certifiedCount === 1 ? 'badge earned' : 'badges earned')}</span>
+        <span class="asp-sub">{topTierLabel ? $t(topTierLabel) : $t(certifiedCount === 1 ? 'badge earned' : 'badges earned')}</span>
       </div>
       <div class="aspect">
         <span class="asp-k">{$t('Standing')}</span>
@@ -320,53 +219,33 @@
     </div>
   </section>
 
-  {#if myUnit}
-    <div class="card row" style="justify-content:space-between; align-items:center; gap:.75rem; border-left:3px solid var(--accent); flex-wrap:wrap;">
-      <div class="stack" style="gap:.2rem;">
-        <strong style="font-size:.95rem;">{$t("You're an officer of {unit}", { unit: myUnit.name })}</strong>
-        <span class="muted" style="font-size:.82rem;">{$t('Phase 1: forge a card for each researcher, claim your existing projects, declare their monthly work, and clear your approvals.')}</span>
-      </div>
-      <div class="row" style="gap:.5rem; flex-wrap:wrap;">
-        {#if myUnit.kind === 'chapter'}
-          <a href={`/units/${myUnit.unit_id}#forge`}><button>{$t('Forge a member card →')}</button></a>
-        {/if}
-        <a href={`/units/${myUnit.unit_id}`}><button class="ghost">{$t('Open my unit →')}</button></a>
-      </div>
-    </div>
-  {/if}
-
-  {#if isSteward}
-    <div class="card row" style="justify-content:space-between; align-items:center; gap:.75rem; border-left:3px solid var(--warn); flex-wrap:wrap;">
-      <div class="stack" style="gap:.2rem;">
-        <strong style="font-size:.95rem;">{$t('You help steward the whole community')}</strong>
-        <span class="muted" style="font-size:.82rem;">{$t('Phase 1: invite officers, set up the chapters & working groups, and keep every approval queue clear across the community.')}</span>
-      </div>
-      <div class="row" style="gap:.5rem; flex-wrap:wrap;">
-        {#if canApprove}
-          <a href="/admin/approvals"><button>{$t('Review approvals →')}</button></a>
-        {/if}
-        {#if canAdmin}
-          <a href="/admin"><button class="ghost">{$t('Admin dashboard →')}</button></a>
-        {/if}
-      </div>
-    </div>
-  {/if}
-
   {#if PHASE2 && $member}<GettingStarted memberId={$member.id} />{/if}
 
-  {#if staked > 0}
-    <p class="sc-bonded muted">{$t('{s} STR bonded in live projects', { s: staked })}</p>
+  <!-- needs you now: the one digest of things waiting on your action -->
+  {#if acceptedApps.length > 0}
+    <div class="needs">
+      <span class="nx-ic">!</span>
+      <span class="nx-tx">{$t('{n} application accepted — confirm to join', { n: acceptedApps.length })}</span>
+      <div class="nx-acts">
+        {#each acceptedApps.slice(0, 3) as a}
+          {#if a.open_need?.project}
+            <a class="chip toggle" href={`/projects/${a.open_need.project.id}`}>{a.open_need.project.name} →</a>
+          {/if}
+        {/each}
+      </div>
+    </div>
   {/if}
 
-  {#if error}<p style="color:var(--down);">{error}</p>{/if}
-
-  <!-- positions: each seat I hold, as a project card -->
-  <div class="card stack">
-    <h2 style="margin:0;">{$t('My positions')}</h2>
+  <!-- my projects: each seat I hold, as a project card -->
+  <section class="block">
+    <div class="block-head">
+      <h2>{$t('My projects')}</h2>
+      {#if myProjects.length > 0}<span class="block-meta">{$t('{n} active', { n: myProjects.length })}{#if staked > 0} · {$t('{s} STR bonded', { s: staked })}{/if}</span>{/if}
+    </div>
     {#if loading}
       <p class="muted">{$t('Loading…')}</p>
     {:else if myProjects.length === 0}
-      <p class="muted">{$t('No positions yet. Browse')} <a href="/projects?tab=needs">{$t('Open Opportunities')}</a> {$t('to stake into a project, or')} <a href="/guide">{$t('read how it works')}</a>{$t('first.')}</p>
+      <p class="muted">{$t('No positions yet.')} <a href="/projects">{$t('Browse projects')}</a> {$t('to stake into one.')}</p>
     {:else}
       <div class="card-grid">
         {#each myProjects as p}
@@ -381,39 +260,31 @@
         {/each}
       </div>
     {/if}
-  </div>
 
-  <!-- applications: open orders into projects, as cards -->
-  <div class="card stack">
-    <h2 style="margin:0;">{$t('My applications')}</h2>
-    {#if loading}
-      <p class="muted">{$t('Loading…')}</p>
-    {:else if myApps.length === 0}
-      <p class="muted">{$t('No open orders.')}</p>
-    {:else}
-      <div class="card-grid">
-        {#each myApps as a}
-          <EntityCard
-            type="Application"
-            title={a.open_need?.project?.name ?? '—'}
-            status={a.status === 'accepted' ? $t('accepted · confirm to join →') : a.status}
-            statusKind={appKind(a.status)}
-            onclick={() => a.open_need?.project && goto(`/projects/${a.open_need.project.id}`)}
-          />
-        {/each}
+    {#if myApps.length > 0}
+      <div class="block-sub">
+        <span class="block-sublabel">{$t('Applications')}</span>
+        <div class="card-grid">
+          {#each myApps as a}
+            <EntityCard
+              type="Application"
+              title={a.open_need?.project?.name ?? '—'}
+              status={a.status === 'accepted' ? $t('accepted · confirm to join →') : a.status}
+              statusKind={appKind(a.status)}
+              onclick={() => a.open_need?.project && goto(`/projects/${a.open_need.project.id}`)}
+            />
+          {/each}
+        </div>
       </div>
     {/if}
-  </div>
+  </section>
 
-  <!-- badges: read-only. A certified skill IS a badge; reviewers award them. -->
-  <div class="card stack">
-    <div class="row" style="justify-content:space-between; align-items:center;">
-      <h2 style="margin:0;">{$t('Badges')}</h2>
-      <a href="/community?tab=badges"><button class="ghost">{$t('Badge catalog →')}</button></a>
+  <!-- my badges: read-only craft. A certified skill IS a badge. -->
+  <section class="block">
+    <div class="block-head">
+      <h2>{$t('My badges')}</h2>
+      <a class="block-link" href="/community?tab=badges">{$t('Badge catalog →')}</a>
     </div>
-    <p class="muted" style="font-size:.82rem; margin-top:-.35rem;">
-      {@html $t("Skills aren't self-rated — they're <strong>earned</strong>. A reviewer certifies each badge, climbing Apprentice → Journeyman → Craftsman → Master.")}
-    </p>
     {#if skillsLoading}
       <p class="muted">{$t('Loading…')}</p>
     {:else if mySkills.length === 0}
@@ -424,135 +295,40 @@
           {#each myCards as s}<Medal name={skillName(s.skill_id)} level={s.certified_level!} />{/each}
         </div>
       {/if}
-      {@const pending = mySkills.filter((s) => !s.certified_level)}
-      {#if pending.length > 0}
-        <div class="stack" style="gap:.35rem;">
+      {#if pendingSkills.length > 0}
+        <div class="stack" style="gap:.35rem; margin-top:.6rem;">
           <span class="muted" style="font-size:.78rem;">{$t('Skills awaiting a badge')}</span>
           <div class="row" style="gap:.35rem; flex-wrap:wrap;">
-            {#each pending as s}<span class="badge dim">{skillName(s.skill_id)}</span>{/each}
+            {#each pendingSkills as s}<span class="badge dim">{skillName(s.skill_id)}</span>{/each}
           </div>
         </div>
       {/if}
     {/if}
-  </div>
+  </section>
 
-  <!-- resources: an offerable catalog (what I can bring), steward-gated -->
-  <div class="card stack">
-    <h2>{$t('What I can bring')}</h2>
-    <p class="muted" style="font-size:.82rem; margin-top:-.5rem;">{$t("Your offerable catalog — time, compute, funding, data. You pledge specific amounts to a project when you join it; this is just what's available.")}</p>
-
-    <!-- labor / time -->
-    <div class="stack" style="gap:.4rem; border:1px solid var(--border); border-radius:8px; padding:.6rem .75rem;">
-      <div class="row" style="justify-content:space-between; align-items:center;">
-        <strong style="font-size:.9rem;">⏱ {$t('Time I can commit')}</strong>
-        {#if myLabor}<span class="badge {myLabor.approval_status}">{myLabor.approval_status === 'approved' ? $t('✓ approved') : myLabor.approval_status === 'rejected' ? $t('✕ rejected') : $t('⏳ pending')}</span>{/if}
-      </div>
-      <div class="row" style="align-items:flex-end; gap:.5rem; flex-wrap:wrap;">
-        <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Hours per month')}</span>
-          <input type="number" min="0" bind:value={laborHours} placeholder={$t('e.g. 40')} style="width:120px;" /></label>
-        <button onclick={saveLabor} disabled={laborBusy}>{laborBusy ? $t('Saving…') : myLabor ? $t('Update time') : $t('Set time')}</button>
-      </div>
-      <p class="muted" style="font-size:.75rem; margin:0;">{@html $t('Valued at the community’s monthly <code>labor rate</code> and minted into a project once you pledge the hours.')}</p>
-    </div>
-
-    <div class="res-pending-note">{$t('⏳ New resources are reviewed by a steward before they can be offered to projects.')}</div>
-    {#if skillsLoading}
-      <p class="muted">{$t('Loading…')}</p>
-    {:else}
-      {#if catalogResources.length === 0}
-        <p class="muted">{$t('No other resources added yet.')}</p>
-      {:else}
-        <table>
-          <thead><tr><th>{$t('Name')}</th><th>{$t('Type')}</th><th>{$t('Capacity')}</th><th>{$t('Availability')}</th><th>{$t('Review')}</th><th></th></tr></thead>
-          <tbody>
-            {#each catalogResources as r}
-              <tr>
-                <td>{r.name}{#if r.gpu_model || r.api_model}<div class="muted" style="font-size:.75rem;">{r.gpu_model?.name ?? `${r.api_model?.provider} ${r.api_model?.name}`}</div>{/if}</td>
-                <td>{r.resource_type?.name ?? '—'}</td>
-                <td>{r.capacity ?? '—'}{#if r.capacity && r.resource_type?.unit}<span class="muted" style="font-size:.75rem;"> {r.resource_type.unit}</span>{/if}</td>
-                <td><span class="badge dim">{$t(r.availability)}</span></td>
-                <td><span class="badge {r.approval_status}">{r.approval_status === 'approved' ? $t('✓ approved') : r.approval_status === 'rejected' ? $t('✕ rejected') : $t('⏳ pending')}</span></td>
-                <td><button class="danger" onclick={() => removeResource(r.id)}>{$t('Remove')}</button></td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
-      {/if}
-
-      <div class="row" style="align-items:flex-end; flex-wrap:wrap; border-top:1px dashed var(--border); padding-top:.75rem;">
-        <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Name')}</span>
-          <input bind:value={rName} placeholder={$t('e.g. RTX 4090 ×2')} /></label>
-        <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Type')}</span>
-          <select bind:value={rType}><option value="">—</option>{#each catalogTypes as ct}<option value={ct.id}>{ct.name}</option>{/each}</select></label>
-        <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Capacity')}</span>
-          <input bind:value={rCapacity} placeholder={$t('optional')} style="width:120px;" /></label>
-        <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Availability')}</span>
-          <select bind:value={rAvail}>{#each AVAIL as a}<option value={a}>{$t(a)}</option>{/each}</select></label>
-        {#if rSelMethod === 'gpu'}
-          <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('GPU model')}</span>
-            <select bind:value={rGpuModel}><option value="">{$t('— pick —')}</option>{#each gpuModels as g}<option value={g.id}>{g.name} · {g.tflops} TFLOPs</option>{/each}</select></label>
-        {:else if rSelMethod === 'api'}
-          <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('API model')}</span>
-            <select bind:value={rApiModel}><option value="">{$t('— pick —')}</option>{#each apiModels as a}<option value={a.id}>{a.provider} {a.name} · ${a.usd_per_million}/M</option>{/each}</select></label>
-        {/if}
-        <button onclick={addResource}>{$t('Add resource')}</button>
-      </div>
-      {#if rSelMethod === 'gpu' || rSelMethod === 'api'}
-        <p class="muted" style="font-size:.78rem; margin-top:-.4rem;">{$t('Pick the closest model — its built-in throughput/price sets the USD→STR conversion when you declare monthly usage on a project.')}</p>
-      {/if}
-    {/if}
-  </div>
-
-  <!-- recent STR activity -->
+  <!-- recent activity: a short preview; the full ledger lives in the wallet -->
   {#if ledger.length > 0}
-    <div class="card stack">
-      <div class="row" style="justify-content:space-between; align-items:center;">
-        <h2 style="margin:0;">{$t('Recent STR activity')}</h2>
-        <a href="/wallet"><button class="ghost">{$t('Full ledger →')}</button></a>
+    <section class="block">
+      <div class="block-head">
+        <h2>{$t('Recent activity')}</h2>
+        <a class="block-link" href="/wallet">{$t('Full ledger →')}</a>
       </div>
-      <table>
-        <thead><tr><th>{$t('When')}</th><th>{$t('Type')}</th><th>{$t('Reason')}</th><th class="num">{$t('Amount')}</th></tr></thead>
-        <tbody>
-          {#each ledger as l}
-            {@const incoming = l.to_account === accountId}
-            <tr>
-              <td class="muted" style="font-size:.78rem;">{new Date(l.created_at).toLocaleDateString()}</td>
-              <td><span class="badge dim">{l.entry_type}</span></td>
-              <td class="muted" style="font-size:.82rem;">{l.reason ?? '—'}</td>
-              <td class="num mono {incoming ? 'up' : 'down'}">{incoming ? '+' : '−'}{l.amount.toLocaleString()}</td>
-            </tr>
-          {/each}
-        </tbody>
-      </table>
-    </div>
+      <div class="acts">
+        {#each ledger as l}
+          {@const incoming = l.to_account === accountId}
+          <div class="act">
+            <span class="act-when muted">{new Date(l.created_at).toLocaleDateString()}</span>
+            <span class="act-reason">{l.reason ?? l.entry_type}</span>
+            <span class="act-amt mono {incoming ? 'up' : 'down'}">{incoming ? '+' : '−'}{l.amount.toLocaleString()}</span>
+          </div>
+        {/each}
+      </div>
+    </section>
   {/if}
 
-  <!-- identity + capabilities -->
+  <!-- footer link to the manage surface (resources + identity) -->
   {#if $member}
-    <div class="card stack">
-      <div class="row" style="justify-content:space-between; align-items:flex-start;">
-        <div>
-          <div><strong>{$member.full_name}</strong></div>
-          <div class="muted">{$member.email}</div>
-        </div>
-      </div>
-      <label class="stack" style="gap:.3rem;">
-        <span class="muted" style="font-size:.8rem;">{$t('Affiliation')}</span>
-        <input bind:value={affiliation} />
-      </label>
-      <div class="row">
-        <button onclick={save} disabled={saving}>{saving ? $t('Saving…') : $t('Save')}</button>
-        {#if saved}<span class="badge">{$t('Saved')}</span>{/if}
-      </div>
-      <div class="stack" style="gap:.3rem; border-top:1px solid var(--border); padding-top:.6rem;">
-        <span class="muted" style="font-size:.8rem;">{$t('Capabilities')}</span>
-        {#if $capabilities.size === 0}
-          <p class="muted" style="margin:0;">{$t('Standard member — no admin capabilities.')}</p>
-        {:else}
-          <div class="row" style="flex-wrap:wrap; gap:.35rem;">{#each [...$capabilities] as c}<span class="badge">{c}</span>{/each}</div>
-        {/if}
-      </div>
-    </div>
+    <a class="manage-link" href="/profile">{$t('Manage your resources & profile')} →</a>
   {/if}
 </div>
 
@@ -574,6 +350,12 @@
   .sc-id { min-width: 0; display: flex; flex-direction: column; gap: .1rem; }
   .sc-name { margin: 0; font-size: 1.5rem; line-height: 1.1; letter-spacing: -.01em; }
   .sc-sub { font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sc-roles { margin-left: auto; display: flex; gap: .4rem; flex-wrap: wrap; justify-content: flex-end; }
+  .rolepill {
+    font-size: .72rem; font-weight: 600; padding: .25rem .6rem; border-radius: 999px;
+    color: var(--accent); background: var(--accent-soft); white-space: nowrap;
+  }
+  .rolepill.warn { color: var(--warn); background: var(--warn-soft); }
 
   .sc-aspects {
     display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
@@ -604,9 +386,46 @@
   .vb-tx strong { font-size: .9rem; font-weight: 600; }
   .vb-tx .muted { font-size: .74rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-  .sc-bonded { font-size: .82rem; margin: -.3rem 0 0; }
+  /* needs-you digest */
+  .needs {
+    display: flex; align-items: center; gap: .7rem; flex-wrap: wrap;
+    border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+    background: var(--warn-soft); border-radius: 12px; padding: .7rem .9rem;
+  }
+  .nx-ic {
+    width: 22px; height: 22px; border-radius: 50%; flex: none;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: .8rem; color: var(--accent-ink); background: var(--warn);
+  }
+  .nx-tx { font-size: .88rem; font-weight: 600; }
+  .nx-acts { display: flex; gap: .4rem; flex-wrap: wrap; margin-left: auto; }
+
+  /* generic content block */
+  .block { display: flex; flex-direction: column; gap: .7rem; }
+  .block-head { display: flex; align-items: baseline; justify-content: space-between; gap: .6rem; }
+  .block-head h2 { margin: 0; }
+  .block-meta { font-size: .8rem; color: var(--muted); }
+  .block-link { font-size: .82rem; }
+  .block-sub { display: flex; flex-direction: column; gap: .45rem; margin-top: .5rem; }
+  .block-sublabel { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+
+  /* activity list */
+  .acts { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .act {
+    display: grid; grid-template-columns: auto 1fr auto; gap: .8rem; align-items: center;
+    padding: .55rem .9rem; border-bottom: 1px solid var(--border); background: var(--card);
+  }
+  .act:last-child { border-bottom: 0; }
+  .act-when { font-size: .76rem; white-space: nowrap; }
+  .act-reason { font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .act-amt { font-size: .85rem; font-weight: 600; white-space: nowrap; }
+
+  .manage-link { font-size: .85rem; color: var(--muted); padding: .2rem 0; }
+  .manage-link:hover { color: var(--accent); }
 
   @media (max-width: 720px) {
     .sc-aspects, .sc-verbs { grid-template-columns: 1fr; }
+    .sc-head { flex-wrap: wrap; }
+    .sc-roles { margin-left: 0; width: 100%; justify-content: flex-start; }
   }
 </style>
