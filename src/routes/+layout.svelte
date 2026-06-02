@@ -145,8 +145,11 @@
         {#each navItems as n}
           <a href={n.href} class="side-link" class:active={isActive(n.href, $page.url.pathname)}>{$t(n.label)}</a>
         {/each}
+        {#if $officerUnits.length > 0 || canAdmin}
+          <a href="/officer" class="side-link" class:active={isActive('/officer', $page.url.pathname)}>{$t('Officer')}</a>
+        {/if}
         {#if canApprove}
-          <a href="/admin/approvals" class="side-link" class:active={isActive('/admin/approvals', $page.url.pathname)}>{$t('Approvals')}</a>
+          <a href="/admin/forge-queue" class="side-link" class:active={isActive('/admin/forge-queue', $page.url.pathname)}>{$t('Forge queue')}</a>
         {/if}
         {#if canAdmin}
           <a href="/admin" class="side-link" class:active={isActive('/admin', $page.url.pathname)}>{$t('Admin')}</a>

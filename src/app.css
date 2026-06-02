@@ -246,6 +246,42 @@ a.tile:hover { border-color: var(--border-2); }
 }
 .chip .amt { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 
+/* ---------- commit chip (Work commitment: project · amount · [edit]) ----------
+   New Phase-1 atom (concept §10): a .chip carrying a thin .bar showing the
+   share of the card's monthly_quota this commitment consumes. */
+.commit-chip {
+  display: inline-flex; align-items: center; gap: .5rem;
+  padding: .35rem .55rem .35rem .6rem; border-radius: 10px;
+  background: var(--card-2); border: 1px solid var(--border);
+  font-size: .8rem; color: var(--text-dim); max-width: 100%;
+}
+.commit-chip .cc-main { display: flex; flex-direction: column; gap: .25rem; min-width: 0; }
+.commit-chip .cc-name { color: var(--text); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.commit-chip .cc-amt { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--info); }
+.commit-chip .cc-bar { height: 3px; border-radius: 2px; background: var(--border); overflow: hidden; width: 100%; }
+.commit-chip .cc-bar > i { display: block; height: 100%; background: var(--info); border-radius: 2px; }
+.commit-chip.over .cc-bar > i { background: var(--down); }
+.commit-chip.review { border-color: var(--warn); }
+.commit-chip .cc-edit {
+  flex: none; padding: .15rem .45rem; font-size: .72rem; border-radius: 7px;
+  background: transparent; border: 1px solid var(--border-2); color: var(--muted); cursor: pointer;
+}
+.commit-chip .cc-edit:hover { color: var(--text); border-color: var(--text-dim); filter: none; }
+
+/* ---------- matcher row (qualified / grey-out unqualified) ---------- */
+.match-row {
+  display: flex; align-items: center; gap: .7rem; width: 100%; text-align: left;
+  padding: .65rem .7rem; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--card-2); cursor: pointer; transition: border-color .12s ease, box-shadow .12s ease;
+}
+.match-row:hover { border-color: var(--border-2); }
+.match-row.qualified { box-shadow: var(--ring); border-color: transparent; }
+.match-row.blocked { opacity: .45; filter: grayscale(1); cursor: not-allowed; }
+.match-row .mr-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .15rem; }
+.match-row .mr-title { font-weight: 600; color: var(--text); font-size: .9rem; }
+.match-row .mr-sub { font-size: .74rem; color: var(--muted); }
+.match-row .mr-gap { font-family: var(--font-mono); font-size: .8rem; }
+
 /* ---------- timeline / history ---------- */
 .timeline { display: flex; flex-direction: column; }
 .tl-item { display: flex; gap: .7rem; padding: .35rem 0; position: relative; }
