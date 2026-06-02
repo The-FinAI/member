@@ -42,7 +42,7 @@
     { n: examsInReview, label: 'role cards awaiting review', href: '/admin/approvals' },
     { n: pendingMilestones, label: 'milestones awaiting review', href: '/admin/approvals' },
     { n: pendingCommits, label: 'over-capacity commitments to review', href: '/admin/approvals' },
-    { n: openNeeds, label: 'open needs on the market', href: '/opportunities' }
+    { n: openNeeds, label: 'open needs on the market', href: '/projects?tab=needs' }
   ].filter((a) => a.n > 0));
 
   async function load() {

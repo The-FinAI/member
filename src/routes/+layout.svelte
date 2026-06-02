@@ -31,10 +31,8 @@
 
   const navItems = [
     { href: '/projects', label: 'Projects' },
-    { href: '/opportunities', label: 'Opportunities' },
+    { href: '/community', label: 'Community' },
     { href: '/skills', label: 'Guild' },
-    { href: '/units', label: 'Units' },
-    { href: '/members', label: 'People' },
     { href: '/guide', label: 'Guide' }
   ];
   function isActive(href: string, path: string) {

@@ -5,7 +5,13 @@
   import { t } from '$lib/i18n';
   import { get } from 'svelte/store';
   import EntityCard from '$lib/EntityCard.svelte';
+  import TaskMarket from '$lib/TaskMarket.svelte';
   import { goto } from '$app/navigation';
+  import { page } from '$app/stores';
+
+  // top-level segment: the project portfolio vs the open-needs task market.
+  // A "need" is an open slot on a project card, so both live on this surface.
+  let surface = $state<'projects' | 'needs'>('projects');
 
   type PType = { id: string; name: string; leader_stake: number; join_stake: number; finish_bonus: number };
   type PStatus = { id: string; name: string; rank: number };
@@ -164,6 +170,8 @@
   }
 
   onMount(async () => {
+    const initial = $page.url.searchParams.get('tab');
+    if (initial === 'needs') surface = 'needs';
     if (!supabaseConfigured) { loading = false; return; }
     const [, { data: ty }, { data: st }, { data: vn }, { data: wg }] = await Promise.all([
       loadGrid(),
@@ -380,10 +388,26 @@
       <h1 style="margin:0;">{$t('Projects')}</h1>
       <span class="muted" style="font-size:.85rem;">{$t('{n} research projects · contribution pools, milestones & open needs', { n: grid.length })}</span>
     </div>
-    {#if $member}
+    {#if $member && surface === 'projects'}
       <button onclick={() => (showForm = !showForm)}>{showForm ? $t('Cancel') : $t('Start a project')}</button>
     {/if}
   </div>
+
+  <!-- portfolio vs open-needs market -->
+  <div class="row" style="gap:.4rem;">
+    <span class="chip toggle {surface === 'projects' ? 'on' : ''}" role="button" tabindex="0"
+      onclick={() => (surface = 'projects')}
+      onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') surface = 'projects'; }}
+    >{$t('Projects')} <span class="ct">{kActive}</span></span>
+    <span class="chip toggle {surface === 'needs' ? 'on' : ''}" role="button" tabindex="0"
+      onclick={() => (surface = 'needs')}
+      onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') surface = 'needs'; }}
+    >{$t('Open needs')} <span class="ct">{kNeeds}</span></span>
+  </div>
+
+  {#if surface === 'needs'}
+    <TaskMarket showHeader={false} />
+  {:else}
 
   {#if error}<p class="neg" style="font-size:.85rem;">{error}</p>{/if}
 
@@ -737,6 +761,7 @@
         </div>
       {/if}
     </div>
+  {/if}
   {/if}
 </div>
 

@@ -217,7 +217,7 @@
 </script>
 
 <div class="stack">
-  <Breadcrumbs items={[{ label: 'Units', href: '/units' }, { label: unit?.name ?? 'Unit' }]} />
+  <Breadcrumbs items={[{ label: 'Community', href: '/community?tab=chapters' }, { label: unit?.name ?? 'Unit' }]} />
 
   {#if loading}
     <p class="muted">{$t('Loading…')}</p>

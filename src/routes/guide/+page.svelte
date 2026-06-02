@@ -138,10 +138,9 @@
       <tbody>
         <tr><td><a href="/">{$t('Home')}</a></td><td>{$t('Your portfolio: positions, applications, certifications, recent STR activity, and the “What I can bring” editor for your monthly hours & resources.')}</td></tr>
         <tr><td><a href="/projects">{$t('Projects')}</a></td><td>{$t('Every research project as a market board. Open one to see its roster, open needs, records, meetings, history and settlement.')}</td></tr>
-        <tr><td><a href="/opportunities">{$t('Opportunities')}</a></td><td>{$t('The task market — every open need across all projects, typed by labor or resource and filterable by skill. Apply here.')}</td></tr>
-        <tr><td><a href="/members">{$t('People')}</a></td><td>{$t('The leaderboard plus everyone’s public profile — their certified role-card medals, resources and project history.')}</td></tr>
+        <tr><td><a href="/projects?tab=needs">{$t('Open needs')}</a></td><td>{$t('The task market — every open need across all projects, typed by labor or resource and filterable by skill. Apply here. (Now the “Open needs” view of Projects.)')}</td></tr>
+        <tr><td><a href="/community">{$t('Community')}</a></td><td>{$t('Everyone’s public profiles and the leaderboard, plus the 3 Chapters and 3 Working Groups — switch tabs for People, Chapters and Working Groups.')}</td></tr>
         <tr><td><a href="/skills">{$t('Guild')}</a></td><td>{$t('The skill tree. Request or claim role cards, see your medals, and track the cards awaiting review.')}</td></tr>
-        <tr><td><a href="/units">{$t('Units')}</a></td><td>{$t('The 3 Chapters and 3 Working Groups — their officers, rosters and attached projects.')}</td></tr>
         <tr><td><a href="/wallet">{$t('Wallet')}</a></td><td>{$t('Your STR balance — liquid vs. nominal — and your full transaction history.')}</td></tr>
         <tr><td>{$t('My Chapter')}</td><td>{$t('Officers only. Mint role cards onto your members and manage your chapter’s cards.')}</td></tr>
         <tr><td>{$t('Approvals')}</td><td>{$t('Officers & reviewers. One queue for every pending decision — role-card requests, chapter & working-group applications, member resources, project milestones, and over-capacity monthly commitments. Approve or reject each in place.')}</td></tr>

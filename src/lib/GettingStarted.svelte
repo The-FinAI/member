@@ -34,7 +34,7 @@
 
     steps = [
       { key: 'profile', title: 'Set up your profile', blurb: 'List what you can bring — monthly labor and any resources.', href: '/profile', cta: 'Open profile', done: offersSomething },
-      { key: 'browse', title: 'Find an opportunity', blurb: 'Browse open needs and apply to one that fits your skills.', href: '/opportunities', cta: 'Browse opportunities', done: hasApps },
+      { key: 'browse', title: 'Find an opportunity', blurb: 'Browse open needs and apply to one that fits your skills.', href: '/projects?tab=needs', cta: 'Browse opportunities', done: hasApps },
       { key: 'join', title: 'Join a project', blurb: 'Post the join bond and start declaring monthly contributions.', href: '/projects', cta: 'Browse projects', done: hasPos },
       { key: 'certify', title: 'Certify a skill', blurb: 'Sit a Guild exam to earn a credential and raise your labor rate.', href: '/skills', cta: 'Visit the Guild', done: certified }
     ];

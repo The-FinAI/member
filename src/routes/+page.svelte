@@ -278,7 +278,7 @@
       <span class="value">{certifiedCount}</span>
       <span class="sub">{$t(certifiedCount === 1 ? 'skill certified' : 'skills certified')}</span>
     </div>
-    <a class="tile" href="/opportunities" style="flex:1; min-width:150px;">
+    <a class="tile" href="/projects?tab=needs" style="flex:1; min-width:150px;">
       <span class="label">{$t('Open needs')}</span>
       <span class="value">{openCount}</span>
       <span class="sub">{$t('across {n} projects', { n: projectCount })}</span>
@@ -293,7 +293,7 @@
     {#if loading}
       <p class="muted">{$t('Loading…')}</p>
     {:else if myProjects.length === 0}
-      <p class="muted">{$t('No positions yet. Browse')} <a href="/opportunities">{$t('Open Opportunities')}</a> {$t('to stake into a project, or')} <a href="/guide">{$t('read how it works')}</a>{$t('first.')}</p>
+      <p class="muted">{$t('No positions yet. Browse')} <a href="/projects?tab=needs">{$t('Open Opportunities')}</a> {$t('to stake into a project, or')} <a href="/guide">{$t('read how it works')}</a>{$t('first.')}</p>
     {:else}
       <div class="card-grid">
         {#each myProjects as p}

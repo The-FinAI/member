@@ -204,7 +204,7 @@
 </script>
 
 <div class="stack">
-  <Breadcrumbs items={[{ label: 'People', href: '/members' }, { label: mem?.full_name ?? 'Member' }]} />
+  <Breadcrumbs items={[{ label: 'Community', href: '/community' }, { label: mem?.full_name ?? 'Member' }]} />
 
   {#if loading}
     <p class="muted">{$t('Loading…')}</p>
