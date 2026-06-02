@@ -1,6 +1,7 @@
 <script lang="ts">
   import { get } from 'svelte/store';
   import { supabase, supabaseConfigured } from '$lib/supabase';
+  import { member } from '$lib/session';
   import { t } from '$lib/i18n';
   import Medal from '$lib/Medal.svelte';
   import SectionNav from '$lib/SectionNav.svelte';
@@ -49,7 +50,30 @@
   };
   const AVAIL = ['available', 'limited', 'committed'];
 
-  let canEdit = $state(false);
+  let canEdit = $state(false);          // officer manages this member-card's catalog
+  let canEditCatalog = $state(false);   // canEdit OR it's my own profile
+  // viewer is looking at their own profile → inline self-edit controls
+  const isMe = $derived(!!($member && mem && $member.id === mem.id));
+
+  // self-profile editor (only when isMe)
+  let pAffiliation = $state('');
+  let pBio = $state('');
+  let profileSaving = $state(false);
+  let profileSaved = $state(false);
+  let profileErr = $state('');
+
+  async function saveProfile() {
+    if (!mem) return;
+    profileErr = ''; profileSaving = true; profileSaved = false;
+    const { error: err } = await supabase.from('member')
+      .update({ affiliation: pAffiliation || null, bio: pBio || null }).eq('id', mem.id);
+    profileSaving = false;
+    if (err) { profileErr = err.message; return; }
+    profileSaved = true;
+    mem = { ...mem, affiliation: pAffiliation || null, bio: pBio || null };
+    member.update((m) => (m ? { ...m, affiliation: pAffiliation || null } : m));
+  }
+
   let resTypes = $state<ResType[]>([]);
   let cardResources = $state<CardResource[]>([]);
   let gpuModels = $state<GpuModel[]>([]);
@@ -134,19 +158,27 @@
 
   async function load(memberId: string) {
     if (!supabaseConfigured) { loading = false; return; }
-    loading = true; notFound = false; canEdit = false; cardResources = []; catError = '';
+    loading = true; notFound = false; canEdit = false; canEditCatalog = false; cardResources = []; catError = '';
+    profileSaved = false; profileErr = '';
     const { data: m } = await supabase.from('member')
       .select('id, full_name, affiliation, avatar_url, bio, status, kind, links, member_position(position(name))')
       .eq('id', memberId).maybeSingle();
     if (!m) { mem = null; notFound = true; loading = false; return; }
     mem = m as Mem;
 
-    // can the viewer manage this card's offerable catalog?
+    // is the viewer the owner of this profile?
+    const me = get(member);
+    const mineSelf = !!(me && me.id === memberId);
+    if (mineSelf) { pAffiliation = (m as Mem).affiliation ?? ''; pBio = (m as Mem).bio ?? ''; }
+
+    // can the viewer edit this profile's offerable catalog?
+    // officers manage a member-card's catalog; everyone manages their own.
     if ((m as Mem).kind === 'card') {
       const { data: ce } = await supabase.rpc('manages_card', { p_card: memberId });
       canEdit = !!ce;
-      if (canEdit) await loadCatalog(memberId);
     }
+    canEditCatalog = canEdit || mineSelf;
+    if (canEditCatalog) await loadCatalog(memberId);
 
     const [{ data: ms }, { data: pm }, { data: nom }, { count: msc }] = await Promise.all([
       supabase.from('member_skill').select('skill_id, certified_level, skill(name)').eq('member_id', memberId),
@@ -195,7 +227,7 @@
 
   // in-page section nav (only the sections actually rendered, in DOM order)
   const sections = $derived([
-    ...(canEdit ? [{ id: 'catalog', label: 'What this card can bring' }] : []),
+    ...(canEditCatalog ? [{ id: 'catalog', label: isMe ? 'What I can bring' : 'What this card can bring' }] : []),
     { id: 'stats', label: 'Overview' },
     ...(cards.length ? [{ id: 'role-cards', label: 'Role cards' }] : []),
     { id: 'skills', label: 'Skills' },
@@ -241,16 +273,35 @@
         </div>
       </div>
       {#if mem.bio}<p style="margin:.8rem 0 0;">{mem.bio}</p>{/if}
+
+      {#if isMe}
+        <div class="self-edit stack" style="gap:.5rem; margin-top:.9rem; border-top:1px solid var(--border); padding-top:.8rem;">
+          <span class="muted" style="font-size:.78rem;">{$t('This is your profile — edit how others see you.')}</span>
+          <label class="stack" style="gap:.25rem;">
+            <span class="muted" style="font-size:.75rem;">{$t('Affiliation')}</span>
+            <input bind:value={pAffiliation} placeholder={$t('e.g. The Fin AI')} />
+          </label>
+          <label class="stack" style="gap:.25rem;">
+            <span class="muted" style="font-size:.75rem;">{$t('Bio')}</span>
+            <textarea bind:value={pBio} rows="3" placeholder={$t('A short bio shown on your public profile.')}></textarea>
+          </label>
+          <div class="row" style="gap:.5rem; align-items:center;">
+            <button onclick={saveProfile} disabled={profileSaving}>{profileSaving ? $t('Saving…') : $t('Save')}</button>
+            {#if profileSaved}<span class="badge">{$t('Saved')}</span>{/if}
+            {#if profileErr}<span class="neg" style="font-size:.8rem;">{profileErr}</span>{/if}
+          </div>
+        </div>
+      {/if}
     </div>
 
     <div class="detail">
       <SectionNav {sections} />
       <div class="detail-body">
     <!-- editable offerable catalog — only for officers/admins who manage this card -->
-    {#if canEdit}
+    {#if canEditCatalog}
       <div class="card stack" id="catalog">
-        <h2 style="margin:0;">{$t('What this card can bring')}</h2>
-        <p class="muted" style="font-size:.82rem; margin-top:-.5rem;">{$t("This card’s offerable catalog — its monthly time and resources. You’re editing it as an officer; new entries go to a steward for review.")}</p>
+        <h2 style="margin:0;">{isMe ? $t('What I can bring') : $t('What this card can bring')}</h2>
+        <p class="muted" style="font-size:.82rem; margin-top:-.5rem;">{isMe ? $t('Your offerable catalog — your monthly time and resources. New entries go to a steward for review.') : $t("This card’s offerable catalog — its monthly time and resources. You’re editing it as an officer; new entries go to a steward for review.")}</p>
         {#if catError}<p class="neg" style="font-size:.85rem;">{catError}</p>{/if}
 
         <!-- labor / time -->

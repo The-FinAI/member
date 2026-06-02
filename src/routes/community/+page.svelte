@@ -4,11 +4,9 @@
   import { page } from '$app/stores';
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { member, capabilities, officerUnits } from '$lib/session';
-  import { PHASE2 } from '$lib/phase';
   import EntityCard from '$lib/EntityCard.svelte';
   import CardDrawer from '$lib/CardDrawer.svelte';
   import CountUp from '$lib/CountUp.svelte';
-  import Medal from '$lib/Medal.svelte';
   import MemberDetail from '$lib/MemberDetail.svelte';
   import UnitDetail from '$lib/UnitDetail.svelte';
   import { t } from '$lib/i18n';
@@ -23,13 +21,6 @@
     member_position: { position: { name: string } }[];
   };
   type OrgUnit = { id: string; code: string; name: string; kind: string; description: string | null };
-  type Skill = { id: string; name: string; parent_id: string | null };
-
-  const LEVELS = ['apprentice', 'journeyman', 'craftsman', 'master'];
-  const LEVEL_LABEL: Record<string, string> = {
-    apprentice: 'Apprentice', journeyman: 'Journeyman', craftsman: 'Craftsman', master: 'Master'
-  };
-  const levelRank = (l: string | null) => (l ? LEVELS.indexOf(l) : -1);
 
   let rows = $state<Row[]>([]);
   let balanceOf = $state<Record<string, number>>({});
@@ -43,22 +34,14 @@
   // current user's membership status per unit (org_unit_id -> 'active' | 'pending' | …)
   let myUnitStatus = $state<Record<string, string>>({});
 
-  // ---- crafts (skill ladder catalog) ----
-  let skills = $state<Skill[]>([]);
-  let holders = $state<Record<string, number>>({}); // certified holders per skill
-  let myCert = $state<Record<string, string>>({});   // my certified_level per skill
-  let mintFee = $state(10);
-  let updateFee = $state(5);
-
   // top-level tab over the card families in the community
-  type Tab = 'people' | 'chapters' | 'wgroups' | 'crafts';
+  type Tab = 'people' | 'chapters' | 'wgroups';
   let tab = $state<Tab>('people');
 
   const TABS: { key: Tab; label: string }[] = [
     { key: 'people', label: 'People' },
     { key: 'chapters', label: 'Chapters' },
-    { key: 'wgroups', label: 'Working Groups' },
-    { key: 'crafts', label: 'Crafts' }
+    { key: 'wgroups', label: 'Working Groups' }
   ];
 
   const netWorthOf = (id: string) => (balanceOf[id] ?? 0) + (nominalOf[id] ?? 0);
@@ -78,33 +61,9 @@
     myUnitStatus = m;
   }
 
-  async function loadCrafts() {
-    const [{ data: sk }, { data: ms }, { data: pol }] = await Promise.all([
-      supabase.from('skill').select('id, name, parent_id').order('name'),
-      supabase.from('member_skill').select('skill_id, certified_level').not('certified_level', 'is', null),
-      supabase.from('stater_policy').select('key, value').in('key', ['skillcard_mint_fee', 'skillcard_update_fee'])
-    ]);
-    skills = ((sk as Skill[]) ?? []);
-    const h: Record<string, number> = {};
-    for (const r of (ms as { skill_id: string }[]) ?? []) h[r.skill_id] = (h[r.skill_id] ?? 0) + 1;
-    holders = h;
-    for (const p of (pol as { key: string; value: number }[]) ?? []) {
-      if (p.key === 'skillcard_mint_fee') mintFee = Number(p.value);
-      if (p.key === 'skillcard_update_fee') updateFee = Number(p.value);
-    }
-  }
-  async function loadMyCert() {
-    if (!$member) { myCert = {}; return; }
-    const { data } = await supabase.from('member_skill')
-      .select('skill_id, certified_level').eq('member_id', $member.id).not('certified_level', 'is', null);
-    const c: Record<string, string> = {};
-    for (const r of (data as { skill_id: string; certified_level: string }[]) ?? []) c[r.skill_id] = r.certified_level;
-    myCert = c;
-  }
-
   onMount(async () => {
     const initial = $page.url.searchParams.get('tab');
-    if (initial === 'chapters' || initial === 'wgroups' || initial === 'people' || initial === 'crafts') tab = initial;
+    if (initial === 'chapters' || initial === 'wgroups' || initial === 'people') tab = initial;
     if (!supabaseConfigured) { loading = false; return; }
     const [{ data }, { data: bals }, { data: nom }, { data: ou }, { data: prj }] = await Promise.all([
       supabase.from('member')
@@ -115,7 +74,6 @@
       supabase.from('org_unit').select('id, code, name, kind, description').order('rank'),
       supabase.from('project').select('id, org_unit_id')
     ]);
-    loadCrafts();
     rows = (data as Row[]) ?? [];
     const bmap: Record<string, number> = {};
     for (const b of (bals as { owner_member_id: string; balance: number }[]) ?? [])
@@ -134,7 +92,7 @@
     for (const p of (prj as { id: string; org_unit_id: string | null }[]) ?? []) pumap[p.id] = p.org_unit_id ?? null;
     projectUnitOf = pumap;
     loading = false;
-    const unsub = member.subscribe((m) => { if (m) { loadMyBalance(); loadMyUnits(); loadMyCert(); } });
+    const unsub = member.subscribe((m) => { if (m) { loadMyBalance(); loadMyUnits(); } });
     return unsub;
   });
 
@@ -193,41 +151,18 @@
     q = '';
   }
 
-  // ---- crafts catalog: domains → leaf skills ----
-  const domains = $derived(skills.filter((s) => !s.parent_id).sort((a, b) => a.name.localeCompare(b.name)));
-  function leavesOf(domainId: string) {
-    return skills
-      .filter((s) => s.parent_id === domainId && s.name.toLowerCase().includes(q.toLowerCase()))
-      .sort((a, b) => a.name.localeCompare(b.name));
-  }
-  const certifiedCount = $derived(Object.keys(myCert).length);
-
   // ---- quick-view drawer ----
   type DrawerSel =
     | { kind: 'person'; row: Row }
-    | { kind: 'unit'; unit: UnitRow; unitKind: 'chapter' | 'working_group' }
-    | { kind: 'skill'; skill: Skill };
+    | { kind: 'unit'; unit: UnitRow; unitKind: 'chapter' | 'working_group' };
   let sel = $state<DrawerSel | null>(null);
   let drawerBusy = $state(false);
   let drawerErr = $state('');
   let drawerMsg = $state('');
-  let cardLevel = $state('apprentice');
   const drawerOpen = $derived(sel !== null);
   function openPerson(r: Row) { sel = { kind: 'person', row: r }; drawerErr = ''; drawerMsg = ''; }
   function openUnit(u: UnitRow) { sel = { kind: 'unit', unit: u, unitKind: tab === 'chapters' ? 'chapter' : 'working_group' }; drawerErr = ''; drawerMsg = ''; }
-  function openSkill(s: Skill) { sel = { kind: 'skill', skill: s }; drawerErr = ''; drawerMsg = ''; cardLevel = 'apprentice'; }
   function closeDrawer() { sel = null; }
-
-  // mint when first certifying this skill, otherwise an update (level-up)
-  const cardFeeFor = (skillId: string) => (myCert[skillId] ? updateFee : mintFee);
-  async function requestCard(skillId: string) {
-    drawerBusy = true; drawerErr = ''; drawerMsg = '';
-    const { error: err } = await supabase.rpc('submit_skillcard_request', { p_skill: skillId, p_level: cardLevel, p_as: null });
-    drawerBusy = false;
-    if (err) { drawerErr = err.message; return; }
-    drawerMsg = get(t)('Request sent — a reviewer will approve or reject it.');
-    await Promise.all([loadCrafts(), loadMyCert(), loadMyBalance()]);
-  }
 
   // ---- permission-aware actions ----
   const isMe = (id: string) => !!($member && id === $member.id);
@@ -255,8 +190,7 @@
       <span class="muted" style="font-size:.85rem;">
         {#if tab === 'people'}{$t('Everyone in the community — open a card to see their work, skills & standing.')}
         {:else if tab === 'chapters'}{$t('The three regional chapters. Open one to apply to join.')}
-        {:else if tab === 'wgroups'}{$t('The working groups driving the research agenda. Open one to apply to join.')}
-        {:else}{$t('The craft ladder — every certifiable skill. Open one to see who holds it and request a role card.')}{/if}
+        {:else}{$t('The working groups driving the research agenda. Open one to apply to join.')}{/if}
       </span>
     </div>
     {#if $member}<span class="chip"><span class="amt"><CountUp value={myBalance} /></span> STR</span>{/if}
@@ -306,37 +240,6 @@
       </div>
     {/if}
 
-  <!-- ============ CRAFTS (skill ladder catalog) ============ -->
-  {:else if tab === 'crafts'}
-    {#if $member}
-      <span class="muted" style="font-size:.82rem; margin-top:-.4rem;">{$t('{n} skills certified', { n: certifiedCount })}</span>
-    {/if}
-    {#if skills.length === 0}
-      <div class="card"><p class="muted">{$t('No skills yet.')}</p></div>
-    {:else}
-      <div class="craft-grid">
-        {#each domains as d}
-          {@const leaves = leavesOf(d.id)}
-          {#if leaves.length > 0}
-            <div class="card stack" style="gap:.4rem;">
-              <h3 style="margin:0; font-size:.95rem;">{d.name}</h3>
-              <div class="stack" style="gap:.15rem;">
-                {#each leaves as s}
-                  <button class="tree-leaf" onclick={() => openSkill(s)}>
-                    <span>{s.name}</span>
-                    <span class="row" style="gap:.4rem; align-items:center;">
-                      {#if myCert[s.id]}<Medal level={myCert[s.id]} size="sm" />{/if}
-                      {#if holders[s.id]}<span class="muted" style="font-size:.72rem;">{holders[s.id]}⚒</span>{/if}
-                    </span>
-                  </button>
-                {/each}
-              </div>
-            </div>
-          {/if}
-        {/each}
-      </div>
-    {/if}
-
   <!-- ============ CHAPTERS / WORKING GROUPS ============ -->
   {:else}
     {#if unitFiltered.length === 0}
@@ -374,48 +277,7 @@
     >
       <MemberDetail id={r.id} breadcrumbs={false} />
       {#snippet actions()}
-        {#if isMe(r.id)}
-          <a class="btn" href="/">{$t('Edit my profile')} →</a>
-        {/if}
         <a class="btn ghost" href={`/members/${r.id}`}>{$t('Open full page')} →</a>
-      {/snippet}
-    </CardDrawer>
-  {:else if sel.kind === 'skill'}
-    {@const s = sel.skill}
-    {@const mine = myCert[s.id] ?? null}
-    <CardDrawer
-      open={drawerOpen}
-      type={$t('Craft')}
-      title={s.name}
-      subtitle={mine ? $t(LEVEL_LABEL[mine]) : $t('Uncertified')}
-      onClose={closeDrawer}
-    >
-      <div class="dstats">
-        <div class="dstat"><span class="dv">{holders[s.id] ?? 0}</span><span class="dl">{$t('Certified holders')}</span></div>
-        {#if mine}<div class="dstat"><span class="dv accent">{$t(LEVEL_LABEL[mine])}</span><span class="dl">{$t('Your level')}</span></div>{/if}
-      </div>
-      <p class="muted" style="font-size:.8rem; margin:0;">{$t('A certified skill is a role card — climb Apprentice → Journeyman → Craftsman → Master. A reviewer approves each request.')}</p>
-      {#if PHASE2 && $member}
-        <label class="stack" style="gap:.3rem;">
-          <span class="dl">{$t('Request role card at')}</span>
-          <select bind:value={cardLevel}>
-            {#each LEVELS as lv}<option value={lv} disabled={levelRank(mine) >= levelRank(lv)}>{$t(LEVEL_LABEL[lv])}</option>{/each}
-          </select>
-        </label>
-        <p class="muted" style="font-size:.74rem; margin:0;">
-          {mine ? $t('Update fee {n} STR — escrowed and refunded if rejected.', { n: updateFee }) : $t('Mint fee {n} STR — escrowed and refunded if rejected.', { n: mintFee })}
-        </p>
-        {#if cardFeeFor(s.id) > myBalance}<span class="neg" style="font-size:.75rem;">{$t('Insufficient balance ({bal} STR).', { bal: myBalance })}</span>{/if}
-      {:else if !PHASE2}
-        <p class="muted" style="font-size:.78rem; margin:0;">{$t('In Phase 1, officers mint role cards onto their members. Self-service requests open in Phase 2.')}</p>
-      {/if}
-      {#if drawerErr}<p class="neg" style="font-size:.82rem; margin:0;">{drawerErr}</p>{/if}
-      {#if drawerMsg}<p class="up" style="font-size:.82rem; margin:0;">{drawerMsg}</p>{/if}
-      {#snippet actions()}
-        {#if PHASE2 && $member}
-          <button class="btn" onclick={() => requestCard(s.id)} disabled={drawerBusy || cardFeeFor(s.id) > myBalance}>
-            {drawerBusy ? $t('Sending…') : $t('Request · {n} STR', { n: cardFeeFor(s.id) })}</button>
-        {/if}
       {/snippet}
     </CardDrawer>
   {:else}
@@ -437,11 +299,6 @@
 
 <style>
   .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: .8rem; }
-  .dstats { display: flex; flex-wrap: wrap; gap: 1.2rem; }
-  .dstat { display: flex; flex-direction: column; gap: .1rem; }
-  .dstat .dv { font-family: var(--font-mono); font-weight: 700; font-size: 1.1rem; }
-  .dstat .dv.accent { color: var(--accent); }
-  .dl { font-size: .7rem; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
   .btn {
     display: inline-flex; align-items: center; gap: .3rem; padding: .5rem .9rem;
     background: var(--accent); color: #fff; border: 1px solid transparent; border-radius: 8px;
@@ -449,12 +306,5 @@
   }
   .btn:disabled { opacity: .55; cursor: not-allowed; }
   .btn.ghost { background: transparent; color: var(--accent); border-color: var(--border); }
-  .craft-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: .8rem; align-items: start; }
-  .tree-leaf {
-    display: flex; justify-content: space-between; align-items: center; gap: .5rem;
-    width: 100%; text-align: left; padding: .35rem .55rem; border-radius: 6px;
-    background: transparent; border: 1px solid transparent; color: inherit; cursor: pointer; font-size: .85rem;
-  }
-  .tree-leaf:hover { background: var(--card-2); }
   .search input { width: 100%; }
 </style>
