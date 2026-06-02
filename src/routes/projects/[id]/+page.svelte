@@ -183,6 +183,32 @@
 
   const contributorRoleId = $derived(roles.find((r) => r.name === 'Contributor')?.id ?? roles[0]?.id ?? null);
 
+  // officer direct-assign (skips apply → accept → confirm, charges no join bond)
+  type PickMember = { id: string; full_name: string; affiliation: string | null; kind: string };
+  let allMembers = $state<PickMember[]>([]);
+  let assignMember = $state('');
+  let assignRole = $state('');
+  let assignBusy = $state(false);
+  let assignErr = $state('');
+  const assignCandidates = $derived(
+    allMembers.filter((m) => !participants.some((p) => p.member_id === m.id))
+  );
+
+  async function assignDirect() {
+    assignErr = '';
+    if (!assignMember) return;
+    assignBusy = true;
+    const { error } = await supabase.rpc('assign_member', {
+      p_project: id,
+      p_member: assignMember,
+      p_role: assignRole || contributorRoleId
+    });
+    assignBusy = false;
+    if (error) { assignErr = error.message; return; }
+    assignMember = ''; assignRole = '';
+    await load();
+  }
+
   async function load() {
     if (!supabaseConfigured || !id) { loading = false; return; }
     loading = true;
@@ -215,6 +241,12 @@
     iManage =
       $capabilities.has('edit_any_project') ||
       participants.some((x) => x.member_id === me && x.project_role?.can_manage);
+
+    if (iManage && allMembers.length === 0) {
+      const { data: am } = await supabase
+        .from('member').select('id, full_name, affiliation, kind').order('full_name');
+      allMembers = (am as PickMember[]) ?? [];
+    }
 
     joinStake = Number(project?.project_type?.join_stake ?? joinStake);
     leaderStake = Number(project?.project_type?.leader_stake ?? leaderStake);
@@ -1338,6 +1370,26 @@
             {/each}
           </tbody>
         </table>
+      {/if}
+      {#if iManage}
+        <div style="border-top:1px solid var(--border); margin-top:.6rem; padding-top:.75rem;">
+          <h3 style="margin:0 0 .2rem; font-size:.92rem;">{$t('Add a member directly')}</h3>
+          <p class="muted" style="font-size:.78rem; margin:0 0 .5rem;">{$t('Places them on the roster immediately — no application or join bond.')}</p>
+          {#if assignErr}<p style="color:var(--down); font-size:.8rem;">{assignErr}</p>{/if}
+          <div class="row" style="gap:.4rem; flex-wrap:wrap; align-items:flex-end;">
+            <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">{$t('Member')}</span>
+              <select bind:value={assignMember}>
+                <option value="">{$t('— pick —')}</option>
+                {#each assignCandidates as m}<option value={m.id}>{m.full_name}{m.kind === 'card' ? ` · ${$t('card')}` : ''}{m.affiliation ? ` · ${m.affiliation}` : ''}</option>{/each}
+              </select></label>
+            <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.72rem;">{$t('Role')}</span>
+              <select bind:value={assignRole}>
+                <option value="">{$t('Contributor')}</option>
+                {#each roles as r}<option value={r.id}>{$t(r.name)}</option>{/each}
+              </select></label>
+            <button disabled={!assignMember || assignBusy} onclick={assignDirect}>{assignBusy ? $t('Adding…') : $t('Add to project')}</button>
+          </div>
+        </div>
       {/if}
     </div>
 
