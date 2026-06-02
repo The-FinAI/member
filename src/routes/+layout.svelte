@@ -10,7 +10,6 @@
   import { t } from '$lib/i18n';
   import LangSwitcher from '$lib/LangSwitcher.svelte';
   import LaunchBanner from '$lib/LaunchBanner.svelte';
-  import NavIcon from '$lib/NavIcon.svelte';
 
   let { children } = $props();
 
@@ -30,30 +29,25 @@
 
   $effect(() => { if ($member) loadBalance($member.id); else balance = null; });
 
-  // Primary sidebar nav. `icon` keys map to NavIcon. Grouped: a workspace block
-  // (entities), then a reference block; officer/admin entries appended below.
   const navItems = [
-    { href: '/', label: 'Home', icon: 'home' },
-    { href: '/projects', label: 'Projects', icon: 'projects' },
-    { href: '/opportunities', label: 'Opportunities', icon: 'market' },
-    { href: '/members', label: 'People', icon: 'people' },
-    { href: '/skills', label: 'Guild', icon: 'guild' },
-    { href: '/units', label: 'Units', icon: 'units' },
-    { href: '/guide', label: 'Guide', icon: 'guide' }
+    { href: '/projects', label: 'Projects' },
+    { href: '/opportunities', label: 'Opportunities' },
+    { href: '/skills', label: 'Guild' },
+    { href: '/units', label: 'Units' },
+    { href: '/members', label: 'People' },
+    { href: '/guide', label: 'Guide' }
   ];
   function isActive(href: string, path: string) {
     return href === '/' ? path === '/' : path.startsWith(href);
   }
 
   let menuOpen = $state(false);
-  let sidebarOpen = $state(false);   // mobile drawer
   function initials(name: string | undefined) {
     if (!name) return '·';
     const p = name.trim().split(/\s+/);
     return ((p[0]?.[0] ?? '') + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase() || '·';
   }
-  function go(href: string) { menuOpen = false; sidebarOpen = false; goto(href); }
-  function navTo(href: string) { sidebarOpen = false; goto(href); }
+  function go(href: string) { menuOpen = false; goto(href); }
 
   // If a magic link lands here with an error (single-use link already consumed
   // by an email scanner, expired, etc.), Supabase redirects back with the
@@ -129,112 +123,83 @@
   const isChapterOfficer = $derived($officerUnits.some((u) => u.kind === 'chapter'));
 </script>
 
-<div class="shell" class:has-rail={!!$session}>
-  {#if $session}
-    <!-- mobile drawer backdrop -->
-    {#if sidebarOpen}
-      <div class="rail-backdrop" onclick={() => (sidebarOpen = false)} role="presentation"></div>
-    {/if}
+<header class="topbar">
+  <div class="container row" style="justify-content: space-between; padding-block: .65rem; gap: 1rem;">
+    <a href="/" class="brand">
+      <img src="/logo.png" alt="The Fin AI" class="brand-logo" />
+      The&nbsp;Fin&nbsp;AI <span class="muted" style="font-weight:500;">· Stater</span>
+    </a>
 
-    <aside class="rail" class:open={sidebarOpen}>
-      <a href="/" class="brand rail-brand" onclick={() => (sidebarOpen = false)}>
-        <img src="/logo.png" alt="The Fin AI" class="brand-logo" />
-        <span class="rail-brand-name">The&nbsp;Fin&nbsp;AI<small>Stater</small></span>
-      </a>
-
-      <nav class="rail-nav">
-        {#each navItems as n}
-          <a href={n.href} class="rail-link" class:active={isActive(n.href, $page.url.pathname)} onclick={() => (sidebarOpen = false)}>
-            <NavIcon name={n.icon} /> <span>{$t(n.label)}</span>
-          </a>
-        {/each}
-
-        {#if isChapterOfficer || canAdmin}
-          <div class="rail-sep"></div>
+    <div class="row" style="gap: 1.1rem;">
+      {#if $session}
+        <nav class="row" style="gap: 1.1rem;">
+          {#each navItems as n}
+            <a href={n.href} class="navlink" class:active={isActive(n.href, $page.url.pathname)}>{$t(n.label)}</a>
+          {/each}
           {#if isChapterOfficer}
-            <a href="/my-chapter" class="rail-link" class:active={isActive('/my-chapter', $page.url.pathname)} onclick={() => (sidebarOpen = false)}>
-              <NavIcon name="chapter" /> <span>{$t('My Chapter')}</span>
-            </a>
+            <a href="/my-chapter" class="navlink" class:active={isActive('/my-chapter', $page.url.pathname)}>{$t('My Chapter')}</a>
           {/if}
           {#if canAdmin}
-            <a href="/admin" class="rail-link" class:active={isActive('/admin', $page.url.pathname)} onclick={() => (sidebarOpen = false)}>
-              <NavIcon name="admin" /> <span>{$t('Admin')}</span>
-            </a>
+            <a href="/admin" class="navlink" class:active={isActive('/admin', $page.url.pathname)}>{$t('Admin')}</a>
           {/if}
-        {/if}
-      </nav>
+        </nav>
 
-      {#if balance !== null}
-        <a href="/wallet" class="rail-wallet" onclick={() => (sidebarOpen = false)} title={$t('Open your wallet')}>
-          <NavIcon name="wallet" />
-          <span class="rw-label">{$t('Wallet')}</span>
-          <span class="rw-amt"><span class="amt">{balance.toLocaleString()}</span> STR</span>
-        </a>
+        {#if balance !== null}
+          <a href="/wallet" class="chip" title={$t('Open your wallet')}>
+            <span class="amt">{balance.toLocaleString()}</span> STR
+          </a>
+        {/if}
       {/if}
-    </aside>
-  {/if}
 
-  <div class="shell-main">
-    <header class="topbar">
-      <div class="topbar-inner">
-        {#if $session}
-          <button class="icon-btn rail-toggle" onclick={() => (sidebarOpen = !sidebarOpen)} aria-label={$t('Menu')} title={$t('Menu')}>☰</button>
-        {/if}
-        <a href="/" class="brand topbar-brand">
-          <img src="/logo.png" alt="The Fin AI" class="brand-logo" />
-          The&nbsp;Fin&nbsp;AI <span class="muted" style="font-weight:500;">· Stater</span>
-        </a>
+      <LangSwitcher />
 
-        <div class="row" style="gap: 1rem; margin-left:auto;">
-          <LangSwitcher />
-          <button class="icon-btn" onclick={toggleTheme} title={$t('Toggle theme')} aria-label={$t('Toggle theme')}>
-            {$theme === 'dark' ? '☀' : '☾'}
+      <button class="icon-btn" onclick={toggleTheme} title={$t('Toggle theme')} aria-label={$t('Toggle theme')}>
+        {$theme === 'dark' ? '☀' : '☾'}
+      </button>
+
+      {#if $session}
+        <div class="usermenu">
+          <button class="avatar-btn" onclick={() => (menuOpen = !menuOpen)} title={$t('Account')} aria-label={$t('Account menu')} aria-haspopup="true" aria-expanded={menuOpen}>
+            {initials($member?.full_name)}
           </button>
-          {#if $session}
-            <div class="usermenu">
-              <button class="avatar-btn" onclick={() => (menuOpen = !menuOpen)} title={$t('Account')} aria-label={$t('Account menu')} aria-haspopup="true" aria-expanded={menuOpen}>
-                {initials($member?.full_name)}
-              </button>
-              {#if menuOpen}
-                <div class="menu-backdrop" onclick={() => (menuOpen = false)} role="presentation"></div>
-                <div class="menu">
-                  <div class="menu-head">
-                    <div class="mh-name">{$member?.full_name ?? 'Account'}</div>
-                    <div class="mh-mail">{$session.user.email}</div>
-                  </div>
-                  <div class="menu-sep"></div>
-                  <button class="menu-item" onclick={() => go('/')}><span class="mi-ico">⚙</span> {$t('Portfolio & profile')}</button>
-                  <div class="menu-sep"></div>
-                  <button class="menu-item" onclick={signOut}><span class="mi-ico">⏻</span> {$t('Sign out')}</button>
-                </div>
-              {/if}
+          {#if menuOpen}
+            <div class="menu-backdrop" onclick={() => (menuOpen = false)} role="presentation"></div>
+            <div class="menu">
+              <div class="menu-head">
+                <div class="mh-name">{$member?.full_name ?? 'Account'}</div>
+                <div class="mh-mail">{$session.user.email}</div>
+              </div>
+              <div class="menu-sep"></div>
+              <button class="menu-item" onclick={() => go('/')}><span class="mi-ico">⚙</span> {$t('Portfolio & profile')}</button>
+              <div class="menu-sep"></div>
+              <button class="menu-item" onclick={signOut}><span class="mi-ico">⏻</span> {$t('Sign out')}</button>
             </div>
           {/if}
         </div>
-      </div>
-    </header>
-
-    <main class="container">
-      {#if $session && $member}<LaunchBanner />{/if}
-      {#if $actingAs}
-        <div class="acting-banner">
-          <span>{$t('Acting as card')} <strong>{$actingAs.full_name}</strong> — {$t('actions and STR apply to this card.')}</span>
-          <button class="icon-btn" onclick={() => actingAs.set(null)}>{$t('Stop acting')}</button>
-        </div>
       {/if}
-      {#if !supabaseConfigured}
-        <p class="banner">
-          Supabase is not configured. Copy <code>.env.example</code> to <code>.env</code> and add your
-          project URL + anon key, then restart the dev server. Pages render but data calls are disabled.
-        </p>
-      {/if}
-      {#if supabaseConfigured && $authReady && $session && !$member}
-        <p class="banner">
-          {$t("You're signed in as {email}, but this email isn't linked to a membership. Access is invite-only — please ask an admin to invite you. Meanwhile you can", { email: $session.user.email })}
-          <a href="/guide">{$t('read how the community works →')}</a>
-        </p>
-      {/if}
-      {@render children()}
-    </main>
+    </div>
   </div>
-</div>
+</header>
+
+<main class="container">
+  {#if $session && $member}<LaunchBanner />{/if}
+  {#if $actingAs}
+    <div class="acting-banner">
+      <span>{$t('Acting as card')} <strong>{$actingAs.full_name}</strong> — {$t('actions and STR apply to this card.')}</span>
+      <button class="icon-btn" onclick={() => actingAs.set(null)}>{$t('Stop acting')}</button>
+    </div>
+  {/if}
+  {#if !supabaseConfigured}
+    <p class="banner">
+      Supabase is not configured. Copy <code>.env.example</code> to <code>.env</code> and add your
+      project URL + anon key, then restart the dev server. Pages render but data calls are disabled.
+    </p>
+  {/if}
+  {#if supabaseConfigured && $authReady && $session && !$member}
+    <p class="banner">
+      {$t("You're signed in as {email}, but this email isn't linked to a membership. Access is invite-only — please ask an admin to invite you. Meanwhile you can", { email: $session.user.email })}
+      <a href="/guide">{$t('read how the community works →')}</a>
+    </p>
+  {/if}
+  {@render children()}
+</main>

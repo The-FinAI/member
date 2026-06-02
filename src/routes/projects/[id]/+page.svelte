@@ -5,10 +5,24 @@
   import { member, capabilities, actingAs } from '$lib/session';
   import CountUp from '$lib/CountUp.svelte';
   import Hint from '$lib/Hint.svelte';
+  import SectionNav from '$lib/SectionNav.svelte';
+  import Breadcrumbs from '$lib/Breadcrumbs.svelte';
   import { t } from '$lib/i18n';
   import { get } from 'svelte/store';
 
   const id = $derived($page.params.id);
+
+  const sections = [
+    { id: 'status', label: 'Status' },
+    { id: 'overview', label: 'Overview' },
+    { id: 'milestones', label: 'Milestones' },
+    { id: 'commitments', label: 'Stake commitments' },
+    { id: 'settlement', label: 'Settlement' },
+    { id: 'roster', label: 'Roster' },
+    { id: 'needs', label: 'Open needs' },
+    { id: 'resource-needs', label: 'Resource needs' },
+    { id: 'history', label: 'History' }
+  ];
 
   type Project = {
     id: string; name: string; target_venue: string | null; summary: string | null;
@@ -874,7 +888,7 @@
 </script>
 
 <div class="stack">
-  <p><a href="/projects">← {$t('Projects')}</a></p>
+  <Breadcrumbs items={[{ label: 'Projects', href: '/projects' }, { label: project?.name ?? 'Project' }]} />
   {#if error}<p style="color:var(--down);">{error}</p>{/if}
 
   {#if loading}
@@ -927,8 +941,11 @@
     </div>
     {#if project.summary}<p>{project.summary}</p>{/if}
 
+    <div class="detail">
+      <SectionNav {sections} />
+      <div class="detail-body">
     <!-- STATUS PIPELINE -->
-    <div class="card">
+    <div class="card" id="status">
       <div class="row" style="justify-content:space-between; align-items:center; gap:1rem;">
         <div class="row" style="gap:.5rem; flex-wrap:wrap;">
           {#each pipeline as s, i}
@@ -954,7 +971,7 @@
       </div>
     </div>
 
-    <div class="card stack" style="gap:.7rem;">
+    <div class="card stack" id="overview" style="gap:.7rem;">
       <div class="row" style="justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:1rem;">
         <div>
           <span class="muted" style="font-size:.78rem;">{$t('Nominal pool')} <Hint term="nominal" text={$t("The sum of everyone's nominal stake in this project — bonds + minted labor/resources + verified milestone value. Provisional until settlement, when it's split into liquid STR.")} /></span>
@@ -1133,7 +1150,7 @@
     {/if}
 
     <!-- MILESTONES (outcome minting: nominal + multiplier) -->
-    <div class="card stack">
+    <div class="card stack" id="milestones">
       <div class="row" style="justify-content:space-between; align-items:baseline;">
         <h2 style="margin:0;">{$t('Milestones')}</h2>
         <span class="muted" style="font-size:.8rem;">{$t('Verified bonus:')} <strong class="mono" style="color:var(--up);">+{verifiedBonus.toFixed(3).replace(/0+$/,'').replace(/\.$/,'')}</strong> {$t('to ×mult')}</span>
@@ -1268,7 +1285,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" id="commitments">
       <h2>{$t('Stake commitments')}</h2>
       {#if commitments.length === 0}
         <p class="muted">{$t('No commitments yet.')}</p>
@@ -1293,7 +1310,7 @@
       {/if}
     </div>
 
-    <div class="card">
+    <div class="card" id="settlement">
       <h2>{$t('Settlement')}</h2>
       {#if !settlement}
         {#if iManage}
@@ -1350,7 +1367,7 @@
       {/if}
     </div>
 
-    <div class="card">
+    <div class="card" id="roster">
       <h2>{$t('Roster')}</h2>
       <p class="muted" style="font-size:.8rem; margin-top:-.4rem;">{$t("Share % is each member's accrued nominal (bonds + labor + resources) over the member total — milestone nominal is added to everyone at settlement.")}</p>
       {#if participants.length === 0}
@@ -1393,7 +1410,7 @@
       {/if}
     </div>
 
-    <div class="card">
+    <div class="card" id="needs">
       <h2>{$t('Open needs')}</h2>
       {#if needs.length === 0}
         <p class="muted">{$t('No open needs.')}</p>
@@ -1520,7 +1537,7 @@
       {/if}
     </div>
 
-    <div class="card">
+    <div class="card" id="resource-needs">
       <h2>{$t('Resource needs')}</h2>
       {#if resRequests.length === 0}
         <p class="muted">{$t('No resource requests.')}</p>
@@ -1602,7 +1619,7 @@
     </div>
 
     <!-- HISTORY -->
-    <div class="card">
+    <div class="card" id="history">
       <h2>{$t('History')}</h2>
       {#if canContribute}
         <div class="row" style="gap:.4rem; margin-bottom:.8rem;">
@@ -1626,6 +1643,8 @@
           {/each}
         </div>
       {/if}
+    </div>
+      </div>
     </div>
   {/if}
 </div>

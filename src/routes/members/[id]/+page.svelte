@@ -5,6 +5,8 @@
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { t } from '$lib/i18n';
   import Medal from '$lib/Medal.svelte';
+  import SectionNav from '$lib/SectionNav.svelte';
+  import Breadcrumbs from '$lib/Breadcrumbs.svelte';
 
   // PUBLIC reputation page. By design this NEVER reads or shows liquid STR
   // balance or the ledger — only contribution (nominal), skills & projects.
@@ -190,10 +192,19 @@
     skills.filter((s) => s.certified_level)
       .sort((a, b) => (RANK[b.certified_level!] ?? 0) - (RANK[a.certified_level!] ?? 0))
   );
+
+  // in-page section nav (only the sections actually rendered, in DOM order)
+  const sections = $derived([
+    ...(canEdit ? [{ id: 'catalog', label: 'What this card can bring' }] : []),
+    { id: 'stats', label: 'Overview' },
+    ...(cards.length ? [{ id: 'role-cards', label: 'Role cards' }] : []),
+    { id: 'skills', label: 'Skills' },
+    { id: 'projects', label: 'Projects' }
+  ]);
 </script>
 
 <div class="stack">
-  <p><a href="/members">← {$t('Leaderboard')}</a></p>
+  <Breadcrumbs items={[{ label: 'People', href: '/members' }, { label: mem?.full_name ?? 'Member' }]} />
 
   {#if loading}
     <p class="muted">{$t('Loading…')}</p>
@@ -230,9 +241,12 @@
       {#if mem.bio}<p style="margin:.8rem 0 0;">{mem.bio}</p>{/if}
     </div>
 
+    <div class="detail">
+      <SectionNav {sections} />
+      <div class="detail-body">
     <!-- editable offerable catalog — only for officers/admins who manage this card -->
     {#if canEdit}
-      <div class="card stack">
+      <div class="card stack" id="catalog">
         <h2 style="margin:0;">{$t('What this card can bring')}</h2>
         <p class="muted" style="font-size:.82rem; margin-top:-.5rem;">{$t("This card’s offerable catalog — its monthly time and resources. You’re editing it as an officer; new entries go to a steward for review.")}</p>
         {#if catError}<p class="neg" style="font-size:.85rem;">{catError}</p>{/if}
@@ -293,7 +307,7 @@
     {/if}
 
     <!-- reputation stats (no liquid balance, by design) -->
-    <div class="kpis">
+    <div class="kpis" id="stats">
       <div class="kpi">
         <span class="k-label">{$t('Contribution')}</span>
         <span class="k-value accent">{totalNominal.toLocaleString()}</span>
@@ -313,7 +327,7 @@
 
     <!-- certified role cards (medals) -->
     {#if cards.length > 0}
-      <div class="card stack">
+      <div class="card stack" id="role-cards">
         <h2 style="margin:0;">{$t('Role cards')}</h2>
         <div class="row" style="gap:.5rem; flex-wrap:wrap;">
           {#each cards as c}<Medal name={c.skill?.name ?? c.skill_id} level={c.certified_level!} />{/each}
@@ -322,7 +336,7 @@
     {/if}
 
     <!-- skills -->
-    <div class="card stack">
+    <div class="card stack" id="skills">
       <h2 style="margin:0;">{$t('Skills')}</h2>
       {#if skills.length === 0}
         <p class="muted">{$t('No skills listed yet.')}</p>
@@ -342,7 +356,7 @@
     </div>
 
     <!-- projects -->
-    <div class="card stack">
+    <div class="card stack" id="projects">
       <h2 style="margin:0;">{$t('Projects')}</h2>
       {#if projects.length === 0}
         <p class="muted">{$t('Not on any project yet.')}</p>
@@ -361,6 +375,8 @@
           </tbody>
         </table>
       {/if}
+    </div>
+      </div>
     </div>
   {/if}
 </div>

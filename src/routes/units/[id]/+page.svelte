@@ -5,6 +5,8 @@
   import { member, officerUnits, capabilities } from '$lib/session';
   import { t } from '$lib/i18n';
   import { get } from 'svelte/store';
+  import SectionNav from '$lib/SectionNav.svelte';
+  import Breadcrumbs from '$lib/Breadcrumbs.svelte';
 
   type Unit = { id: string; code: string; name: string; kind: string; description: string | null };
   type Person = { id: string; full_name: string; affiliation: string | null; kind?: string };
@@ -202,10 +204,20 @@
           .filter((p) => p.name.toLowerCase().includes(projQ.trim().toLowerCase()))
           .slice(0, 8)
   );
+
+  // in-page section nav (only the sections actually rendered, in DOM order)
+  const sections = $derived([
+    { id: 'officers', label: 'Officers' },
+    ...(isOfficer && pending.length > 0 ? [{ id: 'applications', label: 'Applications' }] : []),
+    { id: 'members', label: 'Members' },
+    ...(isOfficer ? [{ id: 'add-member', label: 'Add an existing member' }] : []),
+    ...(isOfficer && isChapter ? [{ id: 'forge', label: 'Forge a member card' }] : []),
+    ...(!isChapter ? [{ id: 'projects', label: 'Projects' }] : [])
+  ]);
 </script>
 
 <div class="stack">
-  <p><a href="/units">← {$t('Chapters & Working Groups')}</a></p>
+  <Breadcrumbs items={[{ label: 'Units', href: '/units' }, { label: unit?.name ?? 'Unit' }]} />
 
   {#if loading}
     <p class="muted">{$t('Loading…')}</p>
@@ -262,8 +274,11 @@
       {/if}
     </div>
 
+    <div class="detail">
+      <SectionNav {sections} />
+      <div class="detail-body">
     <!-- officers -->
-    <div class="card stack" style="gap:.5rem;">
+    <div class="card stack" id="officers" style="gap:.5rem;">
       <h2 style="margin:0; font-size:1rem;">{$t('Officers')}</h2>
       {#if officers.length === 0}
         <p class="muted" style="margin:0;">{$t('No officers appointed yet.')}</p>
@@ -293,7 +308,7 @@
 
     <!-- pending applications (officers only) -->
     {#if isOfficer && pending.length > 0}
-      <div class="card stack" style="gap:.5rem;">
+      <div class="card stack" id="applications" style="gap:.5rem;">
         <h2 style="margin:0; font-size:1rem;">{$t('Applications')} <span class="muted" style="font-weight:400;">· {pending.length}</span></h2>
         <ul style="margin:0; padding:0; list-style:none;">
           {#each pending as p}
@@ -316,7 +331,7 @@
     {/if}
 
     <!-- members roster -->
-    <div class="card stack" style="gap:.5rem;">
+    <div class="card stack" id="members" style="gap:.5rem;">
       <h2 style="margin:0; font-size:1rem;">{$t('Members')} {#if members.length}<span class="muted" style="font-weight:400;">· {members.length}</span>{/if}</h2>
       {#if members.length === 0}
         <p class="muted" style="margin:0;">{$t('No members yet.')}</p>
@@ -344,7 +359,7 @@
 
     <!-- add an existing member (officers / admins) -->
     {#if isOfficer}
-      <div class="card stack" style="gap:.5rem;">
+      <div class="card stack" id="add-member" style="gap:.5rem;">
         <h2 style="margin:0; font-size:1rem;">{$t('Add an existing member')}</h2>
         <p class="muted" style="font-size:.82rem; margin:0;">
           {$t('Search anyone in the community and add them to this unit directly — no application needed.')}
@@ -373,7 +388,7 @@
 
     <!-- forge a card (chapter officers) -->
     {#if isOfficer && isChapter}
-      <div class="card stack" style="gap:.6rem;">
+      <div class="card stack" id="forge" style="gap:.6rem;">
         <h2 style="margin:0; font-size:1rem;">{$t('Forge a member card')}</h2>
         <p class="muted" style="font-size:.82rem; margin:0;">
           {$t('Add someone in this chapter who cannot log in yet. They become a card you act for; value is custodial until they sign up and claim it.')}
@@ -394,7 +409,7 @@
 
     <!-- projects (working groups) -->
     {#if !isChapter}
-      <div class="card stack" style="gap:.5rem;">
+      <div class="card stack" id="projects" style="gap:.5rem;">
         <h2 style="margin:0; font-size:1rem;">{$t('Projects')} {#if projects.length}<span class="muted" style="font-weight:400;">· {projects.length}</span>{/if}</h2>
         {#if projects.length === 0}
           <p class="muted" style="margin:0;">{$t('No projects attributed to this group yet.')}</p>
@@ -436,6 +451,8 @@
         {/if}
       </div>
     {/if}
+      </div>
+    </div>
   {/if}
 </div>
 
