@@ -32,6 +32,9 @@ const zh: Table = {
   "Read the guide": "阅读指南",
   "how the community works": "社区如何运作",
   "{s} STR bonded in live projects": "{s} STR 锁定在进行中的项目",
+  // ── Redesign: projects page (de-jargon from trading-terminal vocab) ──
+  "Active": "进行中",
+  "{n} projects across the community — pools, milestones, and open roles.": "社区中的 {n} 个项目 —— 贡献池、里程碑与开放角色。",
   // ── Phase 1 rebuild: retired routes → officer console redirects ──
   "Taking you to the officer console…": "正在前往干事控制台…",
   "Unit management has moved to the officer console.": "单位管理已迁移至干事控制台。",

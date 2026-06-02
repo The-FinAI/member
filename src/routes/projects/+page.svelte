@@ -389,10 +389,10 @@
 </script>
 
 <div class="stack">
-  <div class="row" style="justify-content:space-between; align-items:center;">
-    <div>
-      <h1 style="margin:0;">{$t('Market')}</h1>
-      <span class="muted" style="font-size:.85rem;">{$t('{n} research projects · contribution pools, milestones & open needs', { n: grid.length })}</span>
+  <div class="row" style="justify-content:space-between; align-items:flex-end;">
+    <div class="stack" style="gap:.15rem;">
+      <h1 style="margin:0;">{$t('Projects')}</h1>
+      <span class="muted" style="font-size:.88rem;">{$t('{n} projects across the community — pools, milestones, and open roles.', { n: grid.length })}</span>
     </div>
     {#if $member && surface === 'projects'}
       <button onclick={() => (showForm = !showForm)}>{showForm ? $t('Cancel') : $t('Start a project')}</button>
@@ -404,7 +404,7 @@
     <span class="chip toggle {surface === 'projects' ? 'on' : ''}" role="button" tabindex="0"
       onclick={() => (surface = 'projects')}
       onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') surface = 'projects'; }}
-    >{$t('Projects')} <span class="ct">{kActive}</span></span>
+    >{$t('Active')} <span class="ct">{kActive}</span></span>
     <span class="chip toggle {surface === 'needs' ? 'on' : ''}" role="button" tabindex="0"
       onclick={() => (surface = 'needs')}
       onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') surface = 'needs'; }}
