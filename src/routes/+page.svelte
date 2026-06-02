@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { supabase, supabaseConfigured } from '$lib/supabase';
-  import { member, capabilities } from '$lib/session';
+  import { member, capabilities, officerUnits } from '$lib/session';
   import CountUp from '$lib/CountUp.svelte';
   import Hint from '$lib/Hint.svelte';
   import GettingStarted from '$lib/GettingStarted.svelte';
@@ -229,6 +229,16 @@
       <a href="/projects"><button>{$t('Start a project')}</button></a>
     </div>
   </div>
+
+  {#if $officerUnits.length > 0}
+    <div class="card row" style="justify-content:space-between; align-items:center; gap:.75rem; border-left:3px solid var(--accent); flex-wrap:wrap;">
+      <div class="stack" style="gap:.2rem;">
+        <strong style="font-size:.95rem;">{$t("You're an officer — your chapter needs you")}</strong>
+        <span class="muted" style="font-size:.82rem;">{$t('Phase 1: forge a card for each researcher, declare their monthly work, and clear your approvals. Your checklist is on My Chapter.')}</span>
+      </div>
+      <a href="/my-chapter"><button>{$t('Go to My Chapter →')}</button></a>
+    </div>
+  {/if}
 
   {#if $member}<GettingStarted memberId={$member.id} />{/if}
 

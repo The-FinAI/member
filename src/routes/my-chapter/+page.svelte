@@ -124,6 +124,20 @@
       {$t('Member-cards are people in your chapter who cannot log in yet. You act on their behalf: mint their monthly contributions and certify their role cards. Value accrues to the card and is custodial until the person signs up and claims it.')}
     </p>
 
+    <!-- Phase 1 officer playbook: what to actually do, in order -->
+    <div class="card stack" style="gap:.55rem; border-left:3px solid var(--accent);">
+      <h2 style="margin:0; font-size:1rem;">{$t('Your Phase 1 checklist')}</h2>
+      <p class="muted" style="font-size:.82rem; margin:0;">
+        {$t("We're seeding the community. As an officer, here's what gets your chapter live — work down the list.")}
+      </p>
+      <ol class="checklist">
+        <li>{$t('Forge a card for each researcher in your chapter — fill in who they are and stage the skills they bring (form below).')}</li>
+        <li>{$t('Act as a card to declare its monthly contributions on the projects it joins — value accrues to the card until the person claims it.')}</li>
+        <li>{$t('Review your roster below: every card you forged is listed, with its balance and staged skills.')}</li>
+        <li>{$t('Clear your Approvals queue — over-capacity commitments from your chapter members wait for you there.')} <a href="/admin/approvals">{$t('Open Approvals →')}</a></li>
+      </ol>
+    </div>
+
     {#if error}<p style="color:var(--down);">{error}</p>{/if}
     {#if msg}<p class="pos" style="font-size:.85rem;">{msg}</p>{/if}
 
@@ -232,6 +246,8 @@
 </div>
 
 <style>
+  .checklist { margin: 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: .4rem; }
+  .checklist li { font-size: .85rem; line-height: 1.45; }
   .talent {
     display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     gap: .9rem 1.4rem;
