@@ -632,10 +632,6 @@
         <div class="pd-meta-chips">
           {#if r.claimable}<span class="status st-proposal"><span class="sdot" style="background:currentColor;"></span>{$t('lead open')}</span>{/if}
           <span class="pd-chip">{$t(r.type)}</span>
-          {#if r.wg}<span class="pd-chip">{r.wg}</span>{/if}
-          {#if r.venue}
-            <span class="pd-chip" title={$t(venueKindMeta(r.venueKind).label)}>{venueKindMeta(r.venueKind).icon} {r.venue}</span>
-          {/if}
           {#if r.deadline}
             <span class="pd-chip {ddlClass(r.deadline)}">⏱ {fmtDate(r.deadline)} · {relDays(r.deadline)}</span>
           {/if}

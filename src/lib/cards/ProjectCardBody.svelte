@@ -221,6 +221,8 @@
   }
 
   const venueName = $derived((id: string | null) => venues.find((v) => v.id === id)?.name ?? '');
+  const curWgName = $derived(workingGroups.find((w) => w.id === proj?.org_unit_id)?.name ?? '');
+  const curVenueName = $derived(venues.find((v) => v.id === proj?.venue_id)?.name ?? '');
 
   let last = '';
   $effect(() => { if (projectId && projectId !== last) { last = projectId; load(); } });
@@ -229,6 +231,43 @@
 {#if !loading}
   {#if err}<p class="pcb-err">{err}</p>{/if}
   {#if msg}<p class="pcb-ok">{msg}</p>{/if}
+
+  <!-- basic info — in place: chips when reading, inputs when the meta-row ✎
+       Edit is toggled on. -->
+  {#if editing && canEdit}
+    <div class="pcb-form pcb-basic">
+      <label class="pcb-field"><span>{$t('Name')}</span><input bind:value={fName} /></label>
+      <label class="pcb-field"><span>{$t('Summary')}</span><textarea rows="2" bind:value={fSummary} placeholder={$t('One-line description')}></textarea></label>
+      <div class="pcb-row">
+        <label class="pcb-field" style="flex:1;"><span>{$t('Target venue')}</span>
+          <select bind:value={fVenue}>
+            <option value="">{$t('— none —')}</option>
+            {#each venues as v}<option value={v.id}>{v.name}</option>{/each}
+          </select>
+        </label>
+        <label class="pcb-field" style="flex:1;"><span>{$t('Working Group')}</span>
+          <select bind:value={fUnit}>
+            <option value="">{$t('— unattributed —')}</option>
+            {#each workingGroups as w}<option value={w.id}>{w.name}</option>{/each}
+          </select>
+        </label>
+      </div>
+      <div class="pcb-actions">
+        <button type="button" class="pcb-go" disabled={busy === 'edit'} onclick={saveDetails}>
+          {#if busy === 'edit'}<span class="spin"></span>{/if}{$t('Save')}
+        </button>
+        <button type="button" class="pcb-ghost" onclick={() => (editing = false)}>{$t('Cancel')}</button>
+      </div>
+    </div>
+  {:else if proj?.summary || curWgName || curVenueName}
+    <div class="pcb-basic-read">
+      {#if proj?.summary}<p class="pcb-summary">{proj.summary}</p>{/if}
+      <div class="pcb-readchips">
+        {#if curWgName}<span class="pcb-rchip">{curWgName}</span>{/if}
+        {#if curVenueName}<span class="pcb-rchip">{curVenueName}</span>{/if}
+      </div>
+    </div>
+  {/if}
 
   <!-- status flow: a linear pipeline; completion only from Under review, via
        the reviewed Mint-done path; settlement opens once Finished. -->
@@ -297,35 +336,6 @@
             onCancel={() => (showSettle = false)} />
         {/if}
       {/if}
-    </div>
-  {/if}
-
-  <!-- editable core fields — the ✎ Edit toggle lives in the drawer meta row -->
-  {#if canEdit && editing}
-    <div class="pcb-section">
-      <span class="pcb-h">{$t('Edit details')}</span>
-        <div class="pcb-form">
-          <label class="pcb-field"><span>{$t('Name')}</span><input bind:value={fName} /></label>
-          <label class="pcb-field"><span>{$t('Summary')}</span><textarea rows="2" bind:value={fSummary}></textarea></label>
-          <label class="pcb-field"><span>{$t('Target venue')}</span>
-            <select bind:value={fVenue}>
-              <option value="">{$t('— none —')}</option>
-              {#each venues as v}<option value={v.id}>{v.name}</option>{/each}
-            </select>
-          </label>
-          <label class="pcb-field"><span>{$t('Working Group')}</span>
-            <select bind:value={fUnit}>
-              <option value="">{$t('— unattributed —')}</option>
-              {#each workingGroups as w}<option value={w.id}>{w.name}</option>{/each}
-            </select>
-          </label>
-          <div class="pcb-actions">
-            <button type="button" class="pcb-go" disabled={busy === 'edit'} onclick={saveDetails}>
-              {#if busy === 'edit'}<span class="spin"></span>{/if}{$t('Save')}
-            </button>
-            <button type="button" class="pcb-ghost" onclick={() => (editing = false)}>{$t('Cancel')}</button>
-          </div>
-        </div>
     </div>
   {/if}
 
@@ -486,6 +496,11 @@
     border-radius: 10px; background: color-mix(in srgb, var(--up) 8%, transparent); margin-top: .3rem;
   }
   .pcb-settle-h { font-weight: 600; color: var(--text); }
+  .pcb-basic { padding-top: 0; }
+  .pcb-basic-read { display: flex; flex-direction: column; gap: .5rem; }
+  .pcb-summary { margin: 0; font-size: .9rem; line-height: 1.5; color: var(--text); }
+  .pcb-readchips { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .pcb-rchip { font-size: .76rem; color: var(--text-dim); background: var(--card-2); border: 1px solid var(--border); border-radius: 999px; padding: .15rem .55rem; }
   .pcb-status-row { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
   .pcb-status-row select {
     padding: .4rem .55rem; border-radius: 8px; border: 1px solid var(--border-2);
