@@ -50,6 +50,23 @@
 
   const shown = $derived(filter === 'all' ? requests : requests.filter((r) => r.target_type === filter));
 
+  // Requests forged together (a batch of badge raises) share a batch_id and must
+  // review as ONE item — otherwise a 10-skill submission shows as 10 approvals.
+  type Group = { key: string; ids: string[]; rep: Req; count: number };
+  const shownGroups = $derived.by(() => {
+    const groups: Group[] = [];
+    const byBatch: Record<string, number> = {};
+    for (const r of shown) {
+      if (r.batch_id && byBatch[r.batch_id] != null) {
+        const g = groups[byBatch[r.batch_id]]; g.ids.push(r.id); g.count++;
+      } else {
+        if (r.batch_id) byBatch[r.batch_id] = groups.length;
+        groups.push({ key: r.batch_id ?? r.id, ids: [r.id], rep: r, count: 1 });
+      }
+    }
+    return groups;
+  });
+
   async function load() {
     if (!supabaseConfigured) { loading = false; return; }
     loading = true; msg = '';
@@ -91,11 +108,20 @@
   }
   function cap(s?: string) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : '—'; }
 
-  async function review(r: Req, approve: boolean) {
-    busy = r.id;
-    const { error: e } = await supabase.rpc('review_forge', { p_request: r.id, p_approve: approve, p_note: null });
+  function groupSummary(g: Group): string {
+    if (g.count > 1 && g.rep.target_type === 'badge') {
+      const p = g.rep.payload ?? {};
+      return `${p.member_id ? names.members[p.member_id] ?? '—' : '—'} · ${g.count} ${get(t)('badges')}`;
+    }
+    return summary(g.rep);
+  }
+  async function reviewGroup(g: Group, approve: boolean) {
+    busy = g.key;
+    for (const id of g.ids) {
+      const { error: e } = await supabase.rpc('review_forge', { p_request: id, p_approve: approve, p_note: null });
+      if (e) { busy = ''; msg = e.message; await load(); return; }
+    }
     busy = '';
-    if (e) { msg = e.message; return; }
     msg = approve ? get(t)('Approved.') : get(t)('Rejected.');
     await load();
   }
@@ -154,20 +180,20 @@
   {:else}
     {#if filter !== 'settlement'}
     <div class="fq-list">
-      {#each shown as r (r.id)}
+      {#each shownGroups as g (g.key)}
         <div class="fq-row">
-          <span class="badge {TYPE_CLASS[r.target_type] ?? 'dim'}">{$t(TYPE_LABEL[r.target_type] ?? r.target_type)}</span>
-          <span class="fq-sum">{summary(r)}</span>
-          {#if r.fee > 0}<span class="fq-fee">−{r.fee} STR</span>{/if}
+          <span class="badge {TYPE_CLASS[g.rep.target_type] ?? 'dim'}">{$t(TYPE_LABEL[g.rep.target_type] ?? g.rep.target_type)}</span>
+          <span class="fq-sum">{groupSummary(g)}{#if g.count > 1}<span class="fq-fee" style="color:var(--muted)"> ×{g.count}</span>{/if}</span>
+          {#if g.rep.fee > 0}<span class="fq-fee">−{g.rep.fee} STR</span>{/if}
           <span class="fq-act">
-            <button type="button" class="chip toggle ok" disabled={busy === r.id} onclick={() => review(r, true)}>
-              {#if busy === r.id}<span class="spin"></span>{/if}{$t('Approve')}
+            <button type="button" class="chip toggle ok" disabled={busy === g.key} onclick={() => reviewGroup(g, true)}>
+              {#if busy === g.key}<span class="spin"></span>{/if}{$t('Approve')}
             </button>
-            <button type="button" class="chip toggle no" disabled={busy === r.id} onclick={() => review(r, false)}>{$t('Reject')}</button>
+            <button type="button" class="chip toggle no" disabled={busy === g.key} onclick={() => reviewGroup(g, false)}>{$t('Reject')}</button>
           </span>
         </div>
       {/each}
-      {#if !shown.length}
+      {#if !shownGroups.length}
         <p class="muted">{$t('Nothing awaiting review.')}</p>
       {/if}
     </div>
