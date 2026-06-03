@@ -318,23 +318,27 @@
       .sort((a, b) => a[1] - b[1]).map((e) => e[0]).filter((x) => x !== '—')
   );
 
+  // a project is shown in the default grid only when it's in play: not Finished
+  // (those go to Hall of fame) and status.is_active (Hold is parked). A status
+  // chip overrides the is-active gate so Hold/etc. stay one click away.
+  function keepRow(r: Grid, needle: string): boolean {
+    if (r.finished) return false;
+    if (statusFilter ? r.status !== statusFilter : !r.active) return false;
+    if (typeFilter && r.type !== typeFilter) return false;
+    if (venueFilter) {
+      const ok = venueFilter.startsWith('kind:') ? r.venueKind === venueFilter.slice(5) : r.venue === venueFilter;
+      if (!ok) return false;
+    }
+    if (needle) {
+      const hay = `${r.name} ${r.venue} ${r.leader} ${r.wg} ${r.type}`.toLowerCase();
+      if (!hay.includes(needle)) return false;
+    }
+    return true;
+  }
+
   const rows = $derived.by(() => {
     const needle = q.trim().toLowerCase();
-    let out = grid.filter((r) =>
-      !r.finished &&
-      (!typeFilter || r.type === typeFilter) &&
-      // default view shows only in-play projects (status.is_active); Finished →
-      // Hall of fame, Hold → parked. Either is still reachable via its chip.
-      (statusFilter ? r.status === statusFilter : r.active) &&
-      (!venueFilter ||
-        (venueFilter.startsWith('kind:') ? r.venueKind === venueFilter.slice(5) : r.venue === venueFilter)) &&
-      (!needle ||
-        r.name.toLowerCase().includes(needle) ||
-        r.venue.toLowerCase().includes(needle) ||
-        r.leader.toLowerCase().includes(needle) ||
-        r.wg.toLowerCase().includes(needle) ||
-        r.type.toLowerCase().includes(needle))
-    );
+    let out = grid.filter((r) => keepRow(r, needle));
     out = [...out].sort((a, b) => {
       if (sortKey === 'deadline') {
         // deadline board: soonest upcoming on top; past-due then dateless sink below
@@ -580,12 +584,6 @@
       <button class="ghost" onclick={() => (sortDir = sortDir === 1 ? -1 : 1)} title={$t('Toggle sort direction')} aria-label={$t('Toggle sort direction')}>{sortDir === 1 ? '▲' : '▼'}</button>
     </div>
   </div>
-
-  <p style="font-size:11px; color:var(--down); font-family:monospace; word-break:break-all;">
-    DBG grid={grid.length} rows={rows.length} fin={finished.length} activeCount={grid.filter((r) => r.active).length}
-    | dupes={grid.length - new Set(grid.map((r) => r.id)).size}
-    | finProjects={grid.filter((r) => /fin|multiling/i.test(r.name)).map((r) => `${r.name.slice(0, 10)}[id=${r.id.slice(0, 4)}|st=${r.status}|fin=${r.finished}|act=${r.active}|inRows=${rows.some((x) => x === r)}]`).join('  ·  ')}
-  </p>
 
   {#if loading}
     <div class="card"><p class="muted" style="padding:1rem;">{$t('Loading…')}</p></div>
