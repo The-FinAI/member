@@ -36,6 +36,7 @@
     openNeeds: number;
     pool: number;          // Σ nominal_str across the project's commitments
     summary: string | null;
+    active: boolean;       // status.is_active — false for Finished & Hold
     finished: boolean;
     claimable: boolean;    // leader slot empty → first-author seat is open
   };
@@ -108,7 +109,7 @@
     // ambiguous-FK embed can never blank out the whole project list.
     const [{ data: pr }, { data: ou }] = await Promise.all([
       supabase.from('project')
-        .select('id, name, target_venue, deadline, summary, org_unit_id, venue:venue_id(name, kind, deadline), project_type(name), project_status!project_status_id_fkey(name, rank)'),
+        .select('id, name, target_venue, deadline, summary, org_unit_id, venue:venue_id(name, kind, deadline), project_type(name), project_status!project_status_id_fkey(name, rank, is_active)'),
       supabase.from('org_unit').select('id, name')
     ]);
     const unitName: Record<string, string> = {};
@@ -167,10 +168,16 @@
     slotsByProject = byP;
 
     grid = projects.map((p) => {
-      const statusName = (p.project_status?.name ?? '—').trim();
-      // robust terminal-state match: tolerate stray casing/whitespace in the
-      // seeded status name so a delivered project never leaks into the grid
-      const finished = /^finished$/i.test(statusName);
+      // defensive: normalise away any invisible junk (zero-width, nbsp, BOM)
+      // so name-based comparisons (statusClass / Hold chip) stay reliable.
+      const statusName = (p.project_status?.name ?? '—')
+        .replace(/[ - ​-‍⁠﻿]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      const finished = statusName.toLowerCase() === 'finished';
+      // is_active is the real source of truth for "still in play" — Finished
+      // and Hold are both is_active=false in project_status.
+      const active = p.project_status?.is_active !== false;
       return {
         id: p.id,
         name: p.name,
@@ -188,6 +195,7 @@
         openNeeds: openNeeds[p.id] ?? 0,
         pool: pool[p.id] ?? 0,
         summary: p.summary ?? null,
+        active,
         finished,
         claimable: !hasLeader[p.id] && !finished
       };
@@ -311,9 +319,9 @@
     let out = grid.filter((r) =>
       !r.finished &&
       (!typeFilter || r.type === typeFilter) &&
-      // Finished → Hall of fame; Hold (paused) is parked out of the default
-      // "All" view too, but stays one click away via its own status chip.
-      (statusFilter ? r.status === statusFilter : r.status !== 'Hold') &&
+      // default view shows only in-play projects (status.is_active); Finished →
+      // Hall of fame, Hold → parked. Either is still reachable via its chip.
+      (statusFilter ? r.status === statusFilter : r.active) &&
       (!venueFilter ||
         (venueFilter.startsWith('kind:') ? r.venueKind === venueFilter.slice(5) : r.venue === venueFilter)) &&
       (!needle ||
@@ -344,10 +352,10 @@
     return out;
   });
 
-  // KPI summary — "active" excludes both Finished (Hall of fame) and Hold (parked)
-  const kActive = $derived(grid.filter((r) => !r.finished && r.status !== 'Hold').length);
+  // KPI summary — "active" = status.is_active (excludes Finished & Hold)
+  const kActive = $derived(grid.filter((r) => r.active && !r.finished).length);
   const kUpcoming = $derived(grid.filter((r) => {
-    if (r.finished || r.status === 'Hold' || !r.deadline) return false;
+    if (!r.active || r.finished || !r.deadline) return false;
     const days = (new Date(r.deadline + 'T00:00:00').getTime() - Date.now()) / 86400000;
     return days >= 0 && days <= 60;
   }).length);
