@@ -97,6 +97,11 @@ const zh: Table = {
   "Agenda": "议程",
   "Kickoff, weekly sync…": "启动会、周会…",
   "Zoom link or room": "Zoom 链接或会议室",
+  "Repeats": "重复",
+  "One-off": "单次",
+  "Weekly": "每周",
+  "Biweekly": "每两周",
+  "Monthly": "每月",
   // ── Redesign: home overview台 + /profile manage surface ──
   "Community steward": "社区管理员",
   "{n} application accepted — confirm to join": "{n} 个申请已通过 —— 确认加入",

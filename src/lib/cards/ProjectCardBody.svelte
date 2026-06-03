@@ -15,7 +15,7 @@
   } = $props();
 
   type Link = { id: string; kind: string; title: string | null; url: string; notes: string | null; created_at: string; member: { full_name: string } | null };
-  type Meeting = { id: string; title: string; scheduled_at: string; ends_at: string | null; location: string | null; agenda: string | null; member: { full_name: string } | null };
+  type Meeting = { id: string; title: string; scheduled_at: string; ends_at: string | null; location: string | null; agenda: string | null; recurrence: string; member: { full_name: string } | null };
   type Event = { id: string; event_type: string; summary: string; created_at: string; member: { full_name: string } | null };
   type Proj = { id: string; name: string; summary: string | null; venue_id: string | null; org_unit_id: string | null };
 
@@ -43,7 +43,9 @@
   let note = $state('');
   // add-meeting form
   let showAddMeeting = $state(false);
-  let mTitle = $state(''); let mAt = $state(''); let mEnds = $state(''); let mLoc = $state(''); let mAgenda = $state('');
+  let mTitle = $state(''); let mAt = $state(''); let mEnds = $state(''); let mLoc = $state(''); let mAgenda = $state(''); let mRecur = $state('none');
+  const RECUR = ['none', 'weekly', 'biweekly', 'monthly'];
+  const RECUR_LABEL: Record<string, string> = { none: 'One-off', weekly: 'Weekly', biweekly: 'Biweekly', monthly: 'Monthly' };
 
   async function load() {
     if (!supabaseConfigured) { loading = false; return; }
@@ -52,7 +54,7 @@
       supabase.from('project').select('id, name, summary, venue_id, org_unit_id').eq('id', projectId).maybeSingle(),
       supabase.rpc('can_edit_project', { p_project: projectId }),
       supabase.from('project_link').select('id, kind, title, url, notes, created_at, member:added_by(full_name)').eq('project_id', projectId).order('created_at', { ascending: false }),
-      supabase.from('project_meeting').select('id, title, scheduled_at, ends_at, location, agenda, member:created_by(full_name)').eq('project_id', projectId).order('scheduled_at', { ascending: false }),
+      supabase.from('project_meeting').select('id, title, scheduled_at, ends_at, location, agenda, recurrence, member:created_by(full_name)').eq('project_id', projectId).order('scheduled_at', { ascending: false }),
       supabase.from('project_event').select('id, event_type, summary, created_at, member:actor_member_id(full_name)').eq('project_id', projectId).order('created_at', { ascending: false }).limit(40)
     ]);
     proj = (p as Proj) ?? null;
@@ -131,11 +133,11 @@
       p_project: projectId, p_title: mTitle.trim(),
       p_scheduled_at: new Date(mAt).toISOString(),
       p_ends_at: mEnds ? new Date(mEnds).toISOString() : null,
-      p_location: mLoc.trim() || null, p_agenda: mAgenda.trim() || null
+      p_location: mLoc.trim() || null, p_agenda: mAgenda.trim() || null, p_recurrence: mRecur
     });
     busy = '';
     if (e) { err = e.message; return; }
-    mTitle = ''; mAt = ''; mEnds = ''; mLoc = ''; mAgenda = ''; showAddMeeting = false;
+    mTitle = ''; mAt = ''; mEnds = ''; mLoc = ''; mAgenda = ''; mRecur = 'none'; showAddMeeting = false;
     await load();
   }
 
@@ -265,7 +267,12 @@
           <label class="pcb-field" style="flex:1;"><span>{$t('Starts')}</span><input type="datetime-local" bind:value={mAt} /></label>
           <label class="pcb-field" style="flex:1;"><span>{$t('Ends')}</span><input type="datetime-local" bind:value={mEnds} /></label>
         </div>
-        <label class="pcb-field"><span>{$t('Location')}</span><input bind:value={mLoc} placeholder={$t('Zoom link or room')} /></label>
+        <div class="pcb-row">
+          <label class="pcb-field" style="flex:0 0 9rem;"><span>{$t('Repeats')}</span>
+            <select bind:value={mRecur}>{#each RECUR as rc}<option value={rc}>{$t(RECUR_LABEL[rc])}</option>{/each}</select>
+          </label>
+          <label class="pcb-field" style="flex:1;"><span>{$t('Location')}</span><input bind:value={mLoc} placeholder={$t('Zoom link or room')} /></label>
+        </div>
         <label class="pcb-field"><span>{$t('Agenda')}</span><input bind:value={mAgenda} placeholder={$t('optional')} /></label>
         <button type="button" class="pcb-go" disabled={busy === 'meeting'} onclick={addMeeting}>
           {#if busy === 'meeting'}<span class="spin"></span>{/if}{$t('Schedule meeting')}
@@ -278,10 +285,11 @@
     {:else}
       <ul class="pcb-links">
         {#each meetings as m (m.id)}
-          <li class="pcb-link-row" class:past={isPast(m.scheduled_at)}>
-            <span class="pcb-kind">{isPast(m.scheduled_at) ? '✓' : '📅'}</span>
+          {@const recurring = m.recurrence && m.recurrence !== 'none'}
+          <li class="pcb-link-row" class:past={!recurring && isPast(m.scheduled_at)}>
+            <span class="pcb-kind">{recurring ? '↻' : isPast(m.scheduled_at) ? '✓' : '📅'}</span>
             <div class="pcb-link-main">
-              <span class="pcb-link-title">{m.title}</span>
+              <span class="pcb-link-title">{m.title}{#if recurring}<span class="pcb-recur">{$t(RECUR_LABEL[m.recurrence])}</span>{/if}</span>
               <span class="pcb-link-host">{fmtWhen(m.scheduled_at, m.ends_at)}{#if m.location} · {m.location}{/if}{#if m.agenda} · {m.agenda}{/if}</span>
             </div>
             {#if canEdit}
@@ -353,6 +361,10 @@
   .pcb-link-main { display: flex; flex-direction: column; gap: .05rem; text-decoration: none; color: inherit; min-width: 0; flex: 1; }
   .pcb-link-title { font-size: .86rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .pcb-link-title:hover { color: var(--accent); }
+  .pcb-recur {
+    margin-left: .4rem; font-size: .64rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
+    color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: .05rem .4rem; vertical-align: middle;
+  }
   .pcb-link-host { font-size: .72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .pcb-x { flex: none; background: transparent; border: 0; color: var(--muted); cursor: pointer; font-size: .85rem; padding: .2rem .35rem; }
   .pcb-x:hover { color: var(--down); }
