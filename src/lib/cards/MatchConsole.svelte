@@ -106,6 +106,15 @@
     skills = (sk as Skill[]) ?? [];
     resTypes = (rt as ResType[]) ?? [];
 
+    // project types/statuses for the create-project form (WG officers)
+    const [{ data: pt }, { data: ps }] = await Promise.all([
+      supabase.from('project_type').select('id, name').order('name'),
+      supabase.from('project_status').select('id, name').order('rank')
+    ]);
+    ptypes = (pt as any[]) ?? []; pstatuses = (ps as any[]) ?? [];
+    if (!cType && ptypes.length) cType = ptypes[0].id;
+    if (!cStatus && pstatuses.length) cStatus = pstatuses[0].id;
+
     // demand scope: a WG fills only its own projects' needs; a chapter sees all
     let rawNeeds = ((sl as any[]) ?? []);
     if (unit!.kind === 'working_group') rawNeeds = rawNeeds.filter((s) => s.project?.org_unit_id === uid);
@@ -249,6 +258,25 @@
   let forgeBadgeFor = $state<Person | null>(null);
   let postNeedFor = $state<{ id: string; name: string } | null>(null);
 
+  // create project (phase-1 free) — WG officer
+  let ptypes = $state<{ id: string; name: string }[]>([]);
+  let pstatuses = $state<{ id: string; name: string }[]>([]);
+  let showCreate = $state(false);
+  let cName = $state(''); let cType = $state(''); let cStatus = $state('');
+  let cSummary = $state(''); let cProposal = $state('');
+  async function doCreate() {
+    if (!cName.trim() || !cType) { err = get(t)('Name and type are required.'); return; }
+    busy = 'create'; err = ''; msg = '';
+    const { error: e } = await supabase.rpc('create_project_phase1', {
+      p_name: cName.trim(), p_type_id: cType, p_status_id: cStatus || null,
+      p_wg_unit: unitId, p_summary: cSummary || null, p_proposal_url: cProposal || null
+    });
+    busy = '';
+    if (e) { err = e.message; return; }
+    msg = get(t)('Project created.'); cName = ''; cSummary = ''; cProposal = ''; showCreate = false;
+    await load(unitId);
+  }
+
   async function forgeMember(p: Record<string, any>) {
     busy = 'member'; err = ''; msg = '';
     const { error: e } = await supabase.rpc('forge_member_card', {
@@ -310,10 +338,29 @@
       {#if isOfficer && isChapter}
         <button type="button" class="stake" onclick={() => (showForgeMember = !showForgeMember)}>+ {$t('Forge member card')}</button>
       {/if}
+      {#if isOfficer && !isChapter}
+        <button type="button" class="stake" onclick={() => (showCreate = !showCreate)}>+ {$t('Create project')}</button>
+      {/if}
     </header>
 
     {#if err}<p class="mc-err">{err}</p>{/if}
     {#if msg}<p class="mc-msg">{msg}</p>{/if}
+
+    {#if isOfficer && !isChapter && showCreate}
+      <div class="tile" style="padding:1rem; display:flex; flex-direction:column; gap:.6rem;">
+        <span class="mc-h">{$t('Create a project')}<span class="muted" style="font-weight:400;"> · {$t('Phase 1 — free, no STR bond. You become its leader.')}</span></span>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:.6rem;">
+          <label class="cpf"><span>{$t('Name')}</span><input bind:value={cName} placeholder={$t('Project name')} /></label>
+          <label class="cpf"><span>{$t('Type')}</span><select bind:value={cType}>{#each ptypes as p (p.id)}<option value={p.id}>{p.name}</option>{/each}</select></label>
+          <label class="cpf"><span>{$t('Status')}</span><select bind:value={cStatus}>{#each pstatuses as p (p.id)}<option value={p.id}>{p.name}</option>{/each}</select></label>
+          <label class="cpf" style="grid-column:1/-1;"><span>{$t('Summary')}</span><input bind:value={cSummary} placeholder={$t('optional')} /></label>
+          <label class="cpf" style="grid-column:1/-1;"><span>{$t('Proposal URL')}</span><input bind:value={cProposal} placeholder={$t('optional')} /></label>
+        </div>
+        <button type="button" class="stake" style="align-self:flex-start;" disabled={busy === 'create'} onclick={doCreate}>
+          {#if busy === 'create'}<span class="spin"></span>{/if}{$t('Create project')}
+        </button>
+      </div>
+    {/if}
 
     {#if showForgeMember}
       <div class="tile" style="padding:1rem;">
@@ -494,6 +541,8 @@
   .mc-err { font-size: .85rem; color: var(--down); margin: 0; }
   .mc-msg { font-size: .85rem; color: var(--accent); margin: 0; }
   .mc-h { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .cpf { display: flex; flex-direction: column; gap: .25rem; font-size: .76rem; color: var(--muted); }
+  .cpf input, .cpf select { padding: .45rem .55rem; border-radius: 8px; border: 1px solid var(--border-2); background: var(--card-2); color: var(--text); font-size: .88rem; }
   .mc-ct { color: var(--text-dim); }
   .muted { color: var(--muted); font-size: .88rem; }
 
