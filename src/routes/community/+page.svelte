@@ -313,7 +313,7 @@
               { label: 'Holders', value: String(c.holders.length) },
               { label: 'Top level', value: c.top ? $t(LEVEL_LABEL[c.top]) : '—' }
             ]}
-            onclick={() => openCardType(c)}
+            onclick={() => openBadge(c)}
           />
         {/each}
       </div>
