@@ -64,28 +64,28 @@
       .select('id, slot_kind, req_access, quota, headcount, status, skill:skill_id(name), resource_type:resource_type_id(name)')
       .eq('project_id', projectId);
     const rawSlots = (sl as any[]) ?? [];
-    const slotIds = rawSlots.map((s) => s.id);
     const memMap: Record<string, { id: string; name: string; amount: number; unit: string }[]> = {};
-    const nominalBySlot: Record<string, number> = {};
-    if (slotIds.length) {
-      const { data: wc } = await supabase.from('work_commitment')
-        .select('slot_id, member_id, monthly_amount, nominal_str, member:member_id(full_name), resource:resource_id(unit)')
-        .in('slot_id', slotIds);
-      for (const w of (wc as any[]) ?? []) {
-        nominalBySlot[w.slot_id] = (nominalBySlot[w.slot_id] ?? 0) + (Number(w.nominal_str) || 0);
-        const arr = (memMap[w.slot_id] ??= []);
-        if (arr.some((m) => m.id === w.member_id)) continue;
-        arr.push({ id: w.member_id, name: w.member?.full_name ?? '—', amount: Number(w.monthly_amount) || 0, unit: w.resource?.unit ?? 'h' });
-      }
+    // pool = Σ nominal_str over the WHOLE project (by project_id), so legacy
+    // commitments migrated with a null slot_id still count — matching how a
+    // member's nominal is summed. Per-slot member lists still key on slot_id.
+    let pool = 0;
+    const { data: wc } = await supabase.from('work_commitment')
+      .select('slot_id, member_id, monthly_amount, nominal_str, member:member_id(full_name), resource:resource_id(unit)')
+      .eq('project_id', projectId);
+    for (const w of (wc as any[]) ?? []) {
+      pool += Number(w.nominal_str) || 0;
+      if (!w.slot_id) continue;
+      const arr = (memMap[w.slot_id] ??= []);
+      if (arr.some((m) => m.id === w.member_id)) continue;
+      arr.push({ id: w.member_id, name: w.member?.full_name ?? '—', amount: Number(w.monthly_amount) || 0, unit: w.resource?.unit ?? 'h' });
     }
-    let pool = 0, seatsTotal = 0, seatsFilled = 0, openNeeds = 0, hasLeader = false, leader = '';
+    let seatsTotal = 0, seatsFilled = 0, openNeeds = 0, hasLeader = false, leader = '';
     const slotList: Slot[] = [];
     for (const s of rawSlots) {
       const members = memMap[s.id] ?? [];
       slotList.push({ id: s.id, slot_kind: s.slot_kind, skill_name: s.skill?.name ?? null,
         resource_type_name: s.resource_type?.name ?? null, req_access: s.req_access,
         quota: s.quota, headcount: s.headcount ?? 1, status: s.status, members });
-      pool += nominalBySlot[s.id] ?? 0;
       const head = s.headcount ?? 1;
       seatsTotal += head; seatsFilled += Math.min(members.length, head);
       if (members.length < head) openNeeds++;

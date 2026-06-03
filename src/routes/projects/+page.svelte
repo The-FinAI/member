@@ -119,23 +119,24 @@
     // pull the full slot map (mirrors SlotBoard) for every project at once
     let slots: any[] = [];
     const memMap: Record<string, { id: string; name: string; amount: number; unit: string }[]> = {};
-    const nominalBySlot: Record<string, number> = {};
+    // pool = Σ nominal_str per project (by project_id) so legacy commitments
+    // migrated with a null slot_id still count — same way a member's nominal is
+    // summed. Per-slot member lists still key on slot_id.
+    const pool: Record<string, number> = {};
     if (pids.length) {
       const { data: sl } = await supabase.from('project_slot')
         .select('id, project_id, slot_kind, req_access, quota, headcount, status, skill:skill_id(name), resource_type:resource_type_id(name)')
         .in('project_id', pids);
       slots = (sl as any[]) ?? [];
-      const slotIds = slots.map((s) => s.id);
-      if (slotIds.length) {
-        const { data: wc } = await supabase.from('work_commitment')
-          .select('slot_id, member_id, monthly_amount, nominal_str, member:member_id(full_name), resource:resource_id(unit)')
-          .in('slot_id', slotIds);
-        for (const w of (wc as any[]) ?? []) {
-          nominalBySlot[w.slot_id] = (nominalBySlot[w.slot_id] ?? 0) + (Number(w.nominal_str) || 0);
-          const arr = (memMap[w.slot_id] ??= []);
-          if (arr.some((m) => m.id === w.member_id)) continue;
-          arr.push({ id: w.member_id, name: w.member?.full_name ?? '—', amount: Number(w.monthly_amount) || 0, unit: w.resource?.unit ?? 'h' });
-        }
+      const { data: wc } = await supabase.from('work_commitment')
+        .select('project_id, slot_id, member_id, monthly_amount, nominal_str, member:member_id(full_name), resource:resource_id(unit)')
+        .in('project_id', pids);
+      for (const w of (wc as any[]) ?? []) {
+        pool[w.project_id] = (pool[w.project_id] ?? 0) + (Number(w.nominal_str) || 0);
+        if (!w.slot_id) continue;
+        const arr = (memMap[w.slot_id] ??= []);
+        if (arr.some((m) => m.id === w.member_id)) continue;
+        arr.push({ id: w.member_id, name: w.member?.full_name ?? '—', amount: Number(w.monthly_amount) || 0, unit: w.resource?.unit ?? 'h' });
       }
     }
 
@@ -145,7 +146,6 @@
     const seatsFilled: Record<string, number> = {};
     const seatsTotal: Record<string, number> = {};
     const openNeeds: Record<string, number> = {};
-    const pool: Record<string, number> = {};
     const hasLeader: Record<string, boolean> = {};
     for (const s of slots) {
       const members = memMap[s.id] ?? [];
@@ -154,7 +154,6 @@
         resource_type_name: s.resource_type?.name ?? null, req_access: s.req_access,
         quota: s.quota, headcount: s.headcount ?? 1, status: s.status, members
       });
-      pool[s.project_id] = (pool[s.project_id] ?? 0) + (nominalBySlot[s.id] ?? 0);
       // every slot — leader (first-author seat) included — counts toward seats &
       // open needs, so an unfilled lead reads as 0/1 seats · 1 open need.
       const head = s.headcount ?? 1;
