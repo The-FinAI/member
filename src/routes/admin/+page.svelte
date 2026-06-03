@@ -22,10 +22,7 @@
 
   // ---- governance sections: { group, title, desc, href, caps[] } ----
   const SECTIONS = [
-    { group: 'People & access', title: PHASE2 ? 'Invite Members' : 'Invite Officers', desc: PHASE2 ? 'Pre-create members by email (invite-only)' : 'Phase 1: invite chapter chairs, secretaries & working-group leaders by email', href: '/admin/invites', caps: ['invite_members'] },
-    { group: 'People & access', title: 'Chapters & Working Groups', desc: 'Assign chairs, secretaries & leaders to the 3 chapters + 3 working groups', href: '/admin/org-units', caps: ['manage_members'] },
-    { group: 'People & access', title: 'Positions', desc: 'Community-level titles + ordering', href: '/admin/positions', caps: ['manage_members'] },
-    { group: 'People & access', title: 'Capabilities', desc: 'Grant capabilities to positions (permission matrix)', href: '/admin/capabilities', caps: ['manage_members'] },
+    { group: 'People & access', title: 'Officers & access', desc: 'Forge officers, assign them to chapters & working groups, and grant capabilities to positions', href: '/admin/access', caps: ['manage_members', 'invite_members'] },
     { group: 'People & access', title: 'Announcements', desc: 'Post, pin & retire the site-wide notice board', href: '/admin/announcements', caps: ['manage_members'] },
 
     { group: 'Projects', title: 'Project Types', desc: 'Dataset & Benchmark, Model, Agent…', href: '/admin/projects?tab=types', caps: ['manage_taxonomy'] },
