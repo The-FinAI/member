@@ -191,6 +191,10 @@ const zh: Table = {
   "Manage member cards": "管理成员",
   "No members yet — forge the first card.": "暂无成员 —— 先铸第一张卡。",
   "{n} members": "{n} 名成员",
+  "Email (to claim the card)": "邮箱(用于认领卡片)",
+  "Forging…": "铸造中…",
+  "Forge card": "铸卡",
+  "Name and email are required.": "姓名和邮箱为必填。",
   "Manage projects & slots": "管理项目与槽位",
   // ── Redesign: home overview台 + /profile manage surface ──
   "Community steward": "社区管理员",
