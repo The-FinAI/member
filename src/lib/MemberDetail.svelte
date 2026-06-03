@@ -184,7 +184,10 @@
       const { data: ce } = await supabase.rpc('manages_card', { p_card: memberId });
       canEdit = !!ce;
     }
-    canEditCatalog = canEdit || mineSelf;
+    // owners edit their own; chapter officers manage a card; admins with
+    // manage_members / manage_resources can edit any member's catalog.
+    canEditCatalog = canEdit || mineSelf
+      || $capabilities.has('manage_members') || $capabilities.has('manage_resources');
     // load the catalog for EVERYONE — visitors see a read-only "Resources" tab
     // (what this card can bring); editors get the full editor below.
     await loadCatalog(memberId);
@@ -233,7 +236,7 @@
 
   // in-page section nav (only the sections actually rendered, in DOM order)
   const sections = $derived([
-    ...(canEditCatalog || hasPublicResources ? [{ id: 'resources', label: 'Resources' }] : []),
+    { id: 'resources', label: 'Resources' },
     { id: 'stats', label: 'Overview' },
     { id: 'badges', label: 'Badges' },
     { id: 'projects', label: 'Projects' }
@@ -362,11 +365,12 @@
           <button onclick={addResource}>{$t('Add resource')}</button>
         </div>
       </div>
-    {:else if hasPublicResources}
+    {:else}
       <!-- read-only catalog for visitors: what this card can bring -->
       <div class="card stack" id="resources">
         <h2 style="margin:0;">{$t('What this card can bring')}</h2>
         <p class="muted" style="font-size:.82rem; margin-top:-.5rem;">{$t('Approved offerings — the monthly time and resources this card can commit to projects.')}</p>
+        {#if !hasPublicResources}<p class="muted">{$t('No resources offered yet.')}</p>{/if}
         {#if approvedLabor}
           <div class="row" style="justify-content:space-between; align-items:center; border:1px solid var(--border); border-radius:8px; padding:.5rem .75rem;">
             <strong style="font-size:.9rem;">⏱ {$t('Time')}</strong>
