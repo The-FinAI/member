@@ -4,7 +4,6 @@
 </script>
 
 <div class="stack">
-  <p><a href="/admin">← {$t('Admin')}</a></p>
   <h1>{$t('Venues')}</h1>
   <p class="muted" style="margin-top:-.75rem;">{@html $t('Conferences &amp; journals projects target — each with its next submission deadline.')}</p>
   <LookupEditor

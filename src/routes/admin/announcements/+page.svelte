@@ -71,7 +71,6 @@
 </script>
 
 <div class="stack">
-  <p><a href="/admin">← {$t('Admin')}</a></p>
   <h1>{$t('Announcements')}</h1>
   <p class="muted" style="margin-top:-.75rem;">
     {$t('Pinned notices show in a banner at the top of every page. Retire one to take it off the banner while keeping it for the record.')}

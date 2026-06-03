@@ -148,7 +148,6 @@
 </script>
 
 <div class="stack">
-  <p><a href="/admin">← {$t('Admin')}</a></p>
   <h1>{$t('Approvals')}</h1>
   <p class="muted" style="margin-top:-.75rem;">
     {$t('Every request waiting on a decision, in one place — member resources, badges, project milestones, chapter & working-group applications, and over-capacity monthly commitments.')}

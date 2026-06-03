@@ -104,7 +104,6 @@
 </script>
 
 <div class="stack">
-  <p><a href="/admin">← {$t('Admin')}</a></p>
   <h1>{$t('Community Resources')}</h1>
   <p class="muted" style="margin-top:-.75rem;">
     {$t('Resources owned by the community. Each is stewarded by a position-holder who is the point of contact. (Personal resources are added by members on their own profile.)')}

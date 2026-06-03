@@ -4,7 +4,6 @@
 </script>
 
 <div class="stack">
-  <p><a href="/admin">← {$t('Admin')}</a></p>
   <h1>{$t('Project Types')}</h1>
   <LookupEditor
     table="project_type"

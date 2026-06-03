@@ -56,7 +56,6 @@
 </script>
 
 <div class="stack">
-  <p><a href="/admin">← {$t('Admin')}</a></p>
   <h1>{$t('Capabilities')}</h1>
   <p class="muted" style="margin-top:-.75rem;">
     {$t('Grant capabilities to positions. A member gets the union of capabilities across their positions. Capability keys are referenced in code — descriptions are editable, keys are fixed.')}

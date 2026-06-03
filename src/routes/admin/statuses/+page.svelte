@@ -4,7 +4,6 @@
 </script>
 
 <div class="stack">
-  <p><a href="/admin">← {$t('Admin')}</a></p>
   <h1>{$t('Project Statuses')}</h1>
   <p class="muted" style="margin-top:-.75rem;">{$t('Workflow states. "Active" marks states still in flight.')}</p>
   <LookupEditor

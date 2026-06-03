@@ -90,7 +90,6 @@
 </script>
 
 <div class="stack">
-  <p><a href="/admin">← {$t('Admin')}</a></p>
   <h1>{$t('Skill Tree')}</h1>
   <p class="muted" style="margin-top:-.75rem;">
     {@html $t('Hierarchical skills. Leaves are certifiable crafts in <a href="/community?tab=badges">the Guild</a>; needs filter on these.')}

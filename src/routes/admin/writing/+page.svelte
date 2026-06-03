@@ -63,7 +63,6 @@
 </script>
 
 <div class="stack">
-  <p><a href="/admin">← {$t('Admin')}</a></p>
   <h1>{$t('First-author writing')}</h1>
   <p class="muted" style="margin-top:-.75rem;">
     {$t('Project leaders owe {n}h of first-author writing every month. These leaders are short for {month} — remind them by email.', { n: 20, month: monthLabel })}

@@ -66,7 +66,6 @@
 </script>
 
 <div class="stack">
-  <p><a href="/admin">← {$t('Admin')}</a></p>
   <h1>{PHASE2 ? $t('Invite members') : $t('Invite officers')}</h1>
   <p class="muted" style="margin-top:-.75rem;">
     {#if PHASE2}

@@ -4,7 +4,6 @@
 </script>
 
 <div class="stack">
-  <p><a href="/admin">← {$t('Admin')}</a></p>
   <h1>{$t('Resource Types')}</h1>
   <p class="muted" style="margin-top:-.75rem;">{$t('Categories of resources members and the community can offer. The valuation method decides how a monthly quantity is priced in USD, then minted to nominal STR: gpu = TFLOPs × hours, api = $/1M-tokens, usd = dollars, flat = quantity × USD-per-unit.')}</p>
   <LookupEditor

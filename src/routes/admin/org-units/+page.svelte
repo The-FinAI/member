@@ -97,7 +97,6 @@
 </script>
 
 <div class="stack">
-  <p><a href="/admin">← {$t('Admin')}</a></p>
   <h1>{$t('Chapters & Working Groups')}</h1>
   <p class="muted" style="margin-top:-.75rem;">
     {$t('Assign officers to each unit. Chapters carry a Chair and Secretary (who manage their members and act for member-cards); working groups carry a Leader.')}
