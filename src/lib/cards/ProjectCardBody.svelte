@@ -3,22 +3,18 @@
   import { t } from '$lib/i18n';
   import { get } from 'svelte/store';
   import SettlementForm from './SettlementForm.svelte';
+  import InlineField from './InlineField.svelte';
 
   // The editable project card: media links (many), free-form history, and the
   // editable core fields (name / summary / venue / working group). All writes
   // go through the project_* RPCs, which enforce leader / WG-officer / admin
   // and auto-log each change to history. Read-only when the viewer can't edit.
-  // `editing` and `canEdit` are bindable so the drawer can place the ✎ Edit
-  // button up in the meta row (next to the basic info) and drive this form.
-  let { projectId, venues = [], workingGroups = [], statuses = [], onChanged,
-        editing = $bindable(false), canEdit = $bindable(false) }: {
+  let { projectId, venues = [], workingGroups = [], statuses = [], onChanged }: {
     projectId: string;
     venues?: { id: string; name: string; kind: string; deadline: string | null }[];
     workingGroups?: { id: string; name: string }[];
     statuses?: { id: string; name: string; rank: number }[];
     onChanged?: () => void;
-    editing?: boolean;
-    canEdit?: boolean;
   } = $props();
 
   type Link = { id: string; kind: string; title: string | null; url: string; notes: string | null; created_at: string; member: { full_name: string } | null };
@@ -46,6 +42,7 @@
     dataset: '🗃', slides: '📊', drive: '📁', media: '🎞', other: '🔗'
   };
 
+  let canEdit = $state(false);
   let proj = $state<Proj | null>(null);
   let links = $state<Link[]>([]);
   let meetings = $state<Meeting[]>([]);
@@ -53,8 +50,16 @@
   let loading = $state(true);
   let busy = $state(''); let err = $state(''); let msg = $state('');
 
-  // edit-details form
-  let fName = $state(''); let fSummary = $state(''); let fVenue = $state(''); let fUnit = $state('');
+  // per-field inline save helpers — each RPC is gated server-side & logs history
+  async function rpcOrThrow(fn: string, args: Record<string, any>) {
+    const { error: e } = await supabase.rpc(fn, args);
+    if (e) throw new Error(e.message);
+    await load(); onChanged?.();
+  }
+  const saveName = (v: string) => rpcOrThrow('project_rename', { p_project: projectId, p_name: v.trim() });
+  const saveSummary = (v: string) => rpcOrThrow('project_set_summary', { p_project: projectId, p_summary: v.trim() || null });
+  const saveVenue = (v: string) => rpcOrThrow('project_set_venue', { p_project: projectId, p_venue: v || null });
+  const saveUnit = (v: string) => rpcOrThrow('project_set_org_unit', { p_project: projectId, p_unit: v || null });
   // add-link form
   let lKind = $state('paper'); let lTitle = $state(''); let lUrl = $state(''); let lNotes = $state('');
   let showAddLink = $state(false);
@@ -84,43 +89,6 @@
     meetings = (mt as Meeting[]) ?? [];
     events = (ev as Event[]) ?? [];
     loading = false;
-  }
-
-  // populate the form the moment editing turns on (it can be flipped from the
-  // drawer's meta-row Edit button, so we can't rely on a local click handler)
-  let formFor = '';
-  $effect(() => {
-    if (editing && proj && formFor !== proj.id) {
-      fName = proj.name; fSummary = proj.summary ?? '';
-      fVenue = proj.venue_id ?? ''; fUnit = proj.org_unit_id ?? '';
-      err = ''; formFor = proj.id;
-    }
-    if (!editing) formFor = '';
-  });
-
-  async function saveDetails() {
-    if (!proj) return;
-    busy = 'edit'; err = '';
-    try {
-      if (fName.trim() && fName.trim() !== proj.name) {
-        const { error: e } = await supabase.rpc('project_rename', { p_project: projectId, p_name: fName.trim() });
-        if (e) throw e;
-      }
-      if ((fSummary.trim() || null) !== (proj.summary ?? null)) {
-        const { error: e } = await supabase.rpc('project_set_summary', { p_project: projectId, p_summary: fSummary.trim() || null });
-        if (e) throw e;
-      }
-      if ((fVenue || null) !== (proj.venue_id ?? null)) {
-        const { error: e } = await supabase.rpc('project_set_venue', { p_project: projectId, p_venue: fVenue || null });
-        if (e) throw e;
-      }
-      if ((fUnit || null) !== (proj.org_unit_id ?? null)) {
-        const { error: e } = await supabase.rpc('project_set_org_unit', { p_project: projectId, p_unit: fUnit || null });
-        if (e) throw e;
-      }
-    } catch (e: any) { busy = ''; err = e.message ?? String(e); return; }
-    busy = ''; editing = false;
-    await load(); onChanged?.();
   }
 
   async function setStatus(statusId: string) {
@@ -232,42 +200,25 @@
   {#if err}<p class="pcb-err">{err}</p>{/if}
   {#if msg}<p class="pcb-ok">{msg}</p>{/if}
 
-  <!-- basic info — in place: chips when reading, inputs when the meta-row ✎
-       Edit is toggled on. -->
-  {#if editing && canEdit}
-    <div class="pcb-form pcb-basic">
-      <label class="pcb-field"><span>{$t('Name')}</span><input bind:value={fName} /></label>
-      <label class="pcb-field"><span>{$t('Summary')}</span><textarea rows="2" bind:value={fSummary} placeholder={$t('One-line description')}></textarea></label>
-      <div class="pcb-row">
-        <label class="pcb-field" style="flex:1;"><span>{$t('Target venue')}</span>
-          <select bind:value={fVenue}>
-            <option value="">{$t('— none —')}</option>
-            {#each venues as v}<option value={v.id}>{v.name}</option>{/each}
-          </select>
-        </label>
-        <label class="pcb-field" style="flex:1;"><span>{$t('Working Group')}</span>
-          <select bind:value={fUnit}>
-            <option value="">{$t('— unattributed —')}</option>
-            {#each workingGroups as w}<option value={w.id}>{w.name}</option>{/each}
-          </select>
-        </label>
-      </div>
-      <div class="pcb-actions">
-        <button type="button" class="pcb-go" disabled={busy === 'edit'} onclick={saveDetails}>
-          {#if busy === 'edit'}<span class="spin"></span>{/if}{$t('Save')}
-        </button>
-        <button type="button" class="pcb-ghost" onclick={() => (editing = false)}>{$t('Cancel')}</button>
-      </div>
+  <!-- basic info — each field edits in place (✎ icon or double-click) -->
+  <div class="pcb-basic">
+    <InlineField label={$t('Summary')} type="textarea" {canEdit}
+      value={proj?.summary ?? ''} placeholder={$t('One-line description')} onSave={saveSummary} />
+    <div class="pcb-basic-grid">
+      <InlineField label={$t('Target venue')} type="select" {canEdit}
+        value={proj?.venue_id ?? ''} display={curVenueName}
+        options={[{ value: '', label: get(t)('— none —') }, ...venues.map((v) => ({ value: v.id, label: v.name }))]}
+        onSave={saveVenue} />
+      <InlineField label={$t('Working Group')} type="select" {canEdit}
+        value={proj?.org_unit_id ?? ''} display={curWgName}
+        options={[{ value: '', label: get(t)('— unattributed —') }, ...workingGroups.map((w) => ({ value: w.id, label: w.name }))]}
+        onSave={saveUnit} />
     </div>
-  {:else if proj?.summary || curWgName || curVenueName}
-    <div class="pcb-basic-read">
-      {#if proj?.summary}<p class="pcb-summary">{proj.summary}</p>{/if}
-      <div class="pcb-readchips">
-        {#if curWgName}<span class="pcb-rchip">{curWgName}</span>{/if}
-        {#if curVenueName}<span class="pcb-rchip">{curVenueName}</span>{/if}
-      </div>
-    </div>
-  {/if}
+    {#if canEdit}
+      <InlineField label={$t('Name')} type="text" {canEdit}
+        value={proj?.name ?? ''} placeholder={$t('Project / paper name')} onSave={saveName} />
+    {/if}
+  </div>
 
   <!-- status flow: a linear pipeline; completion only from Under review, via
        the reviewed Mint-done path; settlement opens once Finished. -->
@@ -496,17 +447,10 @@
     border-radius: 10px; background: color-mix(in srgb, var(--up) 8%, transparent); margin-top: .3rem;
   }
   .pcb-settle-h { font-weight: 600; color: var(--text); }
-  .pcb-basic { padding-top: 0; }
-  .pcb-basic-read { display: flex; flex-direction: column; gap: .5rem; }
-  .pcb-summary { margin: 0; font-size: .9rem; line-height: 1.5; color: var(--text); }
-  .pcb-readchips { display: flex; flex-wrap: wrap; gap: .4rem; }
-  .pcb-rchip { font-size: .76rem; color: var(--text-dim); background: var(--card-2); border: 1px solid var(--border); border-radius: 999px; padding: .15rem .55rem; }
+  .pcb-basic { display: flex; flex-direction: column; gap: .6rem; }
+  .pcb-basic-grid { display: flex; flex-wrap: wrap; gap: .6rem 1.2rem; }
+  .pcb-basic-grid > :global(.if-row) { flex: 1; min-width: 9rem; }
   .pcb-status-row { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
-  .pcb-status-row select {
-    padding: .4rem .55rem; border-radius: 8px; border: 1px solid var(--border-2);
-    background: var(--card-2); color: var(--text); font-size: .88rem;
-  }
-  .pcb-cur { font-size: .9rem; color: var(--text); font-weight: 600; }
   .pcb-hint { font-size: .72rem; color: var(--muted); }
   .pcb-link { background: transparent; border: 0; color: var(--accent); font: inherit; font-size: .8rem; cursor: pointer; padding: 0; }
   .pcb-link:hover { text-decoration: underline; }
@@ -515,18 +459,16 @@
   .pcb-form { display: flex; flex-direction: column; gap: .5rem; padding: .2rem 0 .2rem; }
   .pcb-row { display: flex; gap: .5rem; flex-wrap: wrap; }
   .pcb-field { display: flex; flex-direction: column; gap: .25rem; font-size: .76rem; color: var(--muted); }
-  .pcb-field input, .pcb-field select, .pcb-field textarea {
+  .pcb-field input, .pcb-field select {
     padding: .45rem .55rem; border-radius: 8px; border: 1px solid var(--border-2);
     background: var(--card-2); color: var(--text); font-size: .88rem; font-family: inherit;
   }
-  .pcb-actions { display: flex; gap: .5rem; }
   .pcb-go {
     align-self: flex-start; padding: .45rem .85rem; border-radius: 8px; border: 1px solid transparent;
     background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer;
     display: inline-flex; align-items: center; gap: .4rem;
   }
   .pcb-go:disabled { opacity: .55; cursor: not-allowed; }
-  .pcb-ghost { padding: .45rem .85rem; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text); font: inherit; cursor: pointer; }
 
   .pcb-links { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .35rem; }
   .pcb-link-row { display: flex; align-items: center; gap: .55rem; padding: .4rem .5rem; border: 1px solid var(--border); border-radius: 9px; background: var(--card); }
