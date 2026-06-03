@@ -168,22 +168,26 @@
     slotsByProject = byP;
 
     grid = projects.map((p) => {
+      // PostgREST can return an embedded to-one as an array when the target
+      // table has multiple FKs from this row (project → project_status via
+      // status_id AND held_from_status_id). Normalise to a single object.
+      const ps = Array.isArray(p.project_status) ? p.project_status[0] : p.project_status;
       // defensive: normalise away any invisible junk (zero-width, nbsp, BOM)
       // so name-based comparisons (statusClass / Hold chip) stay reliable.
-      const statusName = (p.project_status?.name ?? '—')
+      const statusName = (ps?.name ?? '—')
         .replace(/[ - ​-‍⁠﻿]/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
       const finished = statusName.toLowerCase() === 'finished';
       // is_active is the real source of truth for "still in play" — Finished
       // and Hold are both is_active=false in project_status.
-      const active = p.project_status?.is_active !== false;
+      const active = ps?.is_active !== false;
       return {
         id: p.id,
         name: p.name,
         type: p.project_type?.name ?? '—',
         status: statusName,
-        statusRank: p.project_status?.rank ?? 999,
+        statusRank: ps?.rank ?? 999,
         venue: p.venue?.name ?? p.target_venue ?? '',
         venueKind: p.venue?.kind ?? '',
         deadline: p.deadline ?? p.venue?.deadline ?? null,
