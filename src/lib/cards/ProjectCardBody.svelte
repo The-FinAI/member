@@ -47,7 +47,12 @@
   let links = $state<Link[]>([]);
   let meetings = $state<Meeting[]>([]);
   let events = $state<Event[]>([]);
+  let catalog = $state<{ id: string; category: string; item: string; nominal_value: number; multiplier_bonus: number }[]>([]);
+  let milestones = $state<{ id: string; status: string; nominal_value: number; multiplier_bonus: number; catalog: { item: string } | null }[]>([]);
+  let mClaim = $state('');
   let loading = $state(true);
+  const MST_CLASS: Record<string, string> = { verified: 'pos', claimed: 'dim', under_review: 'warn', rejected: 'down', revoked: 'down', expired: 'dim' };
+  const MST_LABEL: Record<string, string> = { verified: 'Verified', claimed: 'Claimed', under_review: 'Under review', rejected: 'Rejected', revoked: 'Revoked', expired: 'Expired' };
   let busy = $state(''); let err = $state(''); let msg = $state('');
 
   // per-field inline save helpers — each RPC is gated server-side & logs history
@@ -76,19 +81,33 @@
   async function load() {
     if (!supabaseConfigured) { loading = false; return; }
     loading = true; err = '';
-    const [{ data: p }, { data: ce }, { data: lk }, { data: mt }, { data: ev }] = await Promise.all([
+    const [{ data: p }, { data: ce }, { data: lk }, { data: mt }, { data: ev }, { data: cat }, { data: pm }] = await Promise.all([
       supabase.from('project').select('id, name, summary, venue_id, org_unit_id, status_id, held_from_status_id, project_status:status_id(name)').eq('id', projectId).maybeSingle(),
       supabase.rpc('can_edit_project', { p_project: projectId }),
       supabase.from('project_link').select('id, kind, title, url, notes, created_at, member:added_by(full_name)').eq('project_id', projectId).order('created_at', { ascending: false }),
       supabase.from('project_meeting').select('id, title, scheduled_at, ends_at, location, agenda, recurrence, member:created_by(full_name)').eq('project_id', projectId).order('scheduled_at', { ascending: false }),
-      supabase.from('project_event').select('id, event_type, summary, created_at, member:actor_member_id(full_name)').eq('project_id', projectId).order('created_at', { ascending: false }).limit(40)
+      supabase.from('project_event').select('id, event_type, summary, created_at, member:actor_member_id(full_name)').eq('project_id', projectId).order('created_at', { ascending: false }).limit(40),
+      supabase.from('milestone_catalog').select('id, category, item, nominal_value, multiplier_bonus').eq('is_active', true).order('rank'),
+      supabase.from('project_milestone').select('id, status, nominal_value, multiplier_bonus, catalog:catalog_id(item)').eq('project_id', projectId).order('created_at', { ascending: false })
     ]);
     proj = (p as Proj) ?? null;
     canEdit = ce === true;
     links = (lk as Link[]) ?? [];
     meetings = (mt as Meeting[]) ?? [];
     events = (ev as Event[]) ?? [];
+    catalog = (cat as any[]) ?? [];
+    milestones = (pm as any[]) ?? [];
     loading = false;
+  }
+
+  async function claimMilestone() {
+    if (!mClaim) return;
+    busy = 'milestone'; err = ''; msg = '';
+    const { error: e } = await supabase.rpc('forge_milestone', { p_project: projectId, p_catalog: mClaim });
+    busy = '';
+    if (e) { err = e.message; return; }
+    msg = get(t)('Milestone claimed — pending verification.'); mClaim = '';
+    await load(); onChanged?.();
   }
 
   async function setStatus(statusId: string) {
@@ -381,6 +400,33 @@
     {/if}
   </div>
 
+  <!-- milestones (output axis: grow the pool + lift the multiplier) -->
+  <div class="pcb-section">
+    <span class="pcb-h">{$t('Milestones')}</span>
+    {#if milestones.length}
+      <ul class="pcb-mst">
+        {#each milestones as m (m.id)}
+          <li>
+            <span class="mst-item">{$t(m.catalog?.item ?? '—')}</span>
+            <span class="mst-val">+{m.nominal_value} {$t('nominal')} · ×{(1 + Number(m.multiplier_bonus)).toFixed(3)}</span>
+            <span class="badge {MST_CLASS[m.status] ?? 'dim'}">{$t(MST_LABEL[m.status] ?? m.status)}</span>
+          </li>
+        {/each}
+      </ul>
+    {:else}
+      <p class="pcb-muted">{$t('No milestones claimed yet.')}</p>
+    {/if}
+    {#if canEdit && !isFinishedProj}
+      <div class="pcb-mst-claim">
+        <select bind:value={mClaim}>
+          <option value="">{$t('Claim a milestone…')}</option>
+          {#each catalog as c (c.id)}<option value={c.id}>{c.item} (+{c.nominal_value} · ×{(1 + Number(c.multiplier_bonus)).toFixed(3)})</option>{/each}
+        </select>
+        <button type="button" class="pcb-link" disabled={busy === 'milestone' || !mClaim} onclick={claimMilestone}>{$t('Claim')}</button>
+      </div>
+    {/if}
+  </div>
+
   <!-- history -->
   <div class="pcb-section">
     <span class="pcb-h">{$t('History')}</span>
@@ -455,6 +501,12 @@
   .pcb-link { background: transparent; border: 0; color: var(--accent); font: inherit; font-size: .8rem; cursor: pointer; padding: 0; }
   .pcb-link:hover { text-decoration: underline; }
   .pcb-muted { font-size: .82rem; color: var(--muted); margin: 0; }
+  .pcb-mst { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .35rem; }
+  .pcb-mst li { display: flex; align-items: center; gap: .6rem; padding: .4rem .6rem; border: 1px solid var(--border); border-radius: 8px; background: var(--card); }
+  .mst-item { flex: 1; font-size: .86rem; color: var(--text); font-weight: 500; }
+  .mst-val { font-size: .76rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .pcb-mst-claim { display: flex; gap: .4rem; align-items: center; margin-top: .2rem; }
+  .pcb-mst-claim select { flex: 1; padding: .4rem .55rem; border-radius: 8px; border: 1px solid var(--border-2); background: var(--card-2); color: var(--text); font-size: .85rem; }
 
   .pcb-form { display: flex; flex-direction: column; gap: .5rem; padding: .2rem 0 .2rem; }
   .pcb-row { display: flex; gap: .5rem; flex-wrap: wrap; }
