@@ -667,8 +667,8 @@
         <p class="muted" style="font-size:.82rem; margin:0;">{$t('This project isn’t attributed to a working group yet.')}</p>
       {/if}
 
-      <!-- editable details · media links · history -->
-      <ProjectCardBody projectId={r.id} {venues} {workingGroups} onChanged={refreshSel} />
+      <!-- editable details · status · media links · meetings · history -->
+      <ProjectCardBody projectId={r.id} {venues} {workingGroups} {statuses} onChanged={refreshSel} />
     </div>
     {#snippet actions()}
       {#if canManageSel && r.wgUnitId}

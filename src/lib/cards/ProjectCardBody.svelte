@@ -7,17 +7,25 @@
   // editable core fields (name / summary / venue / working group). All writes
   // go through the project_* RPCs, which enforce leader / WG-officer / admin
   // and auto-log each change to history. Read-only when the viewer can't edit.
-  let { projectId, venues = [], workingGroups = [], onChanged }: {
+  let { projectId, venues = [], workingGroups = [], statuses = [], onChanged }: {
     projectId: string;
     venues?: { id: string; name: string; kind: string; deadline: string | null }[];
     workingGroups?: { id: string; name: string }[];
+    statuses?: { id: string; name: string; rank: number }[];
     onChanged?: () => void;
   } = $props();
 
   type Link = { id: string; kind: string; title: string | null; url: string; notes: string | null; created_at: string; member: { full_name: string } | null };
   type Meeting = { id: string; title: string; scheduled_at: string; ends_at: string | null; location: string | null; agenda: string | null; recurrence: string; member: { full_name: string } | null };
   type Event = { id: string; event_type: string; summary: string; created_at: string; member: { full_name: string } | null };
-  type Proj = { id: string; name: string; summary: string | null; venue_id: string | null; org_unit_id: string | null };
+  type Proj = { id: string; name: string; summary: string | null; venue_id: string | null; org_unit_id: string | null; status_id: string | null; project_status: { name: string } | { name: string }[] | null };
+  // direct status changes never set Finished (that's the reviewed Mint-done flow)
+  const statusOptions = $derived(statuses.filter((s) => s.name !== 'Finished').sort((a, b) => a.rank - b.rank));
+  const curStatusName = $derived.by(() => {
+    const ps = proj?.project_status;
+    return (Array.isArray(ps) ? ps[0]?.name : ps?.name) ?? '';
+  });
+  const isFinishedProj = $derived(curStatusName === 'Finished');
 
   const LINK_KINDS = ['proposal', 'overleaf', 'openreview', 'paper', 'repo', 'dataset', 'slides', 'drive', 'media', 'other'];
   const KIND_ICON: Record<string, string> = {
@@ -51,7 +59,7 @@
     if (!supabaseConfigured) { loading = false; return; }
     loading = true; err = '';
     const [{ data: p }, { data: ce }, { data: lk }, { data: mt }, { data: ev }] = await Promise.all([
-      supabase.from('project').select('id, name, summary, venue_id, org_unit_id').eq('id', projectId).maybeSingle(),
+      supabase.from('project').select('id, name, summary, venue_id, org_unit_id, status_id, project_status:status_id(name)').eq('id', projectId).maybeSingle(),
       supabase.rpc('can_edit_project', { p_project: projectId }),
       supabase.from('project_link').select('id, kind, title, url, notes, created_at, member:added_by(full_name)').eq('project_id', projectId).order('created_at', { ascending: false }),
       supabase.from('project_meeting').select('id, title, scheduled_at, ends_at, location, agenda, recurrence, member:created_by(full_name)').eq('project_id', projectId).order('scheduled_at', { ascending: false }),
@@ -94,6 +102,15 @@
       }
     } catch (e: any) { busy = ''; err = e.message ?? String(e); return; }
     busy = ''; editing = false;
+    await load(); onChanged?.();
+  }
+
+  async function setStatus(statusId: string) {
+    if (!statusId || statusId === proj?.status_id) return;
+    busy = 'status'; err = '';
+    const { error: e } = await supabase.rpc('project_set_status', { p_project: projectId, p_status: statusId });
+    busy = '';
+    if (e) { err = e.message; return; }
     await load(); onChanged?.();
   }
 
@@ -175,6 +192,24 @@
 
 {#if !loading}
   {#if err}<p class="pcb-err">{err}</p>{/if}
+
+  <!-- status transition (non-terminal; Finished goes through Mint done) -->
+  {#if statusOptions.length}
+    <div class="pcb-section pcb-status">
+      <span class="pcb-h">{$t('Status')}</span>
+      {#if canEdit && !isFinishedProj}
+        <div class="pcb-status-row">
+          <select value={proj?.status_id ?? ''} disabled={busy === 'status'} onchange={(e) => setStatus(e.currentTarget.value)}>
+            {#each statusOptions as s}<option value={s.id}>{$t(s.name)}</option>{/each}
+          </select>
+          {#if busy === 'status'}<span class="spin"></span>{/if}
+          <span class="pcb-hint">{$t('Completion → use Mint done (review)')}</span>
+        </div>
+      {:else}
+        <span class="pcb-cur">{$t(curStatusName || '—')}</span>
+      {/if}
+    </div>
+  {/if}
 
   <!-- editable core fields -->
   {#if canEdit}
@@ -334,6 +369,13 @@
   .pcb-h-row { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
   .pcb-h { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .pcb-ct { color: var(--text-dim); }
+  .pcb-status-row { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+  .pcb-status-row select {
+    padding: .4rem .55rem; border-radius: 8px; border: 1px solid var(--border-2);
+    background: var(--card-2); color: var(--text); font-size: .88rem;
+  }
+  .pcb-cur { font-size: .9rem; color: var(--text); font-weight: 600; }
+  .pcb-hint { font-size: .72rem; color: var(--muted); }
   .pcb-link { background: transparent; border: 0; color: var(--accent); font: inherit; font-size: .8rem; cursor: pointer; padding: 0; }
   .pcb-link:hover { text-decoration: underline; }
   .pcb-muted { font-size: .82rem; color: var(--muted); margin: 0; }
