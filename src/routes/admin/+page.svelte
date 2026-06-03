@@ -54,8 +54,8 @@
   let pendingForge = $state(0), pendingCommits = $state(0), pendingSettlements = $state(0), pendingUnitApps = $state(0);
 
   const review = $derived([
-    canForge ? { title: 'Forge queue', desc: 'Badges, member cards, needs, resources, over-capacity commitments & settlements', href: '/admin/forge-queue', n: pendingForge + pendingCommits + pendingSettlements } : null,
-    canUnits ? { title: 'Unit applications', desc: 'Members applying to join a chapter or working group', href: '/admin/approvals', n: pendingUnitApps } : null
+    canForge ? { title: 'Forge queue', desc: 'Badges, member cards, needs, resources, over-capacity commitments & settlements', href: '/admin/review?tab=forge', n: pendingForge + pendingCommits + pendingSettlements } : null,
+    canUnits ? { title: 'Unit applications', desc: 'Members applying to join a chapter or working group', href: '/admin/review?tab=units', n: pendingUnitApps } : null
   ].filter(Boolean) as { title: string; desc: string; href: string; n: number }[]);
 
   async function load() {
