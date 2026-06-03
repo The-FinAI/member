@@ -1,11 +1,12 @@
 <script lang="ts">
   import { supabase, supabaseConfigured } from '$lib/supabase';
-  import { capabilities, officerUnits } from '$lib/session';
+  import { capabilities, officerUnits, member } from '$lib/session';
   import { t } from '$lib/i18n';
   import { get } from 'svelte/store';
   import ProjectSlotCard, { type Slot } from './ProjectSlotCard.svelte';
   import SlotSeater from './SlotSeater.svelte';
   import ProjectCardBody from './ProjectCardBody.svelte';
+  import ResourceForgeForm from '$lib/resources/ResourceForgeForm.svelte';
 
   // Shared body for a single project — used by the /projects/[id] page and the
   // projects-grid quick-view drawer, so the page mirrors the drawer (like
@@ -23,10 +24,11 @@
     wg: string; wgUnitId: string | null; leader: string;
     seatsFilled: number; seatsTotal: number; openNeeds: number; pool: number;
     summary: string | null; finished: boolean; claimable: boolean;
-    mult: number; milestoneNominal: number;
+    mult: number; milestoneNominal: number; leaderId: string | null;
   };
   let g = $state<G | null>(null);
   let slots = $state<Slot[]>([]);
+  let showPostNeed = $state(false);
   let venues = $state<{ id: string; name: string; kind: string; deadline: string | null }[]>([]);
   let workingGroups = $state<{ id: string; name: string }[]>([]);
   let statuses = $state<{ id: string; name: string; rank: number }[]>([]);
@@ -41,6 +43,8 @@
     if ($capabilities.has('edit_any_project')) return true;
     return !!g.wgUnitId && $officerUnits.some((u) => u.unit_id === g.wgUnitId);
   });
+  // a WG officer OR the project's leader (first author) may post needs
+  const canPostNeed = $derived(canManage || (!!g?.leaderId && $member?.id === g.leaderId));
 
   async function load() {
     if (!supabaseConfigured) { loading = false; return; }
@@ -88,7 +92,7 @@
     for (const m of (vms as any[]) ?? []) { mNominal += Number(m.nominal_value) || 0; mBonus += Number(m.multiplier_bonus) || 0; }
     pool += mNominal;
     const mult = Math.min(1 + mBonus, 3);
-    let seatsTotal = 0, seatsFilled = 0, openNeeds = 0, hasLeader = false, leader = '';
+    let seatsTotal = 0, seatsFilled = 0, openNeeds = 0, hasLeader = false, leader = '', leaderId: string | null = null;
     const slotList: Slot[] = [];
     for (const s of rawSlots) {
       const members = memMap[s.id] ?? [];
@@ -98,7 +102,7 @@
       const head = s.headcount ?? 1;
       seatsTotal += head; seatsFilled += Math.min(members.length, head);
       if (members.length < head) openNeeds++;
-      if (s.slot_kind === 'leader' && members.length) { hasLeader = true; leader = members[0].name; }
+      if (s.slot_kind === 'leader' && members.length) { hasLeader = true; leader = members[0].name; leaderId = members[0].id; }
     }
     slots = slotList;
 
@@ -109,7 +113,7 @@
       venue: p.venue?.name ?? p.target_venue ?? '', venueKind: p.venue?.kind ?? '',
       deadline: p.deadline ?? p.venue?.deadline ?? null,
       wg: (p.org_unit_id && unitName[p.org_unit_id]) || '', wgUnitId: p.org_unit_id ?? null,
-      leader, seatsFilled, seatsTotal, openNeeds, pool, summary: p.summary ?? null,
+      leader, leaderId, seatsFilled, seatsTotal, openNeeds, pool, summary: p.summary ?? null,
       finished, claimable: !hasLeader && !finished, mult, milestoneNominal: mNominal
     };
     loading = false;
@@ -176,6 +180,19 @@
       <ProjectSlotCard project={{ id: g.id, name: g.name, status: g.status, deadline: g.deadline }} {slots} canManage={false} />
     </div>
 
+    {#if canPostNeed && !g.finished}
+      <div class="pd-section">
+        <button type="button" class="pd-postneed-toggle" onclick={() => (showPostNeed = !showPostNeed)}>
+          ＋ {$t('Post a need')}<span class="muted"> · {$t('skill (with level) or a resource the project needs')}</span>
+        </button>
+        {#if showPostNeed}
+          <div class="card" style="padding:1rem;">
+            <ResourceForgeForm mode="need" project={g.id} onForged={() => { showPostNeed = false; reload(); }} />
+          </div>
+        {/if}
+      </div>
+    {/if}
+
     {#if canSeat && !g.finished}
       <SlotSeater projectId={g.id} projectName={g.name} onSeated={reload} />
     {/if}
@@ -211,4 +228,6 @@
   .pd-h { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .pd-btn { align-self: flex-start; display: inline-flex; align-items: center; gap: .3rem; padding: .5rem .9rem; background: var(--accent); color: #fff; border: 1px solid transparent; border-radius: 8px; text-decoration: none; font-weight: 600; }
   .pd-btn.ghost { background: transparent; color: var(--accent); border-color: var(--border); }
+  .pd-postneed-toggle { align-self: flex-start; background: transparent; border: 0; padding: 0; cursor: pointer; font: inherit; color: var(--accent); font-weight: 600; }
+  .pd-postneed-toggle:hover { text-decoration: underline; }
 </style>

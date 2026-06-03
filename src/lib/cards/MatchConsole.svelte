@@ -4,6 +4,7 @@
   import { t } from '$lib/i18n';
   import { get } from 'svelte/store';
   import ForgeCard from './ForgeCard.svelte';
+  import ResourceForgeForm from '$lib/resources/ResourceForgeForm.svelte';
   import BadgeTree from './BadgeTree.svelte';
 
   // Officer console — a global matching desk. The officer's job is to pair
@@ -536,8 +537,8 @@
       <header class="d-head"><span>{$t('Post need')} · {postNeedFor.name}</span>
         <button type="button" class="x" onclick={() => (postNeedFor = null)}>✕</button></header>
       <div class="d-body">
-        <ForgeCard mode="need" {skills} resourceTypes={resTypes} busy={busy === 'need'}
-          onSubmit={postNeed} onCancel={() => (postNeedFor = null)} />
+        <ResourceForgeForm mode="need" project={postNeedFor.id}
+          onForged={() => { postNeedFor = null; msg = get(t)('Need submitted for review.'); load(unitId); }} />
       </div>
     </aside>
   {/if}

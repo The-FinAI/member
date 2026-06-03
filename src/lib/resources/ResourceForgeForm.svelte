@@ -12,9 +12,15 @@
   // override; a labour type (flat · hour) → per-skill level picker. Always goes
   // through forge_resource (→ review queue). Used by the member profile and the
   // community resources console.
-  let { holder = $bindable(''), scope = 'member', holderPicker = false, members = [], onForged }:
+  // mode 'supply' → forge a resource someone HOLDS (forge_resource).
+  // mode 'need'   → post a project NEED for that same kind of resource/skill
+  //                 (forge_need). Same type-adaptive shape, so supply and demand
+  //                 are declared in one vocabulary.
+  let { holder = $bindable(''), scope = 'member', holderPicker = false, members = [],
+        mode = 'supply', project = '', onForged }:
     { holder?: string; scope?: 'member' | 'community'; holderPicker?: boolean;
-      members?: { id: string; full_name: string }[]; onForged?: () => void } = $props();
+      members?: { id: string; full_name: string }[];
+      mode?: 'supply' | 'need'; project?: string; onForged?: () => void } = $props();
 
   type ResType = { id: string; name: string; unit: string | null; valuation_method: string; usd_per_unit: number | null };
   type Gpu = { id: string; name: string; tflops: number };
@@ -29,6 +35,7 @@
   let fType = $state(''), fName = $state(''), fQuota = $state(0);
   let fUsd = $state<number | null>(null), fGpu = $state(''), fApi = $state('');
   let fSkillLevels = $state<Record<string, string>>({});
+  let fHeadcount = $state(1);
 
   const selType = $derived(types.find((x) => x.id === fType) ?? null);
   const meth = $derived(selType?.valuation_method ?? '');
@@ -64,9 +71,34 @@
   }
   onMount(load);
 
-  function reset() { fName = ''; fQuota = 0; fUsd = null; fGpu = ''; fApi = ''; fSkillLevels = {}; lastHolder = ''; }
+  function reset() { fName = ''; fQuota = 0; fUsd = null; fGpu = ''; fApi = ''; fSkillLevels = {}; fHeadcount = 1; lastHolder = ''; }
+
+  async function postNeed() {
+    error = ''; ok = '';
+    if (!fType) { error = get(t)('Pick a type.'); return; }
+    const reqs = isLabour
+      ? Object.entries(fSkillLevels).map(([skill_id, level]) => ({ skill_id, min_level: level }))
+      : [];
+    if (isLabour && reqs.length === 0) { error = get(t)('Pick at least one skill.'); return; }
+    busy = true;
+    const { error: err } = await supabase.rpc('forge_need', {
+      p_project: project,
+      p_slot_kind: isLabour ? 'work_labor' : 'work_resource',
+      p_req_access: isLabour ? (reqs[0]?.min_level ?? null) : null,
+      p_skill: isLabour ? (reqs[0]?.skill_id ?? null) : null,
+      p_resource_type: isLabour ? null : fType,
+      p_quota: Number(fQuota) || null,
+      p_headcount: Number(fHeadcount) || 1,
+      p_requirements: reqs
+    });
+    busy = false;
+    if (err) { error = err.message; return; }
+    ok = get(t)('Need submitted for review.'); reset();
+    onForged?.();
+  }
 
   async function forge() {
+    if (mode === 'need') { await postNeed(); return; }
     error = ''; ok = '';
     if (!fType || !fName.trim() || !holder) { error = get(t)('Type, name and holder are required.'); return; }
     if (meth === 'gpu' && !fGpu) { error = get(t)('Pick a GPU model.'); return; }
@@ -95,35 +127,41 @@
   <label><span>{$t('Type')}</span>
     <select bind:value={fType}><option value="">—</option>{#each types as ty (ty.id)}<option value={ty.id}>{ty.name}</option>{/each}</select>
   </label>
-  <label><span>{$t('Name')}</span><input bind:value={fName} /></label>
-  {#if holderPicker}
-    <label><span>{$t('Holder (steward)')}</span>
-      <select bind:value={holder}><option value="">—</option>{#each members as m (m.id)}<option value={m.id}>{m.full_name}</option>{/each}</select>
-    </label>
+  {#if mode === 'supply'}
+    <label><span>{$t('Name')}</span><input bind:value={fName} /></label>
+    {#if holderPicker}
+      <label><span>{$t('Holder (steward)')}</span>
+        <select bind:value={holder}><option value="">—</option>{#each members as m (m.id)}<option value={m.id}>{m.full_name}</option>{/each}</select>
+      </label>
+    {/if}
+
+    {#if meth === 'gpu'}
+      <label><span>{$t('GPU model')}</span>
+        <select bind:value={fGpu}><option value="">—</option>{#each gpus as g (g.id)}<option value={g.id}>{g.name} · {g.tflops} TFLOPs</option>{/each}</select>
+      </label>
+    {:else if meth === 'api'}
+      <label><span>{$t('API model')}</span>
+        <select bind:value={fApi}><option value="">—</option>{#each apis as a (a.id)}<option value={a.id}>{a.provider} {a.name} · ${a.usd_per_million}/1M</option>{/each}</select>
+      </label>
+    {/if}
   {/if}
 
-  {#if meth === 'gpu'}
-    <label><span>{$t('GPU model')}</span>
-      <select bind:value={fGpu}><option value="">—</option>{#each gpus as g (g.id)}<option value={g.id}>{g.name} · {g.tflops} TFLOPs</option>{/each}</select>
-    </label>
-  {:else if meth === 'api'}
-    <label><span>{$t('API model')}</span>
-      <select bind:value={fApi}><option value="">—</option>{#each apis as a (a.id)}<option value={a.id}>{a.provider} {a.name} · ${a.usd_per_million}/1M</option>{/each}</select>
-    </label>
+  <label><span>{mode === 'need' ? $t('Quota / month') : $t('Monthly quota')}<span class="muted"> · {quotaUnit}</span></span><input type="number" step="any" bind:value={fQuota} style="max-width:8rem;" /></label>
+
+  {#if mode === 'need'}
+    <label><span>{$t('Headcount')}</span><input type="number" min="1" step="1" bind:value={fHeadcount} style="max-width:5rem;" /></label>
   {/if}
 
-  <label><span>{$t('Monthly quota')}<span class="muted"> · {quotaUnit}</span></span><input type="number" step="any" bind:value={fQuota} style="max-width:8rem;" /></label>
-
-  {#if meth === 'flat' && !isLabour}
+  {#if mode === 'supply' && meth === 'flat' && !isLabour}
     <label><span>{$t('USD / unit')}<span class="muted"> · {selType?.usd_per_unit != null ? $t('default {n}', { n: selType.usd_per_unit }) : ''}</span></span>
       <input type="number" step="any" bind:value={fUsd} placeholder={selType?.usd_per_unit != null ? String(selType.usd_per_unit) : ''} style="max-width:6rem;" /></label>
   {/if}
 
-  <button class="go" onclick={forge} disabled={busy}>{busy ? $t('Forging…') : $t('Forge resource')}</button>
+  <button class="go" onclick={forge} disabled={busy}>{busy ? $t('Working…') : mode === 'need' ? $t('Post need') : $t('Forge resource')}</button>
 
   {#if isLabour}
     <div class="skills-row">
-      <span class="skills-h">{$t('Skills & level these hours can fill')}<span class="muted"> · {$t('set each skill’s rank; a holder = you defaults to your badges')}</span></span>
+      <span class="skills-h">{mode === 'need' ? $t('Required skills & levels') : $t('Skills & level these hours can fill')}<span class="muted"> · {mode === 'need' ? $t('a contributor must meet every skill') : $t('set each skill’s rank; a holder = you defaults to your badges')}</span></span>
       <SkillLevelPicker bind:value={fSkillLevels} />
     </div>
   {/if}
