@@ -287,7 +287,9 @@
     let out = grid.filter((r) =>
       !r.finished &&
       (!typeFilter || r.type === typeFilter) &&
-      (!statusFilter || r.status === statusFilter) &&
+      // Finished → Hall of fame; Hold (paused) is parked out of the default
+      // "All" view too, but stays one click away via its own status chip.
+      (statusFilter ? r.status === statusFilter : r.status !== 'Hold') &&
       (!venueFilter ||
         (venueFilter.startsWith('kind:') ? r.venueKind === venueFilter.slice(5) : r.venue === venueFilter)) &&
       (!needle ||
@@ -318,10 +320,10 @@
     return out;
   });
 
-  // KPI summary (whole portfolio, not just filtered rows)
-  const kActive = $derived(grid.filter((r) => !r.finished).length);
+  // KPI summary — "active" excludes both Finished (Hall of fame) and Hold (parked)
+  const kActive = $derived(grid.filter((r) => !r.finished && r.status !== 'Hold').length);
   const kUpcoming = $derived(grid.filter((r) => {
-    if (r.finished || !r.deadline) return false;
+    if (r.finished || r.status === 'Hold' || !r.deadline) return false;
     const days = (new Date(r.deadline + 'T00:00:00').getTime() - Date.now()) / 86400000;
     return days >= 0 && days <= 60;
   }).length);
