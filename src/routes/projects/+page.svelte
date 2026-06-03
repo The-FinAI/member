@@ -167,8 +167,10 @@
     slotsByProject = byP;
 
     grid = projects.map((p) => {
-      const statusName = p.project_status?.name ?? '—';
-      const finished = statusName === 'Finished';
+      const statusName = (p.project_status?.name ?? '—').trim();
+      // robust terminal-state match: tolerate stray casing/whitespace in the
+      // seeded status name so a delivered project never leaks into the grid
+      const finished = /^finished$/i.test(statusName);
       return {
         id: p.id,
         name: p.name,

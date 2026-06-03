@@ -151,6 +151,11 @@
   // the single most actionable thing: applications the team accepted, awaiting
   // your confirmation to actually join.
   const acceptedApps = $derived(myApps.filter((a) => a.status === 'accepted'));
+  // "My projects" = active only; delivered (Finished) ones drop off the active
+  // list (tolerate stray casing/whitespace in the seeded status name).
+  const isFinished = (n: string | null | undefined) => /^finished$/i.test((n ?? '').trim());
+  const myActiveProjects = $derived(myProjects.filter((p) => !isFinished(p.project?.project_status?.name)));
+  const myShipped = $derived(myProjects.length - myActiveProjects.length);
 </script>
 
 <div class="stack">
@@ -240,15 +245,15 @@
   <section class="block">
     <div class="block-head">
       <h2>{$t('My projects')}</h2>
-      {#if myProjects.length > 0}<span class="block-meta">{$t('{n} active', { n: myProjects.length })}{#if staked > 0} · {$t('{s} STR bonded', { s: staked })}{/if}</span>{/if}
+      {#if myActiveProjects.length > 0}<span class="block-meta">{$t('{n} active', { n: myActiveProjects.length })}{#if myShipped > 0} · {$t('{n} shipped', { n: myShipped })}{/if}{#if staked > 0} · {$t('{s} STR bonded', { s: staked })}{/if}</span>{/if}
     </div>
     {#if loading}
       <p class="muted">{$t('Loading…')}</p>
-    {:else if myProjects.length === 0}
+    {:else if myActiveProjects.length === 0}
       <p class="muted">{$t('No positions yet.')} <a href="/projects">{$t('Browse projects')}</a> {$t('to stake into one.')}</p>
     {:else}
       <div class="card-grid">
-        {#each myProjects as p}
+        {#each myActiveProjects as p}
           <EntityCard
             type="Project"
             title={p.project?.name ?? '—'}
