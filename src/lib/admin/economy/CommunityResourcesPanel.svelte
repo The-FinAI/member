@@ -23,6 +23,9 @@
 
   let fType = $state(''), fName = $state(''), fHolder = $state(''), fQuota = $state(0), fUnit = $state(''), fUsd = $state<number | null>(null);
   let fSkills = $state<string[]>([]);
+  let fLevel = $state('');
+  const LEVELS = ['apprentice', 'journeyman', 'craftsman', 'master'];
+  const LEVEL_LABEL: Record<string, string> = { apprentice: 'Apprentice', journeyman: 'Journeyman', craftsman: 'Craftsman', master: 'Master' };
   let leaves = $state<{ id: string; name: string }[]>([]);
   let myBadges = $state<string[]>([]); // current user's badge skill_ids (for the self default)
 
@@ -68,11 +71,11 @@
     const { error: err } = await supabase.rpc('forge_resource', {
       p_type: fType, p_name: fName.trim(), p_holder: fHolder, p_scope: 'community',
       p_monthly_quota: Number(fQuota) || 0, p_unit: fUnit || null, p_usd_per_unit: fUsd,
-      p_skills: fSkills
+      p_skills: fSkills, p_level: fLevel || null
     });
     busy = false;
     if (err) { error = err.message; return; }
-    ok = get(t)('Resource forged — pending review.'); fName = ''; fQuota = 0; fUnit = ''; fUsd = null; fSkills = []; lastHolder = '';
+    ok = get(t)('Resource forged — pending review.'); fName = ''; fQuota = 0; fUnit = ''; fUsd = null; fSkills = []; fLevel = ''; lastHolder = '';
     await load();
   }
 </script>
@@ -97,6 +100,12 @@
       {/each}
       {#if !leaves.length}<span class="muted">{$t('No certifiable skills yet.')}</span>{/if}
     </div>
+    <label class="lvl"><span>{$t('Expertise level')}<span class="muted"> · {$t('leave blank for your own hours (uses your badge level)')}</span></span>
+      <select bind:value={fLevel}>
+        <option value="">{$t('— from badge —')}</option>
+        {#each LEVELS as l}<option value={l}>{$t(LEVEL_LABEL[l])}</option>{/each}
+      </select>
+    </label>
   </div>
 </div>
 
@@ -138,6 +147,9 @@
   .skill { font-size: .78rem; padding: .2rem .55rem; border: 1px solid var(--border-2); border-radius: 999px; background: var(--card-2); color: var(--muted); cursor: pointer; }
   .skill:hover { border-color: var(--accent); }
   .skill.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .lvl { display: flex; flex-direction: column; gap: .2rem; }
+  .lvl span { font-size: .75rem; color: var(--muted); }
+  .lvl select { max-width: 14rem; padding: .4rem .55rem; border-radius: 8px; border: 1px solid var(--border-2); background: var(--card-2); color: var(--text); }
   .go { padding: .5rem .9rem; border-radius: 8px; border: 1px solid transparent; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
   .go:disabled { opacity: .55; cursor: not-allowed; }
   .rlist { display: flex; flex-direction: column; gap: .4rem; margin-top: .4rem; }
