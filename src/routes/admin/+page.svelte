@@ -3,7 +3,6 @@
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { capabilities, officerUnits } from '$lib/session';
   import { t } from '$lib/i18n';
-  import { PHASE2 } from '$lib/phase';
 
   // Admin center — organised by responsibility domain and permission-aware:
   // a top review band (what's waiting on a decision, with live counts) and
@@ -20,29 +19,15 @@
   );
   const canUnits = $derived(can('manage_members') || isOfficer);
 
-  // ---- governance sections: { group, title, desc, href, caps[] } ----
-  const SECTIONS = [
-    { group: 'People & access', title: 'Officers & access', desc: 'Forge officers, assign them to chapters & working groups, and grant capabilities to positions', href: '/admin/access', caps: ['manage_members', 'invite_members'] },
-    { group: 'People & access', title: 'Announcements', desc: 'Post, pin & retire the site-wide notice board', href: '/admin/announcements', caps: ['manage_members'] },
-
-    { group: 'Projects', title: 'Project Types', desc: 'Dataset & Benchmark, Model, Agent…', href: '/admin/projects?tab=types', caps: ['manage_taxonomy'] },
-    { group: 'Projects', title: 'Project Statuses', desc: 'Proposal → Finished workflow states', href: '/admin/projects?tab=statuses', caps: ['manage_taxonomy'] },
-    { group: 'Projects', title: 'Project Roles', desc: 'Roles members hold within a project', href: '/admin/projects?tab=roles', caps: ['manage_taxonomy'] },
-    { group: 'Projects', title: 'Venues', desc: 'Conferences & journals + submission deadlines', href: '/admin/projects?tab=venues', caps: ['manage_taxonomy', 'edit_any_project'] },
-
-    { group: 'Guild & skills', title: 'Skill tree & guild', desc: 'The skill tree, the leader requirement & the masters', href: '/admin/guild', caps: ['manage_taxonomy', 'manage_guild'] },
-
-    { group: 'Resources & economy', title: 'Resource Types', desc: 'Categories of resources (compute, funding, data…)', href: '/admin/resource-types', caps: ['manage_taxonomy', 'manage_resources'] },
-    { group: 'Resources & economy', title: 'Community Resources', desc: 'Community-owned resources + their stewards', href: '/admin/resources', caps: ['manage_resources'] },
-    { group: 'Resources & economy', title: 'STR Economy', desc: 'Supply, mint/sink flow, treasury ledger & policy knobs', href: '/admin/stater', caps: ['manage_stater'] }
+  // ---- domain consoles (one card each, permission-gated) ----
+  const CONSOLES = [
+    { title: 'Officers & access', desc: 'Forge officers, place them in chapters & working groups, and grant capabilities to positions', href: '/admin/access', caps: ['manage_members', 'invite_members'] },
+    { title: 'Projects', desc: 'Project types, statuses, roles & target venues', href: '/admin/projects', caps: ['manage_taxonomy', 'edit_any_project'] },
+    { title: 'Guild & skills', desc: 'The skill tree, the leader requirement & the masters', href: '/admin/guild', caps: ['manage_taxonomy', 'manage_guild'] },
+    { title: 'Resources & economy', desc: 'STR supply & policy, community resources & resource types', href: '/admin/economy', caps: ['manage_resources', 'manage_stater'] },
+    { title: 'Announcements', desc: 'Post, pin & retire the site-wide notice board', href: '/admin/announcements', caps: ['manage_members'] }
   ];
-  const GROUPS = ['People & access', 'Projects', 'Guild & skills', 'Resources & economy'];
-  const visibleGroups = $derived(
-    GROUPS.map((g) => ({
-      group: g,
-      items: SECTIONS.filter((s) => s.group === g && s.caps.some((c) => can(c)))
-    })).filter((g) => g.items.length)
-  );
+  const visibleConsoles = $derived(CONSOLES.filter((c) => c.caps.some((k) => can(k))));
 
   // ---- counts ----
   let loading = $state(true);
@@ -111,22 +96,22 @@
     </section>
   {/if}
 
-  <!-- governance, grouped by domain (permission-gated) -->
-  {#each visibleGroups as g (g.group)}
+  <!-- the domain consoles (permission-gated) -->
+  {#if visibleConsoles.length}
     <section class="grp">
-      <span class="sec">{$t(g.group)}</span>
+      <span class="sec">{$t('Manage')}</span>
       <div class="admin-grid">
-        {#each g.items as s (s.href)}
-          <a class="admin-card" href={s.href}>
-            <span class="ac-title">{$t(s.title)}</span>
-            <span class="ac-desc">{$t(s.desc)}</span>
+        {#each visibleConsoles as c (c.href)}
+          <a class="admin-card" href={c.href}>
+            <span class="ac-title">{$t(c.title)}</span>
+            <span class="ac-desc">{$t(c.desc)}</span>
           </a>
         {/each}
       </div>
     </section>
-  {/each}
+  {/if}
 
-  {#if !loading && !review.length && !visibleGroups.length}
+  {#if !loading && !review.length && !visibleConsoles.length}
     <div class="card"><p class="muted">{$t('You don’t have any admin tools yet.')}</p></div>
   {/if}
 </div>
