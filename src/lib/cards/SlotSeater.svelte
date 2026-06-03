@@ -1,6 +1,6 @@
 <script lang="ts">
   import { supabase, supabaseConfigured } from '$lib/supabase';
-  import { capabilities, officerUnits } from '$lib/session';
+  import { capabilities, officerUnits, member } from '$lib/session';
   import { t } from '$lib/i18n';
   import { get } from 'svelte/store';
 
@@ -114,12 +114,14 @@
       quota: s.quota, headcount: s.headcount ?? 1, status: s.status, filled: fill[s.id]?.size ?? 0
     }));
 
-    // candidate pool — member cards the viewer is allowed to seat
-    let cq = supabase.from('member').select('id, full_name, home_unit_id').eq('kind', 'card').order('full_name');
-    if (!isAdmin) {
-      const myUnits = get(officerUnits).map((u) => u.unit_id);
-      if (!myUnits.length) { cards = []; loading = false; return; }
-      cq = cq.in('home_unit_id', myUnits);
+    // candidate pool — officers do GLOBAL matching, so they (and admins) can
+    // seat anyone in the whole community (cards AND registered members). A
+    // non-officer can only place themselves.
+    const canPickAnyone = isAdmin || get(officerUnits).length > 0;
+    let cq = supabase.from('member').select('id, full_name, home_unit_id').order('full_name');
+    if (!canPickAnyone) {
+      const me = get(member)?.id ?? '00000000-0000-0000-0000-000000000000';
+      cq = cq.eq('id', me);
     }
     const { data: c } = await cq;
     cards = (c as Card[]) ?? [];
