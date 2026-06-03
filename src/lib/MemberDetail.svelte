@@ -7,6 +7,7 @@
   import BadgeTree from '$lib/cards/BadgeTree.svelte';
   import SectionNav from '$lib/SectionNav.svelte';
   import Breadcrumbs from '$lib/Breadcrumbs.svelte';
+  import ResourceForgeForm from '$lib/resources/ResourceForgeForm.svelte';
 
   // Shared body for the public member/card page. Used both by the
   // /members/[id] route and by the person quick-view drawer, so the drawer
@@ -92,13 +93,13 @@
   // the editor only governs this card's OWN (member-scope) catalog…
   const ownResources = $derived(cardResources.filter((r) => r.scope === 'member'));
   const myLabor = $derived(ownResources.find((r) => r.resource_type?.name === 'Labor') ?? null);
-  const catalogResources = $derived(ownResources.filter((r) => r.resource_type?.name !== 'Labor'));
+  const catalogResources = $derived(ownResources);
   // …while community resources this person STEWARDS (holds for the community)
   // are shown read-only on their page too.
   const stewarded = $derived(cardResources.filter((r) => r.scope === 'community'));
   // read-only view (for visitors who can't edit): only show approved offerings
   const approvedLabor = $derived(myLabor && myLabor.approval_status === 'approved' ? myLabor : null);
-  const approvedResources = $derived(catalogResources.filter((r) => r.approval_status === 'approved'));
+  const approvedResources = $derived(catalogResources.filter((r) => r.resource_type?.name !== 'Labor' && r.approval_status === 'approved'));
   const hasPublicResources = $derived(!!approvedLabor || approvedResources.length > 0 || stewarded.length > 0);
   const resourceCount = $derived(
     (approvedLabor ? 1 : 0) + approvedResources.length + stewarded.length
@@ -326,18 +327,9 @@
         <p class="muted" style="font-size:.82rem; margin-top:-.5rem;">{isMe ? $t('Your offerable catalog — your monthly time and resources. New entries go to a steward for review.') : $t("This card’s offerable catalog — its monthly time and resources. You’re editing it as an officer; new entries go to a steward for review.")}</p>
         {#if catError}<p class="neg" style="font-size:.85rem;">{catError}</p>{/if}
 
-        <!-- labor / time -->
-        <div class="stack" style="gap:.4rem; border:1px solid var(--border); border-radius:8px; padding:.6rem .75rem;">
-          <div class="row" style="justify-content:space-between; align-items:center;">
-            <strong style="font-size:.9rem;">⏱ {$t('Time I can commit')}</strong>
-            {#if myLabor}<span class="badge {myLabor.approval_status}">{myLabor.approval_status === 'approved' ? $t('✓ approved') : myLabor.approval_status === 'rejected' ? $t('✕ rejected') : $t('⏳ pending')}</span>{/if}
-          </div>
-          <div class="row" style="align-items:flex-end; gap:.5rem; flex-wrap:wrap;">
-            <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Hours per month')}</span>
-              <input type="number" min="0" bind:value={laborHours} placeholder={$t('e.g. 40')} style="width:120px;" /></label>
-            <button onclick={saveLabor} disabled={laborBusy}>{laborBusy ? $t('Saving…') : myLabor ? $t('Update time') : $t('Set time')}</button>
-          </div>
-        </div>
+        <!-- unified resource-forge form (same as the community console);
+             labour = your "My time" hours, declared as a Labor resource. -->
+        <ResourceForgeForm holder={id} scope="member" onForged={() => loadCatalog(id)} />
 
         <div class="res-pending-note">{$t('⏳ New resources are reviewed by a steward before they can be offered to projects.')}</div>
         {#if catalogResources.length === 0}
@@ -359,25 +351,6 @@
             </tbody>
           </table>
         {/if}
-
-        <div class="row" style="align-items:flex-end; flex-wrap:wrap; border-top:1px dashed var(--border); padding-top:.75rem;">
-          <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Name')}</span>
-            <input bind:value={rName} placeholder={$t('e.g. RTX 4090 ×2')} /></label>
-          <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Type')}</span>
-            <select bind:value={rType}><option value="">—</option>{#each resTypes.filter((rt) => rt.name !== 'Labor') as ct}<option value={ct.id}>{ct.name}</option>{/each}</select></label>
-          <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Monthly quota')}</span>
-            <input type="number" min="0" step="any" bind:value={rCapacity} placeholder="0" style="width:120px;" /></label>
-          <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Availability')}</span>
-            <select bind:value={rAvail}>{#each AVAIL as a}<option value={a}>{$t(a)}</option>{/each}</select></label>
-          {#if rSelMethod === 'gpu'}
-            <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('GPU model')}</span>
-              <select bind:value={rGpuModel}><option value="">{$t('— pick —')}</option>{#each gpuModels as g}<option value={g.id}>{g.name} · {g.tflops} TFLOPs</option>{/each}</select></label>
-          {:else if rSelMethod === 'api'}
-            <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('API model')}</span>
-              <select bind:value={rApiModel}><option value="">{$t('— pick —')}</option>{#each apiModels as a}<option value={a.id}>{a.provider} {a.name} · ${a.usd_per_million}/M</option>{/each}</select></label>
-          {/if}
-          <button onclick={addResource}>{$t('Add resource')}</button>
-        </div>
       </div>
     {:else}
       <!-- read-only catalog for visitors: what this card can bring -->
