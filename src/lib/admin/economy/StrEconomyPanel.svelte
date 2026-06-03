@@ -24,20 +24,25 @@
   async function load() {
     if (!supabaseConfigured) { loading = false; return; }
     loading = true;
-    const [{ data: tre }, { data: pol }, { data: mem }, { data: bals }, { data: esc }, { data: rt }, { data: acc }, { data: led }] = await Promise.all([
-      supabase.from('stater_balance').select('balance').eq('account_type', 'treasury').maybeSingle(),
+    const [{ data: allBal }, { data: pol }, { data: mem }, { data: rt }, { data: acc }, { data: led }] = await Promise.all([
+      supabase.from('stater_balance').select('balance, account_type'),
       supabase.from('stater_policy').select('key, value, description').order('key'),
       supabase.from('member').select('id, full_name').order('full_name'),
-      supabase.from('stater_balance').select('balance').eq('account_type', 'member'),
-      supabase.from('stater_balance').select('balance').eq('account_type', 'project'),
       supabase.from('stater_skill_rate').select('skill_id, rate, skill(name)').order('rate', { ascending: false }),
       supabase.from('stater_account').select('id, account_type'),
       supabase.from('stater_ledger').select('entry_type, amount, from_account, to_account, reason, created_at').order('created_at', { ascending: false })
     ]);
-    treasury = Number((tre as { balance: number } | null)?.balance ?? 0);
     policies = (pol as Policy[]) ?? []; members = (mem as Member[]) ?? []; rates = (rt as Rate[]) ?? [];
-    circulating = ((bals as { balance: number }[]) ?? []).reduce((a, b) => a + Number(b.balance), 0);
-    escrowTotal = ((esc as { balance: number }[]) ?? []).reduce((a, b) => a + Number(b.balance), 0);
+    // bucket by the real account types: member | project_escrow | market_escrow
+    // | treasury. supply = the sum of ALL balances, so it always reconciles with
+    // minted − sunk from the ledger.
+    treasury = 0; circulating = 0; escrowTotal = 0;
+    for (const b of (allBal as { balance: number; account_type: string }[]) ?? []) {
+      const v = Number(b.balance) || 0;
+      if (b.account_type === 'treasury') treasury += v;
+      else if (b.account_type === 'member') circulating += v;
+      else escrowTotal += v; // project_escrow + market_escrow
+    }
     supply = circulating + escrowTotal + treasury;
     const treId = ((acc as any[]) ?? []).find((a) => a.account_type === 'treasury')?.id ?? null;
     let mint = 0, sink = 0; const tlog: LedgerRow[] = [];
