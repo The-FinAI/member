@@ -5,24 +5,26 @@
   import { PHASE2 } from '$lib/phase';
 
   const allSections = [
-    { href: '/admin/approvals', title: 'Approvals', desc: 'One queue for everything awaiting a decision — resources, badges, unit applications & over-capacity commitments' },
-    { href: '/admin/announcements', title: 'Announcements', desc: 'Post, pin & retire the site-wide notice board' },
-    { href: '/admin/invites', title: PHASE2 ? 'Invite Members' : 'Invite Officers', desc: PHASE2 ? 'Pre-create members by email (invite-only)' : 'Phase 1: invite chapter chairs, secretaries & working-group leaders by email' },
-    { href: '/admin/org-units', title: 'Chapters & Working Groups', desc: 'Assign chairs, secretaries & leaders to the 3 chapters + 3 working groups' },
-    { href: '/admin/positions', title: 'Positions', desc: 'Community-level titles + ordering' },
-    { href: '/admin/capabilities', title: 'Capabilities', desc: 'Grant capabilities to positions (permission matrix)' },
-    { href: '/admin/roles', title: 'Project Roles', desc: 'Roles members hold within a project' },
-    { href: '/admin/types', title: 'Project Types', desc: 'Dataset & Benchmark, Model, Agent…' },
-    { href: '/admin/statuses', title: 'Project Statuses', desc: 'Proposal → Finished workflow states' },
-    { href: '/admin/venues', title: 'Venues', desc: 'Conferences & journals + submission deadlines' },
-    { href: '/admin/skills', title: 'Skill Tree', desc: 'Hierarchical skills used for matching' },
-    { href: '/admin/resource-types', title: 'Resource Types', desc: 'Categories of resources (compute, funding, data…)' },
-    { href: '/admin/resources', title: 'Community Resources', desc: 'Community-owned resources + their stewards' },
-    { href: '/admin/milestone-catalog', title: 'Milestone Catalog', desc: 'Achievement catalog — nominal STR + multiplier bonus per milestone' },
-    { href: '/admin/stater', title: 'STR Economy', desc: 'Supply at a glance, mint/sink flow, treasury ledger, health flags — plus mint, grant, allowance & policy knobs' },
-    { href: '/admin/writing', title: 'First-author Writing', desc: "Leaders short on this month's writing hours — remind them by email" }
+    { group: 'Operations', href: '/admin/approvals', title: 'Approvals', desc: 'One queue for everything awaiting a decision — resources, badges, unit applications & over-capacity commitments' },
+    { group: 'Operations', href: '/admin/announcements', title: 'Announcements', desc: 'Post, pin & retire the site-wide notice board' },
+    { group: 'Operations', href: '/admin/invites', title: PHASE2 ? 'Invite Members' : 'Invite Officers', desc: PHASE2 ? 'Pre-create members by email (invite-only)' : 'Phase 1: invite chapter chairs, secretaries & working-group leaders by email' },
+    { group: 'Operations', href: '/admin/writing', title: 'First-author Writing', desc: "Leaders short on this month's writing hours — remind them by email" },
+    { group: 'Community', href: '/admin/org-units', title: 'Chapters & Working Groups', desc: 'Assign chairs, secretaries & leaders to the 3 chapters + 3 working groups' },
+    { group: 'Community', href: '/admin/positions', title: 'Positions', desc: 'Community-level titles + ordering' },
+    { group: 'Community', href: '/admin/capabilities', title: 'Capabilities', desc: 'Grant capabilities to positions (permission matrix)' },
+    { group: 'Projects', href: '/admin/roles', title: 'Project Roles', desc: 'Roles members hold within a project' },
+    { group: 'Projects', href: '/admin/types', title: 'Project Types', desc: 'Dataset & Benchmark, Model, Agent…' },
+    { group: 'Projects', href: '/admin/statuses', title: 'Project Statuses', desc: 'Proposal → Finished workflow states' },
+    { group: 'Projects', href: '/admin/venues', title: 'Venues', desc: 'Conferences & journals + submission deadlines' },
+    { group: 'Skills & resources', href: '/admin/skills', title: 'Skill Tree', desc: 'Hierarchical skills used for matching' },
+    { group: 'Skills & resources', href: '/admin/resource-types', title: 'Resource Types', desc: 'Categories of resources (compute, funding, data…)' },
+    { group: 'Skills & resources', href: '/admin/resources', title: 'Community Resources', desc: 'Community-owned resources + their stewards' },
+    { group: 'Economy', href: '/admin/stater', title: 'STR Economy', desc: 'Supply at a glance, mint/sink flow, treasury ledger, health flags — plus mint, grant, allowance & policy knobs' },
+    { group: 'Economy', href: '/admin/milestone-catalog', title: 'Milestone Catalog', desc: 'Achievement catalog — nominal STR + multiplier bonus per milestone' }
   ];
+  const GROUPS = ['Operations', 'Community', 'Projects', 'Skills & resources', 'Economy'];
   const sections = allSections.filter((s) => PHASE2 || !s.phase2);
+  const grouped = $derived(GROUPS.map((g) => ({ group: g, items: sections.filter((s) => s.group === g) })).filter((g) => g.items.length));
 
   let loading = $state(true);
   let members = $state(0);
@@ -106,11 +108,11 @@
 
   <!-- needs attention -->
   {#if !loading && attention.length > 0}
-    <div class="card stack" style="gap:.5rem;">
-      <h2 style="margin:0; font-size:1rem;">{$t('Needs attention')}</h2>
-      <div class="row" style="flex-wrap:wrap; gap:.5rem;">
+    <div class="attention">
+      <span class="sec">{$t('Needs attention')}</span>
+      <div class="att-row">
         {#each attention as a}
-          <a class="badge warn" href={a.href} style="text-decoration:none; font-size:.82rem; padding:.35rem .6rem;">
+          <a class="att-chip" href={a.href}>
             <strong>{a.n}</strong> {$t(a.label)} →
           </a>
         {/each}
@@ -118,14 +120,41 @@
     </div>
   {/if}
 
-  <!-- configuration sections -->
-  <h2 style="margin:.5rem 0 -.25rem; font-size:1rem;">{$t('Configuration')}</h2>
-  <div class="row" style="align-items:stretch;">
-    {#each sections as s}
-      <a class="card" href={s.href} style="flex:1; min-width:220px;">
-        <h2>{$t(s.title)}</h2>
-        <p class="muted">{$t(s.desc)}</p>
-      </a>
-    {/each}
-  </div>
+  <!-- configuration, grouped -->
+  {#each grouped as g (g.group)}
+    <section class="grp">
+      <span class="sec">{$t(g.group)}</span>
+      <div class="admin-grid">
+        {#each g.items as s (s.href)}
+          <a class="admin-card" href={s.href}>
+            <span class="ac-title">{$t(s.title)}</span>
+            <span class="ac-desc">{$t(s.desc)}</span>
+          </a>
+        {/each}
+      </div>
+    </section>
+  {/each}
 </div>
+
+<style>
+  .sec { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  .attention { display: flex; flex-direction: column; gap: .5rem; }
+  .att-row { display: flex; flex-wrap: wrap; gap: .45rem; }
+  .att-chip {
+    display: inline-flex; align-items: center; gap: .35rem; font-size: .82rem;
+    padding: .35rem .7rem; border-radius: 999px; text-decoration: none;
+    color: var(--accent); background: var(--accent-soft);
+    border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+  .att-chip:hover { border-color: var(--accent); }
+  .grp { display: flex; flex-direction: column; gap: .5rem; }
+  .admin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(248px, 1fr)); gap: .7rem; }
+  .admin-card {
+    display: flex; flex-direction: column; gap: .25rem; padding: .85rem .95rem;
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    text-decoration: none; color: var(--text); transition: border-color .12s ease, transform .12s ease;
+  }
+  .admin-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+  .ac-title { font-weight: 600; font-size: .95rem; color: var(--text); }
+  .ac-desc { font-size: .8rem; line-height: 1.45; color: var(--muted); }
+</style>
