@@ -23,12 +23,21 @@ begin
   end if;
   select id into v_yan from member where full_name ilike '%Yan%';
 
-  -- locate the MoE project (must be unique)
-  select count(*) into n from project where name ilike '%MoE%';
+  -- locate the MoE project Yan actually LEADS (disambiguates among several "MoE"
+  -- projects — we only want the one where Yan holds a leader commitment).
+  select count(*) into n
+    from project p
+   where p.name ilike '%MoE%'
+     and exists (select 1 from project_slot s join work_commitment w on w.slot_id = s.id
+                  where s.project_id = p.id and s.slot_kind = 'leader' and w.member_id = v_yan);
   if n <> 1 then
-    raise exception 'Expected exactly 1 project matching "MoE", found % — fix the filter.', n;
+    raise exception 'Expected exactly 1 "MoE" project that Yan leads, found % — fix the filter.', n;
   end if;
-  select id into v_moe from project where name ilike '%MoE%';
+  select p.id into v_moe
+    from project p
+   where p.name ilike '%MoE%'
+     and exists (select 1 from project_slot s join work_commitment w on w.slot_id = s.id
+                  where s.project_id = p.id and s.slot_kind = 'leader' and w.member_id = v_yan);
 
   -- 1) reopen the leader slot Yan sits on, then drop his commitment + Leader role
   update project_slot s set status = 'open'
