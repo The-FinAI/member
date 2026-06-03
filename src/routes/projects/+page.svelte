@@ -35,7 +35,6 @@
     openNeeds: number;
     pool: number;          // Σ nominal_str across the project's commitments
     summary: string | null;
-    proposal: string | null;
     finished: boolean;
     claimable: boolean;    // leader slot empty → first-author seat is open
   };
@@ -50,8 +49,16 @@
 
   // quick-view drawer
   let sel = $state<Grid | null>(null);
-  function openProject(r: Grid) { sel = r; }
-  function closeDrawer() { sel = null; }
+  let selProposal = $state<string | null>(null);
+  async function openProject(r: Grid) {
+    sel = r; selProposal = null;
+    // proposal lives in project_link (kind='proposal'); load it lazily so a
+    // missing table/row can never blank the project list itself
+    const { data } = await supabase.from('project_link')
+      .select('url').eq('project_id', r.id).eq('kind', 'proposal').limit(1).maybeSingle();
+    if (sel?.id === r.id) selProposal = (data as { url: string } | null)?.url ?? null;
+  }
+  function closeDrawer() { sel = null; selProposal = null; }
   // status name → EntityCard status dot kind
   function projKind(name: string): 'pos' | 'warn' | 'dim' {
     if (name === 'Finished') return 'pos';
@@ -102,7 +109,7 @@
     // ambiguous-FK embed can never blank out the whole project list.
     const [{ data: pr }, { data: ou }] = await Promise.all([
       supabase.from('project')
-        .select('id, name, target_venue, deadline, summary, proposal_url, org_unit_id, venue:venue_id(name, kind, deadline), project_type(name), project_status!project_status_id_fkey(name, rank)'),
+        .select('id, name, target_venue, deadline, summary, org_unit_id, venue:venue_id(name, kind, deadline), project_type(name), project_status!project_status_id_fkey(name, rank)'),
       supabase.from('org_unit').select('id, name')
     ]);
     const unitName: Record<string, string> = {};
@@ -180,7 +187,6 @@
         openNeeds: openNeeds[p.id] ?? 0,
         pool: pool[p.id] ?? 0,
         summary: p.summary ?? null,
-        proposal: p.proposal_url ?? null,
         finished,
         claimable: !hasLeader[p.id] && !finished
       };
@@ -626,8 +632,8 @@
       {#if r.summary}
         <p class="pd-summary">{r.summary}</p>
       {/if}
-      {#if r.proposal}
-        <a class="pd-proposal" href={r.proposal} target="_blank" rel="noopener noreferrer">📄 {$t('Proposal')} ↗</a>
+      {#if selProposal}
+        <a class="pd-proposal" href={selProposal} target="_blank" rel="noopener noreferrer">📄 {$t('Proposal')} ↗</a>
       {/if}
 
       <!-- team & slots -->
