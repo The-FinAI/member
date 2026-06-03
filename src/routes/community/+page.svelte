@@ -9,6 +9,7 @@
   import CountUp from '$lib/CountUp.svelte';
   import MemberDetail from '$lib/MemberDetail.svelte';
   import Medal from '$lib/Medal.svelte';
+  import Leaderboard from '$lib/Leaderboard.svelte';
   import { t } from '$lib/i18n';
 
   type Row = {
@@ -35,14 +36,15 @@
   let myUnitStatus = $state<Record<string, string>>({});
 
   // top-level tab over the card families in the community
-  type Tab = 'people' | 'chapters' | 'wgroups' | 'badges';
+  type Tab = 'people' | 'chapters' | 'wgroups' | 'badges' | 'standing';
   let tab = $state<Tab>('people');
 
   const TABS: { key: Tab; label: string }[] = [
     { key: 'people', label: 'People' },
     { key: 'chapters', label: 'Chapters' },
     { key: 'wgroups', label: 'Working Groups' },
-    { key: 'badges', label: 'Badges' }
+    { key: 'badges', label: 'Badges' },
+    { key: 'standing', label: 'Standing' }
   ];
 
   // ---- badge catalog (the former "Guild / crafts") ----
@@ -76,7 +78,7 @@
 
   onMount(async () => {
     const initial = $page.url.searchParams.get('tab');
-    if (initial === 'chapters' || initial === 'wgroups' || initial === 'people' || initial === 'badges') tab = initial;
+    if (initial === 'chapters' || initial === 'wgroups' || initial === 'people' || initial === 'badges' || initial === 'standing') tab = initial;
     if (!supabaseConfigured) { loading = false; return; }
     const [{ data }, { data: bals }, { data: nom }, { data: ou }, { data: prj }] = await Promise.all([
       supabase.from('member')
@@ -246,6 +248,7 @@
         {#if tab === 'people'}{$t('Everyone in the community — open a card to see their work, skills & standing.')}
         {:else if tab === 'chapters'}{$t('The three regional chapters. Open one to apply to join.')}
         {:else if tab === 'badges'}{$t('The badge catalog — every certifiable skill. Open one to see who holds it.')}
+        {:else if tab === 'standing'}{$t('The standing leaderboards — members, chapters & working groups ranked by contribution and net worth.')}
         {:else}{$t('The working groups driving the research agenda. Open one to apply to join.')}{/if}
       </span>
     </div>
@@ -262,15 +265,21 @@
     {/each}
   </div>
 
-  <!-- controls: search -->
-  <div class="row" style="gap:.6rem; flex-wrap:wrap; align-items:center;">
-    <div class="search" style="flex:1; min-width:220px; max-width:340px;">
-      <input placeholder={tab === 'people' ? $t('Search by name…') : $t('Search…')} bind:value={q} />
+  <!-- controls: search (the standing board has its own controls) -->
+  {#if tab !== 'standing'}
+    <div class="row" style="gap:.6rem; flex-wrap:wrap; align-items:center;">
+      <div class="search" style="flex:1; min-width:220px; max-width:340px;">
+        <input placeholder={tab === 'people' ? $t('Search by name…') : $t('Search…')} bind:value={q} />
+      </div>
     </div>
-  </div>
+  {/if}
 
   {#if loading}
     <p class="muted">{$t('Loading…')}</p>
+
+  <!-- ============ STANDING (leaderboards) ============ -->
+  {:else if tab === 'standing'}
+    <Leaderboard />
 
   <!-- ============ PEOPLE ============ -->
   {:else if tab === 'people'}
