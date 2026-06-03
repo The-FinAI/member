@@ -1,19 +1,15 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import CardBinder from '$lib/cards/CardBinder.svelte';
+  import { goto } from '$app/navigation';
 
+  // Legacy route — the chapter binder + WG slot board are now one unified
+  // matching console at /officer/[unitId]. Forward.
   const unitId = $derived($page.params.unitId);
+  let last = '';
+  $effect(() => { if (unitId && unitId !== last) { last = unitId; goto(`/officer/${unitId}`, { replaceState: true }); } });
 </script>
 
-<svelte:head><title>Chapter binder · The Fin AI</title></svelte:head>
+<svelte:head><title>Officer console · The Fin AI</title></svelte:head>
+<section class="redir"><div class="spin"></div></section>
 
-<section class="wrap">
-  <a href="/officer" class="back">← Officer</a>
-  <CardBinder {unitId} />
-</section>
-
-<style>
-  .wrap { display: flex; flex-direction: column; gap: 1rem; max-width: 880px; }
-  .back { font-size: .8rem; color: var(--muted); text-decoration: none; }
-  .back:hover { color: var(--text); }
-</style>
+<style>.redir { display: flex; justify-content: center; padding: 4rem 1rem; }</style>

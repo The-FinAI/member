@@ -174,7 +174,7 @@
     {/if}
 
     {#if g.wgUnitId}
-      <a class="pd-btn" class:ghost={!canManage} href={`/officer/wg/${g.wgUnitId}`}>
+      <a class="pd-btn" class:ghost={!canManage} href={`/officer/${g.wgUnitId}`}>
         {canManage ? $t('Manage in slot board') : $t('Open slot board')} →
       </a>
     {/if}

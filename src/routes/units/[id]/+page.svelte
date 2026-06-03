@@ -15,8 +15,7 @@
     resolving = true;
     if (supabaseConfigured) {
       const { data } = await supabase.from('org_unit').select('kind').eq('id', uid).maybeSingle();
-      if (data?.kind === 'working_group') target = `/officer/wg/${uid}`;
-      else if (data?.kind === 'chapter') target = `/officer/chapter/${uid}`;
+      if (data?.kind === 'working_group' || data?.kind === 'chapter') target = `/officer/${uid}`;
     }
     resolving = false;
     goto(target, { replaceState: true });

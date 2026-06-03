@@ -477,7 +477,7 @@
           </button>
         {/if}
         {#if isOfficerOf(u.id) || $capabilities.has('manage_members')}
-          <a class="btn ghost" href={sel.unitKind === 'chapter' ? `/officer/chapter/${u.id}` : `/officer/wg/${u.id}`}>{$t('Open officer console')} →</a>
+          <a class="btn ghost" href={`/officer/${u.id}`}>{$t('Open officer console')} →</a>
         {/if}
       {/snippet}
     </CardDrawer>
