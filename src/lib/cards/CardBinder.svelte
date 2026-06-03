@@ -50,8 +50,10 @@
     unit = u as any;
 
     const [{ data: c }, { data: sk }, { data: rt }] = await Promise.all([
-      supabase.from('member').select('id, full_name, affiliation, email, status')
-        .eq('kind', 'card').eq('home_unit_id', uid).order('full_name'),
+      // everyone homed in this chapter — unclaimed cards AND claimed members;
+      // officers manage badges / seating for the whole roster, not just cards.
+      supabase.from('member').select('id, full_name, affiliation, email, status, kind')
+        .eq('home_unit_id', uid).order('full_name'),
       supabase.from('skill').select('id, name, parent_id').order('name'),
       supabase.from('resource_type').select('id, name, unit').order('rank')
     ]);
@@ -184,7 +186,7 @@
     <header class="b-head">
       <div>
         <h2 class="b-title">{unit.name}</h2>
-        <p class="b-sub">{$t('{n} member cards', { n: cards.length })} · {$t('Month {ym}', { ym })}</p>
+        <p class="b-sub">{$t('{n} members', { n: cards.length })} · {$t('Month {ym}', { ym })}</p>
       </div>
       {#if isOfficer}
         <button type="button" class="stake" onclick={() => (showForgeMember = !showForgeMember)}>
@@ -217,7 +219,7 @@
         />
       {/each}
       {#if !cards.length}
-        <p class="muted">{$t('No member cards yet — forge the first one.')}</p>
+        <p class="muted">{$t('No members yet — forge the first card.')}</p>
       {/if}
     </div>
   </div>
