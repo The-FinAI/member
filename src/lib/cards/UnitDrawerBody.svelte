@@ -148,7 +148,7 @@
         {:else}
           <ul class="ud-list">
             {#each projects as p (p.id)}
-              <li><a class="ud-row" href="/projects">
+              <li><a class="ud-row" href={`/projects/${p.id}`}>
                 <span class="ud-name">{p.name}</span>
                 <span class="badge dim">{$t(statusOf(p))}</span>
               </a></li>

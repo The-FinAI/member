@@ -6,9 +6,8 @@
   import { get } from 'svelte/store';
   import EntityCard from '$lib/EntityCard.svelte';
   import CardDrawer from '$lib/CardDrawer.svelte';
-  import ProjectSlotCard, { type Slot } from '$lib/cards/ProjectSlotCard.svelte';
-  import SlotSeater from '$lib/cards/SlotSeater.svelte';
-  import ProjectCardBody from '$lib/cards/ProjectCardBody.svelte';
+  import { type Slot } from '$lib/cards/ProjectSlotCard.svelte';
+  import ProjectDetailBody from '$lib/cards/ProjectDetailBody.svelte';
 
   // Projects = the community portfolio. Each project belongs to a working group
   // and exposes a slot map (1 leader/first-author + N need slots). Members are
@@ -642,53 +641,9 @@
     onClose={closeDrawer}
   >
     <div class="pdrawer">
-      <!-- meta: type · working group · venue · deadline ( status lives in the
-           stepper inside ProjectCardBody, just below ) -->
-      <div class="pd-meta">
-        <div class="pd-meta-chips">
-          {#if r.claimable}<span class="status st-proposal"><span class="sdot" style="background:currentColor;"></span>{$t('lead open')}</span>{/if}
-          <span class="pd-chip">{$t(r.type)}</span>
-          {#if r.deadline}
-            <span class="pd-chip {ddlClass(r.deadline)}">⏱ {fmtDate(r.deadline)} · {relDays(r.deadline)}</span>
-          {/if}
-        </div>
-      </div>
-
-      <!-- key economy numbers -->
-      <div class="pd-stats">
-        <div class="pd-stat"><span class="pd-v mono">{r.pool.toLocaleString()}</span><span class="pd-l">{$t('Nominal pool')}</span></div>
-        <div class="pd-stat"><span class="pd-v mono">{r.seatsFilled}/{r.seatsTotal}</span><span class="pd-l">{$t('Seats')}</span></div>
-        <div class="pd-stat"><span class="pd-v mono">{r.openNeeds}</span><span class="pd-l">{$t('Open needs')}</span></div>
-        {#if r.leader}<div class="pd-stat"><span class="pd-v">{r.leader}</span><span class="pd-l">{$t('first author')}</span></div>{/if}
-      </div>
-
-      <!-- status flow · editable basic info · media · meetings · history -->
-      <ProjectCardBody projectId={r.id} {venues} {workingGroups} {statuses} onChanged={refreshSel} />
-
-      <!-- team & slots -->
-      <div class="pd-section">
-        <span class="pd-h">{$t('Team & slots')}</span>
-        <ProjectSlotCard
-          project={{ id: r.id, name: r.name, status: r.status, deadline: r.deadline }}
-          slots={slotsByProject[r.id] ?? []}
-          canManage={false}
-        />
-      </div>
-
-      {#if canSeat && !r.finished}
-        <SlotSeater projectId={r.id} projectName={r.name} onSeated={loadGrid} />
-      {/if}
-      {#if !r.wg}
-        <p class="muted" style="font-size:.82rem; margin:0;">{$t('This project isn’t attributed to a working group yet.')}</p>
-      {/if}
+      <a class="pd-open" href={`/projects/${r.id}`}>{$t('Open full page')} →</a>
+      <ProjectDetailBody projectId={r.id} showHeader={false} onChanged={() => { refreshSel(); loadGrid(); }} />
     </div>
-    {#snippet actions()}
-      {#if canManageSel && r.wgUnitId}
-        <a class="btn" href={`/officer/wg/${r.wgUnitId}`}>{$t('Manage in slot board')} →</a>
-      {:else if r.wgUnitId}
-        <a class="btn ghost" href={`/officer/wg/${r.wgUnitId}`}>{$t('Open slot board')} →</a>
-      {/if}
-    {/snippet}
   </CardDrawer>
 {/if}
 
@@ -703,6 +658,8 @@
 
   /* project drawer — the full project card */
   .pdrawer { display: flex; flex-direction: column; gap: 1rem; }
+  .pd-open { align-self: flex-end; font-size: .8rem; color: var(--accent); text-decoration: none; }
+  .pd-open:hover { text-decoration: underline; }
   .pd-meta { display: flex; gap: .5rem; align-items: flex-start; justify-content: space-between; }
   .pd-meta-chips { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; flex: 1; min-width: 0; }
   .pd-chip {
