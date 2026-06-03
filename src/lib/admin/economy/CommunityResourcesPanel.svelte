@@ -1,140 +1,43 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { supabase, supabaseConfigured } from '$lib/supabase';
-  import { get } from 'svelte/store';
-  import { member } from '$lib/session';
   import { t } from '$lib/i18n';
-  import SkillLevelPicker from '$lib/admin/economy/SkillLevelPicker.svelte';
+  import ResourceForgeForm from '$lib/resources/ResourceForgeForm.svelte';
 
-  // Forge community-owned resources. The form adapts to the type's valuation
-  // method: gpu → pick a GPU model (quota = GPU-hours); api → pick an API model
-  // (quota = M tokens); usd → quota is dollars; flat → quota × USD-per-unit;
-  // a labour (flat, hour) type → declare skills + expertise level.
-  type ResType = { id: string; name: string; unit: string | null; valuation_method: string; usd_per_unit: number | null };
+  // Forge community-owned resources — the SAME type-adaptive form the member
+  // profile uses (ResourceForgeForm), here with a holder picker and scope=community.
   type Member = { id: string; full_name: string };
-  type Gpu = { id: string; name: string; tflops: number };
-  type Api = { id: string; provider: string; name: string; usd_per_million: number };
   type Resrc = {
     id: string; name: string; monthly_quota: number; unit: string | null;
     resource_type: { name: string } | null; holder: { full_name: string } | null;
     forge_request: { status: string } | null;
   };
 
-  let types = $state<ResType[]>([]);
   let members = $state<Member[]>([]);
-  let gpus = $state<Gpu[]>([]);
-  let apis = $state<Api[]>([]);
   let resources = $state<Resrc[]>([]);
-  let myBadges = $state<Record<string, string>>({}); // current user's skill_id → level (self default)
-  let loading = $state(true); let error = $state(''); let ok = $state(''); let busy = $state(false);
-
-  let fType = $state(''), fName = $state(''), fHolder = $state(''), fQuota = $state(0);
-  let fUsd = $state<number | null>(null), fGpu = $state(''), fApi = $state('');
-  let fSkillLevels = $state<Record<string, string>>({}); // skill_id → level
-
-  const selType = $derived(types.find((x) => x.id === fType) ?? null);
-  const meth = $derived(selType?.valuation_method ?? '');
-  const isLabour = $derived(meth === 'flat' && (selType?.unit ?? '') === 'hour');
-  const quotaUnit = $derived(
-    meth === 'gpu' ? get(t)('GPU-hours') : meth === 'api' ? get(t)('1M tokens') :
-    meth === 'usd' ? get(t)('USD') : (selType?.unit ?? get(t)('units'))
-  );
-
-  let lastHolder = '';
-  $effect(() => {
-    const me = get(member)?.id;
-    if (fHolder && fHolder !== lastHolder) {
-      lastHolder = fHolder;
-      if (me && fHolder === me) fSkillLevels = { ...myBadges };
-    }
-  });
+  let fHolder = $state('');
+  let loading = $state(true);
 
   async function load() {
     if (!supabaseConfigured) { loading = false; return; }
     loading = true;
-    const me = get(member)?.id ?? null;
-    const [{ data: rt }, { data: mem }, { data: gp }, { data: ap }, { data: rs }, { data: bg }] = await Promise.all([
-      supabase.from('resource_type').select('id, name, unit, valuation_method, usd_per_unit').order('rank'),
+    const [{ data: mem }, { data: rs }] = await Promise.all([
       supabase.from('member').select('id, full_name').order('full_name'),
-      supabase.from('gpu_model').select('id, name, tflops').eq('is_active', true).order('rank'),
-      supabase.from('api_model').select('id, provider, name, usd_per_million').eq('is_active', true).order('rank'),
       supabase.from('resource')
         .select('id, name, monthly_quota, unit, resource_type:type_id(name), holder:holder_member_id(full_name), forge_request:forge_request_id(status)')
-        .eq('scope', 'community').order('created_at', { ascending: false }),
-      me ? supabase.from('badge').select('skill_id, level').eq('member_id', me) : Promise.resolve({ data: [] as any[] })
+        .eq('scope', 'community').order('created_at', { ascending: false })
     ]);
-    types = (rt as ResType[]) ?? []; members = (mem as Member[]) ?? [];
-    gpus = (gp as Gpu[]) ?? []; apis = (ap as Api[]) ?? []; resources = (rs as Resrc[]) ?? [];
-    const bmap: Record<string, string> = {};
-    for (const b of (bg as { skill_id: string; level: string }[]) ?? []) bmap[b.skill_id] = b.level;
-    myBadges = bmap;
+    members = (mem as Member[]) ?? [];
+    resources = (rs as Resrc[]) ?? [];
     loading = false;
   }
   onMount(load);
-
-  function reset() { fName = ''; fQuota = 0; fUsd = null; fGpu = ''; fApi = ''; fSkillLevels = {}; lastHolder = ''; }
-
-  async function forge() {
-    error = ''; ok = '';
-    if (!fType || !fName.trim() || !fHolder) { error = get(t)('Type, name and holder are required.'); return; }
-    if (meth === 'gpu' && !fGpu) { error = get(t)('Pick a GPU model.'); return; }
-    if (meth === 'api' && !fApi) { error = get(t)('Pick an API model.'); return; }
-    busy = true;
-    const { error: err } = await supabase.rpc('forge_resource', {
-      p_type: fType, p_name: fName.trim(), p_holder: fHolder, p_scope: 'community',
-      p_monthly_quota: Number(fQuota) || 0,
-      p_unit: null,
-      p_usd_per_unit: meth === 'flat' && !isLabour ? fUsd : null,
-      p_skills: isLabour ? Object.entries(fSkillLevels).map(([skill_id, level]) => ({ skill_id, level })) : [],
-      p_level: null,
-      p_gpu_model: meth === 'gpu' ? fGpu : null,
-      p_api_model: meth === 'api' ? fApi : null
-    });
-    busy = false;
-    if (err) { error = err.message; return; }
-    ok = get(t)('Resource forged — pending review.'); reset();
-    await load();
-  }
 </script>
 
 <p class="muted blurb">{$t('Resources the community owns — compute, data, funding. Each needs an in-community holder (steward) and goes through the forge queue.')}</p>
-{#if error}<p class="err">{error}</p>{/if}
-{#if ok}<p class="ok">{ok}</p>{/if}
 
-<div class="card forge-form">
-  <label><span>{$t('Type')}</span>
-    <select bind:value={fType}><option value="">—</option>{#each types as ty (ty.id)}<option value={ty.id}>{ty.name}</option>{/each}</select>
-  </label>
-  <label><span>{$t('Name')}</span><input bind:value={fName} /></label>
-  <label><span>{$t('Holder (steward)')}</span>
-    <select bind:value={fHolder}><option value="">—</option>{#each members as m (m.id)}<option value={m.id}>{m.full_name}</option>{/each}</select>
-  </label>
-
-  {#if meth === 'gpu'}
-    <label><span>{$t('GPU model')}</span>
-      <select bind:value={fGpu}><option value="">—</option>{#each gpus as g (g.id)}<option value={g.id}>{g.name} · {g.tflops} TFLOPs</option>{/each}</select>
-    </label>
-  {:else if meth === 'api'}
-    <label><span>{$t('API model')}</span>
-      <select bind:value={fApi}><option value="">—</option>{#each apis as a (a.id)}<option value={a.id}>{a.provider} {a.name} · ${a.usd_per_million}/1M</option>{/each}</select>
-    </label>
-  {/if}
-
-  <label><span>{$t('Monthly quota')}<span class="muted"> · {quotaUnit}</span></span><input type="number" step="any" bind:value={fQuota} style="max-width:8rem;" /></label>
-
-  {#if meth === 'flat' && !isLabour}
-    <label><span>{$t('USD / unit')}<span class="muted"> · {selType?.usd_per_unit != null ? $t('default {n}', { n: selType.usd_per_unit }) : ''}</span></span>
-      <input type="number" step="any" bind:value={fUsd} placeholder={selType?.usd_per_unit != null ? String(selType.usd_per_unit) : ''} style="max-width:6rem;" /></label>
-  {/if}
-
-  <button class="go" onclick={forge} disabled={busy}>{busy ? $t('Forging…') : $t('Forge resource')}</button>
-
-  {#if isLabour}
-    <div class="skills-row">
-      <span class="skills-h">{$t('Skills & level these hours can fill')}<span class="muted"> · {$t('set each skill’s rank; a holder = you defaults to your badges')}</span></span>
-      <SkillLevelPicker bind:value={fSkillLevels} />
-    </div>
-  {/if}
+<div class="card" style="padding:1rem;">
+  <ResourceForgeForm bind:holder={fHolder} scope="community" holderPicker={true} members={members} onForged={load} />
 </div>
 
 <section>
@@ -160,26 +63,9 @@
 </section>
 
 <style>
-  .blurb { margin: 0; font-size: .85rem; }
-  .err { color: var(--down); font-size: .85rem; margin: 0; }
-  .ok { color: var(--up); font-size: .85rem; margin: 0; }
+  .blurb { margin: 0 0 .6rem; font-size: .85rem; }
   .sec { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .ct { color: var(--text-dim); }
-  .forge-form { display: flex; flex-wrap: wrap; gap: .6rem; align-items: flex-end; }
-  .forge-form label { display: flex; flex-direction: column; gap: .2rem; }
-  .forge-form label span { font-size: .75rem; color: var(--muted); }
-  .forge-form input, .forge-form select { padding: .4rem .55rem; border-radius: 8px; border: 1px solid var(--border-2); background: var(--card-2); color: var(--text); font-size: .85rem; }
-  .skills-row { flex-basis: 100%; display: flex; flex-direction: column; gap: .35rem; }
-  .skills-h { font-size: .75rem; color: var(--muted); }
-  .skill-chips { display: flex; flex-wrap: wrap; gap: .3rem; }
-  .skill { font-size: .78rem; padding: .2rem .55rem; border: 1px solid var(--border-2); border-radius: 999px; background: var(--card-2); color: var(--muted); cursor: pointer; }
-  .skill:hover { border-color: var(--accent); }
-  .skill.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
-  .lvl { display: flex; flex-direction: column; gap: .2rem; }
-  .lvl span { font-size: .75rem; color: var(--muted); }
-  .lvl select { max-width: 14rem; padding: .4rem .55rem; border-radius: 8px; border: 1px solid var(--border-2); background: var(--card-2); color: var(--text); }
-  .go { padding: .5rem .9rem; border-radius: 8px; border: 1px solid transparent; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
-  .go:disabled { opacity: .55; cursor: not-allowed; }
   .rlist { display: flex; flex-direction: column; gap: .4rem; margin-top: .4rem; }
   .r { display: flex; align-items: center; gap: .8rem; padding: .55rem .8rem; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
   .r-main { display: flex; flex-direction: column; gap: .1rem; flex: 1; min-width: 0; }
