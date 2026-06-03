@@ -119,9 +119,8 @@
     cardResources = (mr as CardResource[]) ?? [];
     gpuModels = (gm as GpuModel[]) ?? [];
     apiModels = (am as ApiModel[]) ?? [];
-    const cap = cardResources.find((r) => r.scope === 'member' && r.resource_type?.name === 'Labor')?.capacity ?? '';
-    const m = cap?.match(/\d+/);
-    laborHours = m ? m[0] : '';
+    const lab = cardResources.find((r) => r.scope === 'member' && r.resource_type?.name === 'Labor');
+    laborHours = lab?.monthly_quota != null ? String(lab.monthly_quota) : '';
   }
 
   async function saveLabor() {
@@ -129,14 +128,17 @@
     const hrs = parseInt(laborHours, 10);
     if (!Number.isFinite(hrs) || hrs < 0) { catError = get(t)('Enter hours per month (a number).'); return; }
     laborBusy = true;
-    const capacity = `${hrs} hrs/mo`;
     let err;
     if (myLabor) {
-      ({ error: err } = await supabase.from('resource').update({ capacity }).eq('id', myLabor.id));
+      // editing an existing pledge — update the quota in place (if it's still
+      // pending it stays in the forge queue; a steward re-reviews if approved)
+      ({ error: err } = await supabase.from('resource').update({ monthly_quota: hrs }).eq('id', myLabor.id));
     } else {
-      ({ error: err } = await supabase.from('resource').insert({
-        name: 'My time', type_id: laborTypeId || null, scope: 'member',
-        holder_member_id: id, capacity, availability: 'available'
+      // first-time pledge → forge_resource, which raises a forge_request so the
+      // submission actually appears in the officer's mint/forge queue.
+      ({ error: err } = await supabase.rpc('forge_resource', {
+        p_type: laborTypeId || null, p_name: 'My time', p_holder: id, p_scope: 'member',
+        p_monthly_quota: hrs, p_unit: 'hour'
       }));
     }
     laborBusy = false;
@@ -147,11 +149,13 @@
   async function addResource() {
     catError = '';
     if (!rName.trim()) return;
-    const { error: err } = await supabase.from('resource').insert({
-      name: rName.trim(), type_id: rType || null, scope: 'member',
-      holder_member_id: id, capacity: rCapacity || null, availability: rAvail,
-      gpu_model_id: rSelMethod === 'gpu' ? (rGpuModel || null) : null,
-      api_model_id: rSelMethod === 'api' ? (rApiModel || null) : null
+    // forge_resource raises a forge_request → the resource shows up in the
+    // officer's mint/forge queue for review (a raw insert never would).
+    const { error: err } = await supabase.rpc('forge_resource', {
+      p_type: rType || null, p_name: rName.trim(), p_holder: id, p_scope: 'member',
+      p_monthly_quota: Number(rCapacity) || 0,
+      p_gpu_model: rSelMethod === 'gpu' ? (rGpuModel || null) : null,
+      p_api_model: rSelMethod === 'api' ? (rApiModel || null) : null
     });
     if (err) { catError = err.message; return; }
     rName = ''; rType = ''; rCapacity = ''; rAvail = 'available'; rGpuModel = ''; rApiModel = '';
@@ -346,7 +350,7 @@
                 <tr>
                   <td>{r.name}{#if r.gpu_model || r.api_model}<div class="muted" style="font-size:.75rem;">{r.gpu_model?.name ?? `${r.api_model?.provider} ${r.api_model?.name}`}</div>{/if}</td>
                   <td>{r.resource_type?.name ?? '—'}</td>
-                  <td>{r.capacity ?? '—'}{#if r.capacity && r.resource_type?.unit}<span class="muted" style="font-size:.75rem;"> {r.resource_type.unit}</span>{/if}</td>
+                  <td>{r.monthly_quota != null ? r.monthly_quota.toLocaleString() : (r.capacity ?? '—')}{#if r.resource_type?.unit}<span class="muted" style="font-size:.75rem;"> {r.resource_type.unit}/mo</span>{/if}</td>
                   <td><span class="badge dim">{$t(r.availability)}</span></td>
                   <td><span class="badge {r.approval_status}">{r.approval_status === 'approved' ? $t('✓ approved') : r.approval_status === 'rejected' ? $t('✕ rejected') : $t('⏳ pending')}</span></td>
                   <td><button class="danger" onclick={() => removeResource(r.id)}>{$t('Remove')}</button></td>
@@ -361,8 +365,8 @@
             <input bind:value={rName} placeholder={$t('e.g. RTX 4090 ×2')} /></label>
           <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Type')}</span>
             <select bind:value={rType}><option value="">—</option>{#each resTypes.filter((rt) => rt.name !== 'Labor') as ct}<option value={ct.id}>{ct.name}</option>{/each}</select></label>
-          <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Capacity')}</span>
-            <input bind:value={rCapacity} placeholder={$t('optional')} style="width:120px;" /></label>
+          <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Monthly quota')}</span>
+            <input type="number" min="0" step="any" bind:value={rCapacity} placeholder="0" style="width:120px;" /></label>
           <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Availability')}</span>
             <select bind:value={rAvail}>{#each AVAIL as a}<option value={a}>{$t(a)}</option>{/each}</select></label>
           {#if rSelMethod === 'gpu'}
@@ -384,7 +388,7 @@
         {#if approvedLabor}
           <div class="row" style="justify-content:space-between; align-items:center; border:1px solid var(--border); border-radius:8px; padding:.5rem .75rem;">
             <strong style="font-size:.9rem;">⏱ {$t('Time')}</strong>
-            <span class="mono">{approvedLabor.capacity ?? '—'}</span>
+            <span class="mono">{approvedLabor.monthly_quota != null ? `${approvedLabor.monthly_quota} hrs/mo` : (approvedLabor.capacity ?? '—')}</span>
           </div>
         {/if}
         {#if approvedResources.length}
@@ -395,7 +399,7 @@
                 <tr>
                   <td>{r.name}{#if r.gpu_model || r.api_model}<div class="muted" style="font-size:.75rem;">{r.gpu_model?.name ?? `${r.api_model?.provider} ${r.api_model?.name}`}</div>{/if}</td>
                   <td>{r.resource_type?.name ?? '—'}</td>
-                  <td>{r.capacity ?? '—'}{#if r.capacity && r.resource_type?.unit}<span class="muted" style="font-size:.75rem;"> {r.resource_type.unit}</span>{/if}</td>
+                  <td>{r.monthly_quota != null ? r.monthly_quota.toLocaleString() : (r.capacity ?? '—')}{#if r.resource_type?.unit}<span class="muted" style="font-size:.75rem;"> {r.resource_type.unit}/mo</span>{/if}</td>
                   <td><span class="badge dim">{$t(r.availability)}</span></td>
                 </tr>
               {/each}
