@@ -36,9 +36,15 @@
     }
     // No emailRedirectTo → Supabase emails the {{ .Token }} verification code
     // instead of a single-use magic link (scanner-proof for enterprise inboxes).
+    //
+    // shouldCreateUser MUST be true: an invited member has a `member` row but no
+    // auth.users row until their first login, and OTP needs to create it then.
+    // This does NOT open the wall — access is gated by the member-email match
+    // (current_member_id binds auth.uid() to a pre-created member row by email),
+    // and the is_email_invited check above already blocks non-invited emails.
     const { error: err } = await supabase.auth.signInWithOtp({
       email,
-      options: { shouldCreateUser: false }
+      options: { shouldCreateUser: true }
     });
     loading = false;
     if (err) error = err.message;
