@@ -144,6 +144,13 @@ const zh: Table = {
   "1st {n}": "一作 {n}",
   "window ends {d}": "窗口截止 {d}",
   "Edit details": "编辑详情",
+  "Working Group": "工作组",
+  "Target venue": "目标会场",
+  "Summary": "简介",
+  "Project / paper name": "项目 / 论文名称",
+  "One-line description": "一句话描述",
+  "— unattributed —": "— 未归属 —",
+  "— none —": "— 无 —",
   // ── Redesign: home overview台 + /profile manage surface ──
   "Community steward": "社区管理员",
   "{n} application accepted — confirm to join": "{n} 个申请已通过 —— 确认加入",
