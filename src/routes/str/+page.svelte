@@ -7,6 +7,7 @@
     { id: 'what', label: 'What STR is' },
     { id: 'anchor', label: 'The dollar anchor' },
     { id: 'pricing', label: 'Pricing any contribution' },
+    { id: 'custody', label: 'Resources & custody' },
     { id: 'states', label: 'Nominal vs liquid' },
     { id: 'bonds', label: 'Bonds & staking' },
     { id: 'supply', label: 'Supply & accounting' },
@@ -88,6 +89,16 @@
       <p>{@html $t('The table prices <em>resources</em>. A <strong>labour need</strong> works differently: the working-hours resource is just <em>capacity</em>, and an hour mints by the <strong>skill’s rate</strong> — Paper Writing 10/h, Experiment Design 12/h, Pretraining / RLHF / GPU training 15/h (admin-tunable, default 10).')}</p>
       <p>{@html $t('Seniority then scales it. The contributor’s <strong>badge level</strong> in that skill multiplies the rate: <code>nominal = skill_rate × level_mult × hours</code>, with <strong>apprentice ×1, journeyman ×1.25, craftsman ×1.5, master ×2</strong> (all policy knobs). So a master writer mints 20 STR/h where an apprentice mints 10. The level gates entry <em>and</em> raises the rate; “Expert Time” at $75/h is the alternative path when expertise is contributed as a resource rather than skilled labour.')}</p>
     </div>
+  </section>
+
+  <section id="custody" class="card stack">
+    <h2>{$t('Resources & custody')}</h2>
+    <p>{@html $t('Everything contributed — a person’s hours, a shared GPU cluster, an external expert’s time, a dataset — is one object: a <strong>resource</strong>. A resource has an in-community <strong>holder</strong> (the steward, the only one who can commit it), a <strong>monthly quota</strong> (its capacity), and — for labour — the <strong>skills</strong> it can fill plus an <strong>expertise level</strong>.')}</p>
+    <ul class="bul">
+      <li>{@html $t('<strong>Holder vs owner.</strong> The system only tracks the holder. The real owner can sit outside the community — a vendor, a lab, an expert with no account — and never needs a card. Custody is the channel: a steward holds the resource on the owner’s behalf.')}</li>
+      <li>{@html $t('<strong>Your own hours are just holder = you.</strong> There’s no separate “self” path — your working hours are a resource you hold, defaulting its skills to your badges and its level to your badge level. A stewarded expert instead <em>declares</em> skills and level on the resource, so the hours qualify and price right even with no badge on any card.')}</li>
+      <li>{@html $t('<strong>Community resources are the same object</strong> with scope = community — a cluster, a funding pool, an expert roster, held by a steward and committed into project needs, priced by the same anchor.')}</li>
+    </ul>
   </section>
 
   <section id="states" class="card stack">
