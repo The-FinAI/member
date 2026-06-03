@@ -33,7 +33,7 @@
     const certified = ((certs as unknown[]) ?? []).length > 0;
 
     steps = [
-      { key: 'profile', title: 'Set up your profile', blurb: 'List what you can bring — monthly labor and any resources.', href: '/profile', cta: 'Open profile', done: offersSomething },
+      { key: 'profile', title: 'Set up your profile', blurb: 'List what you can bring — monthly labor and any resources.', href: `/members/${memberId}`, cta: 'Open profile', done: offersSomething },
       { key: 'browse', title: 'Find an opportunity', blurb: 'Browse open needs and apply to one that fits your skills.', href: '/projects?tab=needs', cta: 'Browse opportunities', done: hasApps },
       { key: 'join', title: 'Join a project', blurb: 'Post the join bond and start declaring monthly contributions.', href: '/projects', cta: 'Browse projects', done: hasPos },
       { key: 'certify', title: 'Earn a badge', blurb: 'Earn a reviewed badge to turn a skill into a credential and raise your labor rate.', href: '/community?tab=badges', cta: 'Open the badge catalog', done: certified }

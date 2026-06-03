@@ -173,6 +173,7 @@ const zh: Table = {
   "read how the community works →": "了解社区如何运作 →",
   "Description": "简介",
   "What this unit is about…": "这个单位是做什么的…",
+  "My profile": "我的主页",
   // ── Redesign: home overview台 + /profile manage surface ──
   "Community steward": "社区管理员",
   "{n} application accepted — confirm to join": "{n} 个申请已通过 —— 确认加入",

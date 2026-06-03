@@ -332,7 +332,7 @@
 
   <!-- footer link to the manage surface (resources + identity) -->
   {#if $member}
-    <a class="manage-link" href="/profile">{$t('Manage your resources & profile')} →</a>
+    <a class="manage-link" href={`/members/${$member.id}`}>{$t('Manage your resources & profile')} →</a>
   {/if}
 </div>
 
