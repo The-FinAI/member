@@ -136,6 +136,13 @@ const zh: Table = {
   "Total weight must be greater than zero.": "权重合计必须大于零。",
   "The leader is always first author": "负责人始终为一作",
   "Settlement submitted for review.": "结算已提交待审。",
+  "Settlements": "结算",
+  "Approve & pay": "通过并发放",
+  "Settlement approved — STR paid out.": "结算已通过 —— STR 已发放。",
+  "Settlement rejected.": "结算已驳回。",
+  "authors": "作者",
+  "1st {n}": "一作 {n}",
+  "window ends {d}": "窗口截止 {d}",
   // ── Redesign: home overview台 + /profile manage surface ──
   "Community steward": "社区管理员",
   "{n} application accepted — confirm to join": "{n} 个申请已通过 —— 确认加入",
