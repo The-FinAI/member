@@ -279,12 +279,22 @@
 
   async function forgeMember(p: Record<string, any>) {
     busy = 'member'; err = ''; msg = '';
-    const { error: e } = await supabase.rpc('forge_member_card', {
+    // forge the card WITH its staged badges in one batch
+    const { data: newId, error: e } = await supabase.rpc('forge_member_card', {
       p_full_name: p.full_name, p_email: p.email, p_unit: unitId,
-      p_affiliation: p.affiliation || null, p_badges: []
+      p_affiliation: p.affiliation || null, p_badges: p.badges ?? []
     });
+    if (e) { busy = ''; err = e.message; return; }
+    // and forge its "My time" working hours (→ resource review queue)
+    if (newId && (Number(p.hours) || 0) > 0) {
+      const laborType = resTypes.find((rt) => rt.name === 'Labor')?.id ?? null;
+      const { error: re } = await supabase.rpc('forge_resource', {
+        p_type: laborType, p_name: 'My time', p_holder: newId, p_scope: 'member',
+        p_monthly_quota: Number(p.hours) || 0, p_unit: 'hour'
+      });
+      if (re) { busy = ''; err = re.message; return; }
+    }
     busy = '';
-    if (e) { err = e.message; return; }
     msg = get(t)('Card forged.'); showForgeMember = false; await load(unitId);
   }
   async function claim(p: { id: string }) {

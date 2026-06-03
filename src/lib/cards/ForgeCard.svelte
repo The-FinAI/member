@@ -36,6 +36,8 @@
 
   // member
   let mName = $state(''); let mEmail = $state(''); let mAffil = $state('');
+  let mSkillLevels = $state<Record<string, string>>({}); // skill_id → level (staged badges)
+  let mHours = $state<number>(0);
   // badge
   let bSkill = $state(''); let bLevel = $state('apprentice');
   // resource
@@ -48,7 +50,10 @@
   const nReqs = $derived(Object.entries(nSkillLevels).map(([skill_id, min_level]) => ({ skill_id, min_level })));
 
   function submit() {
-    if (mode === 'member') onSubmit?.({ full_name: mName, email: mEmail, affiliation: mAffil });
+    if (mode === 'member') onSubmit?.({
+      full_name: mName, email: mEmail, affiliation: mAffil, hours: Number(mHours) || 0,
+      badges: Object.entries(mSkillLevels).map(([skill, level]) => ({ skill, level }))
+    });
     else if (mode === 'badge') onSubmit?.({ skill: bSkill, level: bLevel });
     else if (mode === 'resource') onSubmit?.({ type: rType, name: rName, scope: rScope, monthly_quota: rQuota, unit: rUnit });
     else onSubmit?.({
@@ -75,6 +80,11 @@
     <label class="f-field"><span>{$t('Full name')}</span><input bind:value={mName} required /></label>
     <label class="f-field"><span>{$t('Email')}</span><input type="email" bind:value={mEmail} required /></label>
     <label class="f-field"><span>{$t('Affiliation')}</span><input bind:value={mAffil} /></label>
+    <label class="f-field"><span>{$t('Monthly hours')}<span class="muted"> · {$t('time this person can commit')}</span></span>
+      <input type="number" min="0" step="any" bind:value={mHours} style="max-width:9rem;" /></label>
+    <div class="f-field"><span>{$t('Skills & levels')}<span class="muted"> · {$t('staged as one badge batch for review')}</span></span>
+      <SkillLevelPicker bind:value={mSkillLevels} />
+    </div>
 
   {:else if mode === 'badge'}
     <label class="f-field"><span>{$t('Skill')}</span>
