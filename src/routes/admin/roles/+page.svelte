@@ -1,17 +1,6 @@
 <script lang="ts">
-  import LookupEditor from '$lib/LookupEditor.svelte';
-  import { t } from '$lib/i18n';
+  import { goto } from '$app/navigation';
+  // Folded into the Projects console.
+  $effect(() => { goto('/admin/projects?tab=roles', { replaceState: true }); });
 </script>
-
-<div class="stack">
-  <h1>{$t('Project Roles')}</h1>
-  <p class="muted" style="margin-top:-.75rem;">{$t('Roles within a project. "Can manage" grants edit rights on that project.')}</p>
-  <LookupEditor
-    table="project_role"
-    orderBy="name"
-    columns={[
-      { key: 'name', label: 'Name' },
-      { key: 'can_manage', label: 'Can manage', type: 'bool' }
-    ]}
-  />
-</div>
+<svelte:head><title>Projects · Admin · The Fin AI</title></svelte:head>

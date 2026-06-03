@@ -28,10 +28,10 @@
     { group: 'People & access', title: 'Capabilities', desc: 'Grant capabilities to positions (permission matrix)', href: '/admin/capabilities', caps: ['manage_members'] },
     { group: 'People & access', title: 'Announcements', desc: 'Post, pin & retire the site-wide notice board', href: '/admin/announcements', caps: ['manage_members'] },
 
-    { group: 'Projects', title: 'Project Types', desc: 'Dataset & Benchmark, Model, Agent…', href: '/admin/types', caps: ['manage_taxonomy'] },
-    { group: 'Projects', title: 'Project Statuses', desc: 'Proposal → Finished workflow states', href: '/admin/statuses', caps: ['manage_taxonomy'] },
-    { group: 'Projects', title: 'Project Roles', desc: 'Roles members hold within a project', href: '/admin/roles', caps: ['manage_taxonomy'] },
-    { group: 'Projects', title: 'Venues', desc: 'Conferences & journals + submission deadlines', href: '/admin/venues', caps: ['manage_taxonomy', 'edit_any_project'] },
+    { group: 'Projects', title: 'Project Types', desc: 'Dataset & Benchmark, Model, Agent…', href: '/admin/projects?tab=types', caps: ['manage_taxonomy'] },
+    { group: 'Projects', title: 'Project Statuses', desc: 'Proposal → Finished workflow states', href: '/admin/projects?tab=statuses', caps: ['manage_taxonomy'] },
+    { group: 'Projects', title: 'Project Roles', desc: 'Roles members hold within a project', href: '/admin/projects?tab=roles', caps: ['manage_taxonomy'] },
+    { group: 'Projects', title: 'Venues', desc: 'Conferences & journals + submission deadlines', href: '/admin/projects?tab=venues', caps: ['manage_taxonomy', 'edit_any_project'] },
 
     { group: 'Guild & skills', title: 'Skill Tree', desc: 'Skills, the matching tree & the leader requirement', href: '/admin/skills', caps: ['manage_taxonomy', 'manage_guild'] },
 
