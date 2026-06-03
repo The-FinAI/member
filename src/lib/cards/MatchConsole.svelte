@@ -88,13 +88,13 @@
     unit = u as any;
 
     const [{ data: sl }, { data: sk }, { data: rt }] = await Promise.all([
-      // leader slots are NOT matched here — leadership is *claimed* (the person
-      // pays the leader_stake and picks up the monthly first-author writing
-      // duty via claim_leadership), never seated by an officer. Officers only
-      // match work_labor / work_resource needs.
+      // All open slots load. Leader slots are shown (so "lead open" projects
+      // don't silently vanish) but never seated here — leadership is *claimed*
+      // on the project page. A chapter's matching board drops leader slots
+      // (not seatable); a WG sees them as informational rows. See boardNeeds.
       supabase.from('project_slot')
         .select('id, project_id, slot_kind, req_access, skill_id, resource_type_id, quota, headcount, status, requirements, project:project_id(name, deadline, org_unit_id), skill:skill_id(name), resource_type:resource_type_id(name)')
-        .eq('status', 'open').in('slot_kind', ['work_labor', 'work_resource']),
+        .eq('status', 'open').in('slot_kind', ['leader', 'work_labor', 'work_resource']),
       supabase.from('skill').select('id, name, parent_id').order('name'),
       supabase.from('resource_type').select('id, name, unit').order('rank')
     ]);
@@ -188,8 +188,12 @@
     }
     return list;
   });
+  // chapter matches roster into work slots → leader slots aren't seatable, so
+  // drop them from the chapter board; a WG console is read-only, so it shows
+  // every open need including "lead open".
+  const boardNeeds = $derived(isChapter ? needs.filter((n) => n.slot_kind !== 'leader') : needs);
   const needsView = $derived.by(() => {
-    let list = needs;
+    let list = boardNeeds;
     if (selPerson) {
       const bd = badgesOf[selPerson.id] ?? [], rs = resOf[selPerson.id] ?? [];
       list = [...list].sort((a, b) => {
@@ -292,7 +296,7 @@
         <h2 class="mc-title">{unit.name}</h2>
         <p class="mc-sub">
           {isChapter ? $t('Chapter') : $t('Working group')} · {$t('Month {ym}', { ym })}
-          · {$t('{n} open needs', { n: needs.length })}
+          · {$t('{n} open needs', { n: boardNeeds.length })}
         </p>
       </div>
       {#if isOfficer && isChapter}
@@ -360,8 +364,8 @@
     <div class="board" class:single={!isChapter}>
       <!-- demand -->
       <section class="col">
-        <span class="mc-h">{$t('Open needs')}{#if needs.length}<span class="mc-ct"> · {needs.length}</span>{/if}</span>
-        {#if !needs.length}
+        <span class="mc-h">{$t('Open needs')}{#if boardNeeds.length}<span class="mc-ct"> · {boardNeeds.length}</span>{/if}</span>
+        {#if !boardNeeds.length}
           <p class="muted">{isChapter ? $t('No open needs in the community right now.') : $t('No open needs — take on a project or post one.')}</p>
         {:else}
           <div class="rows">
