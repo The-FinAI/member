@@ -104,6 +104,7 @@ const zh: Table = {
   "Monthly": "每月",
   "Status": "状态",
   "Completion → use Mint done (review)": "完成项目请用「Mint done」(走审核)",
+  "Completion goes to the review queue, then settlement.": "完成将进入审核队列,通过后进行结算。",
   // ── Redesign: home overview台 + /profile manage surface ──
   "Community steward": "社区管理员",
   "{n} application accepted — confirm to join": "{n} 个申请已通过 —— 确认加入",

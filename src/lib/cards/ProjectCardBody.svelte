@@ -39,7 +39,7 @@
   let meetings = $state<Meeting[]>([]);
   let events = $state<Event[]>([]);
   let loading = $state(true);
-  let busy = $state(''); let err = $state('');
+  let busy = $state(''); let err = $state(''); let msg = $state('');
 
   // edit-details form
   let editing = $state(false);
@@ -107,11 +107,20 @@
 
   async function setStatus(statusId: string) {
     if (!statusId || statusId === proj?.status_id) return;
-    busy = 'status'; err = '';
+    busy = 'status'; err = ''; msg = '';
     const { error: e } = await supabase.rpc('project_set_status', { p_project: projectId, p_status: statusId });
     busy = '';
     if (e) { err = e.message; return; }
     await load(); onChanged?.();
+  }
+
+  // completion is the reviewed path: submit a forge_request → review queue → settlement
+  async function mintDone() {
+    busy = 'done'; err = ''; msg = '';
+    const { error: e } = await supabase.rpc('forge_project_done', { p_project: projectId });
+    busy = '';
+    if (e) { err = e.message; return; }
+    msg = get(t)('Completion submitted for review.');
   }
 
   async function addLink() {
@@ -192,8 +201,9 @@
 
 {#if !loading}
   {#if err}<p class="pcb-err">{err}</p>{/if}
+  {#if msg}<p class="pcb-ok">{msg}</p>{/if}
 
-  <!-- status transition (non-terminal; Finished goes through Mint done) -->
+  <!-- status transition (non-terminal; completion is the reviewed Mint-done path) -->
   {#if statusOptions.length}
     <div class="pcb-section pcb-status">
       <span class="pcb-h">{$t('Status')}</span>
@@ -203,8 +213,11 @@
             {#each statusOptions as s}<option value={s.id}>{$t(s.name)}</option>{/each}
           </select>
           {#if busy === 'status'}<span class="spin"></span>{/if}
-          <span class="pcb-hint">{$t('Completion → use Mint done (review)')}</span>
+          <button type="button" class="pcb-done" disabled={busy === 'done'} onclick={mintDone}>
+            {#if busy === 'done'}<span class="spin"></span>{/if}✓ {$t('Mint done')}
+          </button>
         </div>
+        <span class="pcb-hint">{$t('Completion goes to the review queue, then settlement.')}</span>
       {:else}
         <span class="pcb-cur">{$t(curStatusName || '—')}</span>
       {/if}
@@ -365,6 +378,13 @@
 
 <style>
   .pcb-err { font-size: .82rem; color: var(--down); margin: 0 0 .5rem; }
+  .pcb-ok { font-size: .82rem; color: var(--accent); margin: 0 0 .5rem; }
+  .pcb-done {
+    display: inline-flex; align-items: center; gap: .35rem; padding: .4rem .7rem;
+    border-radius: 8px; border: 1px solid var(--up); background: color-mix(in srgb, var(--up) 12%, transparent);
+    color: var(--up); font: inherit; font-weight: 600; font-size: .82rem; cursor: pointer;
+  }
+  .pcb-done:disabled { opacity: .55; cursor: not-allowed; }
   .pcb-section { display: flex; flex-direction: column; gap: .5rem; padding-top: .8rem; border-top: 1px solid var(--border); }
   .pcb-h-row { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
   .pcb-h { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
