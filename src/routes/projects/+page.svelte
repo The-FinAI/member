@@ -34,6 +34,8 @@
     seatsTotal: number;
     openNeeds: number;
     pool: number;          // Σ nominal_str across the project's commitments
+    summary: string | null;
+    proposal: string | null;
     finished: boolean;
     claimable: boolean;    // leader slot empty → first-author seat is open
   };
@@ -100,7 +102,7 @@
     // ambiguous-FK embed can never blank out the whole project list.
     const [{ data: pr }, { data: ou }] = await Promise.all([
       supabase.from('project')
-        .select('id, name, target_venue, deadline, org_unit_id, venue:venue_id(name, kind, deadline), project_type(name), project_status!project_status_id_fkey(name, rank)'),
+        .select('id, name, target_venue, deadline, summary, proposal_url, org_unit_id, venue:venue_id(name, kind, deadline), project_type(name), project_status!project_status_id_fkey(name, rank)'),
       supabase.from('org_unit').select('id, name')
     ]);
     const unitName: Record<string, string> = {};
@@ -177,6 +179,8 @@
         seatsTotal: seatsTotal[p.id] ?? 0,
         openNeeds: openNeeds[p.id] ?? 0,
         pool: pool[p.id] ?? 0,
+        summary: p.summary ?? null,
+        proposal: p.proposal_url ?? null,
         finished,
         claimable: !hasLeader[p.id] && !finished
       };
@@ -266,6 +270,13 @@
     if (!d) return '';
     return new Date(d + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   }
+  function ddlClass(d: string | null) {
+    if (!d) return 'dim';
+    const days = (new Date(d + 'T00:00:00').getTime() - Date.now()) / 86400000;
+    if (days < 0) return 'neg';
+    if (days < 14) return 'warn';
+    return 'dim';
+  }
 
   const typeNames = $derived([...new Set(grid.map((r) => r.type))].filter((x) => x !== '—').sort());
 
@@ -352,6 +363,9 @@
     const p = name.trim().split(/\s+/);
     return ((p[0]?.[0] ?? '') + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase() || '·';
   }
+  // status pipeline (Hold excluded) for the drawer's "step n of N" indicator
+  const pipeline = $derived(statuses.filter((s) => s.name !== 'Hold').sort((a, b) => a.rank - b.rank).map((s) => s.name));
+  function pipeIndex(name: string) { return pipeline.indexOf(name); }
   // short deadline label, e.g. "Aug 12" — urgency conveyed by relDays alongside
   function relDays(d: string | null) {
     if (!d) return '';
@@ -585,12 +599,47 @@
     subtitle={[r.wg, r.venue].filter(Boolean).join(' · ')}
     onClose={closeDrawer}
   >
-    <div class="stack" style="gap:.8rem;">
-      <ProjectSlotCard
-        project={{ id: r.id, name: r.name, status: r.status, deadline: r.deadline }}
-        slots={slotsByProject[r.id] ?? []}
-        canManage={false}
-      />
+    <div class="pdrawer">
+      <!-- meta: status pipeline · type · working group · venue · deadline -->
+      <div class="pd-meta">
+        <span class="status {statusClass(r.status)}" title={pipeIndex(r.status) >= 0 ? $t('Step {n} of {total}', { n: pipeIndex(r.status) + 1, total: pipeline.length }) : undefined}>
+          <span class="sdot" style="background:currentColor;"></span>{r.claimable ? $t('lead open') : $t(r.status)}
+        </span>
+        <span class="pd-chip">{$t(r.type)}</span>
+        {#if r.wg}<span class="pd-chip">{r.wg}</span>{/if}
+        {#if r.venue}
+          <span class="pd-chip" title={$t(venueKindMeta(r.venueKind).label)}>{venueKindMeta(r.venueKind).icon} {r.venue}</span>
+        {/if}
+        {#if r.deadline}
+          <span class="pd-chip {ddlClass(r.deadline)}">⏱ {fmtDate(r.deadline)} · {relDays(r.deadline)}</span>
+        {/if}
+      </div>
+
+      <!-- key economy numbers -->
+      <div class="pd-stats">
+        <div class="pd-stat"><span class="pd-v mono">{r.pool.toLocaleString()}</span><span class="pd-l">{$t('Nominal pool')}</span></div>
+        <div class="pd-stat"><span class="pd-v mono">{r.seatsFilled}/{r.seatsTotal}</span><span class="pd-l">{$t('Seats')}</span></div>
+        <div class="pd-stat"><span class="pd-v mono">{r.openNeeds}</span><span class="pd-l">{$t('Open needs')}</span></div>
+        {#if r.leader}<div class="pd-stat"><span class="pd-v">{r.leader}</span><span class="pd-l">{$t('first author')}</span></div>{/if}
+      </div>
+
+      {#if r.summary}
+        <p class="pd-summary">{r.summary}</p>
+      {/if}
+      {#if r.proposal}
+        <a class="pd-proposal" href={r.proposal} target="_blank" rel="noopener noreferrer">📄 {$t('Proposal')} ↗</a>
+      {/if}
+
+      <!-- team & slots -->
+      <div class="pd-section">
+        <span class="pd-h">{$t('Team & slots')}</span>
+        <ProjectSlotCard
+          project={{ id: r.id, name: r.name, status: r.status, deadline: r.deadline }}
+          slots={slotsByProject[r.id] ?? []}
+          canManage={false}
+        />
+      </div>
+
       {#if canSeat && !r.finished}
         <SlotSeater projectId={r.id} projectName={r.name} onSeated={loadGrid} />
       {/if}
@@ -616,6 +665,32 @@
     text-decoration: none; font: inherit; font-weight: 600; cursor: pointer;
   }
   .btn.ghost { background: transparent; color: var(--accent); border-color: var(--border); }
+
+  /* project drawer — the full project card */
+  .pdrawer { display: flex; flex-direction: column; gap: 1rem; }
+  .pd-meta { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+  .pd-chip {
+    display: inline-flex; align-items: center; gap: .3rem;
+    font-size: .76rem; color: var(--text-dim); background: var(--card-2);
+    border: 1px solid var(--border); border-radius: 999px; padding: .15rem .55rem;
+  }
+  .pd-chip.warn { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
+  .pd-chip.neg { color: var(--down); border-color: color-mix(in srgb, var(--down) 35%, transparent); }
+  .pd-stats {
+    display: flex; flex-wrap: wrap; gap: .3rem 1.4rem;
+    padding: .7rem .9rem; border: 1px solid var(--border); border-radius: 12px; background: var(--card);
+  }
+  .pd-stat { display: flex; flex-direction: column; gap: .1rem; }
+  .pd-v { font-weight: 700; font-size: 1rem; color: var(--text); }
+  .pd-l { font-size: .68rem; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
+  .pd-summary { margin: 0; font-size: .88rem; line-height: 1.5; color: var(--text); }
+  .pd-proposal {
+    align-self: flex-start; display: inline-flex; align-items: center; gap: .35rem;
+    font-size: .84rem; color: var(--accent); text-decoration: none; font-weight: 600;
+  }
+  .pd-proposal:hover { text-decoration: underline; }
+  .pd-section { display: flex; flex-direction: column; gap: .45rem; }
+  .pd-h { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 
   .hof { padding: 0; overflow: hidden; }
   .hof-head {

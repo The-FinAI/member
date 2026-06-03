@@ -59,6 +59,9 @@ const zh: Table = {
   "Every slot is filled — nothing to seat.": "所有槽位已满 —— 无需安排。",
   "No matching cards.": "没有匹配的卡片。",
   "no matching resource": "无匹配资源",
+  "Team & slots": "团队与槽位",
+  "Proposal": "立项书",
+  "Step {n} of {total}": "第 {n} / {total} 步",
   // ── Redesign: home overview台 + /profile manage surface ──
   "Community steward": "社区管理员",
   "{n} application accepted — confirm to join": "{n} 个申请已通过 —— 确认加入",
