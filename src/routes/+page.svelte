@@ -15,7 +15,7 @@
   // ledger lives on /wallet. This page answers "what's my standing, and what
   // needs me next."
 
-  type MyProject = { project: { id: string; name: string; project_status: { name: string } | null } | null; project_role: { name: string } | null };
+  type MyProject = { project: { id: string; name: string; project_status: { name: string; is_active: boolean } | null } | null; project_role: { name: string } | null };
   type MyApp = { id: string; status: string; open_need: { project: { id: string; name: string } | null } | null };
   type Skill = { id: string; name: string; parent_id: string | null };
   type MySkill = { skill_id: string; certified_level: string | null };
@@ -48,7 +48,7 @@
     loading = true;
     const [{ data: mp }, { data: ma }, { count: oc }, { count: pc }, { data: bal }, { data: cm }] = await Promise.all([
       supabase.from('project_member')
-        .select('project(id, name, project_status!project_status_id_fkey(name)), project_role(name)')
+        .select('project(id, name, project_status!project_status_id_fkey(name, is_active)), project_role(name)')
         .eq('member_id', memberId),
       supabase.from('need_application')
         .select('id, status, open_need(project(id, name))')
@@ -151,10 +151,9 @@
   // the single most actionable thing: applications the team accepted, awaiting
   // your confirmation to actually join.
   const acceptedApps = $derived(myApps.filter((a) => a.status === 'accepted'));
-  // "My projects" = active only; delivered (Finished) ones drop off the active
-  // list (tolerate stray casing/whitespace in the seeded status name).
-  const isFinished = (n: string | null | undefined) => /^finished$/i.test((n ?? '').trim());
-  const myActiveProjects = $derived(myProjects.filter((p) => !isFinished(p.project?.project_status?.name)));
+  // "My projects" = in-play only; status.is_active is the real field (false for
+  // Finished & Hold). Delivered/parked ones drop off the active list.
+  const myActiveProjects = $derived(myProjects.filter((p) => p.project?.project_status?.is_active !== false));
   const myShipped = $derived(myProjects.length - myActiveProjects.length);
 </script>
 
