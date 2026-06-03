@@ -4,6 +4,7 @@
   import { get } from 'svelte/store';
   import { member } from '$lib/session';
   import { t } from '$lib/i18n';
+  import SkillLevelPicker from '$lib/admin/economy/SkillLevelPicker.svelte';
 
   // Forge community-owned resources. The form adapts to the type's valuation
   // method: gpu → pick a GPU model (quota = GPU-hours); api → pick an API model
@@ -24,15 +25,12 @@
   let gpus = $state<Gpu[]>([]);
   let apis = $state<Api[]>([]);
   let resources = $state<Resrc[]>([]);
-  let leaves = $state<{ id: string; name: string }[]>([]);
-  let myBadges = $state<string[]>([]);
+  let myBadges = $state<Record<string, string>>({}); // current user's skill_id → level (self default)
   let loading = $state(true); let error = $state(''); let ok = $state(''); let busy = $state(false);
 
   let fType = $state(''), fName = $state(''), fHolder = $state(''), fQuota = $state(0);
   let fUsd = $state<number | null>(null), fGpu = $state(''), fApi = $state('');
-  let fSkills = $state<string[]>([]); let fLevel = $state('');
-  const LEVELS = ['apprentice', 'journeyman', 'craftsman', 'master'];
-  const LEVEL_LABEL: Record<string, string> = { apprentice: 'Apprentice', journeyman: 'Journeyman', craftsman: 'Craftsman', master: 'Master' };
+  let fSkillLevels = $state<Record<string, string>>({}); // skill_id → level
 
   const selType = $derived(types.find((x) => x.id === fType) ?? null);
   const meth = $derived(selType?.valuation_method ?? '');
@@ -42,15 +40,12 @@
     meth === 'usd' ? get(t)('USD') : (selType?.unit ?? get(t)('units'))
   );
 
-  function toggleSkill(id: string) {
-    fSkills = fSkills.includes(id) ? fSkills.filter((x) => x !== id) : [...fSkills, id];
-  }
   let lastHolder = '';
   $effect(() => {
     const me = get(member)?.id;
     if (fHolder && fHolder !== lastHolder) {
       lastHolder = fHolder;
-      if (me && fHolder === me) fSkills = [...myBadges];
+      if (me && fHolder === me) fSkillLevels = { ...myBadges };
     }
   });
 
@@ -58,7 +53,7 @@
     if (!supabaseConfigured) { loading = false; return; }
     loading = true;
     const me = get(member)?.id ?? null;
-    const [{ data: rt }, { data: mem }, { data: gp }, { data: ap }, { data: rs }, { data: sk }, { data: bg }] = await Promise.all([
+    const [{ data: rt }, { data: mem }, { data: gp }, { data: ap }, { data: rs }, { data: bg }] = await Promise.all([
       supabase.from('resource_type').select('id, name, unit, valuation_method, usd_per_unit').order('rank'),
       supabase.from('member').select('id, full_name').order('full_name'),
       supabase.from('gpu_model').select('id, name, tflops').eq('is_active', true).order('rank'),
@@ -66,19 +61,18 @@
       supabase.from('resource')
         .select('id, name, monthly_quota, unit, resource_type:type_id(name), holder:holder_member_id(full_name), forge_request:forge_request_id(status)')
         .eq('scope', 'community').order('created_at', { ascending: false }),
-      supabase.from('skill').select('id, parent_id, name').order('name'),
-      me ? supabase.from('badge').select('skill_id').eq('member_id', me) : Promise.resolve({ data: [] as any[] })
+      me ? supabase.from('badge').select('skill_id, level').eq('member_id', me) : Promise.resolve({ data: [] as any[] })
     ]);
     types = (rt as ResType[]) ?? []; members = (mem as Member[]) ?? [];
     gpus = (gp as Gpu[]) ?? []; apis = (ap as Api[]) ?? []; resources = (rs as Resrc[]) ?? [];
-    const all = (sk as { id: string; parent_id: string | null; name: string }[]) ?? [];
-    leaves = all.filter((s) => s.parent_id && !all.some((c) => c.parent_id === s.id)).map((s) => ({ id: s.id, name: s.name }));
-    myBadges = ((bg as { skill_id: string }[]) ?? []).map((b) => b.skill_id);
+    const bmap: Record<string, string> = {};
+    for (const b of (bg as { skill_id: string; level: string }[]) ?? []) bmap[b.skill_id] = b.level;
+    myBadges = bmap;
     loading = false;
   }
   onMount(load);
 
-  function reset() { fName = ''; fQuota = 0; fUsd = null; fGpu = ''; fApi = ''; fSkills = []; fLevel = ''; lastHolder = ''; }
+  function reset() { fName = ''; fQuota = 0; fUsd = null; fGpu = ''; fApi = ''; fSkillLevels = {}; lastHolder = ''; }
 
   async function forge() {
     error = ''; ok = '';
@@ -91,8 +85,8 @@
       p_monthly_quota: Number(fQuota) || 0,
       p_unit: null,
       p_usd_per_unit: meth === 'flat' && !isLabour ? fUsd : null,
-      p_skills: isLabour ? fSkills : [],
-      p_level: isLabour ? (fLevel || null) : null,
+      p_skills: isLabour ? Object.entries(fSkillLevels).map(([skill_id, level]) => ({ skill_id, level })) : [],
+      p_level: null,
       p_gpu_model: meth === 'gpu' ? fGpu : null,
       p_api_model: meth === 'api' ? fApi : null
     });
@@ -137,19 +131,8 @@
 
   {#if isLabour}
     <div class="skills-row">
-      <span class="skills-h">{$t('Skills these hours can fill')}<span class="muted"> · {$t('for stewarded labour; a holder = you defaults to your badges')}</span></span>
-      <div class="skill-chips">
-        {#each leaves as s (s.id)}
-          <button type="button" class="skill" class:on={fSkills.includes(s.id)} onclick={() => toggleSkill(s.id)}>{s.name}</button>
-        {/each}
-        {#if !leaves.length}<span class="muted">{$t('No certifiable skills yet.')}</span>{/if}
-      </div>
-      <label class="lvl"><span>{$t('Expertise level')}<span class="muted"> · {$t('leave blank for your own hours (uses your badge level)')}</span></span>
-        <select bind:value={fLevel}>
-          <option value="">{$t('— from badge —')}</option>
-          {#each LEVELS as l}<option value={l}>{$t(LEVEL_LABEL[l])}</option>{/each}
-        </select>
-      </label>
+      <span class="skills-h">{$t('Skills & level these hours can fill')}<span class="muted"> · {$t('set each skill’s rank; a holder = you defaults to your badges')}</span></span>
+      <SkillLevelPicker bind:value={fSkillLevels} />
     </div>
   {/if}
 </div>

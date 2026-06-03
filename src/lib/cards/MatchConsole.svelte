@@ -16,7 +16,7 @@
 
   type Person = { id: string; full_name: string; affiliation: string | null; kind: string };
   type Badge = { skill_id: string; level: string };
-  type Resource = { id: string; name: string; type_id: string; monthly_quota: number | null; unit: string | null; skills?: string[] };
+  type Resource = { id: string; name: string; type_id: string; monthly_quota: number | null; unit: string | null; skills?: { skill_id: string; level: string }[] };
   type Req = { skill_id: string; min_level: string };
   type Need = {
     id: string; project_id: string; project_name: string; deadline: string | null;
@@ -71,8 +71,8 @@
     for (const req of s.requirements) {
       const have = badges.find((b) => b.skill_id === req.skill_id);
       const byBadge = !!have && rank(have.level) >= rank(req.min_level);
-      // custody channel: a stewarded resource that declares the skill also qualifies
-      const byResource = resources.some((r) => Array.isArray(r.skills) && r.skills.includes(req.skill_id));
+      // custody channel: a stewarded resource that declares the skill at level also qualifies
+      const byResource = resources.some((r) => Array.isArray(r.skills) && r.skills.some((rs) => rs.skill_id === req.skill_id && rank(rs.level) >= rank(req.min_level)));
       if (!byBadge && !byResource) {
         const nm = skillName(req.skill_id);
         return { ok: false, reason: get(t)('Needs {lvl} {skill}', { lvl: get(t)(req.min_level), skill: nm }) };

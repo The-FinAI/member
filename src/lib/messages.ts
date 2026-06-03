@@ -1005,6 +1005,8 @@ const zh: Table = {
   'No members.': '暂无成员。',
   'Chapters': '分会',
   'Working Groups': '工作组',
+  'Skills & level these hours can fill': '这些工时能填的技能与等级',
+  'set each skill’s rank; a holder = you defaults to your badges': '逐项设技能等级;holder 选你自己时默认取你的徽章',
   'GPU-hours': 'GPU 小时',
   '1M tokens': '百万 token',
   'units': '单位',
