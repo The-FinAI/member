@@ -5,7 +5,8 @@
   import { PHASE2 } from '$lib/phase';
 
   const allSections = [
-    { group: 'Operations', href: '/admin/approvals', title: 'Approvals', desc: 'One queue for everything awaiting a decision — resources, badges, unit applications & over-capacity commitments' },
+    { group: 'Operations', href: '/admin/forge-queue', title: 'Forge queue', desc: 'Approve badges, member cards, needs, resources, over-capacity commitments & settlements' },
+    { group: 'Operations', href: '/admin/approvals', title: 'Unit applications', desc: 'Approve members applying to join a chapter or working group' },
     { group: 'Operations', href: '/admin/announcements', title: 'Announcements', desc: 'Post, pin & retire the site-wide notice board' },
     { group: 'Operations', href: '/admin/invites', title: PHASE2 ? 'Invite Members' : 'Invite Officers', desc: PHASE2 ? 'Pre-create members by email (invite-only)' : 'Phase 1: invite chapter chairs, secretaries & working-group leaders by email' },
     { group: 'Operations', href: '/admin/writing', title: 'First-author Writing', desc: "Leaders short on this month's writing hours — remind them by email" },
