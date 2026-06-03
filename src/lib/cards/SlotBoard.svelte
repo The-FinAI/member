@@ -104,7 +104,7 @@
       p_project: postNeedFor.id, p_slot_kind: payload.slot_kind,
       p_req_access: payload.req_access, p_skill: payload.skill,
       p_resource_type: payload.resource_type, p_quota: payload.quota,
-      p_headcount: payload.headcount
+      p_headcount: payload.headcount, p_requirements: payload.requirements ?? []
     });
     busy = '';
     if (e) { msg = e.message; return; }

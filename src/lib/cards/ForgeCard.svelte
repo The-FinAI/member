@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from '$lib/i18n';
+  import SkillLevelPicker from '$lib/admin/economy/SkillLevelPicker.svelte';
 
   export type Skill = { id: string; name: string; parent_id: string | null };
   export type ResType = { id: string; name: string; unit: string | null };
@@ -43,19 +44,27 @@
   // need
   let nKind = $state('work_labor'); let nAccess = $state(''); let nSkill = $state('');
   let nResType = $state(''); let nQuota = $state<number>(0); let nHead = $state<number>(1);
+  let nSkillLevels = $state<Record<string, string>>({}); // skill_id → min_level (multi)
+  const nReqs = $derived(Object.entries(nSkillLevels).map(([skill_id, min_level]) => ({ skill_id, min_level })));
 
   function submit() {
     if (mode === 'member') onSubmit?.({ full_name: mName, email: mEmail, affiliation: mAffil });
     else if (mode === 'badge') onSubmit?.({ skill: bSkill, level: bLevel });
     else if (mode === 'resource') onSubmit?.({ type: rType, name: rName, scope: rScope, monthly_quota: rQuota, unit: rUnit });
-    else onSubmit?.({ slot_kind: nKind, req_access: nAccess || null, skill: nSkill || null, resource_type: nResType || null, quota: nQuota || null, headcount: nHead });
+    else onSubmit?.({
+      slot_kind: nKind, resource_type: nResType || null, quota: nQuota || null, headcount: nHead,
+      // labour needs carry a multi-skill requirements list; first one feeds skill_id/req_access for display
+      requirements: nKind === 'work_labor' ? nReqs : [],
+      skill: nKind === 'work_labor' ? (nReqs[0]?.skill_id ?? null) : null,
+      req_access: nKind === 'work_labor' ? (nReqs[0]?.min_level ?? null) : null
+    });
   }
 
   const valid = $derived(
     mode === 'member' ? !!mName.trim() && !!mEmail.trim()
     : mode === 'badge' ? !!bSkill && !!bLevel
     : mode === 'resource' ? !!rType && !!rName.trim() && rQuota >= 0
-    : nKind === 'work_resource' ? !!nResType : !!nSkill
+    : nKind === 'work_resource' ? !!nResType : nReqs.length > 0
   );
 </script>
 
@@ -111,22 +120,9 @@
       </select>
     </label>
     {#if nKind === 'work_labor'}
-      <label class="f-field"><span>{$t('Skill')}</span>
-        <select bind:value={nSkill} required>
-          <option value="">{$t('Select skill')}</option>
-          {#each domains as d (d.id)}
-            <optgroup label={d.name}>
-              {#each leaves(d.id) as s (s.id)}<option value={s.id}>{s.name}</option>{/each}
-            </optgroup>
-          {/each}
-        </select>
-      </label>
-      <label class="f-field"><span>{$t('Required level')}</span>
-        <select bind:value={nAccess}>
-          <option value="">{$t('Any')}</option>
-          {#each LEVELS as l}<option value={l}>{$t(LEVEL_LABEL[l])}</option>{/each}
-        </select>
-      </label>
+      <div class="f-field"><span>{$t('Required skills & levels')}<span class="muted"> · {$t('a contributor (or their working-hours resource) must meet every skill')}</span></span>
+        <SkillLevelPicker bind:value={nSkillLevels} />
+      </div>
     {:else}
       <label class="f-field"><span>{$t('Resource type')}</span>
         <select bind:value={nResType} required>
