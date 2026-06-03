@@ -188,10 +188,11 @@
     }
     return list;
   });
-  // chapter matches roster into work slots → leader slots aren't seatable, so
-  // drop them from the chapter board; a WG console is read-only, so it shows
-  // every open need including "lead open".
-  const boardNeeds = $derived(isChapter ? needs.filter((n) => n.slot_kind !== 'leader') : needs);
+  // a leader is just a special open need — shown everywhere. The only
+  // difference is how it's filled: work needs are *seated* by the officer,
+  // a leader need is *claimed* by the person on the project page (the seat
+  // bar swaps to a claim affordance for leader selections).
+  const boardNeeds = $derived(needs);
   const needsView = $derived.by(() => {
     let list = boardNeeds;
     if (selPerson) {
@@ -339,22 +340,28 @@
           {#if seatFit && !seatFit.ok}<span class="sb-reason">· {seatFit.reason}</span>{/if}
         </div>
         {#if seatFit?.ok}
-          <div class="sb-form">
-            <label>{$t('Monthly amount')}<input type="number" min="0" step="any" bind:value={amount} /></label>
-            {#if selNeed.resource_type_id}
-              <label>{$t('Resource')}
-                <select bind:value={resId}>
-                  <option value="">{$t('Select resource')}</option>
-                  {#each (resOf[selPerson.id] ?? []).filter((r) => r.type_id === selNeed.resource_type_id) as r (r.id)}
-                    <option value={r.id}>{r.name}</option>
-                  {/each}
-                </select>
-              </label>
-            {/if}
-            <button type="button" class="stake" disabled={busy === 'seat' || (!!selNeed.resource_type_id && !resId)} onclick={seat}>
-              {#if busy === 'seat'}<span class="spin"></span>{/if}{$t('Seat into slot')}
-            </button>
-          </div>
+          {#if selNeed.slot_kind === 'leader'}
+            <!-- a leader need is filled by claiming (the person stakes), not by
+                 seating — so the officer can only point to the project page -->
+            <a class="stake" href={`/projects/${selNeed.project_id}`}>{$t('Eligible to lead — claim on the project page')} →</a>
+          {:else}
+            <div class="sb-form">
+              <label>{$t('Monthly amount')}<input type="number" min="0" step="any" bind:value={amount} /></label>
+              {#if selNeed.resource_type_id}
+                <label>{$t('Resource')}
+                  <select bind:value={resId}>
+                    <option value="">{$t('Select resource')}</option>
+                    {#each (resOf[selPerson.id] ?? []).filter((r) => r.type_id === selNeed.resource_type_id) as r (r.id)}
+                      <option value={r.id}>{r.name}</option>
+                    {/each}
+                  </select>
+                </label>
+              {/if}
+              <button type="button" class="stake" disabled={busy === 'seat' || (!!selNeed.resource_type_id && !resId)} onclick={seat}>
+                {#if busy === 'seat'}<span class="spin"></span>{/if}{$t('Seat into slot')}
+              </button>
+            </div>
+          {/if}
         {/if}
       </div>
     {/if}
