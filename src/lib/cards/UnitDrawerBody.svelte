@@ -2,6 +2,8 @@
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { t } from '$lib/i18n';
   import InlineField from './InlineField.svelte';
+  import SlotBoard from './SlotBoard.svelte';
+  import CardBinder from './CardBinder.svelte';
 
   // Rich quick-view body for a chapter / working group: description, officers,
   // and its roster (chapter → member cards) or portfolio (WG → projects).
@@ -15,6 +17,7 @@
 
   let unit = $state<{ id: string; name: string; description: string | null } | null>(null);
   let canEdit = $state(false);
+  let showConsole = $state(false);
   let officers = $state<Officer[]>([]);
   let members = $state<Person[]>([]);
   let projects = $state<Proj[]>([]);
@@ -35,7 +38,7 @@
 
   async function load() {
     if (!supabaseConfigured) { loading = false; return; }
-    loading = true;
+    loading = true; showConsole = false;
     const tasks: Promise<any>[] = [
       supabase.from('org_unit').select('id, name, description').eq('id', unitId).maybeSingle(),
       supabase.rpc('can_edit_unit', { p_unit: unitId }),
@@ -126,12 +129,31 @@
         {/if}
       </div>
     {/if}
+
+    <!-- one-stop management: the unit's own officer console, embedded -->
+    {#if canEdit}
+      <div class="ud-sec">
+        <button type="button" class="ud-toggle" onclick={() => (showConsole = !showConsole)}>
+          <span class="ud-chev" class:open={showConsole}>▸</span>
+          {kind === 'chapter' ? $t('Manage member cards') : $t('Manage projects & slots')}
+        </button>
+        {#if showConsole}
+          <div class="ud-console">
+            {#if kind === 'chapter'}<CardBinder unitId={unitId} />{:else}<SlotBoard unitId={unitId} />{/if}
+          </div>
+        {/if}
+      </div>
+    {/if}
   </div>
 {/if}
 
 <style>
   .ud { display: flex; flex-direction: column; gap: 1rem; }
   .ud-edit { display: flex; flex-direction: column; gap: .6rem; padding-bottom: .2rem; border-bottom: 1px solid var(--border); }
+  .ud-toggle { display: inline-flex; align-items: center; gap: .4rem; align-self: flex-start; background: transparent; border: 0; color: var(--accent); font: inherit; font-weight: 600; font-size: .85rem; cursor: pointer; padding: 0; }
+  .ud-chev { display: inline-block; transition: transform .15s ease; }
+  .ud-chev.open { transform: rotate(90deg); }
+  .ud-console { margin-top: .6rem; padding-top: .8rem; border-top: 1px solid var(--border); }
   .ud-sec { display: flex; flex-direction: column; gap: .5rem; }
   .ud-h { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .ud-ct { color: var(--text-dim); }

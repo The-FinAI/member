@@ -188,6 +188,8 @@ const zh: Table = {
   "Select members to award this badge to.": "选择要授予此徽章的成员。",
   "Select cards from a chapter you officer.": "从你管理的分会选择卡片。",
   "Badges submitted for review.": "徽章已提交待审。",
+  "Manage member cards": "管理成员卡片",
+  "Manage projects & slots": "管理项目与槽位",
   // ── Redesign: home overview台 + /profile manage surface ──
   "Community steward": "社区管理员",
   "{n} application accepted — confirm to join": "{n} 个申请已通过 —— 确认加入",
