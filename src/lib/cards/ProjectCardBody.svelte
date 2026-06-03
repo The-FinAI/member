@@ -18,14 +18,21 @@
   type Link = { id: string; kind: string; title: string | null; url: string; notes: string | null; created_at: string; member: { full_name: string } | null };
   type Meeting = { id: string; title: string; scheduled_at: string; ends_at: string | null; location: string | null; agenda: string | null; recurrence: string; member: { full_name: string } | null };
   type Event = { id: string; event_type: string; summary: string; created_at: string; member: { full_name: string } | null };
-  type Proj = { id: string; name: string; summary: string | null; venue_id: string | null; org_unit_id: string | null; status_id: string | null; project_status: { name: string } | { name: string }[] | null };
-  // direct status changes never set Finished (that's the reviewed Mint-done flow)
-  const statusOptions = $derived(statuses.filter((s) => s.name !== 'Finished').sort((a, b) => a.rank - b.rank));
+  type Proj = { id: string; name: string; summary: string | null; venue_id: string | null; org_unit_id: string | null; status_id: string | null; held_from_status_id: string | null; project_status: { name: string } | { name: string }[] | null };
+  // the linear pipeline (Hold lives off to the side); Finished is the terminal
+  // step, reachable only via the reviewed Mint-done flow from Under review.
+  const pipeline = $derived(statuses.filter((s) => s.name !== 'Hold').sort((a, b) => a.rank - b.rank));
+  const holdStatus = $derived(statuses.find((s) => s.name === 'Hold') ?? null);
   const curStatusName = $derived.by(() => {
     const ps = proj?.project_status;
     return (Array.isArray(ps) ? ps[0]?.name : ps?.name) ?? '';
   });
+  const curRank = $derived(statuses.find((s) => s.id === proj?.status_id)?.rank ?? -1);
+  const isHold = $derived(curStatusName === 'Hold');
   const isFinishedProj = $derived(curStatusName === 'Finished');
+  const isUnderReview = $derived(curStatusName === 'Under review');
+  // rank of "Under review" — the gate before completion can be minted
+  const reviewRank = $derived(statuses.find((s) => s.name === 'Under review')?.rank ?? 999);
 
   const LINK_KINDS = ['proposal', 'overleaf', 'openreview', 'paper', 'repo', 'dataset', 'slides', 'drive', 'media', 'other'];
   const KIND_ICON: Record<string, string> = {
@@ -59,7 +66,7 @@
     if (!supabaseConfigured) { loading = false; return; }
     loading = true; err = '';
     const [{ data: p }, { data: ce }, { data: lk }, { data: mt }, { data: ev }] = await Promise.all([
-      supabase.from('project').select('id, name, summary, venue_id, org_unit_id, status_id, project_status:status_id(name)').eq('id', projectId).maybeSingle(),
+      supabase.from('project').select('id, name, summary, venue_id, org_unit_id, status_id, held_from_status_id, project_status:status_id(name)').eq('id', projectId).maybeSingle(),
       supabase.rpc('can_edit_project', { p_project: projectId }),
       supabase.from('project_link').select('id, kind, title, url, notes, created_at, member:added_by(full_name)').eq('project_id', projectId).order('created_at', { ascending: false }),
       supabase.from('project_meeting').select('id, title, scheduled_at, ends_at, location, agenda, recurrence, member:created_by(full_name)').eq('project_id', projectId).order('scheduled_at', { ascending: false }),
@@ -112,6 +119,15 @@
     busy = '';
     if (e) { err = e.message; return; }
     await load(); onChanged?.();
+  }
+
+  async function hold() {
+    if (holdStatus) await setStatus(holdStatus.id);
+  }
+  async function resume() {
+    // back to where it was held from, else the first pipeline step
+    const target = proj?.held_from_status_id ?? pipeline[0]?.id;
+    if (target) await setStatus(target);
   }
 
   // completion is the reviewed path: submit a forge_request → review queue → settlement
@@ -203,23 +219,64 @@
   {#if err}<p class="pcb-err">{err}</p>{/if}
   {#if msg}<p class="pcb-ok">{msg}</p>{/if}
 
-  <!-- status transition (non-terminal; completion is the reviewed Mint-done path) -->
-  {#if statusOptions.length}
+  <!-- status flow: a linear pipeline; completion only from Under review, via
+       the reviewed Mint-done path; settlement opens once Finished. -->
+  {#if pipeline.length}
     <div class="pcb-section pcb-status">
-      <span class="pcb-h">{$t('Status')}</span>
-      {#if canEdit && !isFinishedProj}
+      <div class="pcb-h-row">
+        <span class="pcb-h">{$t('Status')}</span>
+        {#if canEdit && holdStatus && !isFinishedProj}
+          {#if isHold}
+            <button type="button" class="pcb-link" disabled={busy === 'status'} onclick={resume}>▶ {$t('Resume')}</button>
+          {:else}
+            <button type="button" class="pcb-link" disabled={busy === 'status'} onclick={hold}>⏸ {$t('Hold')}</button>
+          {/if}
+        {/if}
+      </div>
+
+      {#if isHold}
+        <p class="pcb-hold">⏸ {$t('On hold')}{#if pipeline.find((s) => s.id === proj?.held_from_status_id)} · {$t('from')} {$t(pipeline.find((s) => s.id === proj?.held_from_status_id)?.name ?? '')}{/if}</p>
+      {/if}
+
+      <div class="pcb-steps" class:dim={isHold}>
+        {#each pipeline as s, i (s.id)}
+          {@const done = curRank > s.rank}
+          {@const current = proj?.status_id === s.id}
+          {@const terminal = s.name === 'Finished'}
+          {@const clickable = canEdit && !isHold && !isFinishedProj && !current && !terminal}
+          <button
+            type="button"
+            class="pcb-step"
+            class:done class:current class:terminal
+            disabled={!clickable || busy === 'status'}
+            title={clickable ? $t('Set to {s}', { s: $t(s.name) }) : ''}
+            onclick={() => clickable && setStatus(s.id)}
+          >
+            <span class="pcb-dotnum">{done ? '✓' : i + 1}</span>
+            <span class="pcb-steplabel">{$t(s.name)}</span>
+          </button>
+          {#if i < pipeline.length - 1}<span class="pcb-steparrow" class:done={curRank > s.rank}>›</span>{/if}
+        {/each}
+      </div>
+
+      <!-- the completion gate: only at Under review, and reviewed -->
+      {#if canEdit && isUnderReview}
         <div class="pcb-status-row">
-          <select value={proj?.status_id ?? ''} disabled={busy === 'status'} onchange={(e) => setStatus(e.currentTarget.value)}>
-            {#each statusOptions as s}<option value={s.id}>{$t(s.name)}</option>{/each}
-          </select>
-          {#if busy === 'status'}<span class="spin"></span>{/if}
           <button type="button" class="pcb-done" disabled={busy === 'done'} onclick={mintDone}>
             {#if busy === 'done'}<span class="spin"></span>{/if}✓ {$t('Mint done')}
           </button>
+          <span class="pcb-hint">{$t('Submits completion to the review queue → settlement.')}</span>
         </div>
-        <span class="pcb-hint">{$t('Completion goes to the review queue, then settlement.')}</span>
-      {:else}
-        <span class="pcb-cur">{$t(curStatusName || '—')}</span>
+      {:else if canEdit && !isFinishedProj && !isHold && curRank < reviewRank}
+        <span class="pcb-hint">{$t('Advance to Under review to submit completion.')}</span>
+      {/if}
+
+      <!-- settlement opens once the project is Finished -->
+      {#if isFinishedProj}
+        <div class="pcb-settle">
+          <span class="pcb-settle-h">💰 {$t('Settlement')}</span>
+          <span class="pcb-hint">{$t('The project is finished — split its pool into liquid STR.')}</span>
+        </div>
       {/if}
     </div>
   {/if}
@@ -389,6 +446,32 @@
   .pcb-h-row { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
   .pcb-h { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .pcb-ct { color: var(--text-dim); }
+  .pcb-steps { display: flex; align-items: center; gap: .15rem; flex-wrap: wrap; }
+  .pcb-steps.dim { opacity: .5; }
+  .pcb-step {
+    display: inline-flex; align-items: center; gap: .35rem; padding: .3rem .55rem;
+    border: 1px solid var(--border); border-radius: 999px; background: var(--card);
+    color: var(--text-dim); font: inherit; font-size: .8rem; cursor: pointer;
+  }
+  .pcb-step:disabled { cursor: default; }
+  .pcb-step.done { color: var(--up); border-color: color-mix(in srgb, var(--up) 35%, transparent); }
+  .pcb-step.current { color: #fff; background: var(--accent); border-color: var(--accent); font-weight: 600; }
+  .pcb-step.terminal { color: var(--muted); border-style: dashed; }
+  .pcb-step:not(:disabled):hover { border-color: var(--accent); color: var(--accent); }
+  .pcb-dotnum {
+    display: inline-flex; align-items: center; justify-content: center; width: 1.15rem; height: 1.15rem;
+    border-radius: 50%; background: color-mix(in srgb, currentColor 16%, transparent); font-size: .7rem; font-weight: 700;
+  }
+  .pcb-step.current .pcb-dotnum { background: rgba(255,255,255,.25); }
+  .pcb-steparrow { color: var(--border-2, var(--border)); font-size: .9rem; }
+  .pcb-steparrow.done { color: var(--up); }
+  .pcb-hold { margin: 0; font-size: .82rem; color: var(--accent); }
+  .pcb-settle {
+    display: flex; flex-wrap: wrap; align-items: center; gap: .5rem;
+    padding: .6rem .7rem; border: 1px solid color-mix(in srgb, var(--up) 30%, transparent);
+    border-radius: 10px; background: color-mix(in srgb, var(--up) 8%, transparent); margin-top: .3rem;
+  }
+  .pcb-settle-h { font-weight: 600; color: var(--text); }
   .pcb-status-row { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
   .pcb-status-row select {
     padding: .4rem .55rem; border-radius: 8px; border: 1px solid var(--border-2);

@@ -623,11 +623,10 @@
     onClose={closeDrawer}
   >
     <div class="pdrawer">
-      <!-- meta: status pipeline · type · working group · venue · deadline -->
+      <!-- meta: type · working group · venue · deadline ( status lives in the
+           stepper inside ProjectCardBody, just below ) -->
       <div class="pd-meta">
-        <span class="status {statusClass(r.status)}" title={pipeIndex(r.status) >= 0 ? $t('Step {n} of {total}', { n: pipeIndex(r.status) + 1, total: pipeline.length }) : undefined}>
-          <span class="sdot" style="background:currentColor;"></span>{r.claimable ? $t('lead open') : $t(r.status)}
-        </span>
+        {#if r.claimable}<span class="status st-proposal"><span class="sdot" style="background:currentColor;"></span>{$t('lead open')}</span>{/if}
         <span class="pd-chip">{$t(r.type)}</span>
         {#if r.wg}<span class="pd-chip">{r.wg}</span>{/if}
         {#if r.venue}
@@ -646,9 +645,8 @@
         {#if r.leader}<div class="pd-stat"><span class="pd-v">{r.leader}</span><span class="pd-l">{$t('first author')}</span></div>{/if}
       </div>
 
-      {#if r.summary}
-        <p class="pd-summary">{r.summary}</p>
-      {/if}
+      <!-- status flow · editable basic info · media · meetings · history -->
+      <ProjectCardBody projectId={r.id} {venues} {workingGroups} {statuses} onChanged={refreshSel} />
 
       <!-- team & slots -->
       <div class="pd-section">
@@ -666,9 +664,6 @@
       {#if !r.wg}
         <p class="muted" style="font-size:.82rem; margin:0;">{$t('This project isn’t attributed to a working group yet.')}</p>
       {/if}
-
-      <!-- editable details · status · media links · meetings · history -->
-      <ProjectCardBody projectId={r.id} {venues} {workingGroups} {statuses} onChanged={refreshSel} />
     </div>
     {#snippet actions()}
       {#if canManageSel && r.wgUnitId}
