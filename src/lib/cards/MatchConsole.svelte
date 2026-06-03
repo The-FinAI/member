@@ -84,9 +84,13 @@
     unit = u as any;
 
     const [{ data: sl }, { data: sk }, { data: rt }] = await Promise.all([
+      // leader slots are NOT matched here — leadership is *claimed* (the person
+      // pays the leader_stake and picks up the monthly first-author writing
+      // duty via claim_leadership), never seated by an officer. Officers only
+      // match work_labor / work_resource needs.
       supabase.from('project_slot')
         .select('id, project_id, slot_kind, req_access, skill_id, resource_type_id, quota, headcount, status, project:project_id(name, deadline, org_unit_id), skill:skill_id(name), resource_type:resource_type_id(name)')
-        .eq('status', 'open').in('slot_kind', ['work_labor', 'work_resource', 'leader']),
+        .eq('status', 'open').in('slot_kind', ['work_labor', 'work_resource']),
       supabase.from('skill').select('id, name, parent_id').order('name'),
       supabase.from('resource_type').select('id, name, unit').order('rank')
     ]);
