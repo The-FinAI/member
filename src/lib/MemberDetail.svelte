@@ -46,7 +46,8 @@
   type ApiModel = { id: string; provider: string; name: string; usd_per_million: number };
   type CardResource = {
     id: string; name: string; capacity: string | null; availability: string;
-    approval_status: string; type_id: string | null;
+    approval_status: string; type_id: string | null; scope: string;
+    monthly_quota: number | null; unit: string | null;
     resource_type: { name: string; unit: string | null } | null;
     gpu_model: { name: string } | null;
     api_model: { provider: string; name: string } | null;
@@ -88,12 +89,20 @@
   let rAvail = $state('available'); let rGpuModel = $state(''); let rApiModel = $state('');
 
   const laborTypeId = $derived(resTypes.find((rt) => rt.name === 'Labor')?.id ?? '');
-  const myLabor = $derived(cardResources.find((r) => r.resource_type?.name === 'Labor') ?? null);
-  const catalogResources = $derived(cardResources.filter((r) => r.resource_type?.name !== 'Labor'));
+  // the editor only governs this card's OWN (member-scope) catalog…
+  const ownResources = $derived(cardResources.filter((r) => r.scope === 'member'));
+  const myLabor = $derived(ownResources.find((r) => r.resource_type?.name === 'Labor') ?? null);
+  const catalogResources = $derived(ownResources.filter((r) => r.resource_type?.name !== 'Labor'));
+  // …while community resources this person STEWARDS (holds for the community)
+  // are shown read-only on their page too.
+  const stewarded = $derived(cardResources.filter((r) => r.scope === 'community'));
   // read-only view (for visitors who can't edit): only show approved offerings
   const approvedLabor = $derived(myLabor && myLabor.approval_status === 'approved' ? myLabor : null);
   const approvedResources = $derived(catalogResources.filter((r) => r.approval_status === 'approved'));
-  const hasPublicResources = $derived(!!approvedLabor || approvedResources.length > 0);
+  const hasPublicResources = $derived(!!approvedLabor || approvedResources.length > 0 || stewarded.length > 0);
+  const resourceCount = $derived(
+    (approvedLabor ? 1 : 0) + approvedResources.length + stewarded.length
+  );
   const rSelType = $derived(resTypes.find((rt) => rt.id === rType) ?? null);
   const rSelMethod = $derived(rSelType?.valuation_method ?? 'flat');
 
@@ -101,8 +110,8 @@
     const [{ data: rt }, { data: mr }, { data: gm }, { data: am }] = await Promise.all([
       supabase.from('resource_type').select('id, name, valuation_method').order('rank'),
       supabase.from('resource')
-        .select('id, name, capacity, availability, approval_status, type_id, resource_type(name, unit), gpu_model(name), api_model(provider, name)')
-        .eq('scope', 'member').eq('holder_member_id', cardId).order('name'),
+        .select('id, name, capacity, availability, approval_status, type_id, scope, monthly_quota, unit, resource_type(name, unit), gpu_model(name), api_model(provider, name)')
+        .eq('holder_member_id', cardId).order('name'),
       supabase.from('gpu_model').select('id, name, tflops').eq('is_active', true).order('rank'),
       supabase.from('api_model').select('id, provider, name, usd_per_million').eq('is_active', true).order('rank')
     ]);
@@ -110,7 +119,7 @@
     cardResources = (mr as CardResource[]) ?? [];
     gpuModels = (gm as GpuModel[]) ?? [];
     apiModels = (am as ApiModel[]) ?? [];
-    const cap = cardResources.find((r) => r.resource_type?.name === 'Labor')?.capacity ?? '';
+    const cap = cardResources.find((r) => r.scope === 'member' && r.resource_type?.name === 'Labor')?.capacity ?? '';
     const m = cap?.match(/\d+/);
     laborHours = m ? m[0] : '';
   }
@@ -236,10 +245,10 @@
 
   // in-page section nav (only the sections actually rendered, in DOM order)
   const sections = $derived([
-    { id: 'resources', label: 'Resources' },
     { id: 'stats', label: 'Overview' },
     { id: 'badges', label: 'Badges' },
-    { id: 'projects', label: 'Projects' }
+    { id: 'projects', label: 'Projects' },
+    { id: 'resources', label: 'Resources' }
   ]);
 </script>
 
@@ -305,9 +314,10 @@
     <div class="detail">
       <SectionNav {sections} />
       <div class="detail-body">
-    <!-- editable offerable catalog — only for officers/admins who manage this card -->
+    <!-- Resources: own offerable catalog + community resources this card stewards -->
+    <div class="stack" id="resources">
     {#if canEditCatalog}
-      <div class="card stack" id="resources">
+      <div class="card stack">
         <h2 style="margin:0;">{isMe ? $t('What I can bring') : $t('What this card can bring')}</h2>
         <p class="muted" style="font-size:.82rem; margin-top:-.5rem;">{isMe ? $t('Your offerable catalog — your monthly time and resources. New entries go to a steward for review.') : $t("This card’s offerable catalog — its monthly time and resources. You’re editing it as an officer; new entries go to a steward for review.")}</p>
         {#if catError}<p class="neg" style="font-size:.85rem;">{catError}</p>{/if}
@@ -367,7 +377,7 @@
       </div>
     {:else}
       <!-- read-only catalog for visitors: what this card can bring -->
-      <div class="card stack" id="resources">
+      <div class="card stack">
         <h2 style="margin:0;">{$t('What this card can bring')}</h2>
         <p class="muted" style="font-size:.82rem; margin-top:-.5rem;">{$t('Approved offerings — the monthly time and resources this card can commit to projects.')}</p>
         {#if !hasPublicResources}<p class="muted">{$t('No resources offered yet.')}</p>{/if}
@@ -395,6 +405,27 @@
       </div>
     {/if}
 
+    {#if stewarded.length}
+      <div class="card stack">
+        <h2 style="margin:0;">{$t('Stewarded for the community')}</h2>
+        <p class="muted" style="font-size:.82rem; margin-top:-.5rem;">{$t('Community-owned resources this person holds in custody (the steward, not the owner).')}</p>
+        <table>
+          <thead><tr><th>{$t('Name')}</th><th>{$t('Type')}</th><th>{$t('Monthly quota')}</th><th>{$t('Review')}</th></tr></thead>
+          <tbody>
+            {#each stewarded as r}
+              <tr>
+                <td>{r.name}{#if r.gpu_model || r.api_model}<div class="muted" style="font-size:.75rem;">{r.gpu_model?.name ?? `${r.api_model?.provider} ${r.api_model?.name}`}</div>{/if}</td>
+                <td>{r.resource_type?.name ?? '—'}</td>
+                <td class="mono">{r.monthly_quota != null ? r.monthly_quota.toLocaleString() : (r.capacity ?? '—')}{#if r.unit}<span class="muted" style="font-size:.75rem;"> {r.unit}</span>{/if}</td>
+                <td><span class="badge {r.approval_status}">{r.approval_status === 'approved' ? $t('✓ approved') : r.approval_status === 'rejected' ? $t('✕ rejected') : $t('⏳ pending')}</span></td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
+    {/if}
+    </div>
+
     <!-- reputation stats (no liquid balance, by design) -->
     <div class="kpis" id="stats">
       <div class="kpi">
@@ -411,6 +442,11 @@
         <span class="k-label">{$t('Projects')}</span>
         <span class="k-value">{projects.length}</span>
         <span class="k-sub">{$t('collaborations on record')}</span>
+      </div>
+      <div class="kpi">
+        <span class="k-label">{$t('Resources')}</span>
+        <span class="k-value">{resourceCount}</span>
+        <span class="k-sub">{$t('time & resources on offer')}</span>
       </div>
     </div>
 
