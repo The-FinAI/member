@@ -33,17 +33,17 @@
   let loading = $state(true);
   let members = $state(0), activeMembers = $state(0), projects = $state(0);
   let openNeeds = $state(0), skillLeaves = $state(0), circulating = $state(0);
-  let pendingForge = $state(0), pendingCommits = $state(0), pendingSettlements = $state(0), pendingUnitApps = $state(0);
+  let pendingForge = $state(0), pendingCommits = $state(0), pendingSettlements = $state(0), pendingUnitApps = $state(0), pendingMilestones = $state(0);
 
   const review = $derived([
-    canForge ? { title: 'Forge queue', desc: 'Badges, member cards, needs, resources, over-capacity commitments & settlements', href: '/admin/forge-queue', n: pendingForge + pendingCommits + pendingSettlements } : null,
+    canForge ? { title: 'Forge queue', desc: 'Badges, member cards, needs, resources, milestones, over-capacity commitments & settlements', href: '/admin/forge-queue', n: pendingForge + pendingCommits + pendingSettlements + pendingMilestones } : null,
     canUnits ? { title: 'Unit applications', desc: 'Members applying to join a chapter or working group', href: '/admin/review', n: pendingUnitApps } : null
   ].filter(Boolean) as { title: string; desc: string; href: string; n: number }[]);
 
   async function load() {
     if (!supabaseConfigured) { loading = false; return; }
     const c = (q: any) => q.select('id', { count: 'exact', head: true });
-    const [m, am, p, on, fr, cm, st, ua, sk, bal] = await Promise.all([
+    const [m, am, p, on, fr, cm, st, ua, ms, sk, bal] = await Promise.all([
       c(supabase.from('member')),
       c(supabase.from('member')).eq('status', 'active'),
       c(supabase.from('project')),
@@ -52,12 +52,13 @@
       c(supabase.from('work_commitment')).eq('approval', 'needs_review'),
       c(supabase.from('stater_settlement')).in('status', ['submitted', 'under_review']),
       c(supabase.from('org_unit_member')).eq('status', 'pending'),
+      c(supabase.from('project_milestone')).in('status', ['claimed', 'under_review']),
       supabase.from('skill').select('id', { count: 'exact', head: true }).not('parent_id', 'is', null),
       supabase.from('stater_balance').select('balance')
     ]);
     members = m.count ?? 0; activeMembers = am.count ?? 0; projects = p.count ?? 0;
     openNeeds = on.count ?? 0; pendingForge = fr.count ?? 0; pendingCommits = cm.count ?? 0;
-    pendingSettlements = st.count ?? 0; pendingUnitApps = ua.count ?? 0; skillLeaves = sk.count ?? 0;
+    pendingSettlements = st.count ?? 0; pendingUnitApps = ua.count ?? 0; pendingMilestones = ms.count ?? 0; skillLeaves = sk.count ?? 0;
     circulating = ((bal.data as { balance: number }[]) ?? []).reduce((a, b) => a + (Number(b.balance) || 0), 0);
     loading = false;
   }

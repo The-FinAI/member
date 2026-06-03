@@ -8,7 +8,8 @@
   const tabs = [
     { key: 'str', label: 'STR economy' },
     { key: 'resources', label: 'Community resources' },
-    { key: 'types', label: 'Resource types' }
+    { key: 'types', label: 'Resource types' },
+    { key: 'milestones', label: 'Milestone catalog' }
   ];
 </script>
 
@@ -18,6 +19,16 @@
   {#snippet children(active)}
     {#if active === 'resources'}
       <CommunityResourcesPanel />
+    {:else if active === 'milestones'}
+      <p class="muted blurb">{$t('Verifiable project outcomes. A verified milestone adds its nominal STR to the project pool and bumps the settlement multiplier (Σ bonuses, capped ×3).')}</p>
+      <LookupEditor table="milestone_catalog" columns={[
+        { key: 'category', label: 'Category' },
+        { key: 'item', label: 'Item' },
+        { key: 'nominal_value', label: 'Nominal', type: 'number' },
+        { key: 'multiplier_bonus', label: 'Mult. bonus', type: 'number' },
+        { key: 'rank', label: 'Rank', type: 'number' },
+        { key: 'is_active', label: 'Active', type: 'bool' }
+      ]} />
     {:else if active === 'types'}
       <p class="muted blurb">{@html $t('Categories of resources, and how a monthly quantity is priced into nominal STR: gpu = TFLOPs × hours, api = $/1M-tokens, usd = dollars, flat = quantity × USD-per-unit. <strong>USD / unit</strong> applies only to <em>flat</em>.')}</p>
       <LookupEditor table="resource_type" columns={[
