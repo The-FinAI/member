@@ -35,7 +35,8 @@
   let badges = $state<Badge[]>([]);
   // managers (manages_card / manage_members / mint_skillcard) can award badges
   // via the talent-tree editor below.
-  const canAward = $derived(canEdit || $capabilities.has('manage_members') || $capabilities.has('mint_skillcard'));
+  // owners may claim their own badges (staged → review); officers/admins award others'
+  const canAward = $derived(isMe || canEdit || $capabilities.has('manage_members') || $capabilities.has('mint_skillcard'));
   let projects = $state<Proj[]>([]);
   let totalNominal = $state(0);
   let loading = $state(true);
