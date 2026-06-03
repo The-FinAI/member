@@ -31,8 +31,11 @@ begin
   end if;
 
   select org_unit_id into wg from project where id = p_project;
+  -- authorized: a project manager, edit_any_project, the project's WG officer,
+  -- OR an officer who manages the card being seated (a chapter officer placing
+  -- their own member onto any project — the phase-1 seeding path).
   if not (manages_project(p_project) or has_capability('edit_any_project')
-          or (wg is not null and is_unit_officer(wg))) then
+          or (wg is not null and is_unit_officer(wg)) or manages_card(p_member)) then
     raise exception 'not authorized to seat into this project';
   end if;
 
