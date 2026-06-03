@@ -45,9 +45,57 @@
   let amount = $state<number>(0);
   let resId = $state<string>('');
 
+  // direct-add (forge a slot tailored to the person + seat them, no open need)
+  type Skill = { id: string; name: string };
+  let skills = $state<Skill[]>([]);
+  let resTypes = $state<{ id: string; name: string }[]>([]);
+  const LEVELS = ['apprentice', 'journeyman', 'craftsman', 'master'];
+  let daOpen = $state(false);
+  let daMember = $state<string | null>(null);
+  let daQ = $state('');
+  let daKind = $state<'work_labor' | 'work_resource'>('work_labor');
+  let daSkill = $state(''); let daLevel = $state('journeyman'); let daHours = $state<number>(0);
+  let daResType = $state(''); let daResource = $state(''); let daAmount = $state<number>(0);
+  let daBusy = $state(false); let daMsg = $state(''); let daErr = $state('');
+
+  const daMemberResources = $derived(
+    daMember ? (resByCard[daMember] ?? []).filter((r) => !daResType || r.type_id === daResType) : []
+  );
+
+  async function seatDirect() {
+    if (!daMember) { daErr = get(t)('Pick a member.'); return; }
+    if (daKind === 'work_labor' && !daSkill) { daErr = get(t)('Pick a skill.'); return; }
+    if (daKind === 'work_resource' && !daResource) { daErr = get(t)('Pick a resource.'); return; }
+    daBusy = true; daMsg = ''; daErr = '';
+    const { error: e } = await supabase.rpc('seat_direct', {
+      p_project: projectId, p_member: daMember, p_slot_kind: daKind,
+      p_skill: daKind === 'work_labor' ? (daSkill || null) : null,
+      p_req_access: daKind === 'work_labor' ? daLevel : null,
+      p_resource_type: daKind === 'work_resource' ? (daResType || null) : null,
+      p_resource: daKind === 'work_resource' ? (daResource || null) : null,
+      p_year_month: ym,
+      p_monthly_amount: daKind === 'work_labor' ? (Number(daHours) || 0) : (Number(daAmount) || 0)
+    });
+    daBusy = false;
+    if (e) { daErr = e.message; return; }
+    daMsg = get(t)('Seated into the project.');
+    daMember = null; daSkill = ''; daHours = 0; daResource = ''; daAmount = 0;
+    await load(); onSeated?.();
+  }
+
   async function load() {
     if (!supabaseConfigured) { loading = false; return; }
     loading = true; err = '';
+
+    // leaf skills + resource types for the direct-add form (admin defines the slot)
+    const [{ data: sk }, { data: rtps }] = await Promise.all([
+      supabase.from('skill').select('id, parent_id, name').order('name'),
+      supabase.from('resource_type').select('id, name').order('rank')
+    ]);
+    const allSk = (sk as any[]) ?? [];
+    skills = allSk.filter((s) => s.parent_id && !allSk.some((c) => c.parent_id === s.id))
+                  .map((s) => ({ id: s.id, name: s.name }));
+    resTypes = ((rtps as any[]) ?? []).filter((r) => r.name !== 'Labor');
 
     const { data: sl } = await supabase.from('project_slot')
       .select('id, slot_kind, req_access, skill_id, resource_type_id, quota, headcount, status, skill:skill_id(name), resource_type:resource_type_id(name)')
@@ -160,11 +208,12 @@
     <p class="st-muted">{$t('Loading…')}</p>
   {:else if !isAdmin && !cards.length}
     <p class="st-muted">{$t('You can only seat cards from a chapter you officer.')}</p>
-  {:else if !seatable.length}
-    <p class="st-muted">{$t('Every slot is filled — nothing to seat.')}</p>
   {:else}
     {#if msg}<p class="st-ok">{msg}</p>{/if}
     {#if err}<p class="st-err">{err}</p>{/if}
+    {#if !seatable.length}
+      <p class="st-muted">{$t('No open slots — use “Add directly” below to place someone.')}</p>
+    {/if}
     <div class="st-slots">
       {#each seatable as s (s.id)}
         <div class="st-slot">
@@ -232,6 +281,70 @@
         </div>
       {/each}
     </div>
+
+    <!-- direct add: forge a slot around the person + seat them, no open need -->
+    <div class="st-direct">
+      <button type="button" class="st-direct-toggle" onclick={() => (daOpen = !daOpen)}>
+        <span>＋ {$t('Add directly')}</span>
+        <span class="st-direct-hint">{$t('forge a slot for someone & seat them now')}</span>
+      </button>
+      {#if daOpen}
+        <div class="st-direct-form">
+          {#if daMsg}<p class="st-ok">{daMsg}</p>{/if}
+          {#if daErr}<p class="st-err">{daErr}</p>{/if}
+
+          <input class="st-search" placeholder={$t('Search by name…')} bind:value={daQ} />
+          <div class="st-cards">
+            {#each cards.filter((c) => !daQ.trim() || c.full_name.toLowerCase().includes(daQ.trim().toLowerCase())) as c (c.id)}
+              <button type="button" class="st-card" class:on={daMember === c.id}
+                onclick={() => { daMember = c.id; daResource = ''; }}>
+                <span class="st-name">{c.full_name}</span>
+              </button>
+            {/each}
+            {#if !cards.length}<p class="st-muted">{$t('No matching cards.')}</p>{/if}
+          </div>
+
+          {#if daMember}
+            <div class="st-form">
+              <div class="st-kind">
+                <button type="button" class:on={daKind === 'work_labor'} onclick={() => (daKind = 'work_labor')}>{$t('Labor')}</button>
+                <button type="button" class:on={daKind === 'work_resource'} onclick={() => (daKind = 'work_resource')}>{$t('Resource')}</button>
+              </div>
+
+              {#if daKind === 'work_labor'}
+                <label class="st-field"><span>{$t('Skill')}</span>
+                  <select bind:value={daSkill}><option value="">{$t('Select skill')}</option>{#each skills as s (s.id)}<option value={s.id}>{s.name}</option>{/each}</select>
+                </label>
+                <label class="st-field"><span>{$t('Level')}</span>
+                  <select bind:value={daLevel}>{#each LEVELS as l}<option value={l}>{$t(l)}</option>{/each}</select>
+                </label>
+                <label class="st-field"><span>{$t('Monthly hours')}</span>
+                  <input type="number" min="0" step="any" bind:value={daHours} />
+                </label>
+              {:else}
+                <label class="st-field"><span>{$t('Resource type')}</span>
+                  <select bind:value={daResType} onchange={() => (daResource = '')}><option value="">{$t('Any')}</option>{#each resTypes as rt (rt.id)}<option value={rt.id}>{rt.name}</option>{/each}</select>
+                </label>
+                <label class="st-field"><span>{$t('Resource')}</span>
+                  <select bind:value={daResource}>
+                    <option value="">{$t('Select resource')}</option>
+                    {#each daMemberResources as r (r.id)}<option value={r.id}>{r.name}</option>{/each}
+                  </select>
+                </label>
+                <label class="st-field"><span>{$t('Monthly amount')}</span>
+                  <input type="number" min="0" step="any" bind:value={daAmount} />
+                </label>
+                {#if !daMemberResources.length}<p class="st-muted">{$t('This member has no resources of that type.')}</p>{/if}
+              {/if}
+
+              <button type="button" class="st-go" disabled={daBusy} onclick={seatDirect}>
+                {#if daBusy}<span class="spin"></span>{/if}{$t('Forge slot & seat')}
+              </button>
+            </div>
+          {/if}
+        </div>
+      {/if}
+    </div>
   {/if}
 </div>
 
@@ -283,4 +396,19 @@
     display: inline-flex; align-items: center; gap: .4rem;
   }
   .st-go:disabled { opacity: .55; cursor: not-allowed; }
+  .st-direct { border-top: 1px solid var(--border); }
+  .st-direct-toggle {
+    width: 100%; display: flex; align-items: baseline; gap: .6rem; flex-wrap: wrap;
+    background: transparent; border: 0; padding: .6rem .9rem; cursor: pointer; font: inherit;
+    color: var(--accent); font-weight: 600;
+  }
+  .st-direct-toggle:hover { background: var(--card-2); }
+  .st-direct-hint { font-size: .76rem; color: var(--muted); font-weight: 400; }
+  .st-direct-form { padding: 0 .9rem .8rem; display: flex; flex-direction: column; gap: .5rem; }
+  .st-kind { display: inline-flex; gap: .3rem; }
+  .st-kind button {
+    padding: .35rem .7rem; border-radius: 8px; border: 1px solid var(--border-2);
+    background: var(--card-2); color: var(--muted); font: inherit; font-size: .82rem; cursor: pointer;
+  }
+  .st-kind button.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
 </style>
