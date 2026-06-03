@@ -50,6 +50,10 @@ const zh: Table = {
   "Open slot board": "打开槽位板",
   "This project isn’t attributed to a working group yet.": "该项目尚未归属任何工作组。",
   "The standing leaderboards — members, chapters & working groups ranked by contribution and net worth.": "信誉榜 —— 成员、分会与工作组按贡献和净值排名。",
+  "Sort by": "排序方式",
+  "Toggle sort direction": "切换排序方向",
+  "Deadline": "截止日期",
+  "{d}d overdue": "已逾期 {d} 天",
   // ── Redesign: home overview台 + /profile manage surface ──
   "Community steward": "社区管理员",
   "{n} application accepted — confirm to join": "{n} 个申请已通过 —— 确认加入",

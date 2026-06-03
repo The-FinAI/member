@@ -62,11 +62,14 @@
     return !!sel.wgUnitId && $officerUnits.some((u) => u.unit_id === sel!.wgUnitId);
   });
 
-  // filters / search
+  // filters / search / sort
   let q = $state('');
   let typeFilter = $state('');
   let statusFilter = $state('');
   let venueFilter = $state('');
+  type SortKey = 'deadline' | 'pool' | 'seats' | 'openNeeds' | 'name';
+  let sortKey = $state<SortKey>('deadline');
+  let sortDir = $state<1 | -1>(1);
 
   // create form
   let myBalance = $state(0);
@@ -87,8 +90,15 @@
   const leaderStake = $derived(chosenType?.leader_stake ?? 0);
 
   async function loadGrid() {
-    const { data: pr } = await supabase.from('project')
-      .select('id, name, target_venue, org_unit_id, venue:venue_id(name, kind, deadline), org_unit:org_unit_id(name), project_type(name), project_status!project_status_id_fkey(name, rank)');
+    // org_unit name map is fetched separately (rather than embedded) so an
+    // ambiguous-FK embed can never blank out the whole project list.
+    const [{ data: pr }, { data: ou }] = await Promise.all([
+      supabase.from('project')
+        .select('id, name, target_venue, deadline, org_unit_id, venue:venue_id(name, kind, deadline), project_type(name), project_status!project_status_id_fkey(name, rank)'),
+      supabase.from('org_unit').select('id, name')
+    ]);
+    const unitName: Record<string, string> = {};
+    for (const u of (ou as { id: string; name: string }[]) ?? []) unitName[u.id] = u.name;
     const projects = (pr as any[]) ?? [];
     const pids = projects.map((p) => p.id);
 
@@ -153,8 +163,8 @@
         statusRank: p.project_status?.rank ?? 999,
         venue: p.venue?.name ?? p.target_venue ?? '',
         venueKind: p.venue?.kind ?? '',
-        deadline: p.venue?.deadline ?? null,
-        wg: p.org_unit?.name ?? '',
+        deadline: p.deadline ?? p.venue?.deadline ?? null,
+        wg: (p.org_unit_id && unitName[p.org_unit_id]) || '',
         wgUnitId: p.org_unit_id ?? null,
         leader: leaderName[p.id] ?? '',
         seatsFilled: seatsFilled[p.id] ?? 0,
@@ -287,17 +297,23 @@
         r.wg.toLowerCase().includes(needle) ||
         r.type.toLowerCase().includes(needle))
     );
-    // deadline board: soonest upcoming on top; past-due then dateless sink below
     out = [...out].sort((a, b) => {
-      if (!a.deadline && !b.deadline) return 0;
-      if (!a.deadline) return 1;
-      if (!b.deadline) return -1;
-      const now = Date.now();
-      const at = new Date(a.deadline + 'T00:00:00').getTime();
-      const bt = new Date(b.deadline + 'T00:00:00').getTime();
-      const aPast = at < now, bPast = bt < now;
-      if (aPast !== bPast) return aPast ? 1 : -1;
-      return at - bt;
+      if (sortKey === 'deadline') {
+        // deadline board: soonest upcoming on top; past-due then dateless sink below
+        if (!a.deadline && !b.deadline) return 0;
+        if (!a.deadline) return 1;
+        if (!b.deadline) return -1;
+        const now = Date.now();
+        const at = new Date(a.deadline + 'T00:00:00').getTime();
+        const bt = new Date(b.deadline + 'T00:00:00').getTime();
+        const aPast = at < now, bPast = bt < now;
+        if (aPast !== bPast) return aPast ? 1 : -1;
+        return (at - bt) * sortDir;
+      }
+      if (sortKey === 'name') return a.name.localeCompare(b.name) * sortDir;
+      const av = sortKey === 'seats' ? a.seatsFilled : (a as any)[sortKey];
+      const bv = sortKey === 'seats' ? b.seatsFilled : (b as any)[sortKey];
+      return ((Number(av) || 0) - (Number(bv) || 0)) * sortDir;
     });
     return out;
   });
@@ -327,6 +343,14 @@
   function initials(name: string) {
     const p = name.trim().split(/\s+/);
     return ((p[0]?.[0] ?? '') + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase() || '·';
+  }
+  // short deadline label, e.g. "Aug 12" — urgency conveyed by relDays alongside
+  function relDays(d: string | null) {
+    if (!d) return '';
+    const days = Math.round((new Date(d + 'T00:00:00').getTime() - Date.now()) / 86400000);
+    if (days === 0) return get(t)('today');
+    if (days > 0) return get(t)('in {d}d', { d: days });
+    return get(t)('{d}d overdue', { d: -days });
   }
 </script>
 
@@ -504,6 +528,16 @@
     {#if q || typeFilter || statusFilter || venueFilter}
       <button class="ghost" onclick={() => { q = ''; typeFilter = ''; statusFilter = ''; venueFilter = ''; }}>{$t('Reset')}</button>
     {/if}
+    <div class="row" style="gap:.3rem; align-items:center;">
+      <select bind:value={sortKey} title={$t('Sort by')}>
+        <option value="deadline">{$t('Deadline')}</option>
+        <option value="pool">{$t('Nominal pool')}</option>
+        <option value="seats">{$t('Seats')}</option>
+        <option value="openNeeds">{$t('Open needs')}</option>
+        <option value="name">{$t('Name')}</option>
+      </select>
+      <button class="ghost" onclick={() => (sortDir = sortDir === 1 ? -1 : 1)} title={$t('Toggle sort direction')} aria-label={$t('Toggle sort direction')}>{sortDir === 1 ? '▲' : '▼'}</button>
+    </div>
   </div>
 
   {#if loading}
@@ -523,7 +557,8 @@
           stats={[
             { label: 'Nominal pool', value: r.pool.toLocaleString() },
             { label: 'Seats', value: `${r.seatsFilled}/${r.seatsTotal}` },
-            { label: 'Open needs', value: String(r.openNeeds) }
+            { label: 'Open needs', value: String(r.openNeeds) },
+            ...(r.deadline ? [{ label: relDays(r.deadline), value: fmtDate(r.deadline) }] : [])
           ]}
           onclick={() => openProject(r)}
         />
