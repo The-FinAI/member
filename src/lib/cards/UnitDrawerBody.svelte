@@ -1,19 +1,32 @@
 <script lang="ts">
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { t } from '$lib/i18n';
+  import InlineField from './InlineField.svelte';
 
   // Rich quick-view body for a chapter / working group: description, officers,
   // and its roster (chapter → member cards) or portfolio (WG → projects).
-  let { unitId, kind }: { unitId: string; kind: 'chapter' | 'working_group' } = $props();
+  // Officers / admins can edit the name & description in place (no forge — unit
+  // metadata isn't value-minting); onChanged lets the parent refresh.
+  let { unitId, kind, onChanged }: { unitId: string; kind: 'chapter' | 'working_group'; onChanged?: () => void } = $props();
 
   type Officer = { member_id: string; role: string | null; member: { full_name: string } | null };
   type Person = { id: string; full_name: string; affiliation: string | null };
   type Proj = { id: string; name: string; project_status: { name: string } | { name: string }[] | null };
 
+  let unit = $state<{ id: string; name: string; description: string | null } | null>(null);
+  let canEdit = $state(false);
   let officers = $state<Officer[]>([]);
   let members = $state<Person[]>([]);
   let projects = $state<Proj[]>([]);
   let loading = $state(true);
+
+  async function rpcOrThrow(fn: string, args: Record<string, any>) {
+    const { error: e } = await supabase.rpc(fn, args);
+    if (e) throw new Error(e.message);
+    await load(); onChanged?.();
+  }
+  const saveName = (v: string) => rpcOrThrow('unit_rename', { p_unit: unitId, p_name: v.trim() });
+  const saveDesc = (v: string) => rpcOrThrow('unit_set_description', { p_unit: unitId, p_desc: v.trim() || null });
 
   function statusOf(p: Proj): string {
     const ps = p.project_status;
@@ -24,6 +37,8 @@
     if (!supabaseConfigured) { loading = false; return; }
     loading = true;
     const tasks: Promise<any>[] = [
+      supabase.from('org_unit').select('id, name, description').eq('id', unitId).maybeSingle(),
+      supabase.rpc('can_edit_unit', { p_unit: unitId }),
       supabase.from('org_unit_officer').select('member_id, role, member:member_id(full_name)').eq('org_unit_id', unitId)
     ];
     if (kind === 'chapter') {
@@ -31,7 +46,9 @@
     } else {
       tasks.push(supabase.from('project').select('id, name, project_status!project_status_id_fkey(name)').eq('org_unit_id', unitId).order('name'));
     }
-    const [{ data: off }, { data: rest }] = await Promise.all(tasks);
+    const [{ data: u }, { data: ce }, { data: off }, { data: rest }] = await Promise.all(tasks);
+    unit = (u as any) ?? null;
+    canEdit = ce === true;
     officers = (off as Officer[]) ?? [];
     if (kind === 'chapter') { members = (rest as Person[]) ?? []; projects = []; }
     else { projects = (rest as Proj[]) ?? []; members = []; }
@@ -49,6 +66,15 @@
 
 {#if !loading}
   <div class="ud">
+    <!-- name & description — inline-editable for officers / admins -->
+    {#if canEdit}
+      <div class="ud-edit">
+        <InlineField label={$t('Name')} type="text" {canEdit} value={unit?.name ?? ''} onSave={saveName} />
+        <InlineField label={$t('Description')} type="textarea" {canEdit}
+          value={unit?.description ?? ''} placeholder={$t('What this unit is about…')} onSave={saveDesc} />
+      </div>
+    {/if}
+
     <!-- officers -->
     <div class="ud-sec">
       <span class="ud-h">{$t('Officers')}{#if officers.length}<span class="ud-ct"> · {officers.length}</span>{/if}</span>
@@ -105,6 +131,7 @@
 
 <style>
   .ud { display: flex; flex-direction: column; gap: 1rem; }
+  .ud-edit { display: flex; flex-direction: column; gap: .6rem; padding-bottom: .2rem; border-bottom: 1px solid var(--border); }
   .ud-sec { display: flex; flex-direction: column; gap: .5rem; }
   .ud-h { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .ud-ct { color: var(--text-dim); }

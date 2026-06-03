@@ -171,6 +171,8 @@ const zh: Table = {
   "Taking you to your profile…": "正在前往你的主页…",
   "You're signed in but not linked to a membership yet.": "你已登录,但尚未关联会员身份。",
   "read how the community works →": "了解社区如何运作 →",
+  "Description": "简介",
+  "What this unit is about…": "这个单位是做什么的…",
   // ── Redesign: home overview台 + /profile manage surface ──
   "Community steward": "社区管理员",
   "{n} application accepted — confirm to join": "{n} 个申请已通过 —— 确认加入",

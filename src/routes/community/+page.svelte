@@ -431,7 +431,10 @@
           </div>
           {#if myUnitIds.has(u.id)}<div class="u-stat"><span class="badge warn">{$t('Your unit')}</span></div>{/if}
         </div>
-        <UnitDrawerBody unitId={u.id} kind={sel.unitKind} />
+        <UnitDrawerBody unitId={u.id} kind={sel.unitKind} onChanged={async () => {
+          const { data } = await supabase.from('org_unit').select('id, code, name, kind, description').order('rank');
+          if (data) orgUnits = data as OrgUnit[];
+        }} />
       </div>
       {#snippet actions()}
         {#if !isOfficerOf(u.id) && myUnitStatus[u.id] !== 'active'}
