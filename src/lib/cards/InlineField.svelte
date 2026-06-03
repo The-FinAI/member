@@ -69,6 +69,7 @@
     </div>
     {#if err}<span class="if-err">{err}</span>{/if}
   {:else}
+    {@const readText = display || (type === 'select' ? '' : value)}
     <span
       class="if-val"
       class:editable={canEdit}
@@ -77,7 +78,6 @@
       ondblclick={start}
       onkeydown={(e) => { if (canEdit && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); start(); } }}
     >
-      {@const readText = display || (type === 'select' ? '' : value)}
       <span class="if-text" class:muted={!readText}>{readText || '—'}</span>
       {#if canEdit}<button type="button" class="if-pen" onclick={start} title={$t('Edit')} aria-label={$t('Edit')}>✎</button>{/if}
     </span>
