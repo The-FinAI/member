@@ -54,6 +54,11 @@ const zh: Table = {
   "Toggle sort direction": "切换排序方向",
   "Deadline": "截止日期",
   "{d}d overdue": "已逾期 {d} 天",
+  "Seat a member": "安排成员入座",
+  "You can only seat cards from a chapter you officer.": "你只能安排你所管理分会的卡片入座。",
+  "Every slot is filled — nothing to seat.": "所有槽位已满 —— 无需安排。",
+  "No matching cards.": "没有匹配的卡片。",
+  "no matching resource": "无匹配资源",
   // ── Redesign: home overview台 + /profile manage surface ──
   "Community steward": "社区管理员",
   "{n} application accepted — confirm to join": "{n} 个申请已通过 —— 确认加入",

@@ -7,6 +7,7 @@
   import EntityCard from '$lib/EntityCard.svelte';
   import CardDrawer from '$lib/CardDrawer.svelte';
   import ProjectSlotCard, { type Slot } from '$lib/cards/ProjectSlotCard.svelte';
+  import SlotSeater from '$lib/cards/SlotSeater.svelte';
 
   // Projects = the community portfolio. Each project belongs to a working group
   // and exposes a slot map (1 leader/first-author + N need slots). Members are
@@ -61,6 +62,11 @@
     if ($capabilities.has('edit_any_project')) return true;
     return !!sel.wgUnitId && $officerUnits.some((u) => u.unit_id === sel!.wgUnitId);
   });
+  // can the viewer seat cards into slots? admin (any card) or chapter officer
+  // (own chapter's cards). The work_seat RPC enforces the precise rule.
+  const canSeat = $derived(
+    $capabilities.has('manage_members') || $capabilities.has('edit_any_project') || $officerUnits.length > 0
+  );
 
   // filters / search / sort
   let q = $state('');
@@ -585,6 +591,9 @@
         slots={slotsByProject[r.id] ?? []}
         canManage={false}
       />
+      {#if canSeat && !r.finished}
+        <SlotSeater projectId={r.id} projectName={r.name} onSeated={loadGrid} />
+      {/if}
       {#if !r.wg}
         <p class="muted" style="font-size:.82rem; margin:0;">{$t('This project isn’t attributed to a working group yet.')}</p>
       {/if}
