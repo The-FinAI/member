@@ -90,6 +90,10 @@
   const laborTypeId = $derived(resTypes.find((rt) => rt.name === 'Labor')?.id ?? '');
   const myLabor = $derived(cardResources.find((r) => r.resource_type?.name === 'Labor') ?? null);
   const catalogResources = $derived(cardResources.filter((r) => r.resource_type?.name !== 'Labor'));
+  // read-only view (for visitors who can't edit): only show approved offerings
+  const approvedLabor = $derived(myLabor && myLabor.approval_status === 'approved' ? myLabor : null);
+  const approvedResources = $derived(catalogResources.filter((r) => r.approval_status === 'approved'));
+  const hasPublicResources = $derived(!!approvedLabor || approvedResources.length > 0);
   const rSelType = $derived(resTypes.find((rt) => rt.id === rType) ?? null);
   const rSelMethod = $derived(rSelType?.valuation_method ?? 'flat');
 
@@ -181,7 +185,9 @@
       canEdit = !!ce;
     }
     canEditCatalog = canEdit || mineSelf;
-    if (canEditCatalog) await loadCatalog(memberId);
+    // load the catalog for EVERYONE — visitors see a read-only "Resources" tab
+    // (what this card can bring); editors get the full editor below.
+    await loadCatalog(memberId);
 
     // new model: badges live in `badge`; contribution & project roster come from
     // work_commitment (nominal_str + the slot kind → role).
@@ -227,7 +233,7 @@
 
   // in-page section nav (only the sections actually rendered, in DOM order)
   const sections = $derived([
-    ...(canEditCatalog ? [{ id: 'catalog', label: isMe ? 'What I can bring' : 'What this card can bring' }] : []),
+    ...(canEditCatalog || hasPublicResources ? [{ id: 'resources', label: 'Resources' }] : []),
     { id: 'stats', label: 'Overview' },
     { id: 'badges', label: 'Badges' },
     { id: 'projects', label: 'Projects' }
@@ -298,7 +304,7 @@
       <div class="detail-body">
     <!-- editable offerable catalog — only for officers/admins who manage this card -->
     {#if canEditCatalog}
-      <div class="card stack" id="catalog">
+      <div class="card stack" id="resources">
         <h2 style="margin:0;">{isMe ? $t('What I can bring') : $t('What this card can bring')}</h2>
         <p class="muted" style="font-size:.82rem; margin-top:-.5rem;">{isMe ? $t('Your offerable catalog — your monthly time and resources. New entries go to a steward for review.') : $t("This card’s offerable catalog — its monthly time and resources. You’re editing it as an officer; new entries go to a steward for review.")}</p>
         {#if catError}<p class="neg" style="font-size:.85rem;">{catError}</p>{/if}
@@ -355,6 +361,33 @@
           {/if}
           <button onclick={addResource}>{$t('Add resource')}</button>
         </div>
+      </div>
+    {:else if hasPublicResources}
+      <!-- read-only catalog for visitors: what this card can bring -->
+      <div class="card stack" id="resources">
+        <h2 style="margin:0;">{$t('What this card can bring')}</h2>
+        <p class="muted" style="font-size:.82rem; margin-top:-.5rem;">{$t('Approved offerings — the monthly time and resources this card can commit to projects.')}</p>
+        {#if approvedLabor}
+          <div class="row" style="justify-content:space-between; align-items:center; border:1px solid var(--border); border-radius:8px; padding:.5rem .75rem;">
+            <strong style="font-size:.9rem;">⏱ {$t('Time')}</strong>
+            <span class="mono">{approvedLabor.capacity ?? '—'}</span>
+          </div>
+        {/if}
+        {#if approvedResources.length}
+          <table>
+            <thead><tr><th>{$t('Name')}</th><th>{$t('Type')}</th><th>{$t('Capacity')}</th><th>{$t('Availability')}</th></tr></thead>
+            <tbody>
+              {#each approvedResources as r}
+                <tr>
+                  <td>{r.name}{#if r.gpu_model || r.api_model}<div class="muted" style="font-size:.75rem;">{r.gpu_model?.name ?? `${r.api_model?.provider} ${r.api_model?.name}`}</div>{/if}</td>
+                  <td>{r.resource_type?.name ?? '—'}</td>
+                  <td>{r.capacity ?? '—'}{#if r.capacity && r.resource_type?.unit}<span class="muted" style="font-size:.75rem;"> {r.resource_type.unit}</span>{/if}</td>
+                  <td><span class="badge dim">{$t(r.availability)}</span></td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        {/if}
       </div>
     {/if}
 
