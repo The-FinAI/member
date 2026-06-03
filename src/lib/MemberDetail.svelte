@@ -4,6 +4,7 @@
   import { member, capabilities } from '$lib/session';
   import { t } from '$lib/i18n';
   import Medal from '$lib/Medal.svelte';
+  import BadgeTree from '$lib/cards/BadgeTree.svelte';
   import SectionNav from '$lib/SectionNav.svelte';
   import Breadcrumbs from '$lib/Breadcrumbs.svelte';
 
@@ -31,27 +32,9 @@
 
   let mem = $state<Mem | null>(null);
   let badges = $state<Badge[]>([]);
-  // ---- award a badge (officers/admins who manage this card) ----
-  let allSkills = $state<{ id: string; name: string; parent_id: string | null }[]>([]);
-  let awardOpen = $state(false);
-  let awardSkill = $state(''); let awardLevel = $state('apprentice');
-  let awardBusy = $state(false); let awardMsg = $state(''); let awardErr = $state('');
-  const LEVELS = ['apprentice', 'journeyman', 'craftsman', 'master'];
-  const LEVEL_LABEL: Record<string, string> = { apprentice: 'Apprentice', journeyman: 'Journeyman', craftsman: 'Craftsman', master: 'Master' };
+  // managers (manages_card / manage_members / mint_skillcard) can award badges
+  // via the talent-tree editor below.
   const canAward = $derived(canEdit || $capabilities.has('manage_members') || $capabilities.has('mint_skillcard'));
-  // certifiable skills = leaves of the skill tree (nobody's parent)
-  const leafSkills = $derived.by(() => {
-    const parents = new Set(allSkills.map((s) => s.parent_id).filter(Boolean));
-    return allSkills.filter((s) => !parents.has(s.id)).sort((a, b) => a.name.localeCompare(b.name));
-  });
-  async function awardBadge() {
-    if (!awardSkill) { awardErr = get(t)('Pick a skill first.'); return; }
-    awardBusy = true; awardErr = ''; awardMsg = '';
-    const { error: err } = await supabase.rpc('forge_badge', { p_member: id, p_skill: awardSkill, p_level: awardLevel, p_as: id });
-    awardBusy = false;
-    if (err) { awardErr = err.message; return; }
-    awardMsg = get(t)('Badge submitted for review.'); awardOpen = false; awardSkill = '';
-  }
   let projects = $state<Proj[]>([]);
   let totalNominal = $state(0);
   let loading = $state(true);
@@ -199,14 +182,6 @@
     }
     canEditCatalog = canEdit || mineSelf;
     if (canEditCatalog) await loadCatalog(memberId);
-
-    // skills list for the badge-award picker (only when the viewer can mint)
-    awardOpen = false; awardMsg = ''; awardErr = '';
-    const caps = get(capabilities);
-    if (canEdit || caps.has('manage_members') || caps.has('mint_skillcard')) {
-      const { data: sk } = await supabase.from('skill').select('id, name, parent_id').order('name');
-      allSkills = (sk as any[]) ?? [];
-    }
 
     // new model: badges live in `badge`; contribution & project roster come from
     // work_commitment (nominal_str + the slot kind → role).
@@ -405,27 +380,11 @@
     <!-- badges: a certified skill IS a badge (medal); uncertified skills
          are listed as awaiting a badge. One section, no duplicate skills table. -->
     <div class="card stack" id="badges">
-      <div class="row" style="justify-content:space-between; align-items:center; gap:.5rem;">
-        <h2 style="margin:0;">{$t('Badges')}</h2>
-        {#if canAward && !awardOpen}
-          <button class="ghost" onclick={() => { awardOpen = true; awardErr = ''; awardMsg = ''; }}>✦ {$t('Award a badge')}</button>
-        {/if}
-      </div>
-      {#if awardErr}<p class="neg" style="font-size:.82rem; margin:0;">{awardErr}</p>{/if}
-      {#if awardMsg}<p style="font-size:.82rem; margin:0; color:var(--accent);">{awardMsg}</p>{/if}
-
-      {#if canAward && awardOpen}
-        <div class="row" style="gap:.5rem; flex-wrap:wrap; align-items:flex-end; border:1px solid var(--border); border-radius:8px; padding:.6rem .75rem;">
-          <label class="stack" style="gap:.2rem; flex:1; min-width:160px;"><span class="muted" style="font-size:.75rem;">{$t('Skill')}</span>
-            <select bind:value={awardSkill}><option value="">{$t('— pick —')}</option>{#each leafSkills as s}<option value={s.id}>{s.name}</option>{/each}</select></label>
-          <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Level')}</span>
-            <select bind:value={awardLevel}>{#each LEVELS as lv}<option value={lv}>{$t(LEVEL_LABEL[lv])}</option>{/each}</select></label>
-          <button onclick={awardBadge} disabled={awardBusy || !awardSkill}>{awardBusy ? $t('Submitting…') : $t('Submit for review')}</button>
-          <button class="ghost" onclick={() => (awardOpen = false)}>{$t('Cancel')}</button>
-        </div>
-      {/if}
-
-      {#if badges.length === 0}
+      <h2 style="margin:0;">{$t('Badges')}</h2>
+      {#if canAward}
+        <p class="muted" style="font-size:.8rem; margin:-.3rem 0 0;">{$t('Click ranks to stage raises across skills, then submit the batch for review.')}</p>
+        <BadgeTree memberId={id} canEdit={true} onSubmitted={() => load(id)} />
+      {:else if badges.length === 0}
         <p class="muted">{$t('No badges yet.')}</p>
       {:else}
         <div class="row" style="gap:.5rem; flex-wrap:wrap;">

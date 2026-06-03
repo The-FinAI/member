@@ -176,6 +176,12 @@ const zh: Table = {
   "My profile": "我的主页",
   "Award a badge": "授予徽章",
   "Pick a skill first.": "请先选择一项技能。",
+  "General": "通用",
+  "{n} badge change(s) submitted for review.": "已提交 {n} 项徽章变更待审。",
+  "{n} change(s) staged": "已暂存 {n} 项变更",
+  "Click ranks to stage badge raises.": "点击等级以暂存徽章提升。",
+  "Submit {n} for review": "提交 {n} 项待审",
+  "Click ranks to stage raises across skills, then submit the batch for review.": "点击各技能的等级暂存提升,再批量提交待审。",
   // ── Redesign: home overview台 + /profile manage surface ──
   "Community steward": "社区管理员",
   "{n} application accepted — confirm to join": "{n} 个申请已通过 —— 确认加入",
