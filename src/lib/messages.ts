@@ -168,6 +168,9 @@ const zh: Table = {
   "Submitting…": "提交中…",
   "Pick a member first.": "请先选择一位成员。",
   "certified skills": "已认证技能",
+  "Taking you to your profile…": "正在前往你的主页…",
+  "You're signed in but not linked to a membership yet.": "你已登录,但尚未关联会员身份。",
+  "read how the community works →": "了解社区如何运作 →",
   // ── Redesign: home overview台 + /profile manage surface ──
   "Community steward": "社区管理员",
   "{n} application accepted — confirm to join": "{n} 个申请已通过 —— 确认加入",
