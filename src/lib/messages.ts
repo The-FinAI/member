@@ -162,7 +162,11 @@ const zh: Table = {
   "Chair": "会长",
   "Secretary": "秘书",
   "Lead": "组长",
-  "Officer": "干事",
+  "Award this badge": "授予此勋章",
+  "Award to any member card.": "可授予任意成员卡片。",
+  "Award to a card from a chapter you officer.": "授予你所管理分会的卡片。",
+  "Submitting…": "提交中…",
+  "Pick a member first.": "请先选择一位成员。",
   // ── Redesign: home overview台 + /profile manage surface ──
   "Community steward": "社区管理员",
   "{n} application accepted — confirm to join": "{n} 个申请已通过 —— 确认加入",

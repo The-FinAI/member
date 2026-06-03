@@ -219,8 +219,8 @@
   const drawerOpen = $derived(sel !== null);
   function openPerson(r: Row) { sel = { kind: 'person', row: r }; drawerErr = ''; drawerMsg = ''; }
   function openUnit(u: UnitRow) { sel = { kind: 'unit', unit: u, unitKind: tab === 'chapters' ? 'chapter' : 'working_group' }; drawerErr = ''; drawerMsg = ''; }
-  function openBadge(c: BadgeType) { sel = { kind: 'badge', badge: c }; drawerErr = ''; drawerMsg = ''; }
-  function closeDrawer() { sel = null; }
+  function openBadge(c: BadgeType) { sel = { kind: 'badge', badge: c }; drawerErr = ''; drawerMsg = ''; awardOpen = false; }
+  function closeDrawer() { sel = null; awardOpen = false; }
 
   // ---- permission-aware actions ----
   const isMe = (id: string) => !!($member && id === $member.id);
@@ -238,6 +238,45 @@
     if (err) { drawerErr = err.message; return; }
     drawerMsg = get(t)('Application sent — an officer will review it.');
     await loadMyUnits();
+  }
+
+  // ---- badge award (forge_badge → review queue) ----
+  const canAward = $derived(
+    $capabilities.has('manage_members') || $capabilities.has('mint_skillcard') || $officerUnits.length > 0
+  );
+  const isBadgeAdmin = $derived($capabilities.has('manage_members') || $capabilities.has('mint_skillcard'));
+  type AwardCard = { id: string; full_name: string };
+  let awardCards = $state<AwardCard[]>([]);
+  let awardOpen = $state(false);
+  let awardQ = $state(''); let awardMember = $state(''); let awardLevel = $state<string>('apprentice');
+  let awardBusy = $state(false);
+  const LEVELS = ['apprentice', 'journeyman', 'craftsman', 'master'];
+
+  async function openAward() {
+    awardOpen = true; awardMember = ''; awardQ = ''; awardLevel = 'apprentice';
+    drawerErr = ''; drawerMsg = '';
+    let q = supabase.from('member').select('id, full_name').eq('kind', 'card').order('full_name');
+    if (!isBadgeAdmin) {
+      const ids = $officerUnits.map((u) => u.unit_id);
+      if (!ids.length) { awardCards = []; return; }
+      q = q.in('home_unit_id', ids);
+    }
+    const { data } = await q;
+    awardCards = (data as AwardCard[]) ?? [];
+  }
+  const awardChoices = $derived(
+    awardCards.filter((c) => !awardQ.trim() || c.full_name.toLowerCase().includes(awardQ.trim().toLowerCase()))
+  );
+  async function doAward(skillId: string) {
+    if (!awardMember) { drawerErr = get(t)('Pick a member first.'); return; }
+    awardBusy = true; drawerErr = ''; drawerMsg = '';
+    const { error: err } = await supabase.rpc('forge_badge', {
+      p_member: awardMember, p_skill: skillId, p_level: awardLevel, p_as: awardMember
+    });
+    awardBusy = false;
+    if (err) { drawerErr = err.message; return; }
+    drawerMsg = get(t)('Badge submitted for review.');
+    awardOpen = false;
   }
 </script>
 
@@ -417,9 +456,39 @@
       onClose={closeDrawer}
     >
       <div class="stack">
+        {#if drawerErr}<p class="neg" style="font-size:.82rem; margin:0;">{drawerErr}</p>{/if}
+        {#if drawerMsg}<p style="font-size:.82rem; margin:0; color:var(--accent);">{drawerMsg}</p>{/if}
         <p class="muted" style="font-size:.85rem; margin:0;">
           {$t('A certified skill, ranked Apprentice → Journeyman → Craftsman → Master. In Phase 1, officers award badges to their members for review.')}
         </p>
+
+        {#if canAward}
+          {#if !awardOpen}
+            <button class="btn" style="align-self:flex-start;" onclick={openAward}>✦ {$t('Award this badge')}</button>
+          {:else}
+            <div class="award card stack" style="gap:.6rem; padding:.8rem;">
+              <span class="muted" style="font-size:.78rem;">{isBadgeAdmin ? $t('Award to any member card.') : $t('Award to a card from a chapter you officer.')}</span>
+              <div class="search"><input placeholder={$t('Search by name…')} bind:value={awardQ} /></div>
+              <div class="award-cards">
+                {#each awardChoices.slice(0, 40) as ac (ac.id)}
+                  <button type="button" class="award-card" class:on={awardMember === ac.id} onclick={() => (awardMember = ac.id)}>{ac.full_name}</button>
+                {/each}
+                {#if !awardChoices.length}<p class="muted" style="margin:0; font-size:.82rem;">{$t('No matching cards.')}</p>{/if}
+              </div>
+              <label class="row" style="gap:.5rem; align-items:center;">
+                <span class="muted" style="font-size:.78rem;">{$t('Level')}</span>
+                <select bind:value={awardLevel}>{#each LEVELS as lv}<option value={lv}>{$t(LEVEL_LABEL[lv])}</option>{/each}</select>
+              </label>
+              <div class="row" style="gap:.5rem;">
+                <button class="btn" disabled={awardBusy || !awardMember} onclick={() => doAward(c.id)}>
+                  {awardBusy ? $t('Submitting…') : $t('Submit for review')}
+                </button>
+                <button class="btn ghost" onclick={() => (awardOpen = false)}>{$t('Cancel')}</button>
+              </div>
+            </div>
+          {/if}
+        {/if}
+
         <h3 style="margin:.3rem 0 0;">{$t('Holders')}{#if c.holders.length}<span class="muted" style="font-weight:400;"> · {c.holders.length}</span>{/if}</h3>
         {#if c.holders.length === 0}
           <p class="muted" style="margin:0;">{$t('No holders yet.')}</p>
@@ -448,6 +517,10 @@
   .btn:disabled { opacity: .55; cursor: not-allowed; }
   .btn.ghost { background: transparent; color: var(--accent); border-color: var(--border); }
   .search input { width: 100%; }
+  .award-cards { display: flex; flex-wrap: wrap; gap: .35rem; max-height: 9rem; overflow-y: auto; }
+  .award-card { padding: .3rem .55rem; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); font: inherit; font-size: .82rem; cursor: pointer; }
+  .award-card:hover { border-color: var(--accent); }
+  .award-card.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
   .u-desc { margin: 0; font-size: .9rem; line-height: 1.5; color: var(--text); }
   .u-stats { display: flex; flex-wrap: wrap; gap: .3rem 1.6rem; align-items: center; padding: .7rem .9rem; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
   .u-stat { display: flex; flex-direction: column; gap: .1rem; }
