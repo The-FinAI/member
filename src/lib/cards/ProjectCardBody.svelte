@@ -15,6 +15,7 @@
   } = $props();
 
   type Link = { id: string; kind: string; title: string | null; url: string; notes: string | null; created_at: string; member: { full_name: string } | null };
+  type Meeting = { id: string; title: string; scheduled_at: string; ends_at: string | null; location: string | null; agenda: string | null; member: { full_name: string } | null };
   type Event = { id: string; event_type: string; summary: string; created_at: string; member: { full_name: string } | null };
   type Proj = { id: string; name: string; summary: string | null; venue_id: string | null; org_unit_id: string | null };
 
@@ -27,6 +28,7 @@
   let canEdit = $state(false);
   let proj = $state<Proj | null>(null);
   let links = $state<Link[]>([]);
+  let meetings = $state<Meeting[]>([]);
   let events = $state<Event[]>([]);
   let loading = $state(true);
   let busy = $state(''); let err = $state('');
@@ -39,19 +41,24 @@
   let showAddLink = $state(false);
   // note box
   let note = $state('');
+  // add-meeting form
+  let showAddMeeting = $state(false);
+  let mTitle = $state(''); let mAt = $state(''); let mEnds = $state(''); let mLoc = $state(''); let mAgenda = $state('');
 
   async function load() {
     if (!supabaseConfigured) { loading = false; return; }
     loading = true; err = '';
-    const [{ data: p }, { data: ce }, { data: lk }, { data: ev }] = await Promise.all([
+    const [{ data: p }, { data: ce }, { data: lk }, { data: mt }, { data: ev }] = await Promise.all([
       supabase.from('project').select('id, name, summary, venue_id, org_unit_id').eq('id', projectId).maybeSingle(),
       supabase.rpc('can_edit_project', { p_project: projectId }),
       supabase.from('project_link').select('id, kind, title, url, notes, created_at, member:added_by(full_name)').eq('project_id', projectId).order('created_at', { ascending: false }),
+      supabase.from('project_meeting').select('id, title, scheduled_at, ends_at, location, agenda, member:created_by(full_name)').eq('project_id', projectId).order('scheduled_at', { ascending: false }),
       supabase.from('project_event').select('id, event_type, summary, created_at, member:actor_member_id(full_name)').eq('project_id', projectId).order('created_at', { ascending: false }).limit(40)
     ]);
     proj = (p as Proj) ?? null;
     canEdit = ce === true;
     links = (lk as Link[]) ?? [];
+    meetings = (mt as Meeting[]) ?? [];
     events = (ev as Event[]) ?? [];
     loading = false;
   }
@@ -116,6 +123,38 @@
     if (e) { err = e.message; return; }
     note = ''; await load();
   }
+
+  async function addMeeting() {
+    if (!mTitle.trim() || !mAt) { err = get(t)('Meeting title and time are required.'); return; }
+    busy = 'meeting'; err = '';
+    const { error: e } = await supabase.rpc('project_meeting_add', {
+      p_project: projectId, p_title: mTitle.trim(),
+      p_scheduled_at: new Date(mAt).toISOString(),
+      p_ends_at: mEnds ? new Date(mEnds).toISOString() : null,
+      p_location: mLoc.trim() || null, p_agenda: mAgenda.trim() || null
+    });
+    busy = '';
+    if (e) { err = e.message; return; }
+    mTitle = ''; mAt = ''; mEnds = ''; mLoc = ''; mAgenda = ''; showAddMeeting = false;
+    await load();
+  }
+
+  async function removeMeeting(id: string) {
+    busy = id; err = '';
+    const { error: e } = await supabase.rpc('project_meeting_remove', { p_meeting: id });
+    busy = '';
+    if (e) { err = e.message; return; }
+    await load();
+  }
+
+  function fmtWhen(iso: string, ends: string | null) {
+    const d = new Date(iso);
+    const day = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    const endTime = ends ? new Date(ends).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) : '';
+    return `${day} · ${time}${endTime ? '–' + endTime : ''}`;
+  }
+  const isPast = (iso: string) => new Date(iso).getTime() < Date.now();
 
   function host(u: string) { try { return new URL(u).host.replace(/^www\./, ''); } catch { return u; } }
   function rel(iso: string) {
@@ -212,6 +251,48 @@
     {/if}
   </div>
 
+  <!-- meetings -->
+  <div class="pcb-section">
+    <div class="pcb-h-row">
+      <span class="pcb-h">{$t('Meetings')}{#if meetings.length}<span class="pcb-ct"> · {meetings.length}</span>{/if}</span>
+      {#if canEdit}<button type="button" class="pcb-link" onclick={() => (showAddMeeting = !showAddMeeting)}>{showAddMeeting ? $t('Cancel') : '+ ' + $t('Schedule meeting')}</button>{/if}
+    </div>
+
+    {#if showAddMeeting && canEdit}
+      <div class="pcb-form">
+        <label class="pcb-field"><span>{$t('Title')}</span><input bind:value={mTitle} placeholder={$t('Kickoff, weekly sync…')} /></label>
+        <div class="pcb-row">
+          <label class="pcb-field" style="flex:1;"><span>{$t('Starts')}</span><input type="datetime-local" bind:value={mAt} /></label>
+          <label class="pcb-field" style="flex:1;"><span>{$t('Ends')}</span><input type="datetime-local" bind:value={mEnds} /></label>
+        </div>
+        <label class="pcb-field"><span>{$t('Location')}</span><input bind:value={mLoc} placeholder={$t('Zoom link or room')} /></label>
+        <label class="pcb-field"><span>{$t('Agenda')}</span><input bind:value={mAgenda} placeholder={$t('optional')} /></label>
+        <button type="button" class="pcb-go" disabled={busy === 'meeting'} onclick={addMeeting}>
+          {#if busy === 'meeting'}<span class="spin"></span>{/if}{$t('Schedule meeting')}
+        </button>
+      </div>
+    {/if}
+
+    {#if meetings.length === 0}
+      <p class="pcb-muted">{$t('No meetings scheduled.')}</p>
+    {:else}
+      <ul class="pcb-links">
+        {#each meetings as m (m.id)}
+          <li class="pcb-link-row" class:past={isPast(m.scheduled_at)}>
+            <span class="pcb-kind">{isPast(m.scheduled_at) ? '✓' : '📅'}</span>
+            <div class="pcb-link-main">
+              <span class="pcb-link-title">{m.title}</span>
+              <span class="pcb-link-host">{fmtWhen(m.scheduled_at, m.ends_at)}{#if m.location} · {m.location}{/if}{#if m.agenda} · {m.agenda}{/if}</span>
+            </div>
+            {#if canEdit}
+              <button type="button" class="pcb-x" disabled={busy === m.id} title={$t('Remove')} aria-label={$t('Remove')} onclick={() => removeMeeting(m.id)}>✕</button>
+            {/if}
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  </div>
+
   <!-- history -->
   <div class="pcb-section">
     <span class="pcb-h">{$t('History')}</span>
@@ -267,6 +348,7 @@
 
   .pcb-links { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .35rem; }
   .pcb-link-row { display: flex; align-items: center; gap: .55rem; padding: .4rem .5rem; border: 1px solid var(--border); border-radius: 9px; background: var(--card); }
+  .pcb-link-row.past { opacity: .6; }
   .pcb-kind { flex: none; font-size: .95rem; }
   .pcb-link-main { display: flex; flex-direction: column; gap: .05rem; text-decoration: none; color: inherit; min-width: 0; flex: 1; }
   .pcb-link-title { font-size: .86rem; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
