@@ -32,7 +32,8 @@
   let people = $state<Person[]>([]);
   let badgesOf = $state<Record<string, Badge[]>>({});
   let resOf = $state<Record<string, Resource[]>>({});
-  let usedOf = $state<Record<string, number>>({});       // labor used this month (h)
+  let usedOf = $state<Record<string, number>>({});       // labor used this month, per member (display)
+  let usedByRes = $state<Record<string, number>>({});    // committed this month, per resource_id (capacity)
   let needs = $state<Need[]>([]);
   let unclaimed = $state<{ id: string; name: string; status: string }[]>([]);
   let ownedProjects = $state<{ id: string; name: string }[]>([]);
@@ -61,9 +62,10 @@
 
   const skillName = (id: string) => skills.find((s) => s.id === id)?.name ?? '';
 
-  // a person qualifies for a need when they clear EVERY skill requirement the
-  // slot declares (project_slot.requirements, the unified jsonb gate) AND hold a
-  // resource of the required type. Mirrors member_meets_requirements server-side.
+  // Every need is "skill(s) + a resource". The resource is mandatory — hold a
+  // resource of the slot's type WITH monthly capacity left (a labor need's type
+  // is 'Labor', i.e. working hours). Skills are optional: satisfy each
+  // requirement in the requirements jsonb if any are declared.
   function qualify(s: Need, badges: Badge[], resources: Resource[]): { ok: boolean; reason: string } {
     if (s.filled >= s.headcount) return { ok: false, reason: get(t)('Filled') };
     for (const req of s.requirements) {
@@ -74,8 +76,10 @@
       }
     }
     if (s.resource_type_id) {
-      if (!resources.find((r) => r.type_id === s.resource_type_id))
-        return { ok: false, reason: get(t)('No matching resource held') };
+      const res = resources.find((r) => r.type_id === s.resource_type_id);
+      if (!res) return { ok: false, reason: get(t)('No matching resource held') };
+      const remaining = res.monthly_quota == null ? Infinity : res.monthly_quota - (usedByRes[res.id] ?? 0);
+      if (remaining <= 0) return { ok: false, reason: get(t)('No capacity left this month') };
     }
     return { ok: true, reason: '' };
   }
@@ -143,14 +147,17 @@
       for (const r of (rs as Resource[] & { holder_member_id: string }[]) ?? [])
         (rmap[(r as any).holder_member_id] ??= []).push(r);
       resOf = rmap;
-      // used labor capacity this month per person
-      const resUnit: Record<string, string> = {};
-      for (const r of (rs as any[]) ?? []) resUnit[r.id] = r.unit ?? 'h';
+      // committed this month — per member (display) and per resource (capacity)
       const used: Record<string, number> = {};
-      for (const w of (wc as any[]) ?? []) used[w.member_id] = (used[w.member_id] ?? 0) + (Number(w.monthly_amount) || 0);
+      const usedRes: Record<string, number> = {};
+      for (const w of (wc as any[]) ?? []) {
+        used[w.member_id] = (used[w.member_id] ?? 0) + (Number(w.monthly_amount) || 0);
+        if (w.resource_id) usedRes[w.resource_id] = (usedRes[w.resource_id] ?? 0) + (Number(w.monthly_amount) || 0);
+      }
       usedOf = used;
+      usedByRes = usedRes;
       void laborType;
-    } else { badgesOf = {}; resOf = {}; usedOf = {}; }
+    } else { badgesOf = {}; resOf = {}; usedOf = {}; usedByRes = {}; }
 
     // WG: unclaimed projects to take on + this group's projects (to post needs)
     if (unit!.kind === 'working_group' && isOfficer) {
