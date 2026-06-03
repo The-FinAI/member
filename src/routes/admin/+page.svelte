@@ -36,8 +36,8 @@
   let pendingForge = $state(0), pendingCommits = $state(0), pendingSettlements = $state(0), pendingUnitApps = $state(0);
 
   const review = $derived([
-    canForge ? { title: 'Forge queue', desc: 'Badges, member cards, needs, resources, over-capacity commitments & settlements', href: '/admin/review?tab=forge', n: pendingForge + pendingCommits + pendingSettlements } : null,
-    canUnits ? { title: 'Unit applications', desc: 'Members applying to join a chapter or working group', href: '/admin/review?tab=units', n: pendingUnitApps } : null
+    canForge ? { title: 'Forge queue', desc: 'Badges, member cards, needs, resources, over-capacity commitments & settlements', href: '/admin/forge-queue', n: pendingForge + pendingCommits + pendingSettlements } : null,
+    canUnits ? { title: 'Unit applications', desc: 'Members applying to join a chapter or working group', href: '/admin/review', n: pendingUnitApps } : null
   ].filter(Boolean) as { title: string; desc: string; href: string; n: number }[]);
 
   async function load() {
@@ -47,7 +47,7 @@
       c(supabase.from('member')),
       c(supabase.from('member')).eq('status', 'active'),
       c(supabase.from('project')),
-      c(supabase.from('project_slot')).eq('status', 'open').in('slot_kind', ['work_labor', 'work_resource']),
+      c(supabase.from('project_slot')).eq('status', 'open').in('slot_kind', ['leader', 'work_labor', 'work_resource']),
       c(supabase.from('forge_request')).eq('status', 'submitted'),
       c(supabase.from('work_commitment')).eq('approval', 'needs_review'),
       c(supabase.from('stater_settlement')).in('status', ['submitted', 'under_review']),
@@ -74,7 +74,7 @@
   <div class="kpis">
     <div class="kpi"><span class="k-label">{$t('Members')}</span><span class="k-value accent">{loading ? '–' : members.toLocaleString()}</span><span class="k-sub">{loading ? '' : $t('{n} active', { n: activeMembers })}</span></div>
     <div class="kpi"><span class="k-label">{$t('Projects')}</span><span class="k-value">{loading ? '–' : projects.toLocaleString()}</span><span class="k-sub"><a href="/projects?tab=needs">{$t('{n} open needs', { n: openNeeds })} →</a></span></div>
-    <div class="kpi"><span class="k-label">{$t('STR circulating')}</span><span class="k-value">{loading ? '–' : circulating.toLocaleString()}</span><span class="k-sub"><a href="/admin/stater">{$t('economy →')}</a></span></div>
+    <div class="kpi"><span class="k-label">{$t('STR supply')}</span><span class="k-value">{loading ? '–' : circulating.toLocaleString()}</span><span class="k-sub"><a href="/admin/economy?tab=str">{$t('economy →')}</a></span></div>
     <div class="kpi"><span class="k-label">{$t('Skills')}</span><span class="k-value">{loading ? '–' : skillLeaves.toLocaleString()}</span><span class="k-sub">{$t('certifiable crafts')}</span></div>
   </div>
 

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
-  // Folded into the Review console.
-  $effect(() => { goto('/admin/review?tab=units', { replaceState: true }); });
+  // Unit applications now live at /admin/review.
+  $effect(() => { goto('/admin/review', { replaceState: true }); });
 </script>
-<svelte:head><title>Review · The Fin AI</title></svelte:head>
+<svelte:head><title>Unit applications · The Fin AI</title></svelte:head>

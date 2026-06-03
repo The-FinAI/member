@@ -56,15 +56,23 @@
       </div>
     {/if}
 
-    {#if isAdmin}
+    {#if $officerUnits.length || isAdmin}
       <span class="sec">{$t('Review')}</span>
       <div class="card-grid">
         <EntityCard
           type="Review"
-          title={$t('Forge queue')}
-          subtitle={$t('One approval queue for every forge')}
-          onclick={() => goto('/admin/forge-queue')}
+          title={$t('Unit applications')}
+          subtitle={$t('Members applying to join your units')}
+          onclick={() => goto('/admin/review')}
         />
+        {#if isAdmin}
+          <EntityCard
+            type="Review"
+            title={$t('Forge queue')}
+            subtitle={$t('One approval queue for every forge')}
+            onclick={() => goto('/admin/forge-queue')}
+          />
+        {/if}
       </div>
     {/if}
   {/if}
