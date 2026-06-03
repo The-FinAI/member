@@ -41,6 +41,7 @@ const zh: Table = {
   "seats & resources to fill": "待补的席位与资源",
   "Deadlines ≤ 60d": "截止 ≤ 60 天",
   "venues approaching": "临近的发表节点",
+  "{n} with a deadline ≤ 60d": "{n} 个截止 ≤ 60 天",
   // ── Redesign: home overview台 + /profile manage surface ──
   "Community steward": "社区管理员",
   "{n} application accepted — confirm to join": "{n} 个申请已通过 —— 确认加入",

@@ -353,7 +353,6 @@
 
   // KPI summary (whole portfolio, not just filtered rows)
   const kActive = $derived(grid.filter((r) => r.status !== 'Finished').length);
-  const kFinished = $derived(grid.filter((r) => r.status === 'Finished').length);
   const kNeeds = $derived(grid.reduce((a, r) => a + r.openNeeds, 0));
   const kUpcoming = $derived(grid.filter((r) => {
     if (!r.deadline) return false;
@@ -363,7 +362,7 @@
 
   // Finished projects live in their own "hall of fame" — settled, minted, archived —
   // so the working grid below only carries projects still moving through the pipeline.
-  let showHof = $state(true);
+  let showHof = $state(false);
   const finished = $derived(
     grid
       .filter((r) => r.status === 'Finished')
@@ -389,7 +388,9 @@
   <div class="row" style="justify-content:space-between; align-items:flex-end;">
     <div class="stack" style="gap:.15rem;">
       <h1 style="margin:0;">{$t('Projects')}</h1>
-      <span class="muted" style="font-size:.88rem;">{$t('{n} projects across the community — pools, milestones, and open roles.', { n: grid.length })}</span>
+      <span class="muted" style="font-size:.88rem;">
+        {$t('{n} projects across the community — pools, milestones, and open roles.', { n: grid.length })}{#if kUpcoming > 0} · <span class="warn">{$t('{n} with a deadline ≤ 60d', { n: kUpcoming })}</span>{/if}
+      </span>
     </div>
     {#if $member && surface === 'projects'}
       <button onclick={() => (showForm = !showForm)}>{showForm ? $t('Cancel') : $t('Start a project')}</button>
@@ -483,25 +484,6 @@
     </div>
   {/if}
 
-  <!-- KPI summary: the three numbers that matter when browsing -->
-  <div class="kpis kpis-3">
-    <div class="kpi">
-      <span class="k-label">{$t('Active projects')}</span>
-      <span class="k-value">{kActive}</span>
-      <span class="k-sub">{$t('{f} finished & settled', { f: kFinished })}</span>
-    </div>
-    <div class="kpi">
-      <span class="k-label">{$t('Open roles')}</span>
-      <span class="k-value accent">{kNeeds}</span>
-      <span class="k-sub">{$t('seats & resources to fill')}</span>
-    </div>
-    <div class="kpi">
-      <span class="k-label">{$t('Deadlines ≤ 60d')}</span>
-      <span class="k-value">{kUpcoming}</span>
-      <span class="k-sub">{$t('venues approaching')}</span>
-    </div>
-  </div>
-
   <!-- hall of fame: finished projects, settled & minted -->
   {#if finished.length > 0}
     <div class="hof card">
@@ -516,7 +498,7 @@
           <span class="muted" style="font-size:.85rem;">{$t('{n} shipped', { n: finished.length })}</span>
         </div>
         <div class="row" style="gap:.6rem; align-items:center;">
-          <span class="muted" style="font-size:.82rem;">{$t('{n} STR minted', { n: hofMinted.toLocaleString() })}</span>
+          {#if hofMinted > 0}<span class="muted" style="font-size:.82rem;">{$t('{n} STR minted', { n: hofMinted.toLocaleString() })}</span>{/if}
           <span class="chev" class:open={showHof}>▾</span>
         </div>
       </div>

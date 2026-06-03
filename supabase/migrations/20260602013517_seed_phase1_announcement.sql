@@ -1,5 +1,5 @@
 insert into announcement (title, body, href, cta_label, level, pinned, is_active)
-select 'The Guild is open — mint & claim your role cards',
-       'Every Chapter and Working Group bootstraps the Guild first.',
-       '/skills', 'Open the Guild →', 'info', true, true
+select 'Phase 1 is live — forge your member cards',
+       'Officers: forge a card for each researcher and claim your existing projects to begin.',
+       '/officer', 'Open officer console →', 'info', true, true
 where not exists (select 1 from announcement);
