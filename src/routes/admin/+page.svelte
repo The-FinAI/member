@@ -31,34 +31,36 @@
   let activeMembers = $state(0);
   let projects = $state(0);
   let openNeeds = $state(0);
-  let pendingResources = $state(0);
-  let examsInReview = $state(0);
+  let pendingForge = $state(0);
   let pendingCommits = $state(0);
-  let pendingMilestones = $state(0);
+  let pendingSettlements = $state(0);
+  let pendingUnitApps = $state(0);
   let skillLeaves = $state(0);
   let circulating = $state(0);
 
-  // things that want an admin's attention
+  // things that want an admin's attention (Phase-1 model: forge queue +
+  // over-capacity commitments + settlements live on the forge queue; unit
+  // applications on approvals)
   const attention = $derived([
-    { n: pendingResources, label: 'resources awaiting review', href: '/admin/approvals' },
-    { n: examsInReview, label: 'badges awaiting review', href: '/admin/approvals' },
-    { n: pendingMilestones, label: 'milestones awaiting review', href: '/admin/approvals' },
-    { n: pendingCommits, label: 'over-capacity commitments to review', href: '/admin/approvals' },
+    { n: pendingForge, label: 'items awaiting review', href: '/admin/forge-queue' },
+    { n: pendingCommits, label: 'over-capacity commitments to review', href: '/admin/forge-queue' },
+    { n: pendingSettlements, label: 'settlements awaiting payout', href: '/admin/forge-queue' },
+    { n: pendingUnitApps, label: 'unit applications to review', href: '/admin/approvals' },
     { n: openNeeds, label: 'open needs on the market', href: '/projects?tab=needs' }
   ].filter((a) => a.n > 0));
 
   async function load() {
     if (!supabaseConfigured) { loading = false; return; }
     const c = (q: any) => q.select('id', { count: 'exact', head: true });
-    const [m, am, p, on, pr, ex, cm, mi, sk, bal] = await Promise.all([
+    const [m, am, p, on, fr, cm, st, ua, sk, bal] = await Promise.all([
       c(supabase.from('member')),
       c(supabase.from('member')).eq('status', 'active'),
       c(supabase.from('project')),
-      c(supabase.from('open_need')).eq('status', 'open'),
-      c(supabase.from('resource')).eq('approval_status', 'pending'),
-      c(supabase.from('skillcard_request')).eq('status', 'submitted'),
-      c(supabase.from('commitment_review_queue')),
-      c(supabase.from('project_milestone')).in('status', ['claimed', 'under_review']),
+      c(supabase.from('project_slot')).eq('status', 'open').in('slot_kind', ['work_labor', 'work_resource']),
+      c(supabase.from('forge_request')).eq('status', 'submitted'),
+      c(supabase.from('work_commitment')).eq('approval', 'needs_review'),
+      c(supabase.from('stater_settlement')).in('status', ['submitted', 'under_review']),
+      c(supabase.from('org_unit_member')).eq('status', 'pending'),
       supabase.from('skill').select('id', { count: 'exact', head: true }).not('parent_id', 'is', null),
       supabase.from('stater_balance').select('balance')
     ]);
@@ -66,10 +68,10 @@
     activeMembers = am.count ?? 0;
     projects = p.count ?? 0;
     openNeeds = on.count ?? 0;
-    pendingResources = pr.count ?? 0;
-    examsInReview = ex.count ?? 0;
+    pendingForge = fr.count ?? 0;
     pendingCommits = cm.count ?? 0;
-    pendingMilestones = mi.count ?? 0;
+    pendingSettlements = st.count ?? 0;
+    pendingUnitApps = ua.count ?? 0;
     skillLeaves = sk.count ?? 0;
     circulating = ((bal.data as { balance: number }[]) ?? []).reduce((a, b) => a + (Number(b.balance) || 0), 0);
     loading = false;
