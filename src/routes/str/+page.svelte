@@ -82,6 +82,12 @@
       </table>
     </div>
     <p class="muted">{$t('GPU TFLOPs and API token prices come from built-in catalogues admins can edit; the per-hour and per-unit USD values live on each resource type.')}</p>
+
+    <div class="note">
+      <span class="mh">{$t('Labour hours price by skill, not by the table above')}</span>
+      <p>{@html $t('The table prices <em>resources</em>. A <strong>labour need</strong> works differently: the working-hours resource is just <em>capacity</em>, and an hour mints by the <strong>skill’s rate</strong> — Paper Writing 10/h, Experiment Design 12/h, Pretraining / RLHF / GPU training 15/h (admin-tunable, default 10).')}</p>
+      <p>{@html $t('Seniority then scales it. The contributor’s <strong>badge level</strong> in that skill multiplies the rate: <code>nominal = skill_rate × level_mult × hours</code>, with <strong>apprentice ×1, journeyman ×1.25, craftsman ×1.5, master ×2</strong> (all policy knobs). So a master writer mints 20 STR/h where an apprentice mints 10. The level gates entry <em>and</em> raises the rate; “Expert Time” at $75/h is the alternative path when expertise is contributed as a resource rather than skilled labour.')}</p>
+    </div>
   </section>
 
   <section id="states" class="card stack">
@@ -193,4 +199,7 @@
   .step.total { border-color: var(--accent); color: var(--accent); font-weight: 600; }
   .plus, .eqls { color: var(--muted); font-weight: 600; }
   .foot { font-size: .9rem; }
+  .note { border: 1px solid var(--border-2); border-left: 3px solid var(--accent); border-radius: 10px; background: var(--card-2); padding: .7rem .9rem; display: flex; flex-direction: column; gap: .35rem; }
+  .note .mh { font-size: .72rem; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+  .note p { margin: 0; font-size: .9rem; }
 </style>
