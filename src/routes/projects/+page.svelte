@@ -582,8 +582,9 @@
   </div>
 
   <p style="font-size:11px; color:var(--down); font-family:monospace; word-break:break-all;">
-    DBG grid={grid.length} rows={rows.length} fin={finished.length} active={grid.filter((r) => r.active).length}
-    | leaked={rows.filter((r) => r.finished || !r.active).map((r) => `${r.name}[status=${r.status}|fin=${r.finished}|act=${r.active}]`).join('  ·  ') || 'none'}
+    DBG grid={grid.length} rows={rows.length} fin={finished.length} activeCount={grid.filter((r) => r.active).length}
+    | dupes={grid.length - new Set(grid.map((r) => r.id)).size}
+    | finProjects={grid.filter((r) => /fin|multiling/i.test(r.name)).map((r) => `${r.name.slice(0, 10)}[id=${r.id.slice(0, 4)}|st=${r.status}|fin=${r.finished}|act=${r.active}|inRows=${rows.some((x) => x === r)}]`).join('  ·  ')}
   </p>
 
   {#if loading}
