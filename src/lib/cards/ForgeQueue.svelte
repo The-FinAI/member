@@ -8,6 +8,7 @@
   // over-capacity work_commitment queue, and pending project settlements.
   // Dispatches to review_forge / review_capacity / approve_settlement.
   const canSettle = $derived($capabilities.has('manage_stater') || $capabilities.has('edit_any_project'));
+  const canMilestone = $derived($capabilities.has('manage_stater') || $capabilities.has('edit_any_project') || $capabilities.has('manage_resources'));
   type Req = {
     id: string; target_type: string; action: string; target_id: string | null;
     payload: Record<string, any>; batch_id: string | null; fee: number;
@@ -26,17 +27,22 @@
     items: { member_id: string; final_payout_weight: number; is_author: boolean; author_order: number | null; is_corresponding: boolean }[];
   };
 
+  type Mstone = {
+    id: string; project_id: string; status: string; nominal_value: number; multiplier_bonus: number;
+    catalog: { item: string; category: string } | null; project: { name: string } | null;
+  };
   let requests = $state<Req[]>([]);
   let capacity = $state<Cap[]>([]);
   let settlements = $state<Settle[]>([]);
+  let milestones = $state<Mstone[]>([]);
   let names = $state<{ members: Record<string, string>; skills: Record<string, string>; projects: Record<string, string>; resTypes: Record<string, string> }>({ members: {}, skills: {}, projects: {}, resTypes: {} });
   let loading = $state(true);
   let busy = $state(''); let msg = $state('');
-  let filter = $state<'all' | 'badge' | 'resource' | 'need' | 'project_done' | 'settlement'>('all');
+  let filter = $state<'all' | 'badge' | 'resource' | 'need' | 'project_done' | 'milestone' | 'settlement'>('all');
 
   const TYPE_LABEL: Record<string, string> = {
     member_card: 'Member card', badge: 'Badge', resource: 'Resource',
-    need: 'Need', claim: 'Claim', project_done: 'Completion', settlement: 'Settlement'
+    need: 'Need', claim: 'Claim', project_done: 'Completion', milestone: 'Milestone', settlement: 'Settlement'
   };
   const TYPE_CLASS: Record<string, string> = {
     badge: 'info', resource: 'warn', need: 'pos', project_done: 'pos', member_card: 'dim', claim: 'dim'
@@ -47,10 +53,11 @@
   async function load() {
     if (!supabaseConfigured) { loading = false; return; }
     loading = true; msg = '';
-    const [{ data: rq }, { data: cap }, { data: st }, { data: m }, { data: sk }, { data: pr }, { data: rt }] = await Promise.all([
+    const [{ data: rq }, { data: cap }, { data: st }, { data: ms }, { data: m }, { data: sk }, { data: pr }, { data: rt }] = await Promise.all([
       supabase.from('forge_request').select('id, target_type, action, target_id, payload, batch_id, fee, submitted_by, created_at').eq('status', 'submitted').order('created_at'),
       supabase.from('work_commitment').select('id, member_id, project_id, monthly_amount, nominal_str, year_month, member:member_id(full_name), project:project_id(name), resource:resource_id(name, monthly_quota)').eq('approval', 'needs_review'),
       supabase.from('stater_settlement').select('id, project_id, status, meeting_notes, submitted_by, review_window_ends_at, project:project_id(name), items:stater_settlement_item(member_id, final_payout_weight, is_author, author_order, is_corresponding)').in('status', ['submitted', 'under_review']).order('review_window_ends_at'),
+      supabase.from('project_milestone').select('id, project_id, status, nominal_value, multiplier_bonus, catalog:catalog_id(item, category), project:project_id(name)').in('status', ['claimed', 'under_review']).order('created_at'),
       supabase.from('member').select('id, full_name'),
       supabase.from('skill').select('id, name'),
       supabase.from('project').select('id, name'),
@@ -59,6 +66,7 @@
     requests = (rq as Req[]) ?? [];
     capacity = (cap as any[]) ?? [];
     settlements = (st as any[]) ?? [];
+    milestones = (ms as any[]) ?? [];
     names = {
       members: Object.fromEntries(((m as any[]) ?? []).map((x) => [x.id, x.full_name])),
       skills: Object.fromEntries(((sk as any[]) ?? []).map((x) => [x.id, x.name])),
@@ -109,6 +117,14 @@
     msg = approve ? get(t)('Settlement approved — STR paid out.') : get(t)('Settlement rejected.');
     await load();
   }
+  async function reviewMilestone(m: Mstone, approve: boolean) {
+    busy = m.id;
+    const { error: e } = await supabase.rpc('verify_milestone', { p_milestone: m.id, p_approve: approve });
+    busy = '';
+    if (e) { msg = e.message; return; }
+    msg = approve ? get(t)('Milestone verified.') : get(t)('Milestone rejected.');
+    await load();
+  }
   function settleSummary(s: Settle): string {
     const items = s.items ?? [];
     const authors = items.filter((i) => i.is_author).length;
@@ -123,7 +139,7 @@
   <header class="fq-head">
     <h2 class="fq-title">{$t('Forge queue')}</h2>
     <div class="fq-filters">
-      {#each ['all', 'badge', 'resource', 'need', 'project_done', ...(canSettle ? ['settlement'] : [])] as f}
+      {#each ['all', 'badge', 'resource', 'need', 'project_done', ...(canMilestone ? ['milestone'] : []), ...(canSettle ? ['settlement'] : [])] as f}
         <button type="button" class="chip toggle" class:on={filter === f} onclick={() => (filter = f as any)}>
           {f === 'all' ? $t('All') : $t(TYPE_LABEL[f])}
         </button>
@@ -174,6 +190,27 @@
                 {#if busy === c.id}<span class="spin"></span>{/if}{$t('Approve')}
               </button>
               <button type="button" class="chip toggle no" disabled={busy === c.id} onclick={() => reviewCap(c, false)}>{$t('Reject')}</button>
+            </span>
+          </div>
+        {/each}
+      </div>
+    {/if}
+
+    {#if canMilestone && (filter === 'all' || filter === 'milestone') && milestones.length}
+      <h3 class="fq-sec">{$t('Milestones')}</h3>
+      <div class="fq-list">
+        {#each milestones as m (m.id)}
+          <div class="fq-row">
+            <span class="badge info">{$t('Milestone')}</span>
+            <span class="fq-sum">
+              {m.project?.name ?? '—'} · {m.catalog?.item ?? '—'}
+              <span class="muted"> · +{m.nominal_value} {$t('nominal')} · ×{(1 + Number(m.multiplier_bonus)).toFixed(3)}</span>
+            </span>
+            <span class="fq-act">
+              <button type="button" class="chip toggle ok" disabled={busy === m.id} onclick={() => reviewMilestone(m, true)}>
+                {#if busy === m.id}<span class="spin"></span>{/if}{$t('Verify')}
+              </button>
+              <button type="button" class="chip toggle no" disabled={busy === m.id} onclick={() => reviewMilestone(m, false)}>{$t('Reject')}</button>
             </span>
           </div>
         {/each}
