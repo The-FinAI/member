@@ -340,28 +340,22 @@
           {#if seatFit && !seatFit.ok}<span class="sb-reason">· {seatFit.reason}</span>{/if}
         </div>
         {#if seatFit?.ok}
-          {#if selNeed.slot_kind === 'leader'}
-            <!-- a leader need is filled by claiming (the person stakes), not by
-                 seating — so the officer can only point to the project page -->
-            <a class="stake" href={`/projects/${selNeed.project_id}`}>{$t('Eligible to lead — claim on the project page')} →</a>
-          {:else}
-            <div class="sb-form">
-              <label>{$t('Monthly amount')}<input type="number" min="0" step="any" bind:value={amount} /></label>
-              {#if selNeed.resource_type_id}
-                <label>{$t('Resource')}
-                  <select bind:value={resId}>
-                    <option value="">{$t('Select resource')}</option>
-                    {#each (resOf[selPerson.id] ?? []).filter((r) => r.type_id === selNeed.resource_type_id) as r (r.id)}
-                      <option value={r.id}>{r.name}</option>
-                    {/each}
-                  </select>
-                </label>
-              {/if}
-              <button type="button" class="stake" disabled={busy === 'seat' || (!!selNeed.resource_type_id && !resId)} onclick={seat}>
-                {#if busy === 'seat'}<span class="spin"></span>{/if}{$t('Seat into slot')}
-              </button>
-            </div>
-          {/if}
+          <div class="sb-form">
+            <label>{$t('Monthly amount')}<input type="number" min="0" step="any" bind:value={amount} /></label>
+            {#if selNeed.resource_type_id}
+              <label>{$t('Resource')}
+                <select bind:value={resId}>
+                  <option value="">{$t('Select resource')}</option>
+                  {#each (resOf[selPerson.id] ?? []).filter((r) => r.type_id === selNeed.resource_type_id) as r (r.id)}
+                    <option value={r.id}>{r.name}</option>
+                  {/each}
+                </select>
+              </label>
+            {/if}
+            <button type="button" class="stake" disabled={busy === 'seat' || (!!selNeed.resource_type_id && !resId)} onclick={seat}>
+              {#if busy === 'seat'}<span class="spin"></span>{/if}{$t('Seat into slot')}
+            </button>
+          </div>
         {/if}
       </div>
     {/if}
