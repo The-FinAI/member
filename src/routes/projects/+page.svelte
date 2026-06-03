@@ -156,14 +156,13 @@
         quota: s.quota, headcount: s.headcount ?? 1, status: s.status, members
       });
       pool[s.project_id] = (pool[s.project_id] ?? 0) + (nominalBySlot[s.id] ?? 0);
-      if (s.slot_kind === 'leader') {
-        if (members.length) { hasLeader[s.project_id] = true; leaderName[s.project_id] = members[0].name; }
-      } else {
-        const head = s.headcount ?? 1;
-        seatsTotal[s.project_id] = (seatsTotal[s.project_id] ?? 0) + head;
-        seatsFilled[s.project_id] = (seatsFilled[s.project_id] ?? 0) + Math.min(members.length, head);
-        if (members.length < head) openNeeds[s.project_id] = (openNeeds[s.project_id] ?? 0) + 1;
-      }
+      // every slot — leader (first-author seat) included — counts toward seats &
+      // open needs, so an unfilled lead reads as 0/1 seats · 1 open need.
+      const head = s.headcount ?? 1;
+      seatsTotal[s.project_id] = (seatsTotal[s.project_id] ?? 0) + head;
+      seatsFilled[s.project_id] = (seatsFilled[s.project_id] ?? 0) + Math.min(members.length, head);
+      if (members.length < head) openNeeds[s.project_id] = (openNeeds[s.project_id] ?? 0) + 1;
+      if (s.slot_kind === 'leader' && members.length) { hasLeader[s.project_id] = true; leaderName[s.project_id] = members[0].name; }
     }
     slotsByProject = byP;
 
