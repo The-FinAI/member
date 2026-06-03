@@ -114,14 +114,14 @@
       quota: s.quota, headcount: s.headcount ?? 1, status: s.status, filled: fill[s.id]?.size ?? 0
     }));
 
-    // candidate pool — officers do GLOBAL matching, so they (and admins) can
-    // seat anyone in the whole community (cards AND registered members). A
-    // non-officer can only place themselves.
-    const canPickAnyone = isAdmin || get(officerUnits).length > 0;
+    // candidate pool by role: admin → whole community; a chapter officer → only
+    // people homed in a unit they officer; a regular user → only themselves.
+    // (cards AND registered members in both officer/admin cases.)
     let cq = supabase.from('member').select('id, full_name, home_unit_id').order('full_name');
-    if (!canPickAnyone) {
-      const me = get(member)?.id ?? '00000000-0000-0000-0000-000000000000';
-      cq = cq.eq('id', me);
+    if (!isAdmin) {
+      const myUnits = get(officerUnits).map((u) => u.unit_id);
+      if (myUnits.length) cq = cq.in('home_unit_id', myUnits);
+      else cq = cq.eq('id', get(member)?.id ?? '00000000-0000-0000-0000-000000000000');
     }
     const { data: c } = await cq;
     cards = (c as Card[]) ?? [];

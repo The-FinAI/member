@@ -1,18 +1,11 @@
 -- ============================================================
--- Officers do GLOBAL matching: any officer (of any unit) can seat anyone from
--- the whole community into any project — not just cards homed in a chapter they
--- run. Add is_any_unit_officer() and widen work_seat / seat_direct auth with it.
+-- Seating scope by role:
+--   * admin (manage_members / edit_any_project) — the whole community,
+--   * a chapter officer — only people in their unit (is_unit_officer_of),
+--   * a regular user — only themselves (enforced in the UI).
+-- Widen work_seat / seat_direct auth so a chapter officer can seat their own
+-- unit's members (cards AND registered) — but not the whole community.
 -- ============================================================
-
-create or replace function is_any_unit_officer()
-returns boolean language sql stable security definer set search_path = public as $$
-  select has_capability('manage_members') or has_capability('edit_any_project')
-      or exists (
-        select 1 from org_unit_officer o
-        where o.member_id = current_member_id() and o.ended_on is null
-      );
-$$;
-grant execute on function is_any_unit_officer() to authenticated;
 
 -- ---- work_seat: allow any officer to seat any member (global matching) -------
 create or replace function work_seat(
@@ -28,7 +21,7 @@ begin
   if coalesce(p_monthly_amount,0) < 0 then raise exception 'amount cannot be negative'; end if;
 
   if not (manages_card(p_member) or has_capability('manage_members')
-          or has_capability('edit_any_project') or is_any_unit_officer()) then
+          or has_capability('edit_any_project') or is_unit_officer_of(p_member)) then
     raise exception 'not authorized to seat this member';
   end if;
 
@@ -108,7 +101,8 @@ begin
 
   select org_unit_id into wg from project where id = p_project;
   if not (manages_project(p_project) or has_capability('edit_any_project')
-          or is_any_unit_officer() or manages_card(p_member)) then
+          or (wg is not null and is_unit_officer(wg))
+          or manages_card(p_member) or is_unit_officer_of(p_member)) then
     raise exception 'not authorized to seat into this project';
   end if;
 
