@@ -246,12 +246,12 @@
   type AwardCard = { id: string; full_name: string };
   let awardCards = $state<AwardCard[]>([]);
   let awardOpen = $state(false);
-  let awardQ = $state(''); let awardMember = $state(''); let awardLevel = $state<string>('apprentice');
+  let awardQ = $state(''); let awardSel = $state<Set<string>>(new Set()); let awardLevel = $state<string>('apprentice');
   let awardBusy = $state(false);
   const LEVELS = ['apprentice', 'journeyman', 'craftsman', 'master'];
 
   async function openAward() {
-    awardOpen = true; awardMember = ''; awardQ = ''; awardLevel = 'apprentice';
+    awardOpen = true; awardSel = new Set(); awardQ = ''; awardLevel = 'apprentice';
     drawerErr = ''; drawerMsg = '';
     let q = supabase.from('member').select('id, full_name').eq('kind', 'card').order('full_name');
     if (!isBadgeAdmin) {
@@ -262,19 +262,28 @@
     const { data } = await q;
     awardCards = (data as AwardCard[]) ?? [];
   }
+  function toggleAward(id: string) {
+    const s = new Set(awardSel);
+    s.has(id) ? s.delete(id) : s.add(id);
+    awardSel = s;
+  }
   const awardChoices = $derived(
     awardCards.filter((c) => !awardQ.trim() || c.full_name.toLowerCase().includes(awardQ.trim().toLowerCase()))
   );
+  // skill-centric batch: award THIS skill to every selected member at one level
   async function doAward(skillId: string) {
-    if (!awardMember) { drawerErr = get(t)('Pick a member first.'); return; }
+    if (!awardSel.size) { drawerErr = get(t)('Pick at least one member.'); return; }
     awardBusy = true; drawerErr = ''; drawerMsg = '';
-    const { error: err } = await supabase.rpc('forge_badge', {
-      p_member: awardMember, p_skill: skillId, p_level: awardLevel, p_as: awardMember
-    });
+    let failed = 0;
+    for (const mid of awardSel) {
+      const { error: err } = await supabase.rpc('forge_badge', { p_member: mid, p_skill: skillId, p_level: awardLevel, p_as: mid });
+      if (err) failed++;
+    }
     awardBusy = false;
-    if (err) { drawerErr = err.message; return; }
-    drawerMsg = get(t)('Badge submitted for review.');
-    awardOpen = false;
+    const ok = awardSel.size - failed;
+    drawerMsg = get(t)('{n} badge(s) submitted for review.', { n: ok });
+    if (failed) drawerErr = get(t)('{n} could not be submitted.', { n: failed });
+    awardOpen = false; awardSel = new Set();
   }
 </script>
 
@@ -468,11 +477,13 @@
             <button class="btn" style="align-self:flex-start;" onclick={openAward}>✦ {$t('Award this badge')}</button>
           {:else}
             <div class="award card stack" style="gap:.6rem; padding:.8rem;">
-              <span class="muted" style="font-size:.78rem;">{isBadgeAdmin ? $t('Award to any member card.') : $t('Award to a card from a chapter you officer.')}</span>
+              <span class="muted" style="font-size:.78rem;">{isBadgeAdmin ? $t('Select members to award this badge to.') : $t('Select cards from a chapter you officer.')}</span>
               <div class="search"><input placeholder={$t('Search by name…')} bind:value={awardQ} /></div>
               <div class="award-cards">
-                {#each awardChoices.slice(0, 40) as ac (ac.id)}
-                  <button type="button" class="award-card" class:on={awardMember === ac.id} onclick={() => (awardMember = ac.id)}>{ac.full_name}</button>
+                {#each awardChoices.slice(0, 60) as ac (ac.id)}
+                  <button type="button" class="award-card" class:on={awardSel.has(ac.id)} onclick={() => toggleAward(ac.id)}>
+                    {awardSel.has(ac.id) ? '✓ ' : ''}{ac.full_name}
+                  </button>
                 {/each}
                 {#if !awardChoices.length}<p class="muted" style="margin:0; font-size:.82rem;">{$t('No matching cards.')}</p>{/if}
               </div>
@@ -481,8 +492,8 @@
                 <select bind:value={awardLevel}>{#each LEVELS as lv}<option value={lv}>{$t(LEVEL_LABEL[lv])}</option>{/each}</select>
               </label>
               <div class="row" style="gap:.5rem;">
-                <button class="btn" disabled={awardBusy || !awardMember} onclick={() => doAward(c.id)}>
-                  {awardBusy ? $t('Submitting…') : $t('Submit for review')}
+                <button class="btn" disabled={awardBusy || !awardSel.size} onclick={() => doAward(c.id)}>
+                  {awardBusy ? $t('Submitting…') : awardSel.size ? $t('Submit {n} for review', { n: awardSel.size }) : $t('Submit for review')}
                 </button>
                 <button class="btn ghost" onclick={() => (awardOpen = false)}>{$t('Cancel')}</button>
               </div>

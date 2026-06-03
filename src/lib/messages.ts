@@ -182,6 +182,12 @@ const zh: Table = {
   "Click ranks to stage badge raises.": "点击等级以暂存徽章提升。",
   "Submit {n} for review": "提交 {n} 项待审",
   "Click ranks to stage raises across skills, then submit the batch for review.": "点击各技能的等级暂存提升,再批量提交待审。",
+  "Pick at least one member.": "请至少选择一位成员。",
+  "{n} badge(s) submitted for review.": "已提交 {n} 个徽章待审。",
+  "{n} could not be submitted.": "{n} 个提交失败。",
+  "Select members to award this badge to.": "选择要授予此徽章的成员。",
+  "Select cards from a chapter you officer.": "从你管理的分会选择卡片。",
+  "Badges submitted for review.": "徽章已提交待审。",
   // ── Redesign: home overview台 + /profile manage surface ──
   "Community steward": "社区管理员",
   "{n} application accepted — confirm to join": "{n} 个申请已通过 —— 确认加入",

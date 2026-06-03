@@ -6,6 +6,7 @@
   import MemberCard, { type CardBadge, type CardCommit, type Person } from './MemberCard.svelte';
   import Matcher, { type MatchSlot, type HeldResource } from './Matcher.svelte';
   import ForgeCard from './ForgeCard.svelte';
+  import BadgeTree from './BadgeTree.svelte';
 
   // Chapter officer console — the binder of member cards. Forge cards/badges/
   // resources, see each card's monthly capacity + commitments, and invest a
@@ -237,12 +238,12 @@
     <div class="matcher-backdrop" onclick={() => (forgeBadgeFor = null)} role="presentation"></div>
     <aside class="forge-drawer" role="dialog">
       <header class="fd-head">
-        <span>{$t('Forge badge')} · {forgeBadgeFor.full_name}</span>
+        <span>{$t('Badges')} · {forgeBadgeFor.full_name}</span>
         <button type="button" class="x" onclick={() => (forgeBadgeFor = null)}>✕</button>
       </header>
       <div class="fd-body">
-        <ForgeCard mode="badge" {skills} busy={busy === 'badge'}
-          onSubmit={doForgeBadge} onCancel={() => (forgeBadgeFor = null)} />
+        <BadgeTree memberId={forgeBadgeFor.id} canEdit={true}
+          onSubmitted={() => { msg = get(t)('Badges submitted for review.'); load(unitId); }} />
       </div>
     </aside>
   {/if}
