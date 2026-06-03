@@ -16,7 +16,7 @@
 
   type Person = { id: string; full_name: string; affiliation: string | null; kind: string };
   type Badge = { skill_id: string; level: string };
-  type Resource = { id: string; name: string; type_id: string; monthly_quota: number | null; unit: string | null };
+  type Resource = { id: string; name: string; type_id: string; monthly_quota: number | null; unit: string | null; skills?: string[] };
   type Req = { skill_id: string; min_level: string };
   type Need = {
     id: string; project_id: string; project_name: string; deadline: string | null;
@@ -70,7 +70,10 @@
     if (s.filled >= s.headcount) return { ok: false, reason: get(t)('Filled') };
     for (const req of s.requirements) {
       const have = badges.find((b) => b.skill_id === req.skill_id);
-      if (!have || rank(have.level) < rank(req.min_level)) {
+      const byBadge = !!have && rank(have.level) >= rank(req.min_level);
+      // custody channel: a stewarded resource that declares the skill also qualifies
+      const byResource = resources.some((r) => Array.isArray(r.skills) && r.skills.includes(req.skill_id));
+      if (!byBadge && !byResource) {
         const nm = skillName(req.skill_id);
         return { ok: false, reason: get(t)('Needs {lvl} {skill}', { lvl: get(t)(req.min_level), skill: nm }) };
       }
@@ -135,7 +138,7 @@
       const laborType = resTypes.find((r) => r.name === 'Labor')?.id ?? null;
       const [{ data: bg }, { data: rs }, { data: wc }] = await Promise.all([
         supabase.from('badge').select('member_id, skill_id, level').in('member_id', pids),
-        supabase.from('resource').select('id, name, type_id, monthly_quota, unit, holder_member_id').in('holder_member_id', pids),
+        supabase.from('resource').select('id, name, type_id, monthly_quota, unit, holder_member_id, skills').in('holder_member_id', pids),
         supabase.from('work_commitment').select('member_id, monthly_amount, resource_id').in('member_id', pids).eq('year_month', ym)
       ]);
       const bmap: Record<string, Badge[]> = {};
