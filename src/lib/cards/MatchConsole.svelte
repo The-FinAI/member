@@ -110,12 +110,14 @@
       quota: s.quota, headcount: s.headcount ?? 1, filled: fill[s.id]?.size ?? 0
     })).filter((n) => n.filled < n.headcount);
 
-    // supply scope: chapter → its roster; WG → community-wide candidates
-    let pq = supabase.from('member').select('id, full_name, affiliation, kind, status').order('full_name');
-    if (unit!.kind === 'chapter') pq = pq.eq('home_unit_id', uid);
-    else pq = pq.limit(500);
-    const { data: pl } = await pq;
-    people = (pl as Person[]) ?? [];
+    // supply side is the chapter's roster — a chapter places its people into
+    // open needs. A working group doesn't actively push candidates; its console
+    // is just its open needs + claim / post-need, so skip the supply load.
+    if (unit!.kind === 'chapter') {
+      const { data: pl } = await supabase.from('member')
+        .select('id, full_name, affiliation, kind, status').eq('home_unit_id', uid).order('full_name');
+      people = (pl as Person[]) ?? [];
+    } else people = [];
     const pids = people.map((p) => p.id);
 
     if (pids.length) {
@@ -315,8 +317,8 @@
       </section>
     {/if}
 
-    <!-- seat bar: appears when a need + a person are both picked -->
-    {#if selNeed && selPerson}
+    <!-- seat bar: appears when a need + a person are both picked (chapter) -->
+    {#if isChapter && selNeed && selPerson}
       <div class="seatbar" class:bad={seatFit && !seatFit.ok}>
         <div class="sb-text">
           <strong>{selPerson.full_name}</strong> → <strong>{selNeed.project_name}</strong>
@@ -344,8 +346,9 @@
       </div>
     {/if}
 
-    <!-- the matching board: needs (demand) ⟷ people (supply) -->
-    <div class="board">
+    <!-- the matching board: chapter = needs (demand) ⟷ roster (supply);
+         a working group only sees its open needs (no active candidate push) -->
+    <div class="board" class:single={!isChapter}>
       <!-- demand -->
       <section class="col">
         <span class="mc-h">{$t('Open needs')}{#if needs.length}<span class="mc-ct"> · {needs.length}</span>{/if}</span>
@@ -354,56 +357,71 @@
         {:else}
           <div class="rows">
             {#each needsView as n (n.id)}
-              {@const fit = selPerson ? qualify(n, badgesOf[selPerson.id] ?? [], resOf[selPerson.id] ?? []) : null}
-              <button type="button" class="row need" class:on={selNeed?.id === n.id}
-                class:fit={fit?.ok} class:dim={fit && !fit.ok} onclick={() => pickNeed(n)}>
-                <span class="r-main">
-                  <span class="r-title">{n.project_name}</span>
-                  <span class="r-sub">{kindLabel(n.slot_kind)}{#if n.skill_name} · {n.skill_name}{/if}{#if n.resource_type_name} · {n.resource_type_name}{/if}{#if n.req_access} · {$t('needs {lvl}', { lvl: $t(n.req_access) })}{/if}</span>
-                </span>
-                <span class="r-meta">
-                  <span class="r-gap">{n.headcount - n.filled}/{n.headcount}</span>
-                  {#if n.deadline}<span class="r-ddl">{fmtDeadline(n.deadline)}</span>{/if}
-                </span>
-              </button>
+              {#if isChapter}
+                {@const fit = selPerson ? qualify(n, badgesOf[selPerson.id] ?? [], resOf[selPerson.id] ?? []) : null}
+                <button type="button" class="row need" class:on={selNeed?.id === n.id}
+                  class:fit={fit?.ok} class:dim={fit && !fit.ok} onclick={() => pickNeed(n)}>
+                  <span class="r-main">
+                    <span class="r-title">{n.project_name}</span>
+                    <span class="r-sub">{kindLabel(n.slot_kind)}{#if n.skill_name} · {n.skill_name}{/if}{#if n.resource_type_name} · {n.resource_type_name}{/if}{#if n.req_access} · {$t('needs {lvl}', { lvl: $t(n.req_access) })}{/if}</span>
+                  </span>
+                  <span class="r-meta">
+                    <span class="r-gap">{n.headcount - n.filled}/{n.headcount}</span>
+                    {#if n.deadline}<span class="r-ddl">{fmtDeadline(n.deadline)}</span>{/if}
+                  </span>
+                </button>
+              {:else}
+                <a class="row need" href={`/projects/${n.project_id}`}>
+                  <span class="r-main">
+                    <span class="r-title">{n.project_name}</span>
+                    <span class="r-sub">{kindLabel(n.slot_kind)}{#if n.skill_name} · {n.skill_name}{/if}{#if n.resource_type_name} · {n.resource_type_name}{/if}{#if n.req_access} · {$t('needs {lvl}', { lvl: $t(n.req_access) })}{/if}</span>
+                  </span>
+                  <span class="r-meta">
+                    <span class="r-gap">{n.headcount - n.filled}/{n.headcount}</span>
+                    {#if n.deadline}<span class="r-ddl">{fmtDeadline(n.deadline)}</span>{/if}
+                  </span>
+                </a>
+              {/if}
             {/each}
           </div>
         {/if}
       </section>
 
-      <!-- supply -->
-      <section class="col">
-        <div class="col-head">
-          <span class="mc-h">{isChapter ? $t('Roster') : $t('Candidates')}{#if people.length}<span class="mc-ct"> · {people.length}</span>{/if}</span>
-          <div class="search"><input placeholder={$t('Search by name…')} bind:value={q} /></div>
-        </div>
-        {#if !peopleView.length}
-          <p class="muted">{isChapter ? $t('No members yet.') : $t('No candidates.')}</p>
-        {:else}
-          <div class="rows">
-            {#each peopleView.slice(0, 120) as p (p.id)}
-              {@const fit = selNeed ? qualify(selNeed, badgesOf[p.id] ?? [], resOf[p.id] ?? []) : null}
-              {@const cap = capOf(p)}
-              <div class="prow" class:on={selPerson?.id === p.id} class:fit={fit?.ok} class:dim={fit && !fit.ok}>
-                <button type="button" class="row person" onclick={() => pickPerson(p)}>
-                  <span class="r-main">
-                    <span class="r-title">{p.full_name}{#if p.kind === 'card'}<span class="badge dim card-b">{$t('card')}</span>{/if}</span>
-                    <span class="r-sub">
-                      {#if cap.quota != null}{$t('{used}/{quota} {unit} used', { used: cap.used, quota: cap.quota, unit: cap.unit })}{:else}{p.affiliation ?? '—'}{/if}
-                      {#if (badgesOf[p.id] ?? []).length} · {$t('{n} badges', { n: (badgesOf[p.id] ?? []).length })}{/if}
-                      {#if fit && !fit.ok} · <span class="r-reason">{fit.reason}</span>{/if}
-                    </span>
-                  </span>
-                </button>
-                {#if isOfficer}
-                  <button type="button" class="r-badge" title={$t('Badges')} onclick={() => (forgeBadgeFor = p)}>✦</button>
-                {/if}
-              </div>
-            {/each}
-            {#if peopleView.length > 120}<p class="muted" style="text-align:center;">{$t('Showing first {n} — refine your search.', { n: 120 })}</p>{/if}
+      <!-- supply (chapter only) -->
+      {#if isChapter}
+        <section class="col">
+          <div class="col-head">
+            <span class="mc-h">{$t('Roster')}{#if people.length}<span class="mc-ct"> · {people.length}</span>{/if}</span>
+            <div class="search"><input placeholder={$t('Search by name…')} bind:value={q} /></div>
           </div>
-        {/if}
-      </section>
+          {#if !peopleView.length}
+            <p class="muted">{$t('No members yet.')}</p>
+          {:else}
+            <div class="rows">
+              {#each peopleView.slice(0, 120) as p (p.id)}
+                {@const fit = selNeed ? qualify(selNeed, badgesOf[p.id] ?? [], resOf[p.id] ?? []) : null}
+                {@const cap = capOf(p)}
+                <div class="prow" class:on={selPerson?.id === p.id} class:fit={fit?.ok} class:dim={fit && !fit.ok}>
+                  <button type="button" class="row person" onclick={() => pickPerson(p)}>
+                    <span class="r-main">
+                      <span class="r-title">{p.full_name}{#if p.kind === 'card'}<span class="badge dim card-b">{$t('card')}</span>{/if}</span>
+                      <span class="r-sub">
+                        {#if cap.quota != null}{$t('{used}/{quota} {unit} used', { used: cap.used, quota: cap.quota, unit: cap.unit })}{:else}{p.affiliation ?? '—'}{/if}
+                        {#if (badgesOf[p.id] ?? []).length} · {$t('{n} badges', { n: (badgesOf[p.id] ?? []).length })}{/if}
+                        {#if fit && !fit.ok} · <span class="r-reason">{fit.reason}</span>{/if}
+                      </span>
+                    </span>
+                  </button>
+                  {#if isOfficer}
+                    <button type="button" class="r-badge" title={$t('Badges')} onclick={() => (forgeBadgeFor = p)}>✦</button>
+                  {/if}
+                </div>
+              {/each}
+              {#if peopleView.length > 120}<p class="muted" style="text-align:center;">{$t('Showing first {n} — refine your search.', { n: 120 })}</p>{/if}
+            </div>
+          {/if}
+        </section>
+      {/if}
     </div>
 
     <!-- WG: post a need against an owned project -->
@@ -476,7 +494,9 @@
 
   /* board */
   .board { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: start; }
+  .board.single { grid-template-columns: 1fr; }
   @media (max-width: 720px) { .board { grid-template-columns: 1fr; } }
+  .row { text-decoration: none; }
   .col { display: flex; flex-direction: column; gap: .5rem; min-width: 0; }
   .col-head { display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
   .col-head .search { max-width: 11rem; }
