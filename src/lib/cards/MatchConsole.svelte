@@ -58,14 +58,18 @@
   let amount = $state<number>(0);
   let resId = $state<string>('');
 
+  // a person qualifies for a need when they clear EVERY requirement the slot
+  // declares — a skill badge at the required level AND a held resource of the
+  // required type — regardless of slot kind (leader slots can require both).
   function qualify(s: Need, badges: Badge[], resources: Resource[]): { ok: boolean; reason: string } {
     if (s.filled >= s.headcount) return { ok: false, reason: get(t)('Filled') };
-    if (s.req_access && s.skill_id) {
+    if (s.skill_id) {
       const have = badges.find((b) => b.skill_id === s.skill_id);
-      if (!have || rank(have.level) < rank(s.req_access))
-        return { ok: false, reason: get(t)('Needs {lvl} badge', { lvl: get(t)(s.req_access) }) };
+      const need = s.req_access ?? 'apprentice';
+      if (!have || rank(have.level) < rank(need))
+        return { ok: false, reason: get(t)('Needs {lvl} badge', { lvl: get(t)(need) }) };
     }
-    if (s.slot_kind === 'work_resource' && s.resource_type_id) {
+    if (s.resource_type_id) {
       if (!resources.find((r) => r.type_id === s.resource_type_id))
         return { ok: false, reason: get(t)('No matching resource held') };
     }
@@ -109,7 +113,7 @@
     // supply scope: chapter → its roster; WG → community-wide candidates
     let pq = supabase.from('member').select('id, full_name, affiliation, kind, status').order('full_name');
     if (unit!.kind === 'chapter') pq = pq.eq('home_unit_id', uid);
-    else pq = pq.in('kind', ['card', 'person']).limit(300);
+    else pq = pq.limit(500);
     const { data: pl } = await pq;
     people = (pl as Person[]) ?? [];
     const pids = people.map((p) => p.id);
@@ -200,7 +204,7 @@
     resetResDefault();
   }
   function resetResDefault() {
-    if (selNeed && selPerson && selNeed.slot_kind === 'work_resource' && selNeed.resource_type_id) {
+    if (selNeed && selPerson && selNeed.resource_type_id) {
       const m = (resOf[selPerson.id] ?? []).find((r) => r.type_id === selNeed!.resource_type_id);
       resId = m?.id ?? '';
     } else resId = '';
@@ -322,17 +326,17 @@
         {#if seatFit?.ok}
           <div class="sb-form">
             <label>{$t('Monthly amount')}<input type="number" min="0" step="any" bind:value={amount} /></label>
-            {#if selNeed.slot_kind === 'work_resource'}
+            {#if selNeed.resource_type_id}
               <label>{$t('Resource')}
                 <select bind:value={resId}>
                   <option value="">{$t('Select resource')}</option>
-                  {#each (resOf[selPerson.id] ?? []).filter((r) => !selNeed.resource_type_id || r.type_id === selNeed.resource_type_id) as r (r.id)}
+                  {#each (resOf[selPerson.id] ?? []).filter((r) => r.type_id === selNeed.resource_type_id) as r (r.id)}
                     <option value={r.id}>{r.name}</option>
                   {/each}
                 </select>
               </label>
             {/if}
-            <button type="button" class="stake" disabled={busy === 'seat' || (selNeed.slot_kind === 'work_resource' && !resId)} onclick={seat}>
+            <button type="button" class="stake" disabled={busy === 'seat' || (!!selNeed.resource_type_id && !resId)} onclick={seat}>
               {#if busy === 'seat'}<span class="spin"></span>{/if}{$t('Seat into slot')}
             </button>
           </div>
