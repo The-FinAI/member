@@ -8,6 +8,7 @@
   import CardDrawer from '$lib/CardDrawer.svelte';
   import ProjectSlotCard, { type Slot } from '$lib/cards/ProjectSlotCard.svelte';
   import SlotSeater from '$lib/cards/SlotSeater.svelte';
+  import ProjectCardBody from '$lib/cards/ProjectCardBody.svelte';
 
   // Projects = the community portfolio. Each project belongs to a working group
   // and exposes a slot map (1 leader/first-author + N need slots). Members are
@@ -49,16 +50,14 @@
 
   // quick-view drawer
   let sel = $state<Grid | null>(null);
-  let selProposal = $state<string | null>(null);
-  async function openProject(r: Grid) {
-    sel = r; selProposal = null;
-    // proposal lives in project_link (kind='proposal'); load it lazily so a
-    // missing table/row can never blank the project list itself
-    const { data } = await supabase.from('project_link')
-      .select('url').eq('project_id', r.id).eq('kind', 'proposal').limit(1).maybeSingle();
-    if (sel?.id === r.id) selProposal = (data as { url: string } | null)?.url ?? null;
+  function openProject(r: Grid) { sel = r; }
+  function closeDrawer() { sel = null; }
+  // after an in-drawer edit: reload the grid and re-point sel at the fresh row
+  async function refreshSel() {
+    const id = sel?.id;
+    await loadGrid();
+    if (id) sel = grid.find((g) => g.id === id) ?? sel;
   }
-  function closeDrawer() { sel = null; selProposal = null; }
   // status name → EntityCard status dot kind
   function projKind(name: string): 'pos' | 'warn' | 'dim' {
     if (name === 'Finished') return 'pos';
@@ -632,9 +631,6 @@
       {#if r.summary}
         <p class="pd-summary">{r.summary}</p>
       {/if}
-      {#if selProposal}
-        <a class="pd-proposal" href={selProposal} target="_blank" rel="noopener noreferrer">📄 {$t('Proposal')} ↗</a>
-      {/if}
 
       <!-- team & slots -->
       <div class="pd-section">
@@ -652,6 +648,9 @@
       {#if !r.wg}
         <p class="muted" style="font-size:.82rem; margin:0;">{$t('This project isn’t attributed to a working group yet.')}</p>
       {/if}
+
+      <!-- editable details · media links · history -->
+      <ProjectCardBody projectId={r.id} {venues} {workingGroups} onChanged={refreshSel} />
     </div>
     {#snippet actions()}
       {#if canManageSel && r.wgUnitId}
@@ -690,11 +689,6 @@
   .pd-v { font-weight: 700; font-size: 1rem; color: var(--text); }
   .pd-l { font-size: .68rem; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
   .pd-summary { margin: 0; font-size: .88rem; line-height: 1.5; color: var(--text); }
-  .pd-proposal {
-    align-self: flex-start; display: inline-flex; align-items: center; gap: .35rem;
-    font-size: .84rem; color: var(--accent); text-decoration: none; font-weight: 600;
-  }
-  .pd-proposal:hover { text-decoration: underline; }
   .pd-section { display: flex; flex-direction: column; gap: .45rem; }
   .pd-h { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 
