@@ -101,6 +101,7 @@
       <li>{@html $t('<strong>Settlement.</strong> When the project is Finished: <code>payout = your share × pool × multiplier</code>. No ship, no payout — your nominal stays locked.')}</li>
     </ul>
     <p class="muted">{$t('So milestones make the pie bigger and raise the conversion rate; monthly work decides the slices.')}</p>
+    <a class="ilink" href="/str">{$t('Read the full STR paper — the dollar anchor & pricing →')}</a>
   </section>
 
   <!-- pages -->
