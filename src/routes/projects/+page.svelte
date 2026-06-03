@@ -581,6 +581,11 @@
     </div>
   </div>
 
+  <p style="font-size:11px; color:var(--down); font-family:monospace; word-break:break-all;">
+    DBG grid={grid.length} rows={rows.length} fin={finished.length} active={grid.filter((r) => r.active).length}
+    | leaked={rows.filter((r) => r.finished || !r.active).map((r) => `${r.name}[status=${r.status}|fin=${r.finished}|act=${r.active}]`).join('  ·  ') || 'none'}
+  </p>
+
   {#if loading}
     <div class="card"><p class="muted" style="padding:1rem;">{$t('Loading…')}</p></div>
   {:else if rows.length === 0}
