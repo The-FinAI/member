@@ -174,6 +174,8 @@ const zh: Table = {
   "Description": "简介",
   "What this unit is about…": "这个单位是做什么的…",
   "My profile": "我的主页",
+  "Award a badge": "授予徽章",
+  "Pick a skill first.": "请先选择一项技能。",
   // ── Redesign: home overview台 + /profile manage surface ──
   "Community steward": "社区管理员",
   "{n} application accepted — confirm to join": "{n} 个申请已通过 —— 确认加入",
