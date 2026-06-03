@@ -30,7 +30,7 @@
     { group: 'Projects', title: 'Project Roles', desc: 'Roles members hold within a project', href: '/admin/projects?tab=roles', caps: ['manage_taxonomy'] },
     { group: 'Projects', title: 'Venues', desc: 'Conferences & journals + submission deadlines', href: '/admin/projects?tab=venues', caps: ['manage_taxonomy', 'edit_any_project'] },
 
-    { group: 'Guild & skills', title: 'Skill Tree', desc: 'Skills, the matching tree & the leader requirement', href: '/admin/skills', caps: ['manage_taxonomy', 'manage_guild'] },
+    { group: 'Guild & skills', title: 'Skill tree & guild', desc: 'The skill tree, the leader requirement & the masters', href: '/admin/guild', caps: ['manage_taxonomy', 'manage_guild'] },
 
     { group: 'Resources & economy', title: 'Resource Types', desc: 'Categories of resources (compute, funding, data…)', href: '/admin/resource-types', caps: ['manage_taxonomy', 'manage_resources'] },
     { group: 'Resources & economy', title: 'Community Resources', desc: 'Community-owned resources + their stewards', href: '/admin/resources', caps: ['manage_resources'] },
