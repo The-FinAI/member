@@ -55,6 +55,7 @@
   };
   const AVAIL = ['available', 'limited', 'committed'];
 
+  let editResId = $state('');           // resource currently being edited (re-review)
   let canEdit = $state(false);          // officer manages this member-card's catalog
   let canEditCatalog = $state(false);   // canEdit OR it's my own profile
   // viewer is looking at their own profile → inline self-edit controls
@@ -328,8 +329,11 @@
         {#if catError}<p class="neg" style="font-size:.85rem;">{catError}</p>{/if}
 
         <!-- unified resource-forge form (same as the community console);
-             labour = your "My time" hours, declared as a Labor resource. -->
-        <ResourceForgeForm holder={id} scope="member" onForged={() => loadCatalog(id)} />
+             labour = your "My time" hours, declared as a Labor resource.
+             editResId set → the form edits that resource (re-enters review). -->
+        <ResourceForgeForm holder={id} scope="member" editId={editResId}
+          onForged={() => { editResId = ''; loadCatalog(id); }} />
+        {#if editResId}<button class="link" style="align-self:flex-start;" onclick={() => (editResId = '')}>{$t('Cancel edit')}</button>{/if}
 
         <div class="res-pending-note">{$t('⏳ New resources are reviewed by a steward before they can be offered to projects.')}</div>
         {#if catalogResources.length === 0}
@@ -345,7 +349,7 @@
                   <td>{r.monthly_quota != null ? r.monthly_quota.toLocaleString() : (r.capacity ?? '—')}{#if r.resource_type?.unit}<span class="muted" style="font-size:.75rem;"> {r.resource_type.unit}/mo</span>{/if}</td>
                   <td><span class="badge dim">{$t(r.availability)}</span></td>
                   <td><span class="badge {r.approval_status}">{r.approval_status === 'approved' ? $t('✓ approved') : r.approval_status === 'rejected' ? $t('✕ rejected') : $t('⏳ pending')}</span></td>
-                  <td><button class="danger" onclick={() => removeResource(r.id)}>{$t('Remove')}</button></td>
+                  <td style="white-space:nowrap;"><button onclick={() => (editResId = r.id)}>{$t('Edit')}</button> <button class="danger" onclick={() => removeResource(r.id)}>{$t('Remove')}</button></td>
                 </tr>
               {/each}
             </tbody>

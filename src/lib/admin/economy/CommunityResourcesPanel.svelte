@@ -16,6 +16,7 @@
   let members = $state<Member[]>([]);
   let resources = $state<Resrc[]>([]);
   let fHolder = $state('');
+  let editResId = $state('');
   let loading = $state(true);
 
   async function load() {
@@ -37,7 +38,9 @@
 <p class="muted blurb">{$t('Resources the community owns — compute, data, funding. Each needs an in-community holder (steward) and goes through the forge queue.')}</p>
 
 <div class="card" style="padding:1rem;">
-  <ResourceForgeForm bind:holder={fHolder} scope="community" holderPicker={true} members={members} onForged={load} />
+  <ResourceForgeForm bind:holder={fHolder} scope="community" holderPicker={!editResId} members={members}
+    editId={editResId} onForged={() => { editResId = ''; load(); }} />
+  {#if editResId}<button class="link" style="margin-top:.5rem;" onclick={() => (editResId = '')}>{$t('Cancel edit')}</button>{/if}
 </div>
 
 <section>
@@ -56,6 +59,7 @@
           </div>
           <span class="r-quota mono">{r.monthly_quota?.toLocaleString()} {r.unit ?? ''}/mo</span>
           {#if r.forge_request?.status && r.forge_request.status !== 'approved'}<span class="badge dim">{$t(r.forge_request.status)}</span>{/if}
+          <button class="link" onclick={() => (editResId = r.id)}>{$t('Edit')}</button>
         </div>
       {/each}
     </div>
