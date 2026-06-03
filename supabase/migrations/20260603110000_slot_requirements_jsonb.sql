@@ -15,6 +15,9 @@
 -- enforcement path. Idempotent.
 -- ============================================================
 
+-- ---------- the column (added first: SQL functions below reference it) ----------
+alter table project_slot add column if not exists requirements jsonb not null default '[]'::jsonb;
+
 -- ---------- generic requirement helpers (read the badge table) ----------
 -- a member satisfies a requirement list when, for every {skill_id, min_level},
 -- they hold a badge at or above that guild level.
@@ -83,9 +86,6 @@ language sql stable security definer set search_path = public as $$
   select * from reqs_missing(mid, default_leader_requirements());
 $$;
 grant execute on function leader_reqs_missing(uuid) to authenticated;
-
--- ---------- the column ----------
-alter table project_slot add column if not exists requirements jsonb not null default '[]'::jsonb;
 
 -- ---------- seed trigger: every slot carries its requirements ----------
 -- leader  → the admin default leader need
