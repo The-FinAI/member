@@ -143,6 +143,7 @@ const zh: Table = {
   "authors": "作者",
   "1st {n}": "一作 {n}",
   "window ends {d}": "窗口截止 {d}",
+  "Edit details": "编辑详情",
   // ── Redesign: home overview台 + /profile manage surface ──
   "Community steward": "社区管理员",
   "{n} application accepted — confirm to join": "{n} 个申请已通过 —— 确认加入",

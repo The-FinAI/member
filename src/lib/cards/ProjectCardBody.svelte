@@ -8,12 +8,17 @@
   // editable core fields (name / summary / venue / working group). All writes
   // go through the project_* RPCs, which enforce leader / WG-officer / admin
   // and auto-log each change to history. Read-only when the viewer can't edit.
-  let { projectId, venues = [], workingGroups = [], statuses = [], onChanged }: {
+  // `editing` and `canEdit` are bindable so the drawer can place the ✎ Edit
+  // button up in the meta row (next to the basic info) and drive this form.
+  let { projectId, venues = [], workingGroups = [], statuses = [], onChanged,
+        editing = $bindable(false), canEdit = $bindable(false) }: {
     projectId: string;
     venues?: { id: string; name: string; kind: string; deadline: string | null }[];
     workingGroups?: { id: string; name: string }[];
     statuses?: { id: string; name: string; rank: number }[];
     onChanged?: () => void;
+    editing?: boolean;
+    canEdit?: boolean;
   } = $props();
 
   type Link = { id: string; kind: string; title: string | null; url: string; notes: string | null; created_at: string; member: { full_name: string } | null };
@@ -41,7 +46,6 @@
     dataset: '🗃', slides: '📊', drive: '📁', media: '🎞', other: '🔗'
   };
 
-  let canEdit = $state(false);
   let proj = $state<Proj | null>(null);
   let links = $state<Link[]>([]);
   let meetings = $state<Meeting[]>([]);
@@ -50,7 +54,6 @@
   let busy = $state(''); let err = $state(''); let msg = $state('');
 
   // edit-details form
-  let editing = $state(false);
   let fName = $state(''); let fSummary = $state(''); let fVenue = $state(''); let fUnit = $state('');
   // add-link form
   let lKind = $state('paper'); let lTitle = $state(''); let lUrl = $state(''); let lNotes = $state('');
@@ -83,12 +86,17 @@
     loading = false;
   }
 
-  function openEdit() {
-    if (!proj) return;
-    fName = proj.name; fSummary = proj.summary ?? '';
-    fVenue = proj.venue_id ?? ''; fUnit = proj.org_unit_id ?? '';
-    editing = true; err = '';
-  }
+  // populate the form the moment editing turns on (it can be flipped from the
+  // drawer's meta-row Edit button, so we can't rely on a local click handler)
+  let formFor = '';
+  $effect(() => {
+    if (editing && proj && formFor !== proj.id) {
+      fName = proj.name; fSummary = proj.summary ?? '';
+      fVenue = proj.venue_id ?? ''; fUnit = proj.org_unit_id ?? '';
+      err = ''; formFor = proj.id;
+    }
+    if (!editing) formFor = '';
+  });
 
   async function saveDetails() {
     if (!proj) return;
@@ -292,14 +300,10 @@
     </div>
   {/if}
 
-  <!-- editable core fields -->
-  {#if canEdit}
+  <!-- editable core fields — the ✎ Edit toggle lives in the drawer meta row -->
+  {#if canEdit && editing}
     <div class="pcb-section">
-      <div class="pcb-h-row">
-        <span class="pcb-h">{$t('Details')}</span>
-        {#if !editing}<button type="button" class="pcb-link" onclick={openEdit}>✎ {$t('Edit')}</button>{/if}
-      </div>
-      {#if editing}
+      <span class="pcb-h">{$t('Edit details')}</span>
         <div class="pcb-form">
           <label class="pcb-field"><span>{$t('Name')}</span><input bind:value={fName} /></label>
           <label class="pcb-field"><span>{$t('Summary')}</span><textarea rows="2" bind:value={fSummary}></textarea></label>
@@ -322,7 +326,6 @@
             <button type="button" class="pcb-ghost" onclick={() => (editing = false)}>{$t('Cancel')}</button>
           </div>
         </div>
-      {/if}
     </div>
   {/if}
 

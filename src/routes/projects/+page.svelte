@@ -51,8 +51,11 @@
 
   // quick-view drawer
   let sel = $state<Grid | null>(null);
-  function openProject(r: Grid) { sel = r; }
-  function closeDrawer() { sel = null; }
+  // bound out of ProjectCardBody so the ✎ Edit button can sit in the meta row
+  let pcbEditing = $state(false);
+  let pcbCanEdit = $state(false);
+  function openProject(r: Grid) { sel = r; pcbEditing = false; }
+  function closeDrawer() { sel = null; pcbEditing = false; }
   // after an in-drawer edit: reload the grid and re-point sel at the fresh row
   async function refreshSel() {
     const id = sel?.id;
@@ -626,14 +629,19 @@
       <!-- meta: type · working group · venue · deadline ( status lives in the
            stepper inside ProjectCardBody, just below ) -->
       <div class="pd-meta">
-        {#if r.claimable}<span class="status st-proposal"><span class="sdot" style="background:currentColor;"></span>{$t('lead open')}</span>{/if}
-        <span class="pd-chip">{$t(r.type)}</span>
-        {#if r.wg}<span class="pd-chip">{r.wg}</span>{/if}
-        {#if r.venue}
-          <span class="pd-chip" title={$t(venueKindMeta(r.venueKind).label)}>{venueKindMeta(r.venueKind).icon} {r.venue}</span>
-        {/if}
-        {#if r.deadline}
-          <span class="pd-chip {ddlClass(r.deadline)}">⏱ {fmtDate(r.deadline)} · {relDays(r.deadline)}</span>
+        <div class="pd-meta-chips">
+          {#if r.claimable}<span class="status st-proposal"><span class="sdot" style="background:currentColor;"></span>{$t('lead open')}</span>{/if}
+          <span class="pd-chip">{$t(r.type)}</span>
+          {#if r.wg}<span class="pd-chip">{r.wg}</span>{/if}
+          {#if r.venue}
+            <span class="pd-chip" title={$t(venueKindMeta(r.venueKind).label)}>{venueKindMeta(r.venueKind).icon} {r.venue}</span>
+          {/if}
+          {#if r.deadline}
+            <span class="pd-chip {ddlClass(r.deadline)}">⏱ {fmtDate(r.deadline)} · {relDays(r.deadline)}</span>
+          {/if}
+        </div>
+        {#if pcbCanEdit}
+          <button type="button" class="pd-edit" class:on={pcbEditing} onclick={() => (pcbEditing = !pcbEditing)}>✎ {$t('Edit')}</button>
         {/if}
       </div>
 
@@ -646,7 +654,7 @@
       </div>
 
       <!-- status flow · editable basic info · media · meetings · history -->
-      <ProjectCardBody projectId={r.id} {venues} {workingGroups} {statuses} onChanged={refreshSel} />
+      <ProjectCardBody projectId={r.id} {venues} {workingGroups} {statuses} onChanged={refreshSel} bind:editing={pcbEditing} bind:canEdit={pcbCanEdit} />
 
       <!-- team & slots -->
       <div class="pd-section">
@@ -686,7 +694,14 @@
 
   /* project drawer — the full project card */
   .pdrawer { display: flex; flex-direction: column; gap: 1rem; }
-  .pd-meta { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+  .pd-meta { display: flex; gap: .5rem; align-items: flex-start; justify-content: space-between; }
+  .pd-meta-chips { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; flex: 1; min-width: 0; }
+  .pd-edit {
+    flex: none; display: inline-flex; align-items: center; gap: .3rem; padding: .25rem .6rem;
+    border: 1px solid var(--border); border-radius: 999px; background: var(--card);
+    color: var(--accent); font: inherit; font-size: .8rem; font-weight: 600; cursor: pointer;
+  }
+  .pd-edit:hover, .pd-edit.on { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
   .pd-chip {
     display: inline-flex; align-items: center; gap: .3rem;
     font-size: .76rem; color: var(--text-dim); background: var(--card-2);
