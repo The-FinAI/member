@@ -17,12 +17,13 @@
   type Person = { id: string; full_name: string; affiliation: string | null; kind: string };
   type Badge = { skill_id: string; level: string };
   type Resource = { id: string; name: string; type_id: string; monthly_quota: number | null; unit: string | null };
+  type Req = { skill_id: string; min_level: string };
   type Need = {
     id: string; project_id: string; project_name: string; deadline: string | null;
     slot_kind: 'leader' | 'work_labor' | 'work_resource'; req_access: string | null;
     skill_id: string | null; skill_name: string | null;
     resource_type_id: string | null; resource_type_name: string | null;
-    quota: number | null; headcount: number; filled: number;
+    quota: number | null; headcount: number; filled: number; requirements: Req[];
   };
   type Skill = { id: string; name: string; parent_id: string | null };
   type ResType = { id: string; name: string; unit: string | null };
@@ -58,16 +59,19 @@
   let amount = $state<number>(0);
   let resId = $state<string>('');
 
-  // a person qualifies for a need when they clear EVERY requirement the slot
-  // declares — a skill badge at the required level AND a held resource of the
-  // required type — regardless of slot kind (leader slots can require both).
+  const skillName = (id: string) => skills.find((s) => s.id === id)?.name ?? '';
+
+  // a person qualifies for a need when they clear EVERY skill requirement the
+  // slot declares (project_slot.requirements, the unified jsonb gate) AND hold a
+  // resource of the required type. Mirrors member_meets_requirements server-side.
   function qualify(s: Need, badges: Badge[], resources: Resource[]): { ok: boolean; reason: string } {
     if (s.filled >= s.headcount) return { ok: false, reason: get(t)('Filled') };
-    if (s.skill_id) {
-      const have = badges.find((b) => b.skill_id === s.skill_id);
-      const need = s.req_access ?? 'apprentice';
-      if (!have || rank(have.level) < rank(need))
-        return { ok: false, reason: get(t)('Needs {lvl} badge', { lvl: get(t)(need) }) };
+    for (const req of s.requirements) {
+      const have = badges.find((b) => b.skill_id === req.skill_id);
+      if (!have || rank(have.level) < rank(req.min_level)) {
+        const nm = skillName(req.skill_id);
+        return { ok: false, reason: get(t)('Needs {lvl} {skill}', { lvl: get(t)(req.min_level), skill: nm }) };
+      }
     }
     if (s.resource_type_id) {
       if (!resources.find((r) => r.type_id === s.resource_type_id))
@@ -89,7 +93,7 @@
       // duty via claim_leadership), never seated by an officer. Officers only
       // match work_labor / work_resource needs.
       supabase.from('project_slot')
-        .select('id, project_id, slot_kind, req_access, skill_id, resource_type_id, quota, headcount, status, project:project_id(name, deadline, org_unit_id), skill:skill_id(name), resource_type:resource_type_id(name)')
+        .select('id, project_id, slot_kind, req_access, skill_id, resource_type_id, quota, headcount, status, requirements, project:project_id(name, deadline, org_unit_id), skill:skill_id(name), resource_type:resource_type_id(name)')
         .eq('status', 'open').in('slot_kind', ['work_labor', 'work_resource']),
       supabase.from('skill').select('id, name, parent_id').order('name'),
       supabase.from('resource_type').select('id, name, unit').order('rank')
@@ -111,7 +115,8 @@
       deadline: s.project?.deadline ?? null, slot_kind: s.slot_kind, req_access: s.req_access,
       skill_id: s.skill_id, skill_name: s.skill?.name ?? null,
       resource_type_id: s.resource_type_id, resource_type_name: s.resource_type?.name ?? null,
-      quota: s.quota, headcount: s.headcount ?? 1, filled: fill[s.id]?.size ?? 0
+      quota: s.quota, headcount: s.headcount ?? 1, filled: fill[s.id]?.size ?? 0,
+      requirements: (Array.isArray(s.requirements) ? s.requirements : []) as Req[]
     })).filter((n) => n.filled < n.headcount);
 
     // supply side is the chapter's roster — a chapter places its people into
