@@ -6,8 +6,11 @@
   import { t } from '$lib/i18n';
 
   // Standing in the work economy: members, chapters and working groups ranked by
-  // STR. Self-contained — loads its own data so it can mount anywhere (it lives
-  // on the Market surface, the Member ⟷ Project broker).
+  // STR. Self-contained — loads its own data so it can mount anywhere. When a
+  // `board` prop is passed, the family is controlled by the host (Community
+  // folds standing into its People / Chapters / Working-Group tabs) and the
+  // internal board tabs are hidden — no duplicate family row.
+  let { board: boardProp }: { board?: 'people' | 'chapters' | 'wgroups' } = $props();
 
   function initials(name: string) {
     return name.split(' ').filter(Boolean).slice(0, 2).map((s) => s[0]?.toUpperCase() ?? '').join('') || '?';
@@ -30,7 +33,8 @@
   let q = $state('');
 
   type Board = 'people' | 'chapters' | 'wgroups';
-  let board = $state<Board>('people');
+  let internalBoard = $state<Board>('people');
+  const board = $derived<Board>(boardProp ?? internalBoard);
   type Metric = 'contribution' | 'networth' | 'wealth';
   let metric = $state<Metric>('networth');
   const METRICS: { key: Metric; label: string; blurb: string }[] = [
@@ -61,7 +65,7 @@
         .select('id, full_name, affiliation, status, kind, home_unit_id, member_position(position(name))')
         .order('full_name'),
       supabase.from('stater_balance').select('owner_member_id, balance').not('owner_member_id', 'is', null),
-      supabase.from('stater_project_member_nominal').select('project_id, member_id, nominal'),
+      supabase.from('work_commitment').select('project_id, member_id, nominal_str'),
       supabase.from('org_unit').select('id, code, name, kind, description').order('rank'),
       supabase.from('project').select('id, org_unit_id')
     ]);
@@ -71,9 +75,9 @@
     balanceOf = bmap;
     const nmap: Record<string, number> = {};
     const pnmap: Record<string, number> = {};
-    for (const n of (nom as { project_id: string; member_id: string; nominal: number }[]) ?? []) {
-      nmap[n.member_id] = (nmap[n.member_id] ?? 0) + (Number(n.nominal) || 0);
-      pnmap[n.project_id] = (pnmap[n.project_id] ?? 0) + (Number(n.nominal) || 0);
+    for (const n of (nom as { project_id: string; member_id: string; nominal_str: number }[]) ?? []) {
+      nmap[n.member_id] = (nmap[n.member_id] ?? 0) + (Number(n.nominal_str) || 0);
+      pnmap[n.project_id] = (pnmap[n.project_id] ?? 0) + (Number(n.nominal_str) || 0);
     }
     nominalOf = nmap;
     projectNominalOf = pnmap;
@@ -145,19 +149,23 @@
   });
   const MEDAL = ['🥇', '🥈', '🥉'];
 
-  function onBoard(b: Board) { board = b; q = ''; if (b !== 'people') metric = 'networth'; }
+  function onBoard(b: Board) { internalBoard = b; q = ''; if (b !== 'people') metric = 'networth'; }
+  // when the host controls the board, keep metric valid for unit boards
+  $effect(() => { if (board !== 'people') metric = 'networth'; });
 </script>
 
 <div class="stack">
-  <!-- board tabs -->
-  <div class="row" style="gap:.4rem; flex-wrap:wrap;">
-    {#each BOARDS as b}
-      <span class="chip toggle {board === b.key ? 'on' : ''}" role="button" tabindex="0"
-        onclick={() => onBoard(b.key)}
-        onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') onBoard(b.key); }}
-      >{$t(b.label)}</span>
-    {/each}
-  </div>
+  <!-- board tabs — hidden when the host (Community) controls the family -->
+  {#if !boardProp}
+    <div class="row" style="gap:.4rem; flex-wrap:wrap;">
+      {#each BOARDS as b}
+        <span class="chip toggle {board === b.key ? 'on' : ''}" role="button" tabindex="0"
+          onclick={() => onBoard(b.key)}
+          onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') onBoard(b.key); }}
+        >{$t(b.label)}</span>
+      {/each}
+    </div>
+  {/if}
 
   <!-- search + (people) metric sub-board -->
   <div class="row" style="gap:.6rem; flex-wrap:wrap; align-items:center;">

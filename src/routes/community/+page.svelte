@@ -37,16 +37,25 @@
   let myUnitStatus = $state<Record<string, string>>({});
 
   // top-level tab over the card families in the community
-  type Tab = 'people' | 'chapters' | 'wgroups' | 'badges' | 'standing';
+  type Tab = 'people' | 'chapters' | 'wgroups' | 'badges';
   let tab = $state<Tab>('people');
 
   const TABS: { key: Tab; label: string }[] = [
     { key: 'people', label: 'People' },
     { key: 'chapters', label: 'Chapters' },
     { key: 'wgroups', label: 'Working Groups' },
-    { key: 'badges', label: 'Badges' },
-    { key: 'standing', label: 'Standing' }
+    { key: 'badges', label: 'Badges' }
   ];
+
+  // within People / Chapters / Working-Group tabs, switch between the directory
+  // (cards) and the standing leaderboard — folds the former separate "Standing"
+  // tab under each family, so its board tabs don't repeat the family row.
+  type View = 'directory' | 'standing';
+  let view = $state<View>('directory');
+  const hasStanding = $derived(tab === 'people' || tab === 'chapters' || tab === 'wgroups');
+  const standingBoard = $derived<'people' | 'chapters' | 'wgroups'>(
+    tab === 'chapters' ? 'chapters' : tab === 'wgroups' ? 'wgroups' : 'people'
+  );
 
   // ---- badge catalog (the former "Guild / crafts") ----
   // A certified skill IS a badge. The catalog lists every certifiable skill
@@ -79,7 +88,8 @@
 
   onMount(async () => {
     const initial = $page.url.searchParams.get('tab');
-    if (initial === 'chapters' || initial === 'wgroups' || initial === 'people' || initial === 'badges' || initial === 'standing') tab = initial;
+    if (initial === 'chapters' || initial === 'wgroups' || initial === 'people' || initial === 'badges') tab = initial;
+    else if (initial === 'standing') { tab = 'people'; view = 'standing'; }
     if (!supabaseConfigured) { loading = false; return; }
     const [{ data }, { data: bals }, { data: nom }, { data: ou }, { data: prj }] = await Promise.all([
       supabase.from('member')
@@ -203,6 +213,7 @@
   function onTab(tk: Tab) {
     tab = tk;
     q = '';
+    view = 'directory';
   }
 
   // ---- quick-view drawer ----
@@ -292,11 +303,10 @@
     <div>
       <h1 style="margin-bottom:.15rem;">{$t('Community')}</h1>
       <span class="muted" style="font-size:.85rem;">
-        {#if tab === 'people'}{$t('Everyone in the community — open a card to see their work, skills & standing.')}
-        {:else if tab === 'chapters'}{$t('The three regional chapters. Open one to apply to join.')}
+        {#if tab === 'people'}{view === 'standing' ? $t('Members ranked by contribution and net worth.') : $t('Everyone in the community — open a card to see their work, skills & standing.')}
+        {:else if tab === 'chapters'}{view === 'standing' ? $t('Chapters ranked by combined net worth.') : $t('The three regional chapters. Open one to apply to join.')}
         {:else if tab === 'badges'}{$t('The badge catalog — every certifiable skill. Open one to see who holds it.')}
-        {:else if tab === 'standing'}{$t('The standing leaderboards — members, chapters & working groups ranked by contribution and net worth.')}
-        {:else}{$t('The working groups driving the research agenda. Open one to apply to join.')}{/if}
+        {:else}{view === 'standing' ? $t('Working groups ranked by staked STR.') : $t('The working groups driving the research agenda. Open one to apply to join.')}{/if}
       </span>
     </div>
     {#if $member}<span class="chip"><span class="amt"><CountUp value={myBalance} /></span> STR</span>{/if}
@@ -312,21 +322,36 @@
     {/each}
   </div>
 
-  <!-- controls: search (the standing board has its own controls) -->
-  {#if tab !== 'standing'}
-    <div class="row" style="gap:.6rem; flex-wrap:wrap; align-items:center;">
+  <!-- controls: directory search + per-family Directory/Standing switch
+       (the standing leaderboard brings its own search & metric controls) -->
+  <div class="row" style="gap:.6rem; flex-wrap:wrap; align-items:center; justify-content:space-between;">
+    {#if view === 'directory'}
       <div class="search" style="flex:1; min-width:220px; max-width:340px;">
         <input placeholder={tab === 'people' ? $t('Search by name…') : $t('Search…')} bind:value={q} />
       </div>
-    </div>
-  {/if}
+    {:else}
+      <span></span>
+    {/if}
+    {#if hasStanding}
+      <div class="row seg" style="gap:0;">
+        <span class="chip toggle {view === 'directory' ? 'on' : ''}" role="button" tabindex="0"
+          onclick={() => (view = 'directory')}
+          onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') view = 'directory'; }}
+        >{$t('Directory')}</span>
+        <span class="chip toggle {view === 'standing' ? 'on' : ''}" role="button" tabindex="0"
+          onclick={() => (view = 'standing')}
+          onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') view = 'standing'; }}
+        >{$t('Standing')}</span>
+      </div>
+    {/if}
+  </div>
 
   {#if loading}
     <p class="muted">{$t('Loading…')}</p>
 
-  <!-- ============ STANDING (leaderboards) ============ -->
-  {:else if tab === 'standing'}
-    <Leaderboard />
+  <!-- ============ STANDING (folded into each family tab) ============ -->
+  {:else if view === 'standing' && hasStanding}
+    <Leaderboard board={standingBoard} />
 
   <!-- ============ PEOPLE ============ -->
   {:else if tab === 'people'}
@@ -529,6 +554,10 @@
   .btn:disabled { opacity: .55; cursor: not-allowed; }
   .btn.ghost { background: transparent; color: var(--accent); border-color: var(--border); }
   .search input { width: 100%; }
+  .seg { display: inline-flex; gap: 0; }
+  .seg .chip.toggle { border-radius: 0; }
+  .seg .chip.toggle:first-child { border-radius: 999px 0 0 999px; }
+  .seg .chip.toggle:last-child { border-radius: 0 999px 999px 0; margin-left: -1px; }
   .award-cards { display: flex; flex-wrap: wrap; gap: .35rem; max-height: 9rem; overflow-y: auto; }
   .award-card { padding: .3rem .55rem; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); font: inherit; font-size: .82rem; cursor: pointer; }
   .award-card:hover { border-color: var(--accent); }
