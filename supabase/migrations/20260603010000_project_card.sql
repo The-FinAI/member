@@ -1,16 +1,18 @@
 -- =====================================================================
--- Project card — editable details, media links & history
+-- Project card — editable details, media links, meetings & history
 -- ---------------------------------------------------------------------
--- The project quick-view drawer becomes the editable project card. Edits
--- are allowed for exactly three roles, enforced server-side:
+-- Turns the project quick-view drawer into the editable project card.
+-- All writes go through security-definer RPCs gated by can_edit_project:
 --   • the project LEADER (a project_member with a can_manage role)
 --   • the project's WORKING-GROUP OFFICER (is_unit_officer of org_unit_id)
 --   • an ADMIN (edit_any_project / manage_members capability)
--- Every mutation logs a project_event note so history is automatic.
+-- Every mutation logs a project_event note, so history is automatic.
 --
 -- Assumes the earlier project_records tables already exist in the DB:
---   project_link  (id, project_id, kind, title, url, notes, added_by, created_at)
---   project_event (id, project_id, event_type, summary, actor_member_id, created_at)
+--   project_link    (id, project_id, kind, title, url, notes, added_by, created_at)
+--   project_meeting (id, project_id, title, scheduled_at, ends_at, location,
+--                    agenda, created_by, created_at)
+--   project_event   (id, project_id, event_type, summary, actor_member_id, created_at)
 -- Idempotent: create or replace. Apply to the live DB.
 -- =====================================================================
 
@@ -36,7 +38,7 @@ returns boolean language sql stable security definer set search_path = public as
 $$;
 grant execute on function can_edit_project(uuid) to authenticated;
 
--- ---------- internal: assert + log helper ----------
+-- ---------- internal: history log helper ----------
 create or replace function project_log(p_project uuid, p_summary text)
 returns void language plpgsql security definer set search_path = public as $$
 begin
@@ -136,5 +138,52 @@ begin
   perform project_log(p_project, trim(p_text));
 end $$;
 grant execute on function project_note(uuid, text) to authenticated;
+
+-- ---------- meetings (with recurrence) ----------
+alter table project_meeting
+  add column if not exists recurrence text not null default 'none';
+
+do $$ begin
+  if not exists (select 1 from pg_constraint where conname = 'project_meeting_recurrence_chk') then
+    alter table project_meeting
+      add constraint project_meeting_recurrence_chk
+      check (recurrence in ('none', 'weekly', 'biweekly', 'monthly'));
+  end if;
+end $$;
+
+create or replace function project_meeting_add(
+  p_project uuid, p_title text, p_scheduled_at timestamptz,
+  p_ends_at timestamptz default null, p_location text default null,
+  p_agenda text default null, p_recurrence text default 'none')
+returns uuid language plpgsql security definer set search_path = public as $$
+declare mid uuid; rec text := coalesce(nullif(trim(p_recurrence), ''), 'none');
+begin
+  if not can_edit_project(p_project) then raise exception 'not authorized to edit this project'; end if;
+  if coalesce(trim(p_title), '') = '' then raise exception 'meeting title required'; end if;
+  if p_scheduled_at is null then raise exception 'meeting time required'; end if;
+  if rec not in ('none', 'weekly', 'biweekly', 'monthly') then raise exception 'invalid recurrence'; end if;
+  insert into project_meeting (project_id, title, scheduled_at, ends_at, location, agenda, recurrence, created_by)
+  values (p_project, trim(p_title), p_scheduled_at, p_ends_at,
+          nullif(trim(coalesce(p_location, '')), ''), nullif(trim(coalesce(p_agenda, '')), ''),
+          rec, current_member_id())
+  returning id into mid;
+  perform project_log(p_project,
+    case when rec = 'none' then 'Scheduled meeting “' || trim(p_title) || '”'
+         else 'Scheduled ' || rec || ' meeting “' || trim(p_title) || '”' end);
+  return mid;
+end $$;
+grant execute on function project_meeting_add(uuid, text, timestamptz, timestamptz, text, text, text) to authenticated;
+
+create or replace function project_meeting_remove(p_meeting uuid)
+returns void language plpgsql security definer set search_path = public as $$
+declare pid uuid; ttl text;
+begin
+  select project_id, title into pid, ttl from project_meeting where id = p_meeting;
+  if pid is null then raise exception 'no such meeting'; end if;
+  if not can_edit_project(pid) then raise exception 'not authorized to edit this project'; end if;
+  delete from project_meeting where id = p_meeting;
+  perform project_log(pid, 'Cancelled meeting “' || coalesce(ttl, '') || '”');
+end $$;
+grant execute on function project_meeting_remove(uuid) to authenticated;
 
 commit;
