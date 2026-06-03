@@ -8,7 +8,7 @@
   // key numbers at the foot. The whole card is one click → its edit drawer.
   let {
     type, title, subtitle = '', status = '', statusKind = 'dim',
-    stats = [], onclick, badges, accent = false
+    stats = [], onclick, badges, accent = false, accentColor = '', tag
   }: {
     type: string;
     title: string;
@@ -19,16 +19,27 @@
     onclick?: () => void;
     badges?: Snippet;
     accent?: boolean;
+    // accentColor tints the left border + a faint background (e.g. by status)
+    accentColor?: string;
+    // a small coloured pill (e.g. the working group) for at-a-glance grouping
+    tag?: { label: string; color: string };
   } = $props();
 </script>
 
-<button class="ecard" class:accent {onclick} type="button">
+<button
+  class="ecard"
+  class:accent={accent || !!accentColor}
+  style={accentColor ? `--ec-accent:${accentColor}; --ec-tint:color-mix(in srgb, ${accentColor} 6%, var(--card))` : undefined}
+  {onclick}
+  type="button"
+>
   <div class="ec-top">
     <span class="ec-type">{$t(type)}</span>
     {#if status}<span class="ec-status {statusKind}">{$t(status)}</span>{/if}
   </div>
   <div class="ec-title">{title}</div>
   {#if subtitle}<div class="ec-sub">{subtitle}</div>{/if}
+  {#if tag}<div class="ec-tag" style={`--tag:${tag.color}`}><span class="ec-tagdot"></span>{tag.label}</div>{/if}
   {#if badges}<div class="ec-badges">{@render badges()}</div>{/if}
   {#if stats.length}
     <div class="ec-stats">
@@ -42,13 +53,15 @@
 <style>
   .ecard {
     display: flex; flex-direction: column; gap: .4rem; text-align: left;
-    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    background: var(--ec-tint, var(--card)); border: 1px solid var(--border); border-radius: 12px;
     padding: .8rem .9rem; cursor: pointer; width: 100%;
     color: var(--text); font: inherit;
     transition: border-color .12s, box-shadow .12s, transform .12s;
   }
   .ecard:hover { border-color: var(--accent); box-shadow: 0 4px 16px -8px var(--accent); transform: translateY(-1px); }
-  .ecard.accent { border-left: 3px solid var(--accent); }
+  .ecard.accent { border-left: 3px solid var(--ec-accent, var(--accent)); }
+  .ec-tag { display: inline-flex; align-items: center; gap: .35rem; font-size: .72rem; color: var(--text-dim); }
+  .ec-tagdot { width: .5rem; height: .5rem; border-radius: 50%; background: var(--tag); flex: none; }
   .ec-top { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
   .ec-type {
     font-family: var(--font-mono); font-size: .66rem; font-weight: 700;

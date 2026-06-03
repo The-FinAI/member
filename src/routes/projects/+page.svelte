@@ -261,6 +261,25 @@
     if (data && cOrgUnit) window.location.href = `/officer/wg/${cOrgUnit}`;
   }
 
+  // status → accent colour for the card (left border + faint tint)
+  function statusColor(name: string): string {
+    switch (name) {
+      case 'Proposal': return '#6b7280';
+      case 'Data Collecting': return '#3fb6c6';
+      case 'Work in progress': return '#f0a35e';
+      case 'Under review': return '#a371f7';
+      case 'Hold': return '#9ca3af';
+      case 'Finished': return '#3fb950';
+      default: return '#8b95a5';
+    }
+  }
+  // deterministic colour per working group, for the decorative WG tag
+  function wgColor(name: string): string {
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) % 360;
+    return `hsl(${h} 52% 52%)`;
+  }
+
   // status → color class
   function statusClass(name: string) {
     switch (name) {
@@ -595,10 +614,11 @@
         <EntityCard
           type={r.type}
           title={r.name}
-          subtitle={[r.wg, r.venue].filter(Boolean).join(' · ')}
+          subtitle={r.venue || ''}
           status={r.claimable ? $t('lead open') : r.status}
           statusKind={r.claimable ? 'warn' : projKind(r.status)}
-          accent={r.claimable}
+          accentColor={r.claimable ? '#f0a35e' : statusColor(r.status)}
+          tag={r.wg ? { label: r.wg, color: wgColor(r.wg) } : undefined}
           stats={[
             { label: 'Nominal pool', value: r.pool.toLocaleString() },
             { label: 'Seats', value: `${r.seatsFilled}/${r.seatsTotal}` },
