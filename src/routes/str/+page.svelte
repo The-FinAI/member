@@ -8,8 +8,11 @@
     { id: 'anchor', label: 'The dollar anchor' },
     { id: 'pricing', label: 'Pricing any contribution' },
     { id: 'states', label: 'Nominal vs liquid' },
+    { id: 'bonds', label: 'Bonds & staking' },
     { id: 'supply', label: 'Supply & accounting' },
+    { id: 'flows', label: 'Allowances, fees & sinks' },
     { id: 'multiplier', label: 'Milestones & the multiplier' },
+    { id: 'governance', label: 'Governance & anti-gaming' },
     { id: 'policy', label: 'Every number is a knob' }
   ];
   // worked examples (USD → STR at str_per_usd = 0.2)
@@ -97,6 +100,12 @@
     <p class="muted">{$t('So your monthly contribution accrues nominal STR; cashing it out is bet on the project actually shipping. That bond between earning and outcome is the point.')}</p>
   </section>
 
+  <section id="bonds" class="card stack">
+    <h2>{$t('Bonds & staking')}</h2>
+    <p>{@html $t('Leading a project isn’t free. To take a leader seat you post a <strong>bond</strong> — <strong>50 STR</strong> by default — from your own liquid balance into the project’s escrow. Unlike nominal STR (minted, locked), a bond is <em>real</em> STR you already hold, parked in escrow as skin in the game.')}</p>
+    <p>{@html $t('At settlement the bond is already real, so the system mints only the work-backed difference (<code>pool × multiplier − bonds already escrowed</code>) and returns your bond on top of your payout. Stake nothing, lead nothing — the bond is how leadership commits value to the project it steers.')}</p>
+  </section>
+
   <section id="supply" class="card stack">
     <h2>{$t('Supply & accounting')}</h2>
     <p>{@html $t('Every STR is an append-only ledger entry, so the books always balance. Total supply lives in three kinds of account:')}</p>
@@ -107,6 +116,16 @@
       <span class="step total">{$t('Total supply')}</span>
     </div>
     <p>{@html $t('Supply is created by <strong>minting</strong> (work, milestones, allowances, grants) and destroyed by <strong>sinking</strong> (fees). By construction, <code>total supply = minted − sunk</code> — the dashboard flags any drift. The <strong>treasury</strong> is the community account that funds monthly allowances and grants.')}</p>
+  </section>
+
+  <section id="flows" class="card stack">
+    <h2>{$t('Allowances, fees & sinks')}</h2>
+    <p>{@html $t('The treasury seeds enough liquid STR to get the economy moving, and recycles it:')}</p>
+    <ul class="bul">
+      <li>{@html $t('<strong>Monthly allowance</strong> — every member active in the last 30 days can draw <strong>20 STR</strong> from the treasury, so newcomers have a little liquid to post a leader bond.')}</li>
+      <li>{@html $t('<strong>Grants</strong> — admins can grant STR from the treasury for one-off needs, logged with a reason.')}</li>
+      <li>{@html $t('<strong>Fees (the sink)</strong> — forging a new badge costs <strong>10 STR</strong>, upgrading one costs <strong>5</strong>; fees flow back to the treasury. Sinks are what stop pure minting from inflating the unit — they remove STR from circulation.')}</li>
+    </ul>
   </section>
 
   <section id="multiplier" class="card stack">
@@ -121,6 +140,16 @@
       <span class="eq-where">multiplier = min( 1 + Σ milestone bonuses , 3 )</span>
     </div>
     <p class="muted">{$t('Milestones make the pie bigger and raise the conversion rate; monthly work decides the slices. A project with no milestones converts at ×1 — face value only.')}</p>
+  </section>
+
+  <section id="governance" class="card stack">
+    <h2>{$t('Governance & anti-gaming')}</h2>
+    <p>{@html $t('The model has guardrails against inflating contribution:')}</p>
+    <ul class="bul">
+      <li>{@html $t('<strong>Outcomes are verified, not trusted.</strong> Monthly hours are trust-based, but a milestone only mints once a reviewer marks it <em>verified</em> — and over-capacity commitments go to review too.')}</li>
+      <li>{@html $t('<strong>The multiplier is capped at ×3.</strong> No amount of milestones can run the conversion rate away.')}</li>
+      <li>{@html $t('<strong>Reversible.</strong> A reviewer can reject or revoke a milestone, and pause or reduce minting on abuse. Every mint, sink and payout is an immutable ledger line.')}</li>
+    </ul>
   </section>
 
   <section id="policy" class="card stack">

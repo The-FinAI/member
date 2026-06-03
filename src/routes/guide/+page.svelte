@@ -9,7 +9,8 @@
     { id: 'wg', label: 'If you run a working group' },
     { id: 'str', label: 'How STR flows' },
     { id: 'pages', label: 'Your pages' },
-    { id: 'glossary', label: 'Glossary' }
+    { id: 'glossary', label: 'Glossary' },
+    { href: '/str', label: 'STR paper — the dollar anchor ↗' }
   ];
 </script>
 
@@ -30,7 +31,7 @@
   </div>
 
   <nav class="toc">
-    {#each toc as tn}<a href={`#${tn.id}`}>{$t(tn.label)}</a>{/each}
+    {#each toc as tn}<a href={tn.href ?? `#${tn.id}`}>{$t(tn.label)}</a>{/each}
   </nav>
 
   <!-- Phase 1 playbook -->
