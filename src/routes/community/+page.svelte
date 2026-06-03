@@ -86,7 +86,7 @@
         .select('id, full_name, affiliation, status, kind, home_unit_id, member_position(position(name))')
         .order('full_name'),
       supabase.from('stater_balance').select('owner_member_id, balance').not('owner_member_id', 'is', null),
-      supabase.from('stater_project_member_nominal').select('project_id, member_id, nominal'),
+      supabase.from('work_commitment').select('project_id, member_id, nominal_str'),
       supabase.from('org_unit').select('id, code, name, kind, description').order('rank'),
       supabase.from('project').select('id, org_unit_id')
     ]);
@@ -97,9 +97,9 @@
     balanceOf = bmap;
     const nmap: Record<string, number> = {};
     const pnmap: Record<string, number> = {};
-    for (const n of (nom as { project_id: string; member_id: string; nominal: number }[]) ?? []) {
-      nmap[n.member_id] = (nmap[n.member_id] ?? 0) + (Number(n.nominal) || 0);
-      pnmap[n.project_id] = (pnmap[n.project_id] ?? 0) + (Number(n.nominal) || 0);
+    for (const n of (nom as { project_id: string; member_id: string; nominal_str: number }[]) ?? []) {
+      nmap[n.member_id] = (nmap[n.member_id] ?? 0) + (Number(n.nominal_str) || 0);
+      pnmap[n.project_id] = (pnmap[n.project_id] ?? 0) + (Number(n.nominal_str) || 0);
     }
     nominalOf = nmap;
     projectNominalOf = pnmap;
@@ -109,17 +109,15 @@
     projectUnitOf = pumap;
     loading = false;
 
-    // badge catalog data (skill tree + certified holders)
-    const [{ data: sk }, { data: msk }] = await Promise.all([
+    // badge catalog data (skill tree + badge holders — new `badge` table)
+    const [{ data: sk }, { data: bg }] = await Promise.all([
       supabase.from('skill').select('id, name, parent_id').order('name'),
-      supabase.from('member_skill')
-        .select('skill_id, member_id, certified_level, member:member_id(full_name)')
-        .not('certified_level', 'is', null)
+      supabase.from('badge').select('skill_id, member_id, level, member:member_id(full_name)')
     ]);
     skills = (sk as Skill[]) ?? [];
     const hmap: Record<string, Holder[]> = {};
-    for (const r of (msk as { skill_id: string; member_id: string; certified_level: string; member: { full_name: string } | null }[]) ?? []) {
-      (hmap[r.skill_id] ??= []).push({ member_id: r.member_id, full_name: r.member?.full_name ?? '—', level: r.certified_level });
+    for (const r of (bg as { skill_id: string; member_id: string; level: string; member: { full_name: string } | null }[]) ?? []) {
+      (hmap[r.skill_id] ??= []).push({ member_id: r.member_id, full_name: r.member?.full_name ?? '—', level: r.level });
     }
     holdersOf = hmap;
     const unsub = member.subscribe((m) => { if (m) { loadMyBalance(); loadMyUnits(); } });

@@ -167,6 +167,7 @@ const zh: Table = {
   "Award to a card from a chapter you officer.": "授予你所管理分会的卡片。",
   "Submitting…": "提交中…",
   "Pick a member first.": "请先选择一位成员。",
+  "certified skills": "已认证技能",
   // ── Redesign: home overview台 + /profile manage surface ──
   "Community steward": "社区管理员",
   "{n} application accepted — confirm to join": "{n} 个申请已通过 —— 确认加入",

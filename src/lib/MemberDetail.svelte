@@ -21,8 +21,8 @@
     links: Record<string, string> | null;
     member_position: { position: { name: string } | null }[];
   };
-  type Skill = {
-    skill_id: string; certified_level: string | null;
+  type Badge = {
+    skill_id: string; level: string;
     skill: { name: string } | null;
   };
   type Proj = {
@@ -30,10 +30,9 @@
   };
 
   let mem = $state<Mem | null>(null);
-  let skills = $state<Skill[]>([]);
+  let badges = $state<Badge[]>([]);
   let projects = $state<Proj[]>([]);
   let totalNominal = $state(0);
-  let msVerified = $state(0);
   let loading = $state(true);
   let notFound = $state(false);
 
@@ -180,35 +179,37 @@
     canEditCatalog = canEdit || mineSelf;
     if (canEditCatalog) await loadCatalog(memberId);
 
-    const [{ data: ms }, { data: pm }, { data: nom }, { count: msc }] = await Promise.all([
-      supabase.from('member_skill').select('skill_id, certified_level, skill(name)').eq('member_id', memberId),
-      supabase.from('project_member')
-        .select('project_id, project_role(name), project:project_id(id, name, project_status!project_status_id_fkey(name))')
-        .eq('member_id', memberId),
-      supabase.from('stater_project_member_nominal').select('project_id, nominal').eq('member_id', memberId),
-      supabase.from('project_milestone').select('id', { count: 'exact', head: true })
-        .eq('claimed_by', memberId).eq('status', 'verified')
+    // new model: badges live in `badge`; contribution & project roster come from
+    // work_commitment (nominal_str + the slot kind → role).
+    const [{ data: bg }, { data: wc }] = await Promise.all([
+      supabase.from('badge').select('skill_id, level, skill:skill_id(name)').eq('member_id', memberId),
+      supabase.from('work_commitment')
+        .select('project_id, nominal_str, slot:slot_id(slot_kind), project:project_id(id, name, project_status!project_status_id_fkey(name))')
+        .eq('member_id', memberId)
     ]);
 
-    skills = ((ms as any[]) ?? []).map((s) => ({
-      skill_id: s.skill_id, certified_level: s.certified_level ?? null, skill: s.skill
-    })).sort((a, b) => (RANK[b.certified_level ?? ''] ?? -1) - (RANK[a.certified_level ?? ''] ?? -1)
-      || (a.skill?.name ?? '').localeCompare(b.skill?.name ?? ''));
+    badges = ((bg as any[]) ?? []).map((b) => ({ skill_id: b.skill_id, level: b.level, skill: b.skill }))
+      .sort((a, b) => (RANK[b.level] ?? 0) - (RANK[a.level] ?? 0) || (a.skill?.name ?? '').localeCompare(b.skill?.name ?? ''));
 
-    const nomBy: Record<string, number> = {};
+    // aggregate per project: Σ nominal_str, and the strongest role (leader > resource > contributor)
+    const byP: Record<string, Proj> = {};
     let tot = 0;
-    for (const n of (nom as any[]) ?? []) { nomBy[n.project_id] = Number(n.nominal) || 0; tot += Number(n.nominal) || 0; }
+    for (const w of (wc as any[]) ?? []) {
+      const pid = w.project_id; if (!pid) continue;
+      const nom = Number(w.nominal_str) || 0; tot += nom;
+      const kind = w.slot?.slot_kind as string | undefined;
+      const role = kind === 'leader' ? 'Leader' : kind === 'work_resource' ? 'Resource' : 'Contributor';
+      const cur = byP[pid];
+      if (!cur) {
+        byP[pid] = { id: w.project?.id ?? pid, name: w.project?.name ?? 'Project',
+          status: w.project?.project_status?.name ?? '—', role, nominal: nom };
+      } else {
+        cur.nominal += nom;
+        if (role === 'Leader' || (role === 'Resource' && cur.role === 'Contributor')) cur.role = role;
+      }
+    }
     totalNominal = tot;
-
-    projects = ((pm as any[]) ?? []).map((r) => ({
-      id: r.project?.id, name: r.project?.name ?? 'Project',
-      status: r.project?.project_status?.name ?? '—',
-      role: r.project_role?.name ?? 'Contributor',
-      nominal: nomBy[r.project_id] ?? 0
-    })).filter((p) => p.id)
-       .sort((a, b) => b.nominal - a.nominal);
-
-    msVerified = msc ?? 0;
+    projects = Object.values(byP).filter((p) => p.id).sort((a, b) => b.nominal - a.nominal);
     loading = false;
   }
 
@@ -218,12 +219,7 @@
     if (id && id !== lastId) { lastId = id; load(id); }
   });
 
-  // certified badges (medals) — guild-certified skills, ordered by rank
   const RANK: Record<string, number> = { apprentice: 0, journeyman: 1, craftsman: 2, master: 3 };
-  const cards = $derived(
-    skills.filter((s) => s.certified_level)
-      .sort((a, b) => (RANK[b.certified_level!] ?? 0) - (RANK[a.certified_level!] ?? 0))
-  );
 
   // in-page section nav (only the sections actually rendered, in DOM order)
   const sections = $derived([
@@ -366,9 +362,9 @@
         <span class="k-sub">{$t('nominal STR minted through work')}</span>
       </div>
       <div class="kpi">
-        <span class="k-label">{$t('Milestones')}</span>
-        <span class="k-value">{msVerified}</span>
-        <span class="k-sub">{$t('verified outcomes claimed')}</span>
+        <span class="k-label">{$t('Badges')}</span>
+        <span class="k-value">{badges.length}</span>
+        <span class="k-sub">{$t('certified skills')}</span>
       </div>
       <div class="kpi">
         <span class="k-label">{$t('Projects')}</span>
@@ -381,23 +377,12 @@
          are listed as awaiting a badge. One section, no duplicate skills table. -->
     <div class="card stack" id="badges">
       <h2 style="margin:0;">{$t('Badges')}</h2>
-      {#if skills.length === 0}
-        <p class="muted">{$t('No skills listed yet.')}</p>
+      {#if badges.length === 0}
+        <p class="muted">{$t('No badges yet.')}</p>
       {:else}
-        {#if cards.length > 0}
-          <div class="row" style="gap:.5rem; flex-wrap:wrap;">
-            {#each cards as c}<Medal name={c.skill?.name ?? c.skill_id} level={c.certified_level!} />{/each}
-          </div>
-        {/if}
-        {@const pending = skills.filter((s) => !s.certified_level)}
-        {#if pending.length > 0}
-          <div class="stack" style="gap:.35rem;">
-            <span class="muted" style="font-size:.78rem;">{$t('Skills awaiting a badge')}</span>
-            <div class="row" style="gap:.35rem; flex-wrap:wrap;">
-              {#each pending as s}<span class="badge dim">{s.skill?.name ?? s.skill_id}</span>{/each}
-            </div>
-          </div>
-        {/if}
+        <div class="row" style="gap:.5rem; flex-wrap:wrap;">
+          {#each badges as b}<Medal name={b.skill?.name ?? b.skill_id} level={b.level} />{/each}
+        </div>
       {/if}
     </div>
 
