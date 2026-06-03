@@ -23,6 +23,7 @@
     wg: string; wgUnitId: string | null; leader: string;
     seatsFilled: number; seatsTotal: number; openNeeds: number; pool: number;
     summary: string | null; finished: boolean; claimable: boolean;
+    mult: number; milestoneNominal: number;
   };
   let g = $state<G | null>(null);
   let slots = $state<Slot[]>([]);
@@ -79,6 +80,14 @@
       if (arr.some((m) => m.id === w.member_id)) continue;
       arr.push({ id: w.member_id, name: w.member?.full_name ?? '—', amount: Number(w.monthly_amount) || 0, unit: w.resource?.unit ?? 'h' });
     }
+    // output axis: verified milestones add to the pool and lift the settlement
+    // multiplier (capped ×3). nominal pool = work nominal + Σ milestone nominal.
+    const { data: vms } = await supabase.from('project_milestone')
+      .select('nominal_value, multiplier_bonus').eq('project_id', projectId).eq('status', 'verified');
+    let mNominal = 0, mBonus = 0;
+    for (const m of (vms as any[]) ?? []) { mNominal += Number(m.nominal_value) || 0; mBonus += Number(m.multiplier_bonus) || 0; }
+    pool += mNominal;
+    const mult = Math.min(1 + mBonus, 3);
     let seatsTotal = 0, seatsFilled = 0, openNeeds = 0, hasLeader = false, leader = '';
     const slotList: Slot[] = [];
     for (const s of rawSlots) {
@@ -101,7 +110,7 @@
       deadline: p.deadline ?? p.venue?.deadline ?? null,
       wg: (p.org_unit_id && unitName[p.org_unit_id]) || '', wgUnitId: p.org_unit_id ?? null,
       leader, seatsFilled, seatsTotal, openNeeds, pool, summary: p.summary ?? null,
-      finished, claimable: !hasLeader && !finished
+      finished, claimable: !hasLeader && !finished, mult, milestoneNominal: mNominal
     };
     loading = false;
   }
@@ -156,6 +165,7 @@
       <div class="pd-stat"><span class="pd-v mono">{g.pool.toLocaleString()}</span><span class="pd-l">{$t('Nominal pool')}</span></div>
       <div class="pd-stat"><span class="pd-v mono">{g.seatsFilled}/{g.seatsTotal}</span><span class="pd-l">{$t('Seats')}</span></div>
       <div class="pd-stat"><span class="pd-v mono">{g.openNeeds}</span><span class="pd-l">{$t('Open needs')}</span></div>
+      {#if g.mult > 1}<div class="pd-stat"><span class="pd-v mono" style="color:var(--accent);">×{g.mult.toFixed(2)}</span><span class="pd-l">{$t('Milestone mult.')}</span></div>{/if}
       {#if g.leader}<div class="pd-stat"><span class="pd-v">{g.leader}</span><span class="pd-l">{$t('first author')}</span></div>{/if}
     </div>
 

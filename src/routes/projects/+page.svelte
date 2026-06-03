@@ -138,6 +138,11 @@
         if (arr.some((m) => m.id === w.member_id)) continue;
         arr.push({ id: w.member_id, name: w.member?.full_name ?? '—', amount: Number(w.monthly_amount) || 0, unit: w.resource?.unit ?? 'h' });
       }
+      // output axis: verified milestones add to each project's nominal pool
+      const { data: vms } = await supabase.from('project_milestone')
+        .select('project_id, nominal_value').eq('status', 'verified').in('project_id', pids);
+      for (const m of (vms as any[]) ?? [])
+        pool[m.project_id] = (pool[m.project_id] ?? 0) + (Number(m.nominal_value) || 0);
     }
 
     // group slots per project (Slot shape for ProjectSlotCard) + roll up metrics
