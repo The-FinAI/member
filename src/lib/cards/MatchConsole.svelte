@@ -92,10 +92,8 @@
     unit = u as any;
 
     const [{ data: sl }, { data: sk }, { data: rt }] = await Promise.all([
-      // All open slots load. Leader slots are shown (so "lead open" projects
-      // don't silently vanish) but never seated here — leadership is *claimed*
-      // on the project page. A chapter's matching board drops leader slots
-      // (not seatable); a WG sees them as informational rows. See boardNeeds.
+      // a leader is just another need (skill(s) + the Labor resource), seated
+      // like any other — load all open work + leader slots.
       supabase.from('project_slot')
         .select('id, project_id, slot_kind, req_access, skill_id, resource_type_id, quota, headcount, status, requirements, project:project_id(name, deadline, org_unit_id), skill:skill_id(name), resource_type:resource_type_id(name)')
         .eq('status', 'open').in('slot_kind', ['leader', 'work_labor', 'work_resource']),
@@ -195,10 +193,8 @@
     }
     return list;
   });
-  // a leader is just a special open need — shown everywhere. The only
-  // difference is how it's filled: work needs are *seated* by the officer,
-  // a leader need is *claimed* by the person on the project page (the seat
-  // bar swaps to a claim affordance for leader selections).
+  // leader is just another need now (skill(s) + Labor), seated like the rest —
+  // no special handling, so the board shows every open need.
   const boardNeeds = $derived(needs);
   const needsView = $derived.by(() => {
     let list = boardNeeds;
