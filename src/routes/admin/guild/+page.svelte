@@ -4,10 +4,12 @@
   import AdminConsole from '$lib/admin/AdminConsole.svelte';
   import SkillTreePanel from '$lib/admin/guild/SkillTreePanel.svelte';
   import LeaderReqPanel from '$lib/admin/guild/LeaderReqPanel.svelte';
+  import SkillRatesPanel from '$lib/admin/guild/SkillRatesPanel.svelte';
   import { t } from '$lib/i18n';
 
   const tabs = [
     { key: 'skills', label: 'Skill tree' },
+    { key: 'rates', label: 'Skill rates' },
     { key: 'leader', label: 'Leader requirement' },
     { key: 'masters', label: 'Masters' }
   ];
@@ -31,7 +33,9 @@
 
 <AdminConsole title="Guild & skills" blurb="The craft ladder — the skill tree badges certify against, the skills a leader must hold, and who has reached master." {tabs}>
   {#snippet children(active)}
-    {#if active === 'leader'}
+    {#if active === 'rates'}
+      <SkillRatesPanel />
+    {:else if active === 'leader'}
       <LeaderReqPanel />
     {:else if active === 'masters'}
       <p class="muted blurb">{$t('Members certified at master level — the top of the guild ladder. Master badges are awarded through the forge queue.')}</p>

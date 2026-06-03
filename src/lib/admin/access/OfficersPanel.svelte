@@ -108,7 +108,8 @@
 
 <!-- forge an officer -->
 <div class="card forge">
-  <span class="sec">{$t('Forge an officer')}</span>
+  <span class="sec">{$t('Invite an officer')}</span>
+  <p class="muted hint">{$t('Send an email invitation to join the community. They bind to this record the first time they sign in.')}</p>
   <div class="forge-form">
     <label><span>{$t('Full name')}</span><input bind:value={fName} /></label>
     <label><span>{$t('Email')}</span><input type="email" bind:value={fEmail} /></label>
@@ -173,6 +174,7 @@
   .ok { color: var(--up); font-size: .85rem; margin: 0; }
   .sec { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .forge { display: flex; flex-direction: column; gap: .6rem; }
+  .hint { margin: -.3rem 0 0; font-size: .8rem; }
   .forge-form { display: flex; flex-wrap: wrap; gap: .6rem; align-items: flex-end; }
   .forge-form label { display: flex; flex-direction: column; gap: .2rem; flex: 1; min-width: 140px; }
   .forge-form label span { font-size: .75rem; color: var(--muted); }

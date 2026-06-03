@@ -21,7 +21,7 @@
 
   // ---- domain consoles (one card each, permission-gated) ----
   const CONSOLES = [
-    { title: 'Officers & access', desc: 'Forge officers, place them in chapters & working groups, and grant capabilities to positions', href: '/admin/access', caps: ['manage_members', 'invite_members'] },
+    { title: 'Officers & access', desc: 'Invite officers, place them in chapters & working groups, and grant capabilities to positions', href: '/admin/access', caps: ['manage_members', 'invite_members'] },
     { title: 'Projects', desc: 'Project types, statuses, roles & target venues', href: '/admin/projects', caps: ['manage_taxonomy', 'edit_any_project'] },
     { title: 'Guild & skills', desc: 'The skill tree, the leader requirement & the masters', href: '/admin/guild', caps: ['manage_taxonomy', 'manage_guild'] },
     { title: 'Resources & economy', desc: 'STR supply & policy, community resources & resource types', href: '/admin/economy', caps: ['manage_resources', 'manage_stater'] },
