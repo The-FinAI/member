@@ -251,12 +251,10 @@
 
               {#if pickedCard}
                 <div class="st-form">
-                  {#if s.slot_kind !== 'leader'}
-                    <label class="st-field">
-                      <span>{$t('Monthly amount')}{#if s.quota}<span class="st-hint"> · {$t('need {q}', { q: s.quota })}</span>{/if}</span>
-                      <input type="number" min="0" step="any" bind:value={amount} />
-                    </label>
-                  {/if}
+                  <label class="st-field">
+                    <span>{s.slot_kind === 'leader' ? $t('Monthly writing hours') : $t('Monthly amount')}{#if s.quota}<span class="st-hint"> · {$t('need {q}', { q: s.quota })}</span>{/if}</span>
+                    <input type="number" min="0" step="any" bind:value={amount} />
+                  </label>
                   {#if s.slot_kind === 'work_resource'}
                     <label class="st-field">
                       <span>{$t('Resource')}</span>
