@@ -120,6 +120,15 @@
   }
   function reload() { load(); onChanged?.(); }
 
+  let releasing = $state(false);
+  async function releaseClaim() {
+    if (!g) return;
+    releasing = true;
+    const { error } = await supabase.rpc('release_claim', { p_project: g.id });
+    releasing = false;
+    if (!error) reload();
+  }
+
   function fmtDate(d: string | null) {
     if (!d) return '';
     return new Date(d + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
@@ -201,9 +210,16 @@
     {/if}
 
     {#if g.wgUnitId}
-      <a class="pd-btn" class:ghost={!canManage} href={`/officer/${g.wgUnitId}`}>
-        {canManage ? $t('Manage in slot board') : $t('Open slot board')} →
-      </a>
+      <div class="row" style="gap:.5rem; flex-wrap:wrap; align-items:center;">
+        <a class="pd-btn" class:ghost={!canManage} href={`/officer/${g.wgUnitId}`}>
+          {canManage ? $t('Manage in slot board') : $t('Open slot board')} →
+        </a>
+        {#if canManage}
+          <button type="button" class="pd-release" disabled={releasing} onclick={releaseClaim}>
+            {releasing ? $t('Releasing…') : $t('Release claim')}
+          </button>
+        {/if}
+      </div>
     {/if}
   </div>
 {/if}
@@ -230,4 +246,7 @@
   .pd-btn.ghost { background: transparent; color: var(--accent); border-color: var(--border); }
   .pd-postneed-toggle { align-self: flex-start; background: transparent; border: 0; padding: 0; cursor: pointer; font: inherit; color: var(--accent); font-weight: 600; }
   .pd-postneed-toggle:hover { text-decoration: underline; }
+  .pd-release { padding: .5rem .9rem; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--down); font: inherit; font-weight: 600; cursor: pointer; }
+  .pd-release:hover { border-color: var(--down); }
+  .pd-release:disabled { opacity: .55; cursor: not-allowed; }
 </style>
