@@ -227,6 +227,15 @@
     return qualify(selNeed, badgesOf[selPerson.id] ?? [], resOf[selPerson.id] ?? []);
   });
 
+  // hours/units still free this month on the resource the picked need draws from
+  const seatRemaining = $derived.by(() => {
+    if (!selNeed || !selPerson || !selNeed.resource_type_id) return null;
+    const res = (resOf[selPerson.id] ?? []).find((r) => r.type_id === selNeed!.resource_type_id);
+    if (!res || res.monthly_quota == null) return null;
+    return res.monthly_quota - (usedByRes[res.id] ?? 0);
+  });
+  const seatOver = $derived(seatRemaining != null && (Number(amount) || 0) > seatRemaining);
+
   function pickNeed(n: Need) {
     selNeed = selNeed?.id === n.id ? null : n;
     if (selNeed) { amount = selNeed.quota ?? 0; resId = ''; resetResDefault(); }
@@ -406,7 +415,8 @@
         </div>
         {#if seatFit?.ok}
           <div class="sb-form">
-            <label>{$t('Monthly amount')}<input type="number" min="0" step="any" bind:value={amount} /></label>
+            <label>{$t('Monthly amount')}{#if seatRemaining != null}<span class="sb-kind"> · {$t('{n} left', { n: seatRemaining })}</span>{/if}<input type="number" min="0" step="any" bind:value={amount} /></label>
+            {#if seatOver}<span class="sb-reason">{$t('Over capacity — only {n} left this month', { n: seatRemaining })}</span>{/if}
             {#if selNeed.resource_type_id}
               <label>{$t('Resource')}
                 <select bind:value={resId}>
@@ -417,7 +427,7 @@
                 </select>
               </label>
             {/if}
-            <button type="button" class="stake" disabled={busy === 'seat' || (!!selNeed.resource_type_id && !resId)} onclick={seat}>
+            <button type="button" class="stake" disabled={busy === 'seat' || seatOver || (!!selNeed.resource_type_id && !resId)} onclick={seat}>
               {#if busy === 'seat'}<span class="spin"></span>{/if}{$t('Seat into slot')}
             </button>
           </div>

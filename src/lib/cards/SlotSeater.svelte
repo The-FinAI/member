@@ -173,6 +173,14 @@
     return { ok: true, reason: '' };
   }
 
+  // hours/units still free this month on the resource this slot draws from
+  function remainingFor(s: Slot, cardId: string | null): number | null {
+    if (!cardId || !s.resource_type_id) return null;
+    const res = (resByCard[cardId] ?? []).find((r) => r.type_id === s.resource_type_id);
+    if (!res || res.monthly_quota == null) return null;
+    return res.monthly_quota - (usedByRes[res.id] ?? 0);
+  }
+
   function openPicker(s: Slot) {
     if (openSlot === s.id) { openSlot = null; return; }
     openSlot = s.id; q = ''; pickedCard = null; amount = s.quota ?? 0; resId = ''; msg = ''; err = '';
@@ -261,10 +269,13 @@
               </div>
 
               {#if pickedCard}
+                {@const rem = remainingFor(s, pickedCard)}
+                {@const over = rem != null && (Number(amount) || 0) > rem}
                 <div class="st-form">
                   <label class="st-field">
-                    <span>{s.slot_kind === 'leader' ? $t('Monthly writing hours') : $t('Monthly amount')}{#if s.quota}<span class="st-hint"> · {$t('need {q}', { q: s.quota })}</span>{/if}</span>
-                    <input type="number" min="0" step="any" bind:value={amount} />
+                    <span>{s.slot_kind === 'leader' ? $t('Monthly writing hours') : $t('Monthly amount')}{#if rem != null}<span class="st-hint"> · {$t('{n} left', { n: rem })}</span>{:else if s.quota}<span class="st-hint"> · {$t('need {q}', { q: s.quota })}</span>{/if}</span>
+                    <input type="number" min="0" step="any" bind:value={amount} class:over />
+                    {#if over}<span class="st-reason">{$t('Over capacity — only {n} left this month', { n: rem })}</span>{/if}
                   </label>
                   {#if s.slot_kind === 'work_resource'}
                     <label class="st-field">
@@ -280,7 +291,7 @@
                   <button
                     type="button"
                     class="st-go"
-                    disabled={busy === s.id || (s.slot_kind === 'work_resource' && !resId)}
+                    disabled={busy === s.id || over || (s.slot_kind === 'work_resource' && !resId)}
                     onclick={() => seat(s)}
                   >
                     {#if busy === s.id}<span class="spin"></span>{/if}{$t('Seat into slot')}
@@ -401,6 +412,7 @@
     padding: .45rem .55rem; border-radius: 8px; border: 1px solid var(--border-2);
     background: var(--card-2); color: var(--text); font-size: .88rem;
   }
+  .st-field input.over { border-color: var(--down); }
   .st-go {
     align-self: flex-start; padding: .5rem .9rem; border-radius: 8px; border: 1px solid transparent;
     background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer;
