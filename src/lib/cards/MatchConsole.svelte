@@ -33,8 +33,9 @@
   let people = $state<Person[]>([]);
   let badgesOf = $state<Record<string, Badge[]>>({});
   let resOf = $state<Record<string, Resource[]>>({});
-  let usedOf = $state<Record<string, number>>({});       // labor used this month, per member (display)
+  let usedOf = $state<Record<string, number>>({});       // total committed this month, per member (display)
   let usedByRes = $state<Record<string, number>>({});    // committed this month, per resource_id (capacity)
+  let usedHoursOf = $state<Record<string, number>>({});  // hours on labour/leader slots, per member (hours capacity)
   let needs = $state<Need[]>([]);
   let unclaimed = $state<{ id: string; name: string; status: string }[]>([]);
   let ownedProjects = $state<{ id: string; name: string }[]>([]);
@@ -67,7 +68,22 @@
   // resource of the slot's type WITH monthly capacity left (a labor need's type
   // is 'Labor', i.e. working hours). Skills are optional: satisfy each
   // requirement in the requirements jsonb if any are declared.
-  function qualify(s: Need, badges: Badge[], resources: Resource[]): { ok: boolean; reason: string } {
+  // remaining capacity for a need on a given member (null = unconstrained)
+  function remainingFor(s: Need, memberId: string): number | null {
+    if (!s.resource_type_id) return null;
+    const res = (resOf[memberId] ?? []).find((r) => r.type_id === s.resource_type_id);
+    if (!res || res.monthly_quota == null) return null;
+    // hours (labour/leader) are counted across ALL the member's labour slots by
+    // slot kind — robust even when a commitment wasn't tied to the My-time row;
+    // other resources are counted per-resource.
+    const isLabor = resTypes.find((tp) => tp.id === s.resource_type_id)?.name === 'Labor';
+    const used = isLabor ? (usedHoursOf[memberId] ?? 0) : (usedByRes[res.id] ?? 0);
+    return res.monthly_quota - used;
+  }
+
+  function qualify(s: Need, memberId: string): { ok: boolean; reason: string } {
+    const badges = badgesOf[memberId] ?? [];
+    const resources = resOf[memberId] ?? [];
     if (s.filled >= s.headcount) return { ok: false, reason: get(t)('Filled') };
     for (const req of s.requirements) {
       const have = badges.find((b) => b.skill_id === req.skill_id);
@@ -82,10 +98,12 @@
     if (s.resource_type_id) {
       const res = resources.find((r) => r.type_id === s.resource_type_id);
       if (!res) return { ok: false, reason: get(t)('No matching resource held') };
-      const remaining = res.monthly_quota == null ? Infinity : res.monthly_quota - (usedByRes[res.id] ?? 0);
-      if (remaining <= 0) return { ok: false, reason: get(t)('No capacity left this month') };
-      const need = s.quota && s.quota > 0 ? s.quota : 0;
-      if (need > 0 && remaining < need) return { ok: false, reason: get(t)('Only {n} left — need {q}', { n: remaining, q: need }) };
+      const remaining = remainingFor(s, memberId);
+      if (remaining != null) {
+        if (remaining <= 0) return { ok: false, reason: get(t)('No capacity left this month') };
+        const need = s.quota && s.quota > 0 ? s.quota : 0;
+        if (need > 0 && remaining < need) return { ok: false, reason: get(t)('Only {n} left — need {q}', { n: remaining, q: need }) };
+      }
     }
     return { ok: true, reason: '' };
   }
@@ -151,7 +169,7 @@
       const [{ data: bg }, { data: rs }, { data: wc }] = await Promise.all([
         supabase.from('badge').select('member_id, skill_id, level').in('member_id', pids),
         supabase.from('resource').select('id, name, type_id, monthly_quota, unit, holder_member_id, skills').in('holder_member_id', pids),
-        supabase.from('work_commitment').select('member_id, monthly_amount, resource_id').in('member_id', pids).eq('year_month', ym)
+        supabase.from('work_commitment').select('member_id, monthly_amount, resource_id, slot:slot_id(slot_kind)').in('member_id', pids).eq('year_month', ym)
       ]);
       const bmap: Record<string, Badge[]> = {};
       for (const b of (bg as any[]) ?? []) (bmap[b.member_id] ??= []).push({ skill_id: b.skill_id, level: b.level });
@@ -160,17 +178,24 @@
       for (const r of (rs as Resource[] & { holder_member_id: string }[]) ?? [])
         (rmap[(r as any).holder_member_id] ??= []).push(r);
       resOf = rmap;
-      // committed this month — per member (display) and per resource (capacity)
+      // committed this month: per member total (display), per resource (resource
+      // capacity), and per member HOURS on labour/leader slots (hours capacity —
+      // counted by slot kind, so it's right even if resource_id wasn't attributed).
       const used: Record<string, number> = {};
       const usedRes: Record<string, number> = {};
+      const usedHours: Record<string, number> = {};
       for (const w of (wc as any[]) ?? []) {
-        used[w.member_id] = (used[w.member_id] ?? 0) + (Number(w.monthly_amount) || 0);
-        if (w.resource_id) usedRes[w.resource_id] = (usedRes[w.resource_id] ?? 0) + (Number(w.monthly_amount) || 0);
+        const amt = Number(w.monthly_amount) || 0;
+        used[w.member_id] = (used[w.member_id] ?? 0) + amt;
+        if (w.resource_id) usedRes[w.resource_id] = (usedRes[w.resource_id] ?? 0) + amt;
+        if (w.slot?.slot_kind === 'work_labor' || w.slot?.slot_kind === 'leader')
+          usedHours[w.member_id] = (usedHours[w.member_id] ?? 0) + amt;
       }
       usedOf = used;
       usedByRes = usedRes;
+      usedHoursOf = usedHours;
       void laborType;
-    } else { badgesOf = {}; resOf = {}; usedOf = {}; usedByRes = {}; }
+    } else { badgesOf = {}; resOf = {}; usedOf = {}; usedByRes = {}; usedHoursOf = {}; }
 
     // WG: unclaimed projects to take on + this group's projects (to post needs)
     if (unit!.kind === 'working_group' && isOfficer) {
@@ -185,12 +210,13 @@
     loading = false;
   }
 
-  // capacity headline per person (labor): quota − used
-  function capOf(p: Person): { quota: number | null; used: number; unit: string } {
-    const res = (resOf[p.id] ?? []).find((r) => resTypes.find((t) => t.id === r.type_id)?.name === 'Labor')
-      ?? (resOf[p.id] ?? [])[0];
-    const used = usedOf[p.id] ?? 0;
-    return { quota: res?.monthly_quota ?? null, used, unit: res?.unit ?? 'h' };
+  // capacity headline per person (labor): quota − used (used = hours committed
+  // against THIS person's My-time resource, incl. leader writing hours).
+  function capOf(p: Person): { quota: number | null; used: number; unit: string; full: boolean } {
+    const res = (resOf[p.id] ?? []).find((r) => resTypes.find((t) => t.id === r.type_id)?.name === 'Labor');
+    const used = usedHoursOf[p.id] ?? 0;
+    const quota = res?.monthly_quota ?? null;
+    return { quota, used, unit: res?.unit ?? 'h', full: quota != null && used >= quota };
   }
 
   // ---- ranked lists, biased by the current selection ----
@@ -201,8 +227,8 @@
     if (selNeed) {
       const s = selNeed;
       list = [...list].sort((a, b) => {
-        const qa = qualify(s, badgesOf[a.id] ?? [], resOf[a.id] ?? []).ok;
-        const qb = qualify(s, badgesOf[b.id] ?? [], resOf[b.id] ?? []).ok;
+        const qa = qualify(s, a.id).ok;
+        const qb = qualify(s, b.id).ok;
         return qa === qb ? a.full_name.localeCompare(b.full_name) : qa ? -1 : 1;
       });
     }
@@ -214,9 +240,9 @@
   const needsView = $derived.by(() => {
     let list = boardNeeds;
     if (selPerson) {
-      const bd = badgesOf[selPerson.id] ?? [], rs = resOf[selPerson.id] ?? [];
+      const pid = selPerson.id;
       list = [...list].sort((a, b) => {
-        const qa = qualify(a, bd, rs).ok, qb = qualify(b, bd, rs).ok;
+        const qa = qualify(a, pid).ok, qb = qualify(b, pid).ok;
         if (qa !== qb) return qa ? -1 : 1;
         return (b.headcount - b.filled) - (a.headcount - a.filled);
       });
@@ -226,16 +252,11 @@
 
   const seatFit = $derived.by(() => {
     if (!selNeed || !selPerson) return null;
-    return qualify(selNeed, badgesOf[selPerson.id] ?? [], resOf[selPerson.id] ?? []);
+    return qualify(selNeed, selPerson.id);
   });
 
   // hours/units still free this month on the resource the picked need draws from
-  const seatRemaining = $derived.by(() => {
-    if (!selNeed || !selPerson || !selNeed.resource_type_id) return null;
-    const res = (resOf[selPerson.id] ?? []).find((r) => r.type_id === selNeed!.resource_type_id);
-    if (!res || res.monthly_quota == null) return null;
-    return res.monthly_quota - (usedByRes[res.id] ?? 0);
-  });
+  const seatRemaining = $derived(selNeed && selPerson ? remainingFor(selNeed, selPerson.id) : null);
   const seatOver = $derived(seatRemaining != null && (Number(amount) || 0) > seatRemaining);
   const seatMinReq = $derived(selNeed?.quota && selNeed.quota > 0 ? selNeed.quota : 0);
   const seatUnder = $derived((Number(amount) || 0) <= 0 || (seatMinReq > 0 && (Number(amount) || 0) < seatMinReq));
@@ -452,7 +473,7 @@
           <div class="rows">
             {#each needsView as n (n.id)}
               {#if isChapter}
-                {@const fit = selPerson ? qualify(n, badgesOf[selPerson.id] ?? [], resOf[selPerson.id] ?? []) : null}
+                {@const fit = selPerson ? qualify(n, selPerson.id) : null}
                 <button type="button" class="row need" class:on={selNeed?.id === n.id}
                   class:fit={fit?.ok} class:dim={fit && !fit.ok} onclick={() => pickNeed(n)}>
                   <span class="r-main">
@@ -493,14 +514,14 @@
           {:else}
             <div class="rows">
               {#each peopleView.slice(0, 120) as p (p.id)}
-                {@const fit = selNeed ? qualify(selNeed, badgesOf[p.id] ?? [], resOf[p.id] ?? []) : null}
+                {@const fit = selNeed ? qualify(selNeed, p.id) : null}
                 {@const cap = capOf(p)}
-                <div class="prow" class:on={selPerson?.id === p.id} class:fit={fit?.ok} class:dim={fit && !fit.ok}>
+                <div class="prow" class:on={selPerson?.id === p.id} class:fit={fit?.ok} class:dim={cap.full || (fit && !fit.ok)}>
                   <button type="button" class="row person" onclick={() => pickPerson(p)}>
                     <span class="r-main">
-                      <span class="r-title">{p.full_name}{#if p.kind === 'card'}<span class="badge dim card-b">{$t('card')}</span>{/if}</span>
+                      <span class="r-title">{p.full_name}{#if p.kind === 'card'}<span class="badge dim card-b">{$t('card')}</span>{/if}{#if cap.full}<span class="badge warn card-b">{$t('hours full')}</span>{/if}</span>
                       <span class="r-sub">
-                        {#if cap.quota != null}{$t('{used}/{quota} {unit} used', { used: cap.used, quota: cap.quota, unit: cap.unit })}{:else}{p.affiliation ?? '—'}{/if}
+                        {#if cap.quota != null}<span class:r-reason={cap.full}>{$t('{used}/{quota} {unit} used', { used: cap.used, quota: cap.quota, unit: cap.unit })}</span>{:else}{p.affiliation ?? '—'}{/if}
                         {#if (badgesOf[p.id] ?? []).length} · {$t('{n} badges', { n: (badgesOf[p.id] ?? []).length })}{/if}
                         {#if fit && !fit.ok} · <span class="r-reason">{fit.reason}</span>{/if}
                       </span>

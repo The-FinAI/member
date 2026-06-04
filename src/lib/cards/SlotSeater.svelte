@@ -35,7 +35,8 @@
   let cards = $state<Card[]>([]);
   let badgesByCard = $state<Record<string, Badge[]>>({});
   let resByCard = $state<Record<string, Res[]>>({});
-  let usedByRes = $state<Record<string, number>>({}); // resource_id → hours/units committed this month
+  let usedByRes = $state<Record<string, number>>({}); // resource_id → units committed this month
+  let usedHoursByMember = $state<Record<string, number>>({}); // member → hours on labour/leader slots this month
   let loading = $state(true);
   let busy = $state(''); let msg = $state(''); let err = $state('');
 
@@ -131,7 +132,7 @@
       const [{ data: bg }, { data: rs }, { data: wc }] = await Promise.all([
         supabase.from('badge').select('member_id, skill_id, level').in('member_id', ids),
         supabase.from('resource').select('id, name, type_id, unit, monthly_quota, holder_member_id').in('holder_member_id', ids),
-        supabase.from('work_commitment').select('resource_id, monthly_amount').in('member_id', ids).eq('year_month', ym)
+        supabase.from('work_commitment').select('member_id, resource_id, monthly_amount, slot:slot_id(slot_kind)').in('member_id', ids).eq('year_month', ym)
       ]);
       const bmap: Record<string, Badge[]> = {};
       for (const b of (bg as any[]) ?? []) (bmap[b.member_id] ??= []).push({ skill_id: b.skill_id, level: b.level });
@@ -140,9 +141,15 @@
       for (const r of (rs as any[]) ?? []) (rmap[r.holder_member_id] ??= []).push({ id: r.id, name: r.name, type_id: r.type_id, unit: r.unit, monthly_quota: r.monthly_quota });
       resByCard = rmap;
       const umap: Record<string, number> = {};
-      for (const w of (wc as any[]) ?? []) if (w.resource_id) umap[w.resource_id] = (umap[w.resource_id] ?? 0) + (Number(w.monthly_amount) || 0);
-      usedByRes = umap;
-    } else { badgesByCard = {}; resByCard = {}; usedByRes = {}; }
+      const hmap: Record<string, number> = {};
+      for (const w of (wc as any[]) ?? []) {
+        const amt = Number(w.monthly_amount) || 0;
+        if (w.resource_id) umap[w.resource_id] = (umap[w.resource_id] ?? 0) + amt;
+        if (w.slot?.slot_kind === 'work_labor' || w.slot?.slot_kind === 'leader')
+          hmap[w.member_id] = (hmap[w.member_id] ?? 0) + amt;
+      }
+      usedByRes = umap; usedHoursByMember = hmap;
+    } else { badgesByCard = {}; resByCard = {}; usedByRes = {}; usedHoursByMember = {}; }
     loading = false;
   }
 
@@ -166,8 +173,8 @@
     if (s.resource_type_id) {
       const res = (resByCard[cardId] ?? []).find((r) => r.type_id === s.resource_type_id);
       if (s.slot_kind === 'work_resource' && !res) return { ok: false, reason: $t('no matching resource') };
-      if (res && res.monthly_quota != null) {
-        const remaining = res.monthly_quota - (usedByRes[res.id] ?? 0);
+      const remaining = remainingFor(s, cardId);
+      if (remaining != null) {
         const need = s.quota && s.quota > 0 ? s.quota : 0;
         if (remaining <= 0) return { ok: false, reason: $t('No capacity left this month') };
         if (need > 0 && remaining < need) return { ok: false, reason: $t('Only {n} left — need {q}', { n: remaining, q: need }) };
@@ -181,7 +188,11 @@
     if (!cardId || !s.resource_type_id) return null;
     const res = (resByCard[cardId] ?? []).find((r) => r.type_id === s.resource_type_id);
     if (!res || res.monthly_quota == null) return null;
-    return res.monthly_quota - (usedByRes[res.id] ?? 0);
+    // hours (labour/leader) are summed across the member's labour slots by kind
+    // (robust to un-attributed commitments); other resources are per-resource.
+    const used = (s.slot_kind === 'work_labor' || s.slot_kind === 'leader')
+      ? (usedHoursByMember[cardId] ?? 0) : (usedByRes[res.id] ?? 0);
+    return res.monthly_quota - used;
   }
 
   function openPicker(s: Slot) {
