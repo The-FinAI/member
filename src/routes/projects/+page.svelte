@@ -243,24 +243,22 @@
   async function createProject() {
     error = '';
     if (!cName.trim() || !cType) { error = get(t)('Name and type are required.'); return; }
-    if (!leaderReady) { error = get(t)('You don’t yet meet the leader skill requirements.'); return; }
     if (!cProposal.trim()) { error = get(t)('A proposal link is required to start a project.'); return; }
-    if (leaderStake > myBalance) { error = get(t)('Leader stake is {n} STR but you only have {bal}.', { n: leaderStake, bal: myBalance }); return; }
     let proposal = cProposal.trim();
     if (!/^https?:\/\//i.test(proposal)) proposal = 'https://' + proposal;
     creating = true;
-    const { data, error: err } = await supabase.rpc('create_project_with_leader_stake', {
+    // Phase 1: free — no leader bond. You become the project's leader (first author).
+    const { data, error: err } = await supabase.rpc('create_project_phase1', {
       p_name: cName.trim(), p_type_id: cType, p_status_id: cStatus,
-      p_venue: null, p_summary: cSummary.trim() || null,
-      p_venue_id: cVenueId || null, p_proposal_url: proposal, p_as: asArg
+      p_wg_unit: cOrgUnit || null, p_summary: cSummary.trim() || null,
+      p_venue_id: cVenueId || null, p_proposal_url: proposal
     });
     creating = false;
     if (err) { error = err.message; return; }
-    if (data && cOrgUnit) await supabase.from('project').update({ org_unit_id: cOrgUnit }).eq('id', data);
     cName = ''; cVenueId = ''; cSummary = ''; cProposal = ''; cOrgUnit = ''; showForm = false;
     await Promise.all([loadGrid(), effId ? loadMyBalance(effId) : Promise.resolve()]);
     // hand off to the WG slot board so the new owner can forge needs immediately
-    if (data && cOrgUnit) window.location.href = `/officer/wg/${cOrgUnit}`;
+    if (data && cOrgUnit) window.location.href = `/officer/${cOrgUnit}`;
   }
 
   // status → accent colour for the card (left border + faint tint)
@@ -439,13 +437,13 @@
     <div class="card stack">
       <h2 style="margin:0;">{$t('Start a project')}</h2>
       <p class="muted" style="font-size:.82rem; margin:0;">
-        {@html $t('A new project always starts at <span class="badge dim">Proposal</span> with a proposal on file and the leader initiation bond staked into its escrow.')}
+        {@html $t('A new project starts at <span class="badge dim">Proposal</span> with a proposal on file. Phase 1: free — no bond. The first-author (leader) seat stays open for someone to take.')}
       </p>
       <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Name *')}</span>
         <input bind:value={cName} placeholder={$t('Project / paper name')} /></label>
       <div class="row" style="flex-wrap:wrap;">
         <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Type *')}</span>
-          <select bind:value={cType}><option value="">—</option>{#each types as pt}<option value={pt.id}>{pt.name} ({$t('stake')} {pt.leader_stake})</option>{/each}</select></label>
+          <select bind:value={cType}><option value="">—</option>{#each types as pt}<option value={pt.id}>{pt.name}</option>{/each}</select></label>
         <label class="stack" style="gap:.2rem; flex:1;"><span class="muted" style="font-size:.75rem;">{$t('Target venue')}</span>
           <select bind:value={cVenueId}>
             <option value="">{$t('— none —')}</option>
@@ -463,34 +461,9 @@
         <input bind:value={cProposal} placeholder="https://…" /></label>
       <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Summary')}</span>
         <textarea bind:value={cSummary} rows="2" placeholder={$t('One-line description')}></textarea></label>
-      {#if !leaderReady}
-        <div class="card" style="background:color-mix(in srgb, var(--neg) 9%, transparent); border-color:color-mix(in srgb, var(--neg) 35%, transparent); padding:.6rem .8rem;">
-          <span class="muted" style="font-size:.8rem;">{$t('Leading a project requires these certified guild skills:')}</span>
-          <div class="row" style="flex-wrap:wrap; gap:.4rem; margin-top:.4rem;">
-            {#each leaderMissing as r}
-              <span class="badge warn" title={$t('You have {have}', { have: r.have ? $t(GUILD_LABEL[r.have]) : $t('none') })}>
-                {$t(r.skill_name)} · {$t('needs {lvl}', { lvl: $t(GUILD_LABEL[r.min_level]) })}
-              </span>
-            {/each}
-          </div>
-          <span class="dim" style="font-size:.76rem; display:block; margin-top:.4rem;">{$t('Request a badge in the Guild or ask an officer to award one, then come back.')}</span>
-        </div>
-      {/if}
-      <div class="card" style="background:var(--accent-soft); border-color:transparent; padding:.6rem .8rem;">
-        <div class="row" style="justify-content:space-between;">
-          <span class="muted" style="font-size:.8rem;">{$t('Leader initiation stake')}</span>
-          <span class="mono" style="font-weight:600;">{leaderStake.toLocaleString()} STR</span>
-        </div>
-        <div class="row" style="justify-content:space-between;">
-          <span class="muted" style="font-size:.8rem;">{$t('Your balance after')}</span>
-          <span class="mono {myBalance - leaderStake < 0 ? 'neg' : ''}">{(myBalance - leaderStake).toLocaleString()} STR</span>
-        </div>
-      </div>
       <div class="row">
-        <button onclick={createProject} disabled={creating || leaderStake > myBalance || !leaderReady}>
-          {creating ? $t('Creating…') : $t('Stake {n} STR & create', { n: leaderStake })}</button>
-        {#if !leaderReady}<span class="neg" style="font-size:.8rem;">{$t('Leader skill requirements not met.')}</span>
-        {:else if leaderStake > myBalance}<span class="neg" style="font-size:.8rem;">{$t('Insufficient balance to stake.')}</span>{/if}
+        <button onclick={createProject} disabled={creating}>
+          {creating ? $t('Creating…') : $t('Create project')}</button>
       </div>
     </div>
   {/if}
