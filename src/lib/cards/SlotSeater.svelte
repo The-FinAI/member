@@ -162,12 +162,15 @@
       if (!have || rank(have.level) < rank(s.req_access)) return { ok: false, reason: $t('needs {lvl}', { lvl: $t(s.req_access) }) };
     }
     // capacity: the drawn resource (My-time hours for labour/leader, or the typed
-    // resource) must have room left this month — full → can't add more.
+    // resource) must have enough room left this month to cover what the need asks.
     if (s.resource_type_id) {
       const res = (resByCard[cardId] ?? []).find((r) => r.type_id === s.resource_type_id);
       if (s.slot_kind === 'work_resource' && !res) return { ok: false, reason: $t('no matching resource') };
-      if (res && res.monthly_quota != null && res.monthly_quota - (usedByRes[res.id] ?? 0) <= 0) {
-        return { ok: false, reason: $t('No capacity left this month') };
+      if (res && res.monthly_quota != null) {
+        const remaining = res.monthly_quota - (usedByRes[res.id] ?? 0);
+        const need = s.quota && s.quota > 0 ? s.quota : 0;
+        if (remaining <= 0) return { ok: false, reason: $t('No capacity left this month') };
+        if (need > 0 && remaining < need) return { ok: false, reason: $t('Only {n} left — need {q}', { n: remaining, q: need }) };
       }
     }
     return { ok: true, reason: '' };
@@ -183,12 +186,12 @@
 
   function openPicker(s: Slot) {
     if (openSlot === s.id) { openSlot = null; return; }
-    openSlot = s.id; q = ''; pickedCard = null; amount = s.quota ?? 0; resId = ''; msg = ''; err = '';
+    openSlot = s.id; q = ''; pickedCard = null; amount = s.quota ?? (s.slot_kind === 'leader' ? 20 : 0); resId = ''; msg = ''; err = '';
   }
 
   function pickCard(s: Slot, cardId: string) {
     pickedCard = cardId;
-    amount = s.quota ?? 0;
+    amount = s.quota ?? (s.slot_kind === 'leader' ? 20 : 0);
     const m = s.resource_type_id ? (resByCard[cardId] ?? []).find((r) => r.type_id === s.resource_type_id) : null;
     resId = m?.id ?? '';
   }
@@ -270,12 +273,16 @@
 
               {#if pickedCard}
                 {@const rem = remainingFor(s, pickedCard)}
-                {@const over = rem != null && (Number(amount) || 0) > rem}
+                {@const minReq = s.quota && s.quota > 0 ? s.quota : 0}
+                {@const amt = Number(amount) || 0}
+                {@const over = rem != null && amt > rem}
+                {@const under = amt <= 0 || (minReq > 0 && amt < minReq)}
                 <div class="st-form">
                   <label class="st-field">
-                    <span>{s.slot_kind === 'leader' ? $t('Monthly writing hours') : $t('Monthly amount')}{#if rem != null}<span class="st-hint"> · {$t('{n} left', { n: rem })}</span>{:else if s.quota}<span class="st-hint"> · {$t('need {q}', { q: s.quota })}</span>{/if}</span>
-                    <input type="number" min="0" step="any" bind:value={amount} class:over />
-                    {#if over}<span class="st-reason">{$t('Over capacity — only {n} left this month', { n: rem })}</span>{/if}
+                    <span>{s.slot_kind === 'leader' ? $t('Monthly writing hours') : $t('Monthly amount')}{#if minReq > 0}<span class="st-hint"> · {$t('need {q}', { q: minReq })}</span>{/if}{#if rem != null}<span class="st-hint"> · {$t('{n} left', { n: rem })}</span>{/if}</span>
+                    <input type="number" min="0" step="any" bind:value={amount} class:over={over || under} />
+                    {#if over}<span class="st-reason">{$t('Over capacity — only {n} left this month', { n: rem })}</span>
+                    {:else if under}<span class="st-reason">{minReq > 0 ? $t('Must commit at least {q}', { q: minReq }) : $t('Must be more than 0')}</span>{/if}
                   </label>
                   {#if s.slot_kind === 'work_resource'}
                     <label class="st-field">
@@ -291,7 +298,7 @@
                   <button
                     type="button"
                     class="st-go"
-                    disabled={busy === s.id || over || (s.slot_kind === 'work_resource' && !resId)}
+                    disabled={busy === s.id || over || under || (s.slot_kind === 'work_resource' && !resId)}
                     onclick={() => seat(s)}
                   >
                     {#if busy === s.id}<span class="spin"></span>{/if}{$t('Seat into slot')}

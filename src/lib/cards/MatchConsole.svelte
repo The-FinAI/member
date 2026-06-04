@@ -84,6 +84,8 @@
       if (!res) return { ok: false, reason: get(t)('No matching resource held') };
       const remaining = res.monthly_quota == null ? Infinity : res.monthly_quota - (usedByRes[res.id] ?? 0);
       if (remaining <= 0) return { ok: false, reason: get(t)('No capacity left this month') };
+      const need = s.quota && s.quota > 0 ? s.quota : 0;
+      if (need > 0 && remaining < need) return { ok: false, reason: get(t)('Only {n} left — need {q}', { n: remaining, q: need }) };
     }
     return { ok: true, reason: '' };
   }
@@ -235,6 +237,8 @@
     return res.monthly_quota - (usedByRes[res.id] ?? 0);
   });
   const seatOver = $derived(seatRemaining != null && (Number(amount) || 0) > seatRemaining);
+  const seatMinReq = $derived(selNeed?.quota && selNeed.quota > 0 ? selNeed.quota : 0);
+  const seatUnder = $derived((Number(amount) || 0) <= 0 || (seatMinReq > 0 && (Number(amount) || 0) < seatMinReq));
 
   function pickNeed(n: Need) {
     selNeed = selNeed?.id === n.id ? null : n;
@@ -415,8 +419,9 @@
         </div>
         {#if seatFit?.ok}
           <div class="sb-form">
-            <label>{$t('Monthly amount')}{#if seatRemaining != null}<span class="sb-kind"> · {$t('{n} left', { n: seatRemaining })}</span>{/if}<input type="number" min="0" step="any" bind:value={amount} /></label>
-            {#if seatOver}<span class="sb-reason">{$t('Over capacity — only {n} left this month', { n: seatRemaining })}</span>{/if}
+            <label>{$t('Monthly amount')}{#if seatMinReq > 0}<span class="sb-kind"> · {$t('need {q}', { q: seatMinReq })}</span>{/if}{#if seatRemaining != null}<span class="sb-kind"> · {$t('{n} left', { n: seatRemaining })}</span>{/if}<input type="number" min="0" step="any" bind:value={amount} /></label>
+            {#if seatOver}<span class="sb-reason">{$t('Over capacity — only {n} left this month', { n: seatRemaining })}</span>
+            {:else if seatUnder}<span class="sb-reason">{seatMinReq > 0 ? $t('Must commit at least {q}', { q: seatMinReq }) : $t('Must be more than 0')}</span>{/if}
             {#if selNeed.resource_type_id}
               <label>{$t('Resource')}
                 <select bind:value={resId}>
@@ -427,7 +432,7 @@
                 </select>
               </label>
             {/if}
-            <button type="button" class="stake" disabled={busy === 'seat' || seatOver || (!!selNeed.resource_type_id && !resId)} onclick={seat}>
+            <button type="button" class="stake" disabled={busy === 'seat' || seatOver || seatUnder || (!!selNeed.resource_type_id && !resId)} onclick={seat}>
               {#if busy === 'seat'}<span class="spin"></span>{/if}{$t('Seat into slot')}
             </button>
           </div>
