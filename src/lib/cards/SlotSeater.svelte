@@ -322,7 +322,8 @@
       {/each}
     </div>
 
-    <!-- direct add: forge a slot around the person + seat them, no open need -->
+    <!-- direct add (ADMIN only): forge a slot around the person + seat them -->
+    {#if isAdmin}
     <div class="st-direct">
       <button type="button" class="st-direct-toggle" onclick={() => (daOpen = !daOpen)}>
         <span>＋ {$t('Add directly')}</span>
@@ -385,6 +386,7 @@
         </div>
       {/if}
     </div>
+    {/if}
   {/if}
 </div>
 
