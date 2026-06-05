@@ -279,7 +279,7 @@
           <div class="row" style="align-items:center; gap:.5rem;">
             <h1 style="margin:0;">{mem.full_name}</h1>
             {#if mem.kind === 'card'}<span class="badge dim" title={$t('A member-card: managed by a chapter officer; value is custodial until the person signs up and claims it.')}>{$t('card')}</span>{/if}
-            {#if mem.status !== 'active'}<span class="badge dim">{mem.status}</span>{/if}
+            {#if mem.status !== 'active'}<span class="badge dim">{mem.kind === 'card' && mem.status === 'invited' ? $t('unclaimed') : $t(mem.status)}</span>{/if}
           </div>
           <p class="muted" style="margin:.2rem 0 0;">{mem.affiliation ?? '—'}</p>
           {#if mem.member_position?.length}
