@@ -67,7 +67,7 @@
   async function seatDirect() {
     if (!daMember) { daErr = get(t)('Pick a member.'); return; }
     if (daKind === 'work_labor' && !daSkill) { daErr = get(t)('Pick a skill.'); return; }
-    if (daKind === 'work_resource' && !daResType) { daErr = get(t)('Pick a resource type.'); return; }
+    if (daKind === 'work_resource' && !daResource) { daErr = get(t)('Pick a resource (add it on their card first if missing).'); return; }
     daBusy = true; daMsg = ''; daErr = '';
     const { error: e } = await supabase.rpc('seat_direct', {
       p_project: projectId, p_member: daMember, p_slot_kind: daKind,
@@ -374,7 +374,7 @@
                 <label class="st-field"><span>{$t('Monthly amount')}</span>
                   <input type="number" min="0" step="any" bind:value={daAmount} />
                 </label>
-                {#if !daMemberResources.length}<p class="st-muted">{$t('No resource of this type yet — one will be created for them at this amount.')}</p>{/if}
+                {#if daResType && !daMemberResources.length}<p class="st-muted">{$t('They hold no resource of this type.')} <a href={`/members/${daMember}`} target="_blank" rel="noopener">{$t('Add it on their card →')}</a></p>{/if}
               {/if}
 
               <button type="button" class="st-go" disabled={daBusy} onclick={seatDirect}>
