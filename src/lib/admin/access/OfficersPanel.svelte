@@ -24,6 +24,15 @@
 
   // forge-officer form
   let fName = $state(''), fEmail = $state(''), fAffil = $state(''), fPos = $state(''), sending = $state(false);
+  // inline email correction (fix a typo'd invite email that blocks login)
+  let editEmailId = $state<string | null>(null);
+  let emailDraft = $state('');
+  async function saveEmail(id: string) {
+    error = ''; notice = '';
+    const { error: err } = await supabase.rpc('set_member_email', { p_member: id, p_email: emailDraft.trim() });
+    if (err) { error = err.message; return; }
+    editEmailId = null; notice = get(t)('Email updated.'); await load();
+  }
   // per-unit assignment draft
   let dMember = $state<Record<string, string>>({});
   let dRole = $state<Record<string, string>>({});
@@ -120,7 +129,19 @@
     <button class="go" onclick={forgeOfficer} disabled={sending}>{sending ? $t('Sending…') : $t('Invite')}</button>
   </div>
   {#if pending.length}
-    <div class="pending">{$t('Pending')}: {#each pending as p (p.id)}<span class="pchip">{p.full_name}</span>{/each}</div>
+    <div class="pending">{$t('Pending')}:
+      {#each pending as p (p.id)}
+        {#if editEmailId === p.id}
+          <span class="pchip edit">
+            <input class="pmail-input" bind:value={emailDraft} placeholder="email" />
+            <button class="pok" onclick={() => saveEmail(p.id)} title={$t('Save')}>✓</button>
+            <button class="pno" onclick={() => (editEmailId = null)} title={$t('Cancel')}>✕</button>
+          </span>
+        {:else}
+          <span class="pchip"><span class="pname">{p.full_name}</span><span class="pmail">{p.email}</span><button class="pedit" title={$t('Edit email')} onclick={() => { editEmailId = p.id; emailDraft = p.email; }}>✎</button></span>
+        {/if}
+      {/each}
+    </div>
   {/if}
 </div>
 
@@ -181,6 +202,13 @@
   .go { padding: .5rem .9rem; border-radius: 8px; border: 1px solid transparent; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
   .go:disabled { opacity: .55; cursor: not-allowed; }
   .pending { font-size: .8rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
+  .pchip { display: inline-flex; align-items: center; gap: .35rem; border: 1px dashed var(--border-2); border-radius: 999px; padding: .15rem .5rem; }
+  .pname { color: var(--text); }
+  .pmail { color: var(--muted); font-size: .74rem; }
+  .pedit, .pok, .pno { background: transparent; border: 0; cursor: pointer; font: inherit; color: var(--muted); padding: 0 .15rem; }
+  .pedit:hover, .pok:hover { color: var(--accent); }
+  .pno:hover { color: var(--down); }
+  .pmail-input { padding: .15rem .35rem; border-radius: 6px; border: 1px solid var(--border-2); background: var(--card-2); color: var(--text); font-size: .78rem; min-width: 16rem; }
   .pchip { padding: .1rem .5rem; border: 1px dashed var(--border-2); border-radius: 999px; color: var(--text-dim); }
   .ulist { display: flex; flex-direction: column; gap: .5rem; margin-top: .4rem; }
   .unit { border: 1px solid var(--border); border-radius: 11px; background: var(--card); padding: .7rem .9rem; display: flex; flex-direction: column; gap: .5rem; }
