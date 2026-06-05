@@ -32,6 +32,7 @@
     catalog: { item: string; category: string } | null; project: { name: string } | null;
   };
   let requests = $state<Req[]>([]);
+  let resInfo = $state<Record<string, any>>({}); // resource target_id → full row (for review detail)
   let capacity = $state<Cap[]>([]);
   let settlements = $state<Settle[]>([]);
   let milestones = $state<Mstone[]>([]);
@@ -52,16 +53,16 @@
 
   // Requests forged together (a batch of badge raises) share a batch_id and must
   // review as ONE item — otherwise a 10-skill submission shows as 10 approvals.
-  type Group = { key: string; ids: string[]; rep: Req; count: number };
+  type Group = { key: string; ids: string[]; items: Req[]; rep: Req; count: number };
   const shownGroups = $derived.by(() => {
     const groups: Group[] = [];
     const byBatch: Record<string, number> = {};
     for (const r of shown) {
       if (r.batch_id && byBatch[r.batch_id] != null) {
-        const g = groups[byBatch[r.batch_id]]; g.ids.push(r.id); g.count++;
+        const g = groups[byBatch[r.batch_id]]; g.ids.push(r.id); g.items.push(r); g.count++;
       } else {
         if (r.batch_id) byBatch[r.batch_id] = groups.length;
-        groups.push({ key: r.batch_id ?? r.id, ids: [r.id], rep: r, count: 1 });
+        groups.push({ key: r.batch_id ?? r.id, ids: [r.id], items: [r], rep: r, count: 1 });
       }
     }
     return groups;
@@ -81,6 +82,13 @@
       supabase.from('resource_type').select('id, name')
     ]);
     requests = (rq as Req[]) ?? [];
+    // pull the full resource rows behind resource requests so review shows the
+    // actual type / quota / skills+levels / description, not just a one-liner.
+    const resIds = requests.filter((r) => r.target_type === 'resource' && r.target_id).map((r) => r.target_id as string);
+    if (resIds.length) {
+      const { data: rr } = await supabase.from('resource').select('id, details, unit, monthly_quota, type_id, skills').in('id', resIds);
+      resInfo = Object.fromEntries(((rr as any[]) ?? []).map((x) => [x.id, x]));
+    } else resInfo = {};
     capacity = (cap as any[]) ?? [];
     settlements = (st as any[]) ?? [];
     milestones = (ms as any[]) ?? [];
@@ -107,6 +115,31 @@
     return pj(p.project_id) || mem(r.target_id ?? undefined);
   }
   function cap(s?: string) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : '—'; }
+
+  const skName = (id?: string) => (id ? names.skills[id] ?? '—' : '—');
+  function skillsLine(arr: any[], lvlKey: string): string {
+    return (arr ?? []).map((x) => `${skName(x.skill_id)} ${get(t)(cap(x[lvlKey] ?? x.level ?? x.min_level))}`).join(' · ');
+  }
+  // the specific content of a request, for the reviewer to actually see
+  function detailLines(r: Req): string[] {
+    const p = r.payload ?? {};
+    const out: string[] = [];
+    if (r.target_type === 'resource') {
+      const info = resInfo[r.target_id ?? ''] ?? {};
+      const rt = info.type_id ? names.resTypes[info.type_id] : '';
+      out.push(`${rt ? rt + ' · ' : ''}${p.monthly_quota ?? info.monthly_quota ?? '?'} ${info.unit ?? ''}/mo`.trim());
+      const sk = (info.skills && info.skills.length ? info.skills : p.skills) ?? [];
+      if (sk.length) out.push(get(t)('Skills') + ': ' + skillsLine(sk, 'level'));
+      if (info.details) out.push(info.details);
+    } else if (r.target_type === 'need') {
+      const kind = p.slot_kind === 'work_resource' ? get(t)('Resource need') : p.slot_kind === 'leader' ? get(t)('Leader') : get(t)('Labor need');
+      out.push(`${kind}${p.quota ? ' · ' + p.quota : ''} · ×${p.headcount ?? 1}`);
+      const reqs = p.requirements ?? [];
+      if (reqs.length) out.push(get(t)('Requires') + ': ' + skillsLine(reqs, 'min_level'));
+      else if (p.resource_type_id) out.push(get(t)('Resource type') + ': ' + (names.resTypes[p.resource_type_id] ?? '—'));
+    }
+    return out;
+  }
 
   function groupSummary(g: Group): string {
     if (g.count > 1 && g.rep.target_type === 'badge') {
@@ -182,8 +215,15 @@
     <div class="fq-list">
       {#each shownGroups as g (g.key)}
         <div class="fq-row">
-          <span class="badge {TYPE_CLASS[g.rep.target_type] ?? 'dim'}">{$t(TYPE_LABEL[g.rep.target_type] ?? g.rep.target_type)}</span>
-          <span class="fq-sum">{groupSummary(g)}{#if g.count > 1}<span class="fq-fee" style="color:var(--muted)"> ×{g.count}</span>{/if}</span>
+          <span class="badge {TYPE_CLASS[g.rep.target_type] ?? 'dim'}">{$t(TYPE_LABEL[g.rep.target_type] ?? g.rep.target_type)}{#if g.rep.action === 'update'} · {$t('edit')}{/if}</span>
+          <div class="fq-body">
+            <span class="fq-sum">{groupSummary(g)}{#if g.count > 1}<span class="fq-fee" style="color:var(--muted)"> ×{g.count}</span>{/if}</span>
+            {#if g.rep.target_type === 'badge' && g.count > 1}
+              <div class="fq-detail">{#each g.items as it}<span class="fq-chip">{skName(it.payload?.skill_id)} → {$t(cap(it.payload?.target_level))}</span>{/each}</div>
+            {:else}
+              {#each detailLines(g.rep) as d}<div class="fq-detail-line">{d}</div>{/each}
+            {/if}
+          </div>
           {#if g.rep.fee > 0}<span class="fq-fee">−{g.rep.fee} STR</span>{/if}
           <span class="fq-act">
             <button type="button" class="chip toggle ok" disabled={busy === g.key} onclick={() => reviewGroup(g, true)}>
@@ -274,7 +314,11 @@
   .fq-msg { font-size: .85rem; color: var(--accent); }
   .fq-sec { font-size: .74rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: .6rem 0 0; }
   .fq-list { display: flex; flex-direction: column; gap: .45rem; }
-  .fq-row { display: flex; align-items: center; gap: .7rem; padding: .6rem .75rem; border: 1px solid var(--border); border-radius: 9px; background: var(--card); }
+  .fq-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .25rem; }
+  .fq-detail-line { font-size: .78rem; color: var(--muted); }
+  .fq-detail { display: flex; flex-wrap: wrap; gap: .25rem; }
+  .fq-chip { font-size: .72rem; padding: .1rem .4rem; border: 1px solid var(--border-2); border-radius: 6px; color: var(--text-dim); }
+  .fq-row { display: flex; align-items: flex-start; gap: .7rem; padding: .6rem .75rem; border: 1px solid var(--border); border-radius: 9px; background: var(--card); }
   .fq-sum { flex: 1; min-width: 0; font-size: .88rem; color: var(--text); }
   .fq-mono { font-family: var(--font-mono); color: var(--info); }
   .fq-fee { font-family: var(--font-mono); font-size: .76rem; color: var(--down); flex: none; }
