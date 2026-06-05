@@ -44,7 +44,7 @@
       supabase.from('org_unit_officer').select('org_unit_id, member_id, role, member:member_id(full_name)').is('ended_on', null),
       supabase.from('member').select('id, full_name').eq('kind', 'operator').eq('status', 'active').order('full_name'),
       supabase.from('position').select('id, name').order('rank'),
-      supabase.from('member').select('id, full_name, email').eq('status', 'invited').order('full_name')
+      supabase.from('member').select('id, full_name, email').eq('status', 'invited').neq('kind', 'card').order('full_name')
     ]);
     units = (u as Unit[]) ?? []; officers = (o as Officer[]) ?? [];
     operators = (m as Mem[]) ?? []; positions = (p as Position[]) ?? []; pending = (inv as Pending[]) ?? [];
