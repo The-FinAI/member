@@ -8,35 +8,49 @@
   let { projectId, onPosted }: { projectId: string; onPosted?: () => void } = $props();
 
   type Skill = { id: string; name: string };
+  type RType = { id: string; name: string; unit: string | null };
   const LEVELS = [
     { v: 'learning', l: 'Learning' }, { v: 'independent', l: 'Independent' }, { v: 'lead', l: 'Lead' }
   ];
 
   let skills = $state<Skill[]>([]);
+  let rtypes = $state<RType[]>([]);
   let open = $state(false);
+  let kind = $state<'work_labor' | 'work_resource'>('work_labor');
   let fSkill = $state('');
   let fLevel = $state('independent');
+  let fRType = $state('');
   let fHours = $state('');
   let fHead = $state('1');
   let busy = $state(false);
   let err = $state('');
   let pool = $state<number | null>(null);
 
+  const rtUnit = $derived(rtypes.find((r) => r.id === fRType)?.unit ?? '');
+
   async function load() {
     if (!supabaseConfigured) return;
-    const { data } = await supabase.from('skill').select('id,name,parent_id');
-    const rows = (data as any[]) ?? [];
+    const [sk, rt] = await Promise.all([
+      supabase.from('skill').select('id,name,parent_id'),
+      supabase.from('resource_type').select('id,name,unit').order('rank')
+    ]);
+    const rows = (sk.data as any[]) ?? [];
     const parents = new Set(rows.map((r) => r.parent_id).filter(Boolean));
     skills = rows.filter((r) => r.parent_id && !parents.has(r.id)).map((r) => ({ id: r.id, name: r.name }));
+    rtypes = ((rt.data as RType[]) ?? []).filter((r) => r.name !== 'Labor');
   }
   $effect(() => { if (open && !skills.length) load(); });
 
   async function post() {
     err = ''; pool = null;
-    if (!fSkill) { err = $t('Pick a skill'); return; }
+    if (kind === 'work_labor' && !fSkill) { err = $t('Pick a skill'); return; }
+    if (kind === 'work_resource' && !fRType) { err = $t('Pick a resource type'); return; }
     busy = true;
     const { data, error } = await supabase.rpc('need_post', {
-      p_project: projectId, p_skill: fSkill, p_level: fLevel,
+      p_project: projectId, p_kind: kind,
+      p_skill: kind === 'work_labor' ? fSkill : null,
+      p_level: kind === 'work_labor' ? fLevel : null,
+      p_resource_type: kind === 'work_resource' ? fRType : null,
       p_capacity: Number(fHours) || null, p_headcount: Number(fHead) || 1
     });
     if (error) { busy = false; err = error.message; return; }
@@ -53,15 +67,27 @@
 
 {#if open}
   <div class="np">
+    <div class="np-kind">
+      <button class="kbtn" class:on={kind === 'work_labor'} onclick={() => (kind = 'work_labor')}>{$t('Skill')}</button>
+      <button class="kbtn" class:on={kind === 'work_resource'} onclick={() => (kind = 'work_resource')}>{$t('Resource')}</button>
+    </div>
     <div class="np-row">
-      <select bind:value={fSkill}>
-        <option value="">{$t('Pick a skill')}</option>
-        {#each skills as s}<option value={s.id}>{s.name}</option>{/each}
-      </select>
-      <select bind:value={fLevel}>
-        {#each LEVELS as lv}<option value={lv.v}>{$t(lv.l)}</option>{/each}
-      </select>
-      <input class="np-n" type="number" min="1" placeholder={$t('h/mo')} bind:value={fHours} />
+      {#if kind === 'work_labor'}
+        <select bind:value={fSkill}>
+          <option value="">{$t('Pick a skill')}</option>
+          {#each skills as s}<option value={s.id}>{s.name}</option>{/each}
+        </select>
+        <select bind:value={fLevel}>
+          {#each LEVELS as lv}<option value={lv.v}>{$t(lv.l)}</option>{/each}
+        </select>
+        <input class="np-n" type="number" min="1" placeholder={$t('h/mo')} bind:value={fHours} />
+      {:else}
+        <select bind:value={fRType}>
+          <option value="">{$t('Pick a resource type')}</option>
+          {#each rtypes as r}<option value={r.id}>{r.name}</option>{/each}
+        </select>
+        <input class="np-n" type="number" min="1" placeholder={rtUnit || $t('qty')} bind:value={fHours} />
+      {/if}
       <input class="np-n" type="number" min="1" placeholder="×" bind:value={fHead} />
       <button class="np-go" disabled={busy} onclick={post}>{$t('Post role')}</button>
       <button class="np-ghost" onclick={() => (open = false)}>{$t('Cancel')}</button>
@@ -75,6 +101,10 @@
 
 <style>
   .np { border: 1px solid var(--line, #eee); border-radius: 9px; padding: .55rem .7rem; margin: .4rem 0; }
+  .np-kind { display: inline-flex; border: 1px solid var(--line, #ddd); border-radius: 7px; overflow: hidden; margin-bottom: .45rem; }
+  .kbtn { border: none; background: none; padding: .2rem .7rem; cursor: pointer; font-size: .82rem; color: var(--muted, #888); border-right: 1px solid var(--line, #eee); }
+  .kbtn:last-child { border-right: none; }
+  .kbtn.on { background: var(--accent, #6a7cff); color: #fff; }
   .np-row { display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; }
   .np select, .np-n { padding: .3rem .4rem; border: 1px solid var(--line, #ddd); border-radius: 6px; }
   .np-n { width: 4rem; }

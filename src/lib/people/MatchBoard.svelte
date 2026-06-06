@@ -8,13 +8,16 @@
   import { t } from '$lib/i18n';
 
   type Need = {
-    id: string; project_id: string; skill_id: string; desired_level: string | null;
+    id: string; project_id: string; slot_kind: string; skill_id: string | null;
+    resource_type_id: string | null; desired_level: string | null;
     quota: number | null; headcount: number; filled: number;
-    skill: { name: string } | null; project: { name: string; emoji: string | null; code: string | null } | null;
+    skill: { name: string } | null; resource_type: { name: string; unit: string | null } | null;
+    project: { name: string; emoji: string | null; code: string | null } | null;
   };
   type Cand = {
     member_id: string; full_name: string; level: string | null;
-    tasks: number; shipped: number; free_hours: number | null; fits: boolean; reason: string;
+    tasks: number; shipped: number; free: number | null; unit: string;
+    resource_id: string | null; fits: boolean; reason: string;
   };
   type Member = { id: string; full_name: string };
 
@@ -45,8 +48,8 @@
     loading = true; err = '';
     const [nd, mem] = await Promise.all([
       supabase.from('project_slot')
-        .select('id,project_id,skill_id,desired_level,quota,headcount,status,skill:skill_id(name),project:project_id(name,emoji,code)')
-        .eq('slot_kind', 'work_labor').eq('status', 'open').not('skill_id', 'is', null),
+        .select('id,project_id,slot_kind,skill_id,resource_type_id,desired_level,quota,headcount,status,skill:skill_id(name),resource_type:resource_type_id(name,unit),project:project_id(name,emoji,code)')
+        .in('slot_kind', ['work_labor', 'work_resource']).eq('status', 'open'),
       supabase.from('member').select('id,full_name').order('full_name')
     ]);
     const rows = (nd.data as any[]) ?? [];
@@ -72,10 +75,28 @@
     cands = (data as Cand[]) ?? [];
     hoursFor = {};
     for (const c of cands) {
-      const def = Math.min(Number(c.free_hours ?? n.quota ?? 0) || 0, Number(n.quota ?? c.free_hours ?? 0) || 0);
+      const free = Number(c.free ?? n.quota ?? 0) || 0;
+      const need = Number(n.quota ?? c.free ?? 0) || 0;
+      const def = Math.min(free || need, need || free);
       hoursFor[c.member_id] = String(def > 0 ? def : (n.quota ?? ''));
     }
   }
+
+  // graded fit (Strong / Fits / Stretch) + capacity bar, per the research
+  function grade(c: Cand): { cls: string; label: string } {
+    if (!c.fits) return { cls: 'stretch', label: 'Stretch' };
+    if (c.level === 'lead' || (c.shipped ?? 0) >= 2) return { cls: 'strong', label: 'Strong fit' };
+    return { cls: 'ok', label: 'Fits' };
+  }
+  // live capacity bar: how much of this person's FREE capacity the planned
+  // amount consumes — fills as you type, turns red when it exceeds free.
+  function bar(c: Cand, planned: number): { pct: number; over: boolean; unconstrained: boolean } {
+    if (c.free == null) return { pct: 0, over: false, unconstrained: true };
+    const free = Number(c.free);
+    if (free <= 0) return { pct: 100, over: planned > 0, unconstrained: false };
+    return { pct: Math.min(100, Math.round((planned / free) * 100)), over: planned > free, unconstrained: false };
+  }
+  const num = (s: string) => Number(s) || 0;
 
   async function doAssign(memberId: string, slot: Need, hoursStr: string) {
     const hours = Number(hoursStr) || 0;
@@ -108,11 +129,16 @@
       {#each needs as n (n.id)}
         <div class="need" class:open={openNeed === n.id}>
           <button class="need-row" onclick={() => pickNeed(n)}>
-            <span class="need-skill">{n.skill?.name}</span>
-            {#if n.desired_level}<span class="need-lvl">{$t(LEVEL_LABEL[n.desired_level] ?? n.desired_level)}</span>{/if}
+            {#if n.slot_kind === 'work_resource'}
+              <span class="need-skill">{n.resource_type?.name}</span>
+              <span class="need-kind">{$t('resource')}</span>
+            {:else}
+              <span class="need-skill">{n.skill?.name}</span>
+              {#if n.desired_level}<span class="need-lvl">{$t(LEVEL_LABEL[n.desired_level] ?? n.desired_level)}</span>{/if}
+            {/if}
             <span class="need-proj">{n.project?.emoji ?? ''} {n.project?.code || n.project?.name}</span>
             <span class="need-fill">{n.filled}/{n.headcount}</span>
-            {#if n.quota}<span class="need-q">{n.quota}h</span>{/if}
+            {#if n.quota}<span class="need-q">{n.quota}{n.slot_kind === 'work_resource' ? (n.resource_type?.unit ?? '') : 'h'}</span>{/if}
           </button>
 
           {#if openNeed === n.id}
@@ -123,17 +149,31 @@
                 <p class="mb-dim">{$t('No qualified people with free time — assign directly below.')}</p>
               {/if}
               {#each cands as c (c.member_id)}
-                <div class="cand" class:dim={!c.fits} class:busy={busy === c.member_id}>
+                {@const g = grade(c)}
+                {@const b = bar(c, num(hoursFor[c.member_id]))}
+                <div class="cand" class:busy={busy === c.member_id}>
                   <div class="cand-info">
+                    <span class="cand-grade gr-{g.cls}" title={$t(g.label)}>●</span>
                     <span class="cand-name">{c.full_name}</span>
-                    <span class="cand-lvl lv-{c.level}">{$t(LEVEL_LABEL[c.level ?? ''] ?? c.level ?? '')}</span>
-                    <span class="cand-ev">{c.tasks} {$t('tasks')} · {c.shipped} {$t('shipped')}</span>
-                    <span class="cand-free">{c.free_hours ?? '∞'}h {$t('free')}</span>
+                    {#if c.level}<span class="cand-lvl lv-{c.level}">{$t(LEVEL_LABEL[c.level] ?? c.level)}</span>{/if}
+                    {#if n.slot_kind === 'work_labor'}
+                      <span class="cand-ev">{c.tasks} {$t('tasks')} · {c.shipped} {$t('shipped')}</span>
+                    {:else}
+                      <span class="cand-ev">{$t('holds')} {n.resource_type?.name}</span>
+                    {/if}
                     {#if !c.fits}<span class="cand-reason">{c.reason}</span>{/if}
                   </div>
+                  <div class="cand-cap">
+                    <div class="capbar" title="{c.free ?? '∞'} {c.unit} {$t('free')}">
+                      {#if b.unconstrained}<span class="cap-inf">∞</span>{:else}<div class="capfill" class:over={b.over} style="width:{b.pct}%"></div>{/if}
+                    </div>
+                    <span class="cap-txt" class:over={b.over}>{c.free ?? '∞'}{c.unit} {$t('free')}</span>
+                  </div>
                   <div class="cand-act">
-                    <input class="cand-h" type="number" min="1" bind:value={hoursFor[c.member_id]} />
-                    <button class="assign" disabled={busy === c.member_id} onclick={() => doAssign(c.member_id, n, hoursFor[c.member_id])}>{$t('Assign')}</button>
+                    <input class="cand-h" class:over={b.over} type="number" min="1" bind:value={hoursFor[c.member_id]} />
+                    <span class="cand-unit">{c.unit}</span>
+                    <button class="assign" disabled={busy === c.member_id || b.over || num(hoursFor[c.member_id]) <= 0}
+                      onclick={() => doAssign(c.member_id, n, hoursFor[c.member_id])}>{$t('Assign')}</button>
                   </div>
                 </div>
               {/each}
@@ -179,14 +219,24 @@
   .cand { display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: .35rem .2rem; border-bottom: 1px solid var(--line, #f0f0f0); }
   .cand.dim { opacity: .6; }
   .cand.busy { opacity: .5; }
-  .cand-info { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
+  .cand-info { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; flex: 1 1 14rem; }
+  .cand-grade { font-size: .7rem; }
+  .gr-strong { color: #2e7d4f; } .gr-ok { color: #6a7cff; } .gr-stretch { color: #cbb24a; }
   .cand-name { font-weight: 500; }
   .cand-lvl { font-size: .73rem; color: var(--muted, #888); }
   .cand-lvl.lv-lead { color: #9a7b12; } .cand-lvl.lv-independent { color: #5566cc; }
   .cand-ev { font-size: .74rem; color: var(--muted, #aaa); }
-  .cand-free { font-size: .76rem; color: #2e7d4f; }
   .cand-reason { font-size: .73rem; color: #b8860b; }
-  .cand-act { display: flex; gap: .35rem; align-items: center; }
+  .cand-cap { display: flex; flex-direction: column; gap: .15rem; min-width: 6.5rem; }
+  .capbar { height: 6px; background: var(--line, #ececec); border-radius: 999px; overflow: hidden; position: relative; }
+  .capfill { height: 100%; background: #4caf72; border-radius: 999px; transition: width .12s; }
+  .capfill.over { background: #d9534f; }
+  .cap-inf { font-size: .7rem; color: var(--muted, #bbb); }
+  .cap-txt { font-size: .72rem; color: #2e7d4f; }
+  .cap-txt.over { color: #d9534f; }
+  .cand-unit { font-size: .72rem; color: var(--muted, #aaa); }
+  .cand-act { display: flex; gap: .3rem; align-items: center; }
+  .cand-h.over { border-color: #d9534f; color: #d9534f; }
   .cand-h { width: 3.4rem; padding: .2rem .3rem; border: 1px solid var(--line, #ddd); border-radius: 6px; }
   .assign { border: none; background: var(--accent, #6a7cff); color: #fff; border-radius: 7px; padding: .25rem .7rem; cursor: pointer; }
   .assign:disabled { opacity: .5; cursor: default; }
