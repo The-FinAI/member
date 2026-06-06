@@ -106,7 +106,8 @@ const FK: Record<string, [string, string]> = {
   project_id: ['project', 'project'], member_id: ['member', 'member'],
   owner_member_id: ['member', 'member'], skill_id: ['skill', 'skill'],
   resource_type_id: ['resource_type', 'resource_type'], holder_member_id: ['member', 'member'],
-  resource_id: ['resource', 'resource'], slot_id: ['project_slot', 'slot']
+  resource_id: ['resource', 'resource'], slot_id: ['project_slot', 'slot'],
+  status_id: ['project_status', 'project_status']
 };
 
 function resolveEmbeds(rows: any[], table: string) {
@@ -129,6 +130,7 @@ function targetTable(col: string) {
   if (col === 'resource_type_id') return 'resource_type';
   if (col === 'resource_id') return 'resource';
   if (col === 'slot_id') return 'project_slot';
+  if (col === 'status_id') return 'project_status';
   return 'member'; // member_id, owner_member_id, holder_member_id
 }
 function aliasFor(col: string) {
@@ -137,6 +139,7 @@ function aliasFor(col: string) {
   if (col === 'resource_type_id') return 'resource_type';
   if (col === 'resource_id') return 'resource';
   if (col === 'slot_id') return 'slot';
+  if (col === 'status_id') return 'project_status';
   return 'member';
 }
 
