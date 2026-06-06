@@ -165,73 +165,21 @@
 </script>
 
 <div class="stack">
-  <StartHere bind:dismissed={startHidden} />
+  <!-- one home: identity + the cockpit (your STR, status & the next action) -->
+  <header class="home-head">
+    <span class="hh-ava">{initials($member?.full_name)}</span>
+    <div class="hh-id">
+      <h1 class="hh-name">{$member ? $member.full_name.split(' ')[0] : $t('Overview')}</h1>
+      <span class="muted hh-sub">{$member?.affiliation || $member?.email || ''}</span>
+    </div>
+    <div class="hh-roles">
+      {#if myUnit}<span class="rolepill">{$t('Officer')} · {myUnit.name}</span>{/if}
+      {#if isSteward}<span class="rolepill warn">{$t('Community steward')}</span>{/if}
+      <a class="hh-guide" href="/guide">{$t('Guide')} ↗</a>
+    </div>
+  </header>
+
   <MiningCockpit />
-
-  <!-- self card: you, as a card — identity + role, two aspects (Craft /
-       Standing), the liquid STR resource, and the verbs you act with. -->
-  <section class="selfcard">
-    <div class="sc-head">
-      <span class="sc-ava">{initials($member?.full_name)}</span>
-      <div class="sc-id">
-        <h1 class="sc-name">{$member ? $member.full_name.split(' ')[0] : $t('Overview')}</h1>
-        <span class="sc-sub muted">{$member?.affiliation || $member?.email || ''}</span>
-      </div>
-      {#if myUnit || isSteward}
-        <div class="sc-roles">
-          {#if myUnit}<span class="rolepill">{$t('Officer')} · {myUnit.name}</span>{/if}
-          {#if isSteward}<span class="rolepill warn">{$t('Community steward')}</span>{/if}
-        </div>
-      {/if}
-    </div>
-
-    <div class="sc-aspects">
-      <div class="aspect">
-        <span class="asp-k">{$t('Skills')}</span>
-        <span class="asp-v">{certifiedCount}</span>
-        <span class="asp-sub">{topTierLabel ? $t(topTierLabel) : $t(certifiedCount === 1 ? 'badge earned' : 'badges earned')}</span>
-      </div>
-      <div class="aspect">
-        <span class="asp-k">{$t('Standing')}</span>
-        <span class="asp-v"><CountUp value={totalNominal} /></span>
-        <span class="asp-sub">{$t('nominal STR minted through work')}</span>
-      </div>
-      <div class="aspect liquid">
-        <span class="asp-k">{$t('Liquid STR')}</span>
-        <span class="asp-v accent"><CountUp value={balance} /></span>
-        <span class="asp-sub"><a href="/wallet">{$t('open wallet →')}</a></span>
-      </div>
-    </div>
-
-    <div class="sc-verbs">
-      <a class="verb" href="/projects">
-        <span class="vb-ic">◷</span>
-        <span class="vb-tx"><strong>{$t('Browse projects')}</strong><span class="muted">{$t('{n} open needs across {m} projects', { n: openCount, m: projectCount })}</span></span>
-      </a>
-      {#if myUnit && myUnit.kind === 'chapter'}
-        <a class="verb" href={`/units/${myUnit.unit_id}#forge`}>
-          <span class="vb-ic">✦</span>
-          <span class="vb-tx"><strong>{$t('Add a member')}</strong><span class="muted">{myUnit.name}</span></span>
-        </a>
-      {:else if $member}
-        <a class="verb" href={`/members/${$member.id}`}>
-          <span class="vb-ic">◇</span>
-          <span class="vb-tx"><strong>{$t('Your public page')}</strong><span class="muted">{$t('how others see your card')}</span></span>
-        </a>
-      {/if}
-      {#if canApprove}
-        <a class="verb" href="/admin/forge-queue">
-          <span class="vb-ic">⊞</span>
-          <span class="vb-tx"><strong>{$t('Open review queue')}</strong><span class="muted">{$t('clear pending approvals')}</span></span>
-        </a>
-      {:else}
-        <a class="verb" href="/guide">
-          <span class="vb-ic">❖</span>
-          <span class="vb-tx"><strong>{$t('Read the guide')}</strong><span class="muted">{$t('how the community works')}</span></span>
-        </a>
-      {/if}
-    </div>
-  </section>
 
   {#if PHASE2 && $member}<GettingStarted memberId={$member.id} />{/if}
 
@@ -249,49 +197,6 @@
       </div>
     </div>
   {/if}
-
-  <!-- my projects: each seat I hold, as a project card -->
-  <section class="block">
-    <div class="block-head">
-      <h2>{$t('My projects')}</h2>
-      {#if myActiveProjects.length > 0}<span class="block-meta">{$t('{n} active', { n: myActiveProjects.length })}{#if myShipped > 0} · {$t('{n} shipped', { n: myShipped })}{/if}{#if staked > 0} · {$t('{s} STR bonded', { s: staked })}{/if}</span>{/if}
-    </div>
-    {#if loading}
-      <p class="muted">{$t('Loading…')}</p>
-    {:else if myActiveProjects.length === 0}
-      <p class="muted">{$t('No positions yet.')} <a href="/projects">{$t('Browse projects')}</a> {$t('to stake into one.')}</p>
-    {:else}
-      <div class="card-grid">
-        {#each myActiveProjects as p}
-          <EntityCard
-            type="Project"
-            title={p.project?.name ?? '—'}
-            status={p.project?.project_status?.name ?? ''}
-            statusKind={statusKindOf(p.project?.project_status?.name)}
-            stats={[{ label: 'Role', value: p.project_role?.name ?? '—' }]}
-            onclick={() => p.project && goto(`/projects/${p.project.id}`)}
-          />
-        {/each}
-      </div>
-    {/if}
-
-    {#if myApps.length > 0}
-      <div class="block-sub">
-        <span class="block-sublabel">{$t('Applications')}</span>
-        <div class="card-grid">
-          {#each myApps as a}
-            <EntityCard
-              type="Application"
-              title={a.open_need?.project?.name ?? '—'}
-              status={a.status === 'accepted' ? $t('accepted · confirm to join →') : a.status}
-              statusKind={appKind(a.status)}
-              onclick={() => a.open_need?.project && goto(`/projects/${a.open_need.project.id}`)}
-            />
-          {/each}
-        </div>
-      </div>
-    {/if}
-  </section>
 
   <!-- my badges: read-only craft. A certified skill IS a badge. -->
   <section class="block">
@@ -320,26 +225,6 @@
     {/if}
   </section>
 
-  <!-- recent activity: a short preview; the full ledger lives in the wallet -->
-  {#if ledger.length > 0}
-    <section class="block">
-      <div class="block-head">
-        <h2>{$t('Recent activity')}</h2>
-        <a class="block-link" href="/wallet">{$t('Full ledger →')}</a>
-      </div>
-      <div class="acts">
-        {#each ledger as l}
-          {@const incoming = l.to_account === accountId}
-          <div class="act">
-            <span class="act-when muted">{new Date(l.created_at).toLocaleDateString()}</span>
-            <span class="act-reason">{l.reason ?? l.entry_type}</span>
-            <span class="act-amt mono {incoming ? 'up' : 'down'}">{incoming ? '+' : '−'}{l.amount.toLocaleString()}</span>
-          </div>
-        {/each}
-      </div>
-    </section>
-  {/if}
-
   <!-- footer link to the manage surface (resources + identity) -->
   {#if $member}
     <a class="manage-link" href={`/members/${$member.id}`}>{$t('Manage your resources & profile')} →</a>
@@ -348,6 +233,16 @@
 
 <style>
   .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: .8rem; }
+
+  /* home header: identity + role, sits above the cockpit */
+  .home-head { display: flex; align-items: center; gap: .7rem; }
+  .hh-ava { flex: none; width: 42px; height: 42px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); font-weight: 700; display: grid; place-items: center; }
+  .hh-id { min-width: 0; }
+  .hh-name { margin: 0; font-size: 1.3rem; }
+  .hh-sub { font-size: .82rem; }
+  .hh-roles { margin-left: auto; display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+  .hh-guide { font-size: .8rem; color: var(--muted); text-decoration: none; }
+  .hh-guide:hover { color: var(--accent); }
 
   /* self card */
   .selfcard {
