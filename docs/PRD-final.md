@@ -122,12 +122,20 @@ cell to change state) · **coverage** groups (e.g. language × state × owner) �
 · References) · **body**. Cross-project views the doc can't give: **all open/TBD tasks in the WG** (the
 backlog), **my tasks everywhere**, by owner, what changed this week.
 
-**4.2 Form a project — matching.** Create (emoji · code · type · proposal) → post **Needs** (a skill at a
-*desired* level, or a resource, + capacity), each showing the **candidate-pool size** so demand isn't
-blind → on the People surface, select a person → fitting Needs glow with their **spare capacity**, their
-**level + evidence**, and **why they fit** → click → confirm pre-filled to min(free, need) → **Assign**.
-Candidates are **ranked** by level/evidence/capacity; under-level people still show (capacity is the only
-hard gate). Select→glow→click is primary; drag optional.
+**4.2 Form a project — matching (default) with a direct override.** Create (emoji · code · type ·
+proposal) → post **Needs** (a skill at a *desired* level, or a resource, + capacity), each showing the
+**candidate-pool size** so demand isn't blind.
+- **A — matched assign (the default, the ecosystem engine):** on the People surface, select a person →
+  fitting Needs glow with their **spare capacity**, **level + evidence**, and **why they fit** → click →
+  confirm pre-filled to min(free, need) → **Assign**. Candidates are **ranked** by level/evidence/
+  capacity; under-level people still show (capacity is the only hard gate). Select→glow→click is primary.
+- **B — direct override (name-and-go):** a lead who already knows who they want searches a person and
+  **assigns directly**, bypassing the ranking. Capacity is still the hard gate; level/skill just don't
+  filter. Always available from any Need.
+
+The system **guides toward A** — matching is what makes the community an ecosystem (it surfaces
+who-can-do-what, creates demand signals, lets people grow into levels, and gives STR its meaning) — but
+**never forces it**; B is one search away.
 
 **4.3 Register & steward people.** Add a card: name · email · affiliation · **hours** · skills. A skill =
 pick a tag + set **Learning / Independent / Lead** in one tap (plain words, no pip-tree, no review). The

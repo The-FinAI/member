@@ -93,16 +93,25 @@ no badge tree, no certification queue anywhere.
 
 **RPCs:**
 - `need_post(project, skill|resource, desired_level, capacity, headcount)` → also returns **candidate-pool size**.
-- `assign(person, need|new_role, hours)` → wraps/replaces `work_seat`/`seat_direct`; capacity is the hard
-  gate; creates `membership`.
 - `match_candidates(need)` → roster ranked by **level fit + evidence + free capacity**, each with the
-  positive reason; under-level included, over-capacity excluded.
+  positive reason; under-level included, over-capacity excluded. **This is the default path — the
+  ecosystem engine.**
+- `assign(person, need|new_role, hours)` → wraps/replaces `work_seat`/`seat_direct`; capacity is the hard
+  gate; creates `membership`. Serves **both** the matched assign (A) and the direct override (B).
+
+**Two paths (A default, B override) — decided:** *A = matched assign* is primary, because the
+skill/level/capacity matching is what makes this an **ecosystem** (surfaces who-can-do-what, creates
+demand signals, lets people grow into levels, gives STR meaning). *B = name-and-go* is an always-available
+**override**: a lead who already knows who they want types the person in and assigns directly (this is
+§14's direct-owner path). The system **guides toward A, never forces it.**
 
 **Components:**
-- `match/MatchBoard.svelte` — the **one gesture**: select person → fitting Needs glow (spare capacity +
-  level + why) → click → inline confirm pre-filled to `min(free, need)` → Assign. Mirror for select-Need.
-  Keyboard path; batch-assign; optimistic.
+- `match/MatchBoard.svelte` — path **A**, the **one gesture**: select person → fitting Needs glow (spare
+  capacity + level + why) → click → inline confirm pre-filled to `min(free, need)` → Assign. Mirror for
+  select-Need. Keyboard path; batch-assign; optimistic.
 - `match/NeedRow.svelte` — decision card (project · deadline · who's on · candidate-pool size).
+- `match/DirectAssign.svelte` — path **B**, the override: search a person by name → assign directly
+  (capacity still the hard gate, but no level/skill ranking). Reachable from any Need.
 
 **Routes:** matching lives on `/people` (Chapter steward); `/projects/[id]` shows its Needs + team.
 
@@ -194,9 +203,9 @@ For each phase: write migration → user `db push` → RPCs → components (DoD-
 `cd /Users/huangjimin/thefin-community && npm run build` → i18n keys (zh/ja/fr) → commit → push. Keep old
 surfaces alive until the new one replaces them (incremental retirement, never big-bang).
 
-## Open questions to resolve before the phase that needs them
-- **P3:** confirm whether formation really wants level-gating vs name-and-go (PRD §11 Q1) — test with one
-  WG lead before building full `match_candidates`.
+## Open questions
+- **P3 — RESOLVED:** matching (A) is the default — we want the ecosystem; direct name-and-go (B) is an
+  always-available override. Build `match_candidates` (A) **and** `DirectAssign` (B).
 - **P4:** STR prominence dial (PRD §8) — confirm "legible but quiet" vs a contribution number on cards.
 - **P0:** task `state` set — is Open/Doing/Done enough, or do coverage groups need their own states as a
   first-class per-group vocabulary?
