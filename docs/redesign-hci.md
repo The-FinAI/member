@@ -376,3 +376,132 @@ precede gesture.** Revised priority inside the staged plan:
 The acceptance test (§10) gains a clause: *the officer can answer, without asking anyone — "what is this
 credit worth, when is this person free, what happened after I acted, and does the researcher know?"* If
 not, the screen is still a black box, however well-organized.
+
+---
+
+## 13. Micro-interaction logic — the mechanics of each moment
+
+*§12 was about what the user must **know**. This is one layer below: the **mechanics of operating a
+control** — modes, feedback timing, reversibility, view-state, keyboard, repetition. These are the
+densest HCI debts in the as-is map, and they decide whether a structurally-correct screen actually feels
+usable. New canon here: **Tesler's Law of modes** ("don't mode me in"); **Raskin** (modelessness,
+monotony, "the interface should not have modes"); the **Doherty threshold** (<400 ms feedback keeps
+attention); **gulf of evaluation** (Norman); **Tognazzini's** First Principles (anticipation, latency,
+state-not-mode).*
+
+### A. Modes — the matching board is a moded interface, and modes leak
+
+The console holds **`selNeed` / `selPerson`** — that is a **mode**. The as-is mechanics betray every
+classic mode failure: clicking a second person **silently swaps** the selection (no signal you lost the
+first), there is **no Esc to exit**, and nothing persistently says *"you are placing Zhang."*
+- **A1 — Mode visibility.** *"Wait, am I picking a person or a role right now?"* → A persistent
+  **mode banner** ("Placing **Zhang** — pick a role · Esc to stop"), already half-built as `.mc-guide`;
+  make it the **anchor**, sticky, with the active object named and an explicit exit. (Tesler: if a mode
+  must exist, make it loud and escapable.)
+- **A2 — Conflicting selection.** Clicking another candidate mid-place should **not** silently discard
+  intent — either it's a deliberate re-pick (fine, but echo it) or guard it. **Monotony** (Raskin): one
+  action, one result; no silent reinterpretation.
+- **A3 — Escape & dismissal everywhere.** Esc cancels the current mode/sheet/drawer; click-outside
+  dismisses; both restore the prior state. Today there is no keyboard exit at all.
+
+### B. The reload-everything doom loop — the single biggest interaction-logic flaw
+
+**Every** handler in the as-is map ends in `load()` / `loadGrid()` / `loadCatalog()` — a **full
+refetch** that **discards scroll position, the open picker, the current selection, and any typed
+input**. After seating one person, the officer is **thrown back to the top of the list** and must
+re-find their place. For a repeat operator this is the dominant friction.
+- **B1 — Optimistic, targeted updates.** The assigned chip updates **in place** (capacity bar ticks to
+  18/20, the filled role drops out) **without a full reload**; the network call reconciles in the
+  background. Doherty threshold: the *visible* result is instant.
+- **B2 — Preserve view-state across actions.** Scroll, the selected person, the open section all
+  survive the act. The user never loses their place.
+- **B3 — Stale state across the seam.** When a WG closes a role, the Chapter board still shows it until
+  a manual reload. → invalidate the role optimistically (and, later, push). Don't let the two domains
+  drift out of sync.
+
+### C. Feedback timing — close the gulf of evaluation per-keystroke, not per-submit
+
+As-is, forms **validate on submit** and dump a single `e.message` string at the **top of the form**;
+the offending field isn't even highlighted.
+- **C1 — Validate while typing / on blur, inline at the field.** Hours-over-capacity reddens the field
+  **as you type** with "only 6h free," not on a failed submit. (The seat input already computes
+  `over`/`under` — surface it continuously, at the field, not as a disabled button's side-effect.)
+- **C2 — Live preview of consequence.** Typing 8 hours shows "→ Zhang 20/20, full" live; declaring a
+  resource shows "≈ N credit/mo" live (ties to §A3). The user sees the result **before** committing.
+- **C3 — Sub-400 ms acknowledgement** on every click — a state change, not a frozen button. Spinners
+  are a last resort for real latency, not the default ack.
+
+### D. Reversibility mechanics — design undo, and guard the irreversible
+
+§7 said "trust + undo" but didn't specify the **mechanics**. The as-is map has a landmine:
+**`removeResource` hard-deletes with no confirm and no undo.**
+- **D1 — Undo as a toast with a timer.** Reversible acts (assign, post role, set hours) apply
+  immediately and show **"Assigned Zhang · Undo"** for ~6 s. No modal. (Gmail Undo-Send.)
+- **D2 — Confirm only the truly irreversible.** Hard delete, releasing a started commitment,
+  rejecting a settlement → a **typed/explicit confirm** *or* convert to soft-delete + undo. Never a
+  silent destructive click. (Nielsen #5 prevent errors > #9 explain them.)
+- **D3 — Distinguish reversible-without-consequence from socially-committed.** Un-assigning before the
+  person starts = clean undo; after they've logged hours = a **withdrawal with notice**, not a silent
+  revert (ties to §E1 social state).
+
+### E. The disabled-button dead-end — never silently disable
+
+The as-is map is full of `disabled={busy || over || under || (resource && !resId)}`. A disabled primary
+button is a **dead end**: the main signifier says "no" and rarely says "**why**" or "**how to fix**."
+- **E1 — Prefer enabled-with-guidance.** Keep the button clickable; on click (or inline, live) state the
+  single blocking reason **and the fix**: "Commit at least 2h to fill this role." The user learns the
+  rule by trying, instead of staring at a grey button. (For genuinely impossible states, disable **with**
+  an always-visible reason adjacent — never bare.)
+- **E2 — One reason at a time, nearest the cause.** Not a list of all failures at the form top — the
+  *next* thing to fix, at the field that causes it.
+
+### F. Error recovery — preserve, translate, retry
+
+On RPC failure the as-is shows raw `e.message` at the top and leaves the user to re-derive what to do.
+- **F1 — Never lose input.** The form keeps everything typed on failure.
+- **F2 — Translate + offer the next step.** "That person is already at capacity this month — reduce the
+  hours or pick another role," with a **Retry**, not a Postgres error string.
+- **F3 — Idempotency / double-submit.** Guard re-clicks and network retries so one intent ≠ two
+  assignments (today only `disabled`-while-busy half-covers this).
+
+### G. Flow efficiency for the repeat operator — design for the 20th assignment, not the 1st
+
+An officer staffs **many** people in one sitting; the as-is forces a **mouse-only, one-at-a-time,
+reload-between-each** loop. (Raskin **monotony**: make the frequent path the shortest.)
+- **G1 — Keyboard path end-to-end.** Type-ahead in the candidate search (already a text box — add
+  arrow-key navigation + Enter to pick), Enter to confirm, Esc to cancel, Tab order that follows the
+  visual flow. The whole assign can be done without the mouse.
+- **G2 — Smart defaults that anticipate.** Pre-fill hours to **min(person's free hours, role's need)** —
+  the most likely value — so the common case is **zero typing** (Tognazzini: anticipation). Pre-select
+  the person's matching resource (as today) but show why.
+- **G3 — Batch where the work is batchy.** Badges already batch; **matching does not**. Allow selecting
+  several roles a person fits (or several people for one role) and assigning in **one confirm** — with a
+  per-line capacity check. Cuts the dominant repetitive loop.
+- **G4 — Don't re-collapse after each act.** The picker stays open for the next assignment on the same
+  person/role until explicitly closed (pairs with §B2).
+
+### H. Affordance & scent at the control level — is it even clickable?
+
+Cards-as-buttons, rows-that-toggle, pips-that-set — without **signifiers** the user can't tell what's
+interactive, and drawer→link→drawer **pogo-sticking** (Information Foraging) loses their place.
+- **H1 — Visible signifiers.** Interactive cards/rows get a consistent hover/affordance cue; static
+  display blocks must look static. (Norman signifiers; Gestalt common-region for grouping.)
+- **H2 — Stop the pogo-stick.** Opening a related entity from a drawer should **peek without losing the
+  parent** (stack/breadcrumb), not bounce the user to a fresh page and orphan their task.
+- **H3 — Stable layout under type-morphing.** The `ResourceForgeForm` swapping fields by type
+  **shouldn't reflow** the whole form (jumpy = disorienting); reserve space, animate the change so the
+  user tracks what appeared.
+
+---
+
+### How §13 lands in the build
+None of these need new data — they are **interaction-layer** fixes. Two are near-universal refactors
+worth doing as their own pass, because they touch every screen:
+1. **Kill the reload-everything loop** (§B) — replace `load()`-after-each-action with optimistic +
+   targeted update. Highest usability-per-effort of anything in this doc.
+2. **Replace silent-disabled with enabled-or-explained** (§E) and **submit-time errors with
+   live-inline** (§C) — a single validation-pattern change applied app-wide.
+
+Acceptance test gains its final clause: *can the officer staff ten people, by keyboard, without losing
+their place, without re-finding a single row, undoing any misstep in one tap, and never meeting a grey
+button that won't say why?* That is the difference between "organized" and "usable."
