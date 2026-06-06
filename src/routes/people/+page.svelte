@@ -6,6 +6,7 @@
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { member, capabilities, officerUnits } from '$lib/session';
   import { t } from '$lib/i18n';
+  import { goto } from '$app/navigation';
   import { get } from 'svelte/store';
   import MatchBoard from '$lib/people/MatchBoard.svelte';
 
@@ -39,13 +40,16 @@
     if (!aName.trim() || !aEmail.trim()) { aErr = $t('Name and email are required.'); return; }
     if (!unit) { aErr = $t('No chapter to add to.'); return; }
     aBusy = true;
-    const { error } = await supabase.rpc('forge_member_card', {
+    const { data, error } = await supabase.rpc('forge_member_card', {
       p_full_name: aName.trim(), p_email: aEmail.trim(), p_unit: unit, p_affiliation: aAffil.trim() || null
     });
     aBusy = false;
     if (error) { aErr = error.message; return; }
-    aMsg = $t('Person added.'); aName = ''; aEmail = ''; aAffil = '';
-    load();
+    aName = ''; aEmail = ''; aAffil = '';
+    // onboard: drop the officer straight onto the new person's card to set
+    // their skills & capacity (else they're added but un-matchable, with no cue)
+    if (data) { goto(`/members/${data}`); return; }
+    aMsg = $t('Person added.'); load();
   }
 
   const filtered = $derived.by(() => {

@@ -232,11 +232,38 @@ function rpc(name: string, a: any) {
   if (name === 'notification_read_all') { seed.notification.forEach((n) => (n.read_at = '2026-06-06T12:00:00Z')); return Promise.resolve({ data: null, error: null }); } persist();
 
   if (name === 'match_candidates') {
-    return Promise.resolve({ data: [
-      { member_id: M_WANG, full_name: 'Wang Fang', level: 'lead', tasks: 7, shipped: 3, free: 25, unit: 'h', resource_id: null, fits: true, reason: 'ok' },
-      { member_id: M_LI, full_name: 'Li Hua', level: 'independent', tasks: 4, shipped: 2, free: 6, unit: 'h', resource_id: null, fits: true, reason: 'ok' },
-      { member_id: M_ZHAO, full_name: 'Zhao Lei', level: 'learning', tasks: 0, shipped: 0, free: 3, unit: 'h', resource_id: null, fits: false, reason: 'below independent' }
-    ], error: null });
+    // computed from the live seed so capacity DECREMENTS after an assign
+    const s = seed.project_slot.find((x) => x.id === a.p_slot);
+    const ym = '2026-06';
+    const rank: Record<string, number> = { lead: 3, independent: 2, learning: 1 };
+    const committedHours = (mid: string) => seed.work_commitment
+      .filter((w) => w.member_id === mid && w.year_month === ym && ['work_labor', 'leader'].includes(w.slot?.slot_kind))
+      .reduce((t, w) => t + (Number(w.monthly_amount) || 0), 0);
+    const freeOf = (m: any) => (m.monthly_hours == null ? null : m.monthly_hours - committedHours(m.id));
+    if (s?.slot_kind === 'work_resource') {
+      const rows = seed.resource.filter((r) => r.type_id === s.resource_type_id && r.scope === 'member').map((r) => {
+        const used = seed.work_commitment.filter((w) => w.resource_id === r.id && w.year_month === ym).reduce((t, w) => t + (Number(w.monthly_amount) || 0), 0);
+        const m = seed.member.find((x) => x.id === r.holder_member_id);
+        return { member_id: r.holder_member_id, full_name: m?.full_name, level: null, tasks: 0, shipped: 0,
+          free: (r.monthly_quota ?? 0) - used, unit: (seed.resource_type.find((t) => t.id === r.type_id) || {}).unit || 'units',
+          resource_id: r.id, fits: true, reason: 'holds' };
+      }).filter((c) => c.free > 0);
+      return Promise.resolve({ data: rows, error: null });
+    }
+    const dl = rank[s?.desired_level] || 0;
+    const rows = seed.member
+      .filter((m) => (s?.skill_id ? seed.person_skill.some((ps) => ps.member_id === m.id && ps.skill_id === s.skill_id) : true))
+      .map((m) => {
+        const ps = seed.person_skill.find((p) => p.member_id === m.id && p.skill_id === s?.skill_id);
+        const ev = seed.person_skill_evidence.find((e) => e.member_id === m.id && e.skill_id === s?.skill_id) || { tasks: 0, shipped: 0 };
+        const lvl = ps?.level ?? null;
+        const fits = !s?.skill_id || (rank[lvl as string] || 0) >= dl;
+        return { member_id: m.id, full_name: m.full_name, level: lvl, tasks: ev.tasks, shipped: ev.shipped,
+          free: freeOf(m), unit: 'h', resource_id: null, fits, reason: fits ? 'ok' : ('below ' + (s?.desired_level ?? 'any')) };
+      })
+      .filter((c) => c.free == null || c.free > 0)
+      .sort((x, y) => (Number(y.fits) - Number(x.fits)) || ((rank[y.level as string] || 0) - (rank[x.level as string] || 0)) || (y.shipped - x.shipped));
+    return Promise.resolve({ data: rows, error: null });
   }
   if (name === 'skill_raise_suggestions') return Promise.resolve({ data: [], error: null });
   if (name === 'can_edit_project' || name === 'manages_card') return Promise.resolve({ data: true, error: null });

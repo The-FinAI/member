@@ -29,16 +29,16 @@
   onMount(loadMasters);
 </script>
 
-<svelte:head><title>Guild · Admin · The Fin AI</title></svelte:head>
+<svelte:head><title>Skills · Settings · The Fin AI</title></svelte:head>
 
-<AdminConsole title="Guild & skills" blurb="The craft ladder — the skill tree badges certify against, the skills a leader must hold, and who has reached master." {tabs}>
+<AdminConsole title="Skills" blurb="The shared skill list used across people, roles & matching." {tabs}>
   {#snippet children(active)}
     {#if active === 'rates'}
       <SkillRatesPanel />
     {:else if active === 'leader'}
       <LeaderReqPanel />
     {:else if active === 'masters'}
-      <p class="muted blurb">{$t('Members certified at master level — the top of the guild ladder. Master badges are awarded through the forge queue.')}</p>
+      <p class="muted blurb">{$t('The most experienced members in each skill.')}</p>
       {#if mLoading}
         <p class="muted">{$t('Loading…')}</p>
       {:else if masters.length === 0}
