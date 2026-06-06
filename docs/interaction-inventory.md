@@ -1,166 +1,279 @@
-# Current-state Interaction Inventory (as-is)
+# Interaction Inventory — pages + controls (as-is)
 
-*Every interaction that exists today, surface by surface, regardless of role. This is the
-**as-is** map (the truth on `main`), captured before redesign. Each row: **action — effect
-(RPC) — who can do it**. Roles: `P`=President/admin · `C`=Chapter officer (manages **people
-+ matching**) · `W`=WG officer (manages **projects**) · `L`=project leader/first-author ·
-`R`=any signed-in member · `me`=on your own record.*
+*One doc: every user-facing **page**, then every **control** on it (button → action · disabled-when), its links and inputs. Roles: P=President/admin · C=Chapter officer (people+matching) · W=WG officer (projects) · L=project leader · R=member · me=self.*
 
-> Role split (confirmed): **WG officer → projects. Chapter officer → people & matching.**
 
----
+## Login
+`/login` · roles: anyone invited
 
-## 0. Roles & permission groups (today)
-- **President** holds `manage_stater` etc. → full authority.
-- **Officer** = a row in `org_unit_officer` for a unit, role `chair/secretary` (chapter) or
-  `leader` (working group). Capabilities come from their `position` via `position_capability`.
-- Capabilities (raw keys, shown in admin): `manage_members, invite_members, edit_any_project,
-  review_skillcard, mint_skillcard, manage_guild, manage_taxonomy, manage_resources,
-  manage_stater, manage_tokens`.
+| button | does | disabled when |
+|---|---|---|
+| Verifying… / Verify & sign in | `—` | `verifying` |
+| Use a different email | `restart` |  |
+| Sending… / Send verification code | `—` | `loading` |
+**Inputs:** code, email
 
----
+## Global shell (sidebar, wallet chip, avatar menu)
+`every page` · roles: all
 
-## 1. Login (`/login`)
-- **Enter email → Send code** — checks `is_email_invited`; if invited, `signInWithOtp`
-  (shouldCreateUser true). Unclaimed cards are rejected. `[anyone invited]`
-- **Enter code → Verify** — `verifyOtp` → session; layout binds member by email. `[anyone]`
+| button | does | disabled when |
+|---|---|---|
+| (icon) | `() => (menuOpen = !menuOpen)` |  |
+| Overview | `() => go('/')` |  |
+| My profile | `() => go($member ? `/members/${$member.id}` : '/profile')` |  |
+| Sign out | `signOut` |  |
+| (icon) | `toggleTheme` |  |
 
-## 2. Global shell (`+layout.svelte`)
-- **Sidebar nav**: Home · Work(Projects, Console) · More(Community, Guide, Admin). Role-gated
-  (Console if officer/admin; Admin if admin/approver). `[all]`
-- **Wallet chip** (footer) — net STR → `/wallet`. **Avatar menu** → profile/members/[id],
-  theme, lang, sign out. `[R]`
-- Reads `stater_balance`, project nominal for the chip.
+**Links:** Admin → `/admin` · Community → `/community` · Console → `/officer` · Guide → `/guide` · Home → `/` · Net value → `/wallet` · Projects → `/projects` · The&nbsp;Fin&nbsp;AI · Community → `/` · read how the community works → → `/guide`
 
-## 3. Home (`/`)
-- **Identity header** (name, role pills, Guide↗). `[R]`
-- **MiningCockpit** — focal ring (claimable vs accruing STR); one-line status; **single next
-  action** (Settle / Assign collaborators / Find a project); **Your projects** (link each);
-  **Your team** (officer → console). Reads `stater_balance`, `work_commitment`,
-  `stater_settlement`, `member`, `resource`. `[R; team lane = C/W]`
-- (legacy still imported: `StartHere`, `GettingStarted` P2-only.)
+## Home
+`/` · roles: R (team lane = C/W)
 
-## 4. Projects list (`/projects`)
-- **Browse grid** (EntityCard per project; status colour; click → `/projects/[id]`). `[all]`
-- **Sort / filter** (deadline, status, etc.). `[all]`
-- **Create a project** form — `create_project_phase1` (free; no auto-leader). Fields: name,
-  type, status, venue, working group, proposal, summary. Gated `leader_reqs_missing` shown.
-  `[R, but WG-officer to attribute to a unit]`
+| button | does | disabled when |
+|---|---|---|
+| ✕ | `() => (dismissed = true)` |  |
 
-## 5. Project detail (`/projects/[id]` & drawer — `ProjectDetailBody`)
-- **STR pipeline** — Accruing → Finish → Settle → Paid, current stage + projected payout +
-  stage nudge. Reads `stater_settlement`, `project_milestone`. `[all read]`
-- **Team & slots** (`ProjectSlotCard`) — read map of leader/work slots & who's seated. `[all]`
-- **Post a need** (toggle → `ResourceForgeForm` mode=need) — `forge_need` (skill+level or
-  resource type, headcount). `[W / L]`
-- **Seat a member** (`SlotSeater`) — pick an open slot → pick a card → `work_seat`; **Add
-  directly** (admin-only) forges a slot + seats via `seat_direct`. Capacity-gated. `[C/W/P seat; Add-directly = P]`
-- **Release claim** — `release_claim` (detach from WG). `[W/P]`
-- **Manage in slot board** → `/officer/[wgUnit]`. `[all]`
-- **ProjectCardBody** (inline editors, gated by `can_edit_project`): rename/summary/venue/
-  status/working-group via `project_set_*` / `project_rename` / `project_set_status`;
-  **links** add/remove (`project_link_add/remove`); **meetings** add/remove
-  (`project_meeting_add/remove`); **note** (`project_note`); **milestone claim**
-  (`forge_milestone` from `milestone_catalog`); **mark done** (`forge_project_done`);
-  history feed (`project_event`). `[L/W/P]`
-- **Settlement** (`SettlementForm`, when finished) — split pool into payout weights →
-  `submit_settlement`. `[L/W]`
+**Links:** Badge catalog → → `/community?tab=badges` · Guide → `/guide` · Manage your resources & profile → `/members/${$member.id}` · Ready to settle / First author / Contributor / contributed → `/projects/${p.id}` · Your team / collaborators / with free time this month / Open console → `chapters[0] ? `/officer/${chapters[0].unit_id}` ` · → → `/projects/${a.open_need.project.id}` · → → `nextAction.href` · → → `st.href`
 
-## 6. Officer Console (`/officer` → `/officer/[unitId]` — `MatchConsole`)
-`/officer` redirects a single-unit officer straight in.
-### Chapter mode (people + matching)
-- **Guide line** narrates state (Filling X / Placing Y / clear). `[C]`
-- **Open needs ⟷ Roster** two columns; pick a need → candidates highlight/dim with reasons
-  (qualify: skills + capacity); pick a person → fillable needs highlight. `[C]`
-- **Seat inline** — on a qualified candidate, **Seat →** expands amount/resource/**Confirm
-  seat** in-row → `work_seat`. Capacity/under/over gated. `[C/P]`
-- **+ Add a member** — `ForgeCard` member mode → `forge_member_card` (badges batch) +
-  `forge_resource` for "My time" hours. `[C]`
-- **Badge ✦** per person → `BadgeTree` → `forge_badges` (staged ranks, one batch). `[C/P]`
-### Working-group mode (projects)
-- **Open needs** of the WG's projects (read → project page). `[W]`
-- **Unclaimed projects → Claim** — `forge_claim`. `[W]`
-- **+ Create project** — `create_project_phase1`. `[W]`
-- **Post a need** against an owned project — `forge_need`. `[W]`
-- **Mint completion** — `forge_project_done`. `[W]`
+## Projects — list & create
+`/projects` · roles: all; create=R/W
 
-## 7. Community (`/community`)
-- **Tabs**: People (member cards grid) · Chapters · Working Groups · Standing (per family) ·
-  Badges (catalog). `[all]`
-- Click a person → `/members/[id]`; a unit → `/units/[id]` (drawer). `[all]`
-- **Apply to a unit** — `apply_to_unit`. `[R]`  *(parallel to officer placement)*
-- **Forge badge** (officer, from a person) — `forge_badge`. `[C/P]`
+| button | does | disabled when |
+|---|---|---|
+| Cancel / Start a project | `() => (showForm = !showForm)` |  |
+| Creating… / Create project | `createProject` | `creating` |
+| shipped / STR minted / contributors / first author | `() => openProject(r)` |  |
+| Reset | `() => { q = ''; typeFilter = ''; statusFilter = ''; venueFilter = ''; }` |  |
+| (icon) | `() => (sortDir = sortDir === 1 ? -1 : 1)` |  |
 
-## 8. Member card (`/members/[id]` & drawer — `MemberDetail`)
-- **Identity header** (name, card/unclaimed badge, links, positions). `[all]`
-- **Self profile edit** (affiliation, bio) — direct `member` update. `[me]`
-- **Resources tab** (`ResourceForgeForm`): declare/edit a resource → `forge_resource` /
-  `update_resource` (review-gated; described types = text); **Edit/Remove** rows; **stewarded
-  community resources** listed. Visible to all; editable by `me`/manager/`manage_resources`.
-- **Badges**: `BadgeTree` (claim/raise own → `forge_badges`; officers award others). `[me/C/P]`
-- **Projects**: read list (role, contribution). **Resources KPI** on overview. `[all]`
+**Links:** Open full page → `/projects/${r.id}`
+**Inputs:** cName, cOrgUnit, cProposal, cSummary, cType, cVenueId, q, sortKey, typeFilter, venueFilter
 
-## 9. Unit detail (`/units/[id]` — `UnitDrawerBody`)
-- Read unit (officers, projects, members). **Forge member card** (chapter) —
-  `forge_member_card`. Edit name/desc if `can_edit_unit`. `[C/W/P]`
+## Project detail
+`/projects/[id] (+drawer)` · roles: all read; edit=L/W; admin=P
 
-## 10. Wallet (`/wallet`)
-- **Hero balance** (net = liquid + nominal), liquid/nominal split, bonded ratio. `[me]`
-- **How you earn STR** — 4-step loop (join → contribute → finish → settle), live figures. `[me]`
-- **Activity** ledger (read `stater_ledger`); full ledger here. `[me]`
+| button | does | disabled when |
+|---|---|---|
+| Post a need / skill (with level) or a resource the project needs | `() => (showPostNeed = !showPostNeed)` |  |
+| Releasing… / Release claim | `releaseClaim` | `releasing` |
+| Resume | `resume` | `busy === 'status'` |
+| Hold | `hold` | `busy === 'status'` |
+| (icon) | `() => clickable && setStatus(s.id)` | `!clickable \|\| busy === 'status'` |
+| Mint done | `mintDone` | `busy === 'done'` |
+| Open settlement | `() => (showSettle = true)` |  |
+| Cancel / Add link | `() => (showAddLink = !showAddLink)` |  |
+| Add link | `addLink` | `busy === 'link'` |
+| ✕ | `() => removeLink(l.id)` | `busy === l.id` |
+| Cancel / Schedule meeting | `() => (showAddMeeting = !showAddMeeting)` |  |
+| Schedule meeting | `addMeeting` | `busy === 'meeting'` |
+| ✕ | `() => removeMeeting(m.id)` | `busy === m.id` |
+| Claim | `claimMilestone` | `busy === 'milestone' \|\| !mClaim` |
+| Post | `postNote` | `busy === 'note' \|\| !note.trim()` |
+| Post need | `onPostNeed` |  |
+| Mint done | `onMintDone` |  |
+| needs {lvl} | `() => openPicker(s)` |  |
+| (icon) | `() => pickCard(s, d.c.id)` | `!d.q.ok` |
+| Seat | `() => seat(s)` | `busy === s.id \|\| over \|\| under \|\| (s.slot_kind === 'wo` |
+| Add directly / forge a slot for someone & seat them now | `() => (daOpen = !daOpen)` |  |
+| (icon) | `() => { daMember = c.id; daResource = ''; }` |  |
+| Labor | `() => (daKind = 'work_labor')` |  |
+| Resource | `() => (daKind = 'work_resource')` |  |
+| Create & seat | `seatDirect` | `daBusy` |
+| Submit settlement for review | `submit` | `busy` |
+| Cancel | `() => onCancel?.()` |  |
 
-## 11. Admin (`/admin` hub + consoles)
-Hub: KPIs, **Review band** (Forge/Review queue, Unit applications — counts), **Consoles**
-(gated by capability). `[P/approvers]`
-### 11.1 Review queue (`/admin/forge-queue` — `ForgeQueue`) — admin-only
-- **Approve/Reject** each item (batches grouped); shows specific content. Dispatches:
-  `review_forge` (badge/resource/need/member_card/completion), `review_capacity`
-  (over-capacity commitments), `approve_settlement`/`reject_settlement`, `verify_milestone`.
-  Gated by the matching capability. `[P / capability holder]`
-### 11.2 Unit applications (`/admin/review` — `UnitApplications`)
-- **Approve/decline** a member's unit application — `decide_unit_member`. `[C/W/P]`
-### 11.3 People & access (`/admin/access` — `OfficersPanel` + `PermissionsPanel`)
-- **Invite an officer** — edge fn `invite-member` (pre-creates member + email). `[P]`
-- **Assign / remove officer** to a unit — `assign_org_officer` / `remove_org_officer`. `[P]`
-- **Fix invitee email** — `set_member_email`. `[P]`
-- **Permissions** — per-position capability chips (read `position_capability`). `[P]`
-### 11.4 Projects console (`/admin/projects` — `LookupEditor`)
-- CRUD **Types / Statuses / Roles / Venues** (lookup tables). `[P/manage_taxonomy]`
-### 11.5 Guild & skills (`/admin/guild`)
-- **Skill tree** add/branch (`SkillTreePanel` → `skill`). **Leader requirement**
-  (`LeaderReqPanel` → `leader_skill_requirement`). **Skill rates** (`SkillRatesPanel` →
-  `stater_skill_rate`, STR/hr). `[P/manage_guild]`
-### 11.6 Resources & economy (`/admin/economy`)
-- **STR economy** (`StrEconomyPanel`): balances by account type, **Mint** (`stater_mint`),
-  **Grant** (`stater_grant`), **Monthly allowance** (`issue_monthly_allowance`), policy view.
-  **Community resources** (`CommunityResourcesPanel` → `ResourceForgeForm`, scope=community).
-  **Resource types** & **Milestone catalog** editors. `[P/manage_stater/manage_resources]`
-### 11.7 Announcements (`/admin/announcements`)
-- Post / pin / retire notices (`announcement`); shown via `LaunchBanner`. `[P/manage_members]`
-### 11.8 First-author writing (`/admin/writing`)
-- **Writing laggards** report — `writing_laggards` (leaders behind on writing hours). `[P]`
+**Links:** Add it on their card → → `/members/${daMember}` · Manage in slot board / Open slot board → `/officer/${g.wgUnitId}` · Projects → `/projects` · · → `l.url`
+**Inputs:** amount, daAmount, daHours, daLevel, daQ, daResType, daResource, daSkill, lKind, lNotes, lTitle, lUrl, mAgenda, mAt, mClaim, mEnds, mLoc, mRecur, mTitle, note, notes, q, r.weight, resId
 
-## 12. Shared components (interaction primitives)
-- **EntityCard** — whole-card click → its drawer/route. (used everywhere)
-- **CardDrawer** — backdrop/✕ close; slide-in detail+editor.
-- **SectionNav** — in-page tabs that show/hide sections (member/project detail).
-- **SkillLevelPicker / BadgeTree** — leaf skills × 4 level pips; click to set/stage.
-- **ResourceForgeForm** — type-adaptive (GPU/API/USD/flat/labour→SkillLevelPicker/described→
-  text); modes supply(`forge_resource`)/need(`forge_need`)/edit(`update_resource`).
-- **ForgeCard** — member/badge/resource/need form shell (member & need modes live).
-- **Hint** — tooltip term explainer. **Breadcrumbs** — back trail. **LangSwitcher**, **CountUp**.
+## Officer Console (Chapter=people+matching · WG=projects)
+`/officer/[unitId]` · roles: C/W/P
 
-## 13. Legacy / dead surfaces still in the repo (no real entry or superseded)
-- Routes: `/opportunities`, `/officer/chapter/[unitId]`, `/officer/wg/[unitId]` (redirect),
-  `/profile` (redirect), `/units` (no `[id]`-less use), plus ~15 legacy `/admin/*` per-table
-  routes (approvals, capabilities, invites, milestone-catalog, org-units, positions,
-  resource-types, resources, roles, skills, statuses, types, venues) overlapping the consoles.
-- Components: `SlotBoard`, `Matcher`, `MemberCard`, `CardBinder`, `GettingStarted`,
-  `CommitChip`, `InlineField` (verify usage), `ProjectSlotCard` (read-only).
-- Backend: the 6 dead subsystems (PRD §13.1).
+| button | does | disabled when |
+|---|---|---|
+| Add a member | `() => (showForgeMember = !showForgeMember)` |  |
+| Create project | `() => (showCreate = !showCreate)` |  |
+| Create project | `doCreate` | `busy === 'create'` |
+| Claim | `() => claim(p)` | `busy === p.id` |
+| clear | `() => (selNeed = null)` |  |
+| clear | `() => (selPerson = null)` |  |
+| needs {lvl} | `() => pickNeed(n)` |  |
+| card / hours full / {used}/{quota} {unit} used / {n} badges | `() => pickPerson(p)` |  |
+| Seat | `() => pickPerson(p)` |  |
+| ✦ | `() => (forgeBadgeFor = p)` |  |
+| Confirm seat | `seat` | `busy === 'seat' \|\| seatOver \|\| seatUnder \|\| (!!selNeed` |
+| Post need | `() => (postNeedFor = p)` |  |
+| ✕ | `() => (forgeBadgeFor = null)` |  |
+| ✕ | `() => (postNeedFor = null)` |  |
+| (icon) | `() => setRank(s.id, rank)` | `!canEdit` |
+| Submit {n} for review | `submit` | `busy` |
+| Reset | `() => (draft = { ...current })` | `busy` |
+| Cancel | `onCancel` |  |
+| Create | `—` | `busy \|\| !valid` |
 
----
+**Links:** Officer console → `/officer` · needs {lvl} → `/projects/${n.project_id}`
+**Inputs:** amount, bLevel, bSkill, cName, cProposal, cStatus, cSummary, cType, mAffil, mEmail, mHours, mName, mSkillLevels, nHead, nKind, nQuota, nResType, nSkillLevels, q, rName, rQuota, rScope, rType, rUnit, resId
 
-*Use this as the checklist for the redesign: each row is an interaction that must be either
-**kept (and re-skinned to the north-star vocabulary), merged, or deleted** — and re-pointed
-at the right role (WG=projects, Chapter=people+matching).*
+## Community (directory)
+`/community` · roles: all
+
+| button | does | disabled when |
+|---|---|---|
+| Application pending / Apply to join | `() => applyUnit(u.id)` | `drawerBusy \|\| myUnitStatus[u.id] === 'pending'` |
+| Award this badge | `openAward` |  |
+| (icon) | `() => toggleAward(ac.id)` |  |
+| Submitting… / Submit {n} for review / Submit for review | `() => doAward(c.id)` | `awardBusy \|\| !awardSel.size` |
+| Cancel | `() => (awardOpen = false)` |  |
+
+**Links:** (icon) → `/members/${h.member_id}` · Open full page → `/members/${r.id}` · Open officer console → `/officer/${u.id}`
+**Inputs:** awardLevel, awardQ, q
+
+## Member card
+`/members/[id] (+drawer)` · roles: all; edit=me/manager/P
+
+| button | does | disabled when |
+|---|---|---|
+| Saving… / Save | `saveProfile` | `profileSaving` |
+| Cancel edit | `() => (editResId = '')` |  |
+| Edit | `() => (editResId = r.id)` |  |
+| Remove | `() => removeResource(r.id)` |  |
+| (icon) | `() => setRank(s.id, rank)` | `!canEdit` |
+| Submit {n} for review | `submit` | `busy` |
+| Reset | `() => (draft = { ...current })` | `busy` |
+
+**Links:** (icon) → `/projects/${p.id}` · ↗ → `v`
+**Inputs:** pAffiliation, pBio
+
+## Unit detail
+`/units/[id]` · roles: all; edit=officer
+
+| button | does | disabled when |
+|---|---|---|
+| Add a member | `() => { forgeOpen = true; forgeErr = ''; forgeMsg = ''; }` |  |
+| Forging… / Forge card | `forgeMember` | `forgeBusy` |
+| Cancel | `() => (forgeOpen = false)` |  |
+
+**Links:** (icon) → `/members/${m.id}` · (icon) → `/members/${o.member_id}` · (icon) → `/projects/${p.id}` · Open officer console → `target`
+**Inputs:** fEmail, fName
+
+## Wallet
+`/wallet` · roles: me
+
+## Admin hub
+`/admin` · roles: P/approvers
+
+**Links:** (icon) → `c.href` · (icon) → `r.href` · economy → → `/admin/economy?tab=str` · {n} open needs → `/projects?tab=needs`
+
+## Admin · Review queue
+`/admin/forge-queue` · roles: P / capability holder
+
+| button | does | disabled when |
+|---|---|---|
+| All | `() => (filter = f as any)` |  |
+| Approve | `() => reviewGroup(g, true)` | `busy === g.key` |
+| Reject | `() => reviewGroup(g, false)` | `busy === g.key` |
+| Approve | `() => reviewCap(c, true)` | `busy === c.id` |
+| Reject | `() => reviewCap(c, false)` | `busy === c.id` |
+| Verify | `() => reviewMilestone(m, true)` | `busy === m.id` |
+| Reject | `() => reviewMilestone(m, false)` | `busy === m.id` |
+| Approve & pay | `() => reviewSettlement(s, true)` | `busy === s.id` |
+| Reject | `() => reviewSettlement(s, false)` | `busy === s.id` |
+
+## Admin · Unit applications
+`/admin/review` · roles: C/W/P
+
+| button | does | disabled when |
+|---|---|---|
+| Approve | `() => decide(a, true)` | `busy === a.member_id + a.org_unit_id` |
+| Decline | `() => decide(a, false)` | `busy === a.member_id + a.org_unit_id` |
+
+**Links:** (icon) → `/members/${a.member_id}`
+
+## Admin · People & access
+`/admin/access` · roles: P
+
+| button | does | disabled when |
+|---|---|---|
+| Sending… / Invite | `forgeOfficer` | `sending` |
+| ✓ | `() => saveEmail(p.id)` |  |
+| ✕ | `() => (editEmailId = null)` |  |
+| ✎ | `() => { editEmailId = p.id; emailDraft = p.email; }` |  |
+| ✕ | `() => removeOfficer(o)` | `busy === o.org_unit_id + o.member_id + o.role` |
+| Assign | `() => assign(u)` | `busy === u.id \|\| !dMember[u.id]` |
+| Creating… / Create | `createWG` | `creating` |
+| (icon) | `() => toggle(p.id, c.key)` | `busy === cell(p.id, c.key)` |
+| Done / Edit descriptions | `() => (editing = !editing)` |  |
+
+**Links:** (icon) → `/members/${o.member_id}`
+**Inputs:** c.description, emailDraft, fAffil, fEmail, fName, fPos, wgCode, wgName
+
+## Admin · Projects (taxonomy)
+`/admin/projects` · roles: P
+
+| button | does | disabled when |
+|---|---|---|
+| Save | `() => save(row)` |  |
+| Delete | `() => remove(row.id)` |  |
+| Add | `add` |  |
+
+## Admin · Guild & skills
+`/admin/guild` · roles: P
+
+| button | does | disabled when |
+|---|---|---|
+| Add skill | `add` | `adding` |
+| ✕ | `() => remove(root.id)` |  |
+| ✕ | `() => remove(c.id)` |  |
+| ✕ | `() => remove(r.skill_id)` |  |
+| Add requirement | `add` | `!reqSkill` |
+
+**Links:** the Guild → `/community?tab=badges`
+**Inputs:** newName, newParent, reqLevel, reqSkill
+
+## Admin · Resources & economy
+`/admin/economy` · roles: P
+
+| button | does | disabled when |
+|---|---|---|
+| Mint | `mint` |  |
+| Grant | `grant` |  |
+| Issue to all active members | `allowance` |  |
+| Cancel edit | `() => (editResId = '')` |  |
+| Edit | `() => (editResId = r.id)` |  |
+**Inputs:** grantAmt, grantReason, grantTo, mintAmt, mintReason, p.value, r.rate
+
+## Admin · Announcements
+`/admin/announcements` · roles: P
+
+| button | does | disabled when |
+|---|---|---|
+| Post | `add` |  |
+| Pinned / Pin | `() => patch(r.id, { pinned: !r.pinned })` | `busy === r.id` |
+| Retire | `() => patch(r.id, { is_active: false, pinned: false })` | `busy === r.id` |
+| Restore | `() => patch(r.id, { is_active: true })` | `busy === r.id` |
+| Delete | `() => remove(r.id)` | `busy === r.id` |
+**Inputs:** body, ctaLabel, href, level, title
+
+## Admin · First-author writing
+`/admin/writing` · roles: P
+
+| button | does | disabled when |
+|---|---|---|
+| Sending… / Remind all ({n}) | `() => remind(null)` | `sending` |
+| Remind selected ({n}) | `() => remind(selectedIds)` | `sending \|\| selectedIds.length === 0` |
+
+**Links:** (icon) → `/projects/${l.project_id}`
+
+## Shared form: ResourceForgeForm (resource declare/edit + post need)
+`member card · console · community · project` · roles: varies
+
+| button | does | disabled when |
+|---|---|---|
+| Working… / Save changes / Post need / Add resource | `forge` | `busy` |
+**Inputs:** fApi, fDetails, fGpu, fHeadcount, fName, fQuota, fSkillLevels, fType, fUsd, holder
+
+## Shared: SkillLevelPicker (skill+level tree)
+`add-member · need · badges · resource` · roles: varies
+
+| button | does | disabled when |
+|---|---|---|
+| (icon) | `() => set(s.id, lvl)` |  |
