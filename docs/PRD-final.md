@@ -48,6 +48,12 @@ Unit ─┬─ Chapter ─── Person ──< has >── Skill @ {Learning|In
 |---|---|
 | **Unit** | a **Chapter** (contains people) or a **Working Group** (contains projects). The two domains. |
 | **Person** | a researcher (P1: a card a chapter steward manages). Has **skills** (each at a **behavioral level** — Learning / Independent / Lead — **backed by evidence from the record**, §3.1) and **capacity** (hours/month, shown per period). |
+
+> **Correction (labor is a resource).** An earlier draft split a person's hours out as a non-resource
+> "capacity attribute." That was wrong: **labor (a person's time) is a resource** in the unified resource
+> model, alongside GPU · API · datasets · funding. A person can declare and **hold/steward** resources
+> (including for the community — *custody*), and matching gates uniformly on resource capacity. "Capacity
+> (hours)" is just the convenient surface for a person's **Labor** resource quota — not a separate concept.
 | **Project** | work toward a publication, owned by one WG. Identity (emoji · code · title) · status · links (Proposal/Arxiv/References) · body · **team** · **tasks** · **milestones**. |
 | **Need** | what a project requires to **form**: a **skill @ desired level**, or a resource, with a capacity & headcount. Filled by **matching** → creates a Membership. Level is a *soft sort signal*; capacity is the hard gate. |
 | **Task** | the **execution** unit: `{group?, name, skill(=work-type)?, owner?(TBD=open), state, note}`. Assigned **directly**. |

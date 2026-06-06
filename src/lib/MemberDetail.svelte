@@ -96,9 +96,10 @@
   // the editor only governs this card's OWN (member-scope) catalog…
   const ownResources = $derived(cardResources.filter((r) => r.scope === 'member'));
   const myLabor = $derived(ownResources.find((r) => r.resource_type?.name === 'Labor') ?? null);
-  // "My time" (Labor) is now the person's capacity attribute (Skills tab) — keep
-  // it out of the resource catalog so it isn't shown as a duplicate resource.
-  const catalogResources = $derived(ownResources.filter((r) => r.resource_type?.name !== 'Labor'));
+  // Labor ("My time") IS a resource in the unified model — show it in the catalog
+  // alongside GPU/data/funding. (The Skills tab's capacity bar mirrors the same
+  // hours for convenience.)
+  const catalogResources = $derived(ownResources);
   // …while community resources this person STEWARDS (holds for the community)
   // are shown read-only on their page too.
   const stewarded = $derived(cardResources.filter((r) => r.scope === 'community'));
