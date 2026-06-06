@@ -36,27 +36,37 @@ Everything below is the minimal system that captures the work **and** lets STR s
 ## 1. The model — six things, and only six
 
 ```
-Unit ─┬─ Chapter ─── Person ──< holds >── Skill@level (+ provenance)
+Unit ─┬─ Chapter ─── Person ──< has >── Skill @ {Learning|Independent|Lead}  + evidence (from the record)
       │                 │  capacity: hours / month (time-phased)
       │                 └──< member of >── Project   (a Membership: role, hours, since)
-      └─ Working Group ─ Project ─┬─ Need   (formation: a skill@level | a resource + capacity)
-                                  ├─ Task   (execution: group? · name · type? · owner? · state · note)
+      └─ Working Group ─ Project ─┬─ Need   (formation: a Skill @ desired level | a resource + capacity)
+                                  ├─ Task   (execution: group? · name · skill(=work-type)? · owner? · state · note)
                                   └─ Milestone
 ```
 
 | Thing | One line |
 |---|---|
 | **Unit** | a **Chapter** (contains people) or a **Working Group** (contains projects). The two domains. |
-| **Person** | a researcher (P1: a card a chapter steward manages). Has **skills** (each at a level, with **provenance**) and **capacity** (hours/month, shown per period). |
+| **Person** | a researcher (P1: a card a chapter steward manages). Has **skills** (each at a **behavioral level** — Learning / Independent / Lead — **backed by evidence from the record**, §3.1) and **capacity** (hours/month, shown per period). |
 | **Project** | work toward a publication, owned by one WG. Identity (emoji · code · title) · status · links (Proposal/Arxiv/References) · body · **team** · **tasks** · **milestones**. |
-| **Need** | what a project requires to **form**: a skill@level, or a resource, with a capacity & headcount. Filled by **matching** → creates a Membership. |
-| **Task** | the **execution** unit: `{group?, name, type?, owner?(TBD=open), state, note}`. Assigned **directly**. |
+| **Need** | what a project requires to **form**: a **skill @ desired level**, or a resource, with a capacity & headcount. Filled by **matching** → creates a Membership. Level is a *soft sort signal*; capacity is the hard gate. |
+| **Task** | the **execution** unit: `{group?, name, skill(=work-type)?, owner?(TBD=open), state, note}`. Assigned **directly**. |
 | **Membership** | a Person on a Project: their role, monthly hours, since-date. The source of **contribution** (hours), which the ledger values in **STR**. |
 
-Plus reference lists: **Skill** (name + a one-line rubric), **Milestone type**, and the **STR ledger**
-(contribution → accruing credit → settled, spendable STR). STR is the **value layer beneath** the six
-nouns — every logged hour feeds it — but it is *shown* only at the moments it means something (§4.4,
-§4.5, the wallet), never as the daily surface. ~7 core tables.
+Plus reference lists: **Skill** (a flat shared list — one vocabulary used three ways: a person's tag, a
+task's work-type, a Need's descriptor), **Milestone type**, and the **STR ledger** (contribution →
+accruing credit → settled, spendable STR). STR is the **value layer beneath** the six nouns — every
+logged hour feeds it — but it is *shown* only at the moments it means something (§4.4, §4.5, the wallet),
+never as the daily surface. ~7 core tables.
+
+**Skill level (redesigned from HCI — see `redesign-hci.md` §15).** Not an abstract 4-tier ladder, not a
+badge tree, not a certification queue. Three **behaviorally-anchored** levels, each = *what work can I
+trust them with*: **Learning** (contribute with guidance) · **Independent** (own a task end-to-end) ·
+**Lead** (set direction, guide others). Every level is shown **with evidence auto-derived from the
+record** — `Annotation · Independent · 4 tasks · 2 shipped` — so the record *is* the certification (no
+reviewer, no provenance machinery). Declared in one tap; the system **suggests raises as evidence
+accrues** ("owned 5 annotation tasks → mark Independent?"). Used to **rank** candidates in matching,
+**never to exclude** them.
 
 ---
 
@@ -74,8 +84,8 @@ A project moves through two logics, in order — both first-class, never conflat
 at Settle, on a person's profile, and in the wallet — not on the daily task board.*
 
 - **FORM = matching.** The project declares **Needs**; a chapter steward matches **People** to them by
-  skill and **spare capacity**. Output: the **team**. This is the only place skill/level/capacity gating
-  exists. A project doesn't run until it's resourced.
+  skill, **level + evidence** (a soft rank), and **spare capacity** (the hard gate). Output: the **team**.
+  A project doesn't run until it's resourced.
 - **RUN = the living record.** The team works **Tasks**; the lead assigns **owners directly** (a
   teammate, or TBD), tracks status, keeps coverage checklists, links, prose. **This is the thing that
   replaces the Google Doc** — and it is the product's daily heartbeat. Every hour logged here is what the
@@ -112,14 +122,17 @@ cell to change state) · **coverage** groups (e.g. language × state × owner) �
 · References) · **body**. Cross-project views the doc can't give: **all open/TBD tasks in the WG** (the
 backlog), **my tasks everywhere**, by owner, what changed this week.
 
-**4.2 Form a project — matching.** Create (emoji · code · type · proposal) → post **Needs** (skill@level
-or resource + capacity), each showing the **candidate-pool size** so demand isn't blind → on the People
-surface, select a person → fitting Needs glow with their **spare capacity** and **why they fit** → click
-→ confirm pre-filled to min(free, need) → **Assign**. Select→glow→click is primary; drag optional.
+**4.2 Form a project — matching.** Create (emoji · code · type · proposal) → post **Needs** (a skill at a
+*desired* level, or a resource, + capacity), each showing the **candidate-pool size** so demand isn't
+blind → on the People surface, select a person → fitting Needs glow with their **spare capacity**, their
+**level + evidence**, and **why they fit** → click → confirm pre-filled to min(free, need) → **Assign**.
+Candidates are **ranked** by level/evidence/capacity; under-level people still show (capacity is the only
+hard gate). Select→glow→click is primary; drag optional.
 
-**4.3 Register & steward people.** Add a card: name · email · affiliation · **hours** · skills (each
-level carries a **rubric** and a **provenance** — certified-by / self-claimed, visually distinct). Own-
-roster edits apply **immediately, with undo**.
+**4.3 Register & steward people.** Add a card: name · email · affiliation · **hours** · skills. A skill =
+pick a tag + set **Learning / Independent / Lead** in one tap (plain words, no pip-tree, no review). The
+level shows **with its evidence from the record** (`4 tasks · 2 shipped`); as evidence grows the system
+**suggests a raise**. Own-roster edits apply **immediately, with undo**.
 
 **4.4 Finish & Settle (Split → STR).** Mark finished; contribution (logged hours) is sealed. The **Split**
 view distributes the project's pool: each contributor's weight **defaults to their logged hours**, with a
@@ -152,10 +165,11 @@ Non-negotiable; a screen that violates these is unfinished (full rationale & pre
 7. **Trust + undo:** own-domain edits apply now with **toast-undo**; cross-domain acts are a
    **handshake**; only value/credential acts reach **one Settings review**. Guard hard-deletes.
 8. **Built for the 20th action:** full keyboard path, smart zero-typing defaults, **batch** matching.
-9. **Legibility of skill & value:** every skill level shows a **rubric + provenance**; **STR is always
-   shown legibly** where it appears — as *contribution ≈ N* / *accruing vs settled* with a one-tap
-   "how it's computed" (hours × rate) — and is **absent everywhere it isn't the point** (task board,
-   roster, home). Quiet, not hidden; legible, not loud.
+9. **Legibility of skill & value:** a skill level is **behaviorally anchored + evidence-backed**
+   (`Independent · 4 tasks · 2 shipped`) — never an abstract number or an unbacked stamp; it **ranks,
+   never gates** (capacity gates). **STR is always shown legibly** where it appears — as *contribution ≈
+   N* / *accruing vs settled* with a one-tap "how it's computed" (hours × rate) — and is **absent
+   everywhere it isn't the point** (task board, roster, home). Quiet, not hidden; legible, not loud.
 10. **Feedback & social state:** every act shows its **consequence inline** and **notifies** the people
     affected; an assignment is a **proposal with state** (proposed → active), so no silent conscription.
 11. **One object pattern:** card → drawer (peek) → route (deep); peeking a related entity never loses the
@@ -167,15 +181,15 @@ Non-negotiable; a screen that violates these is unfinished (full rationale & pre
 ## 6. Vocabulary (the only words that exist in the UI)
 
 **Unit · Chapter · Working Group · Person · Project · Need · Task · Owner · Assign · Skill · level
-(Beginner/Intermediate/Advanced/Expert) · capacity (hours) · Milestone · Finish · Settle · Split ·
+(Learning / Independent / Lead) · evidence · capacity (hours) · Milestone · Finish · Settle · Split ·
 contribution · STR · wallet · steward · Review.**
 
 Kept (the value layer, used only on My / Settle / Settings): **STR · contribution · accruing · settled ·
 Settle · Split · wallet · pool.**
 
 Banned, everywhere: *slot · open_need · work_labor · seat · bind · forge · seat_direct · nominal/liquid
-(say **accruing/settled**) · stake · mint · harvest (say **Settle**) · guild · apprentice/journeyman/
-craftsman/master · mining · miner.*
+(say **accruing/settled**) · stake · mint · harvest (say **Settle**) · guild · badge · certify ·
+apprentice/journeyman/craftsman/master · Beginner/Intermediate/Advanced/Expert · mining · miner.*
 
 ---
 
@@ -186,7 +200,8 @@ This is a rebuild, not a patch; build it in the order it delivers truth:
 0. **The living record** — Unit/Person/Project/Task model + the **Projects** surface (task board ·
    coverage · links · body) + **import the WG's existing doc**. *A WG drops its doc on day one.*
 1. **My tasks** — the cross-project worklist (the seed of the P2 member view).
-2. **People + capacity** — roster, skills with provenance, time-phased capacity bars.
+2. **People + capacity** — roster, skills (tag + Learning/Independent/Lead), evidence auto-derived from
+   the record, time-phased capacity bars.
 3. **Form by matching** — Needs + the select→glow→click seam.
 4. **Contribution + Settle** — hours feed the STR ledger; **Finish → Split → STR paid** (§4.4); STR shows
    on My / profile (quiet). *The economy, riding on a record that already works.*

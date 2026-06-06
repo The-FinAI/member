@@ -632,3 +632,76 @@ Keep both logics, build them in the order the WG **lives** them:
    project. It's logic #1, real and kept — just not the thing they touch daily.
 
 Build the daily record they already keep; let the resourcing/matching and the economy accrue around it.
+
+---
+
+## 15. Skills & levels — redesigned from HCI (keep skills; rethink the level and its interaction)
+
+*Skills stay — a research community genuinely needs to know who can write, who can annotate, who knows
+XBRL. What must be rebuilt is the **level** and **every interaction around it**: the abstract 4-tier
+ladder, the RPG pip-tree (`BadgeTree`), the certification queue, and the self-claim/provenance patch I
+added in §12.A2 were all the wrong answer to a real problem. New canon here: **Behaviorally Anchored
+Rating Scales (BARS)** from I/O psychology; the **Dunning–Kruger** unreliability of abstract
+self-assessment; Nielsen #6 recognition; Norman — anchor abstract values to concrete referents.*
+
+### 15.1 Why the current level system is HCI-broken
+- **Abstract tiers have no referent.** *Beginner / Intermediate / Advanced / Expert* (worse:
+  *apprentice…master*) — what separates Intermediate from Advanced writing? Nothing shared. People
+  **cannot reliably place themselves** on an abstract ladder (Dunning–Kruger). The number is noise.
+- **Certification has no basis.** Who can certify "Advanced NLP," against what rubric? The review queue
+  is bureaucracy that produces a stamp without a standard.
+- **Level-as-hard-gate is false precision.** "This Need requires Advanced Writing" filters on noise and
+  **excludes capable people** whose self-rating happened to be conservative.
+- **The pip-tree is recognition-poor & heavy.** Clicking diamonds to stage raises → submit for review is
+  a game mechanic, not a legible statement of capability.
+- **My provenance patch (§12.A2) treated the symptom.** Adding "certified-by vs self-claimed" was
+  propping up a shaky abstraction instead of replacing it.
+
+### 15.2 The HCI fixes (three moves)
+1. **Anchor the scale to behavior, not adjectives (BARS).** Replace 4 abstract tiers with **3
+   behaviorally-anchored levels**, each = *what work can I trust this person with* — a question a steward
+   (and the person) can actually answer:
+   - **Learning** — can contribute **with guidance**.
+   - **Independent** — can **own** a task/role in this skill end-to-end.
+   - **Lead** — can **set direction and guide others** in it.
+   Three, not four (cognitive load; and these map 1:1 to staffing decisions: "for this Need do I need
+   someone who can *own* it, or is *help* enough?").
+2. **Back the claim with evidence from the record (evidence > assertion).** We are record-first — the
+   system already knows who owned which tasks and shipped which projects. So a skill **always shows its
+   evidence next to the level**: `Annotation · Independent · 4 tasks · 2 shipped`. The level is the
+   claim; the record is the proof. **This dissolves the certification queue** — evidence *is* the
+   certification. A steward may nudge a level if reality differs (rare, undoable); no approval workflow.
+3. **Use level as a soft signal, never a hard gate.** Capacity (free hours) stays the **only hard gate**
+   in matching. Level + evidence **rank and recommend** candidates ("Independent · owned 4 · 6h free"),
+   they don't exclude. A Need expresses a *desired* level ("ideally Independent"), and under-level people
+   still appear, ranked lower — so a conservative self-rating never locks someone out.
+
+### 15.3 The new interactions (what replaces the pip-tree & the queue)
+- **Declare a skill:** pick a tag from the shared list, set **Learning / Independent / Lead** in one tap
+  (plain segmented control, words not diamonds). That's the whole interaction. No staging, no submit, no
+  review.
+- **Growth is earned and prompted, not granted.** As the record accrues, the system **suggests** the
+  raise: *"You've owned 5 annotation tasks across 2 shipped projects — mark yourself **Independent**?"*
+  Earned from real work, one-tap to accept. (Progressive disclosure; intrinsic-motivation framing.)
+- **On a person card:** skills read as self-explaining lines — `Writing · Lead · 6 tasks · 3 shipped` —
+  legible at a glance (recognition, not a tree to decode).
+- **In matching:** a Need shows "Annotation (Independent ideal)"; candidates sort by **fit + evidence +
+  free capacity**, each with the **positive reason** ("Independent · owned 4 · 6h free"). No greyed-out
+  exclusions on level.
+
+### 15.4 The shared vocabulary (one list, three uses)
+The real WG doc's task "Status" values — *Annotation · Raw Data Collection · Evaluation · OCR* — **are**
+the skills. So **one flat Skill list serves three roles**: a **person's skill tag**, a **task's
+work-type**, and a **Need's descriptor**. One vocabulary to learn, consistent everywhere (Nielsen #4).
+
+### 15.5 What this cuts vs keeps
+- **Cut:** the 4-tier abstract ladder, apprentice/journeyman/craftsman/master, `BadgeTree` pip-staging,
+  the skill **certification/review queue**, skill-exam + endorsement, the self-claim-vs-certified
+  provenance machinery, level-as-hard-gate.
+- **Keep:** skills (as a shared flat tag list), a **3-level behaviorally-anchored** proficiency, and —
+  new — **evidence auto-derived from the record** as the trust mechanism.
+
+HCI test for skills: *can a steward look at a person and a Need and decide "can this person own this?" in
+one read — from plain words and real evidence, without trusting an unanchored number or a stamp from an
+unknown certifier?* If yes, the level is doing honest work; if it relies on an abstract self-rating, it
+isn't.
