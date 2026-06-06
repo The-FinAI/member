@@ -115,7 +115,7 @@
       </div>
       <div class="alloc-legend">
         <span class="lg"><span class="sw l"></span> {$t('Liquid')} <strong class="mono" style="color:var(--text);">{balance.toLocaleString()}</strong></span>
-        <span class="lg"><span class="sw b"></span> {$t('Staked')} <strong class="mono" style="color:var(--text);">{staked.toLocaleString()}</strong></span>
+        <span class="lg"><span class="sw b"></span> {$t('Committed')} <strong class="mono" style="color:var(--text);">{staked.toLocaleString()}</strong></span>
       </div>
     </div>
 
@@ -126,7 +126,7 @@
         <span class="sub">{$t('spendable now')}</span>
       </div>
       <div class="tile" style="flex:1; min-width:160px;">
-        <span class="label">{$t('Staked')} <Hint term="nominal" text={$t('Nominal STR minted into project pools (your bond + declared work). Locked until each project settles, then converts to liquid.')} /></span>
+        <span class="label">{$t('Committed')} <Hint term="nominal" text={$t('Accruing STR from your committed work in live projects. Locked until each project settles, then becomes settled (spendable) STR.')} /></span>
         <span class="value"><CountUp value={staked} /></span>
         <span class="sub">{$t('bonded in projects')}</span>
       </div>
@@ -140,7 +140,7 @@
     <!-- How you earn STR — the contribution loop made explicit -->
     <div class="card earn">
       <h2 style="margin:0;">{$t('How you earn STR')}</h2>
-      <p class="muted" style="font-size:.82rem; margin:-.3rem 0 .2rem;">{$t('STR is earned by contributing to projects that finish. Nominal STR accrues as you work; settlement converts it to spendable (liquid) STR.')}</p>
+      <p class="muted" style="font-size:.82rem; margin:-.3rem 0 .2rem;">{$t('STR is earned by contributing to projects that finish. It accrues as you work; settlement converts it to spendable (settled) STR.')}</p>
       <div class="earn-steps">
         <div class="earn-step"><span class="es-n">1</span><div class="es-tx"><strong>{$t('Join or lead a project')}</strong><span class="muted">{$t('Take an open need, or start one as first author.')}</span></div></div>
         <span class="es-arrow">→</span>

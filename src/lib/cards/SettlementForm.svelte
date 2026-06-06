@@ -112,7 +112,7 @@
       <thead>
         <tr>
           <th>{$t('Contributor')}</th>
-          <th class="num">{$t('Nominal')}</th>
+          <th class="num">{$t('Accruing')}</th>
           <th class="num">{$t('Weight')}</th>
           <th class="num">{$t('Share')}</th>
           <th class="ctr">{$t('Author')}</th>

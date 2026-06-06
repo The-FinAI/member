@@ -191,7 +191,7 @@
     </div>
 
     <div class="pd-stats">
-      <div class="pd-stat"><span class="pd-v mono">{g.pool.toLocaleString()}</span><span class="pd-l">{$t('Nominal pool')}</span></div>
+      <div class="pd-stat"><span class="pd-v mono">{g.pool.toLocaleString()}</span><span class="pd-l">{$t('Accruing pool')}</span></div>
       <div class="pd-stat"><span class="pd-v mono">{g.seatsFilled}/{g.seatsTotal}</span><span class="pd-l">{$t('Seats')}</span></div>
       <div class="pd-stat"><span class="pd-v mono">{g.openNeeds}</span><span class="pd-l">{$t('Open needs')}</span></div>
       {#if g.mult > 1}<div class="pd-stat"><span class="pd-v mono" style="color:var(--accent);">×{g.mult.toFixed(2)}</span><span class="pd-l">{$t('Milestone mult.')}</span></div>{/if}
@@ -205,7 +205,7 @@
         <span class="pp-payout">{$t('Projected payout')}: <strong class="mono accent">{projectedPayout.toLocaleString()}</strong>{#if g.mult > 1}<span class="muted"> ({g.pool.toLocaleString()} × {g.mult.toFixed(2)})</span>{/if}</span>
       </div>
       <div class="pp-track">
-        {#each [['accruing', $t('Accruing'), $t('contributors mint nominal STR')], ['ready', $t('Finish'), $t('mark done & draft settlement')], ['settling', $t('Settle'), $t('under review')], ['settled', $t('Paid out'), $t('liquid STR to wallets')]] as [k, label, sub], i}
+        {#each [['accruing', $t('Accruing'), $t('contributors’ accruing STR')], ['ready', $t('Finish'), $t('mark done & draft settlement')], ['settling', $t('Settle'), $t('under review')], ['settled', $t('Paid out'), $t('liquid STR to wallets')]] as [k, label, sub], i}
           <div class="pp-step" class:on={stageIdx === i} class:done={stageIdx > i}>
             <span class="pp-dot"></span>
             <span class="pp-tx"><strong>{label}</strong><span class="muted">{sub}</span></span>

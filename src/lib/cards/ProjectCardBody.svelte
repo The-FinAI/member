@@ -283,7 +283,7 @@
       {#if canEdit && isUnderReview}
         <div class="pcb-status-row">
           <button type="button" class="pcb-done" disabled={busy === 'done'} onclick={mintDone}>
-            {#if busy === 'done'}<span class="spin"></span>{/if}✓ {$t('Mint done')}
+            {#if busy === 'done'}<span class="spin"></span>{/if}✓ {$t('Finish')}
           </button>
           <span class="pcb-hint">{$t('Submits completion to the review queue → settlement.')}</span>
         </div>
@@ -408,7 +408,7 @@
         {#each milestones as m (m.id)}
           <li>
             <span class="mst-item">{$t(m.catalog?.item ?? '—')}</span>
-            <span class="mst-val">+{m.nominal_value} {$t('nominal')} · ×{(1 + Number(m.multiplier_bonus)).toFixed(3)}</span>
+            <span class="mst-val">+{m.nominal_value} {$t('accruing')} · ×{(1 + Number(m.multiplier_bonus)).toFixed(3)}</span>
             <span class="badge {MST_CLASS[m.status] ?? 'dim'}">{$t(MST_LABEL[m.status] ?? m.status)}</span>
           </li>
         {/each}
