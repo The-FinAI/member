@@ -8,6 +8,12 @@
       "port": 5179
     },
     {
+      "name": "mock",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "dev", "--port", "5181", "--mode", "mock"],
+      "port": 5181
+    },
+    {
       "name": "mockups",
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "5180", "--directory", "mockups"],

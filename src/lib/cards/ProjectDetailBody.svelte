@@ -190,41 +190,16 @@
       </div>
     </div>
 
-    <div class="pd-stats">
-      <div class="pd-stat"><span class="pd-v mono">{g.pool.toLocaleString()}</span><span class="pd-l">{$t('Accruing pool')}</span></div>
-      <div class="pd-stat"><span class="pd-v mono">{g.seatsFilled}/{g.seatsTotal}</span><span class="pd-l">{$t('Seats')}</span></div>
-      <div class="pd-stat"><span class="pd-v mono">{g.openNeeds}</span><span class="pd-l">{$t('Open needs')}</span></div>
-      {#if g.mult > 1}<div class="pd-stat"><span class="pd-v mono" style="color:var(--accent);">×{g.mult.toFixed(2)}</span><span class="pd-l">{$t('Milestone mult.')}</span></div>{/if}
-      {#if g.leader}<div class="pd-stat"><span class="pd-v">{g.leader}</span><span class="pd-l">{$t('first author')}</span></div>{/if}
-    </div>
+    <!-- The living record leads. STR is quiet on the project page (PRD §4.5) —
+         it surfaces at Finish→Split and on the wallet, not as a header pipeline.
+         When finished, a one-line settle nudge appears (canPostNeed sees it). -->
+    {#if g.finished && stage === 'ready' && canPostNeed}
+      <p class="pd-settle-nudge">{$t('This project is finished — draft the settlement below to split the credit.')}</p>
+    {/if}
 
-    <!-- STR pipeline: how this project's work becomes spendable STR -->
-    <div class="pd-pipe">
-      <div class="pp-head">
-        <span class="pd-h">{$t('STR pipeline')}</span>
-        <span class="pp-payout">{$t('Projected payout')}: <strong class="mono accent">{projectedPayout.toLocaleString()}</strong>{#if g.mult > 1}<span class="muted"> ({g.pool.toLocaleString()} × {g.mult.toFixed(2)})</span>{/if}</span>
-      </div>
-      <div class="pp-track">
-        {#each [['accruing', $t('Accruing'), $t('contributors’ accruing STR')], ['ready', $t('Finish'), $t('mark done & draft settlement')], ['settling', $t('Settle'), $t('under review')], ['settled', $t('Paid out'), $t('liquid STR to wallets')]] as [k, label, sub], i}
-          <div class="pp-step" class:on={stageIdx === i} class:done={stageIdx > i}>
-            <span class="pp-dot"></span>
-            <span class="pp-tx"><strong>{label}</strong><span class="muted">{sub}</span></span>
-          </div>
-        {/each}
-      </div>
-      {#if stage === 'accruing'}
-        <p class="pp-note muted">{$t('Keep contributing — every seated person’s hours/resources grow the pool. STR is paid only when the project finishes and settles.')}</p>
-      {:else if stage === 'ready'}
-        <p class="pp-note">{canPostNeed ? $t('This project is finished — draft the settlement below to pay out STR.') : $t('Finished — waiting for the leader to draft the settlement.')}</p>
-      {:else if stage === 'settling'}
-        <p class="pp-note muted">{$t('Settlement submitted — an admin is reviewing it. Payout happens on approval.')}</p>
-      {:else}
-        <p class="pp-note">{$t('Settled — STR has been paid out to contributors.')}</p>
-      {/if}
-    </div>
-
-    <ProjectCardBody projectId={g.id} {venues} {workingGroups} {statuses} onChanged={reload} />
-
+    <!-- the living record is the heartbeat — task board + team lead, the deeper
+         project admin (status pipeline · links · meetings · milestones · history
+         · settlement) follows. -->
     <div class="pd-section">
       <TaskBoard projectId={g.id} canEdit={canManage || canPostNeed} onChanged={onChanged} />
     </div>
@@ -232,6 +207,8 @@
     <div class="pd-section">
       <ProjectTeam projectId={g.id} canManage={canPostNeed} finished={g.finished} />
     </div>
+
+    <ProjectCardBody projectId={g.id} {venues} {workingGroups} {statuses} onChanged={reload} />
 
     {#if !g.wg}
       <p class="muted" style="font-size:.82rem; margin:0;">{$t('This project isn’t attributed to a working group yet.')}</p>
@@ -250,6 +227,7 @@
 {/if}
 
 <style>
+  .pd-settle-nudge { font-size:.9rem; color:#9a7b12; background:#fff8e6; border:1px solid #f0d98a; border-radius:9px; padding:.5rem .7rem; }
   .pdrawer { display: flex; flex-direction: column; gap: 1rem; }
   .pd-header { display: flex; flex-direction: column; gap: .15rem; }
   .pd-back { font-size: .82rem; color: var(--muted); text-decoration: none; }
