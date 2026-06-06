@@ -137,6 +137,21 @@
       </div>
     </div>
 
+    <!-- How you earn STR — the contribution loop made explicit -->
+    <div class="card earn">
+      <h2 style="margin:0;">{$t('How you earn STR')}</h2>
+      <p class="muted" style="font-size:.82rem; margin:-.3rem 0 .2rem;">{$t('STR is earned by contributing to projects that finish. Nominal STR accrues as you work; settlement converts it to spendable (liquid) STR.')}</p>
+      <div class="earn-steps">
+        <div class="earn-step"><span class="es-n">1</span><div class="es-tx"><strong>{$t('Join or lead a project')}</strong><span class="muted">{$t('Take an open need, or start one as first author.')}</span></div></div>
+        <span class="es-arrow">→</span>
+        <div class="earn-step"><span class="es-n">2</span><div class="es-tx"><strong>{$t('Contribute monthly')}</strong><span class="muted">{$t('Hours, resources & milestones mint nominal STR (your “Staked”: {n}).', { n: staked.toLocaleString() })}</span></div></div>
+        <span class="es-arrow">→</span>
+        <div class="earn-step"><span class="es-n">3</span><div class="es-tx"><strong>{$t('Finish the project')}</strong><span class="muted">{$t('The leader drafts a settlement; milestones lift the payout (up to ×3).')}</span></div></div>
+        <span class="es-arrow">→</span>
+        <div class="earn-step done"><span class="es-n">✓</span><div class="es-tx"><strong>{$t('Get liquid STR')}</strong><span class="muted">{$t('Settlement pays out spendable STR by your share (your “Liquid”: {n}).', { n: balance.toLocaleString() })}</span></div></div>
+      </div>
+    </div>
+
     <div class="card stack">
       <h2 style="margin:0;">{$t('Activity')}</h2>
       <p class="muted" style="font-size:.82rem; margin-top:-.4rem;">
@@ -164,3 +179,17 @@
     </div>
   {/if}
 </div>
+
+<style>
+  .earn { display: flex; flex-direction: column; gap: .4rem; }
+  .earn-steps { display: flex; align-items: stretch; gap: .4rem; flex-wrap: wrap; }
+  .earn-step { flex: 1; min-width: 180px; display: flex; gap: .55rem; padding: .65rem .7rem; border: 1px solid var(--border); border-radius: 10px; background: var(--card-2); }
+  .earn-step.done { border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: var(--accent-soft); }
+  .es-n { flex: none; width: 1.5rem; height: 1.5rem; border-radius: 50%; background: var(--muted); color: var(--card); font-weight: 700; font-size: .82rem; display: grid; place-items: center; }
+  .earn-step.done .es-n { background: var(--accent); color: #fff; }
+  .es-tx { display: flex; flex-direction: column; gap: .12rem; min-width: 0; }
+  .es-tx strong { font-size: .86rem; }
+  .es-tx .muted { font-size: .76rem; }
+  .es-arrow { align-self: center; color: var(--muted); font-weight: 700; }
+  @media (max-width: 720px) { .es-arrow { display: none; } }
+</style>

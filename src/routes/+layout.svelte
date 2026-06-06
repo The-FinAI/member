@@ -136,25 +136,20 @@
 
     {#if $session}
       <nav class="side-nav">
-        <a href="/" class="side-link" class:active={$page.url.pathname === '/'}>{$t('Overview')}</a>
+        <a href="/" class="side-link" class:active={$page.url.pathname === '/'}>{$t('Home')}</a>
 
-        <div class="side-section">{$t('Browse')}</div>
+        <!-- Work: the contribution loop. Projects make STR; the console is the
+             officer's matching desk. -->
+        <div class="side-section">{$t('Work')}</div>
         <a href="/projects" class="side-link" class:active={isActive('/projects', $page.url.pathname)}>{$t('Projects')}</a>
-        <a href="/community" class="side-link" class:active={isActive('/community', $page.url.pathname)}>{$t('Community')}</a>
-
-        {#if $officerUnits.length > 0 || canApprove || canAdmin}
-          <div class="side-section">{$t('Operate')}</div>
-          {#if $officerUnits.length > 0 || canAdmin}
-            <a href="/officer" class="side-link" class:active={isActive('/officer', $page.url.pathname)}>{$t('Officer console')}</a>
-          {/if}
-          {#if canApprove}
-            <a href="/admin/forge-queue" class="side-link" class:active={isActive('/admin/forge-queue', $page.url.pathname)}>{$t('Review queue')}</a>
-          {/if}
+        {#if $officerUnits.length > 0 || canAdmin}
+          <a href="/officer" class="side-link" class:active={isActive('/officer', $page.url.pathname)}>{$t('Console')}</a>
         {/if}
 
         <div class="side-section">{$t('More')}</div>
+        <a href="/community" class="side-link" class:active={isActive('/community', $page.url.pathname)}>{$t('Community')}</a>
         <a href="/guide" class="side-link" class:active={isActive('/guide', $page.url.pathname)}>{$t('Guide')}</a>
-        {#if canAdmin}
+        {#if canAdmin || canApprove}
           <a href="/admin" class="side-link" class:active={isActive('/admin', $page.url.pathname)}>{$t('Admin')}</a>
         {/if}
       </nav>
