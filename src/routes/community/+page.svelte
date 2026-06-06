@@ -335,10 +335,7 @@
             status={positionsOf(r) || ($member && r.id === $member.id ? 'you' : '')}
             statusKind={positionsOf(r) ? 'dim' : 'pos'}
             accent={!!($member && r.id === $member.id)}
-            stats={[
-              { label: 'Nominal', value: (nominalOf[r.id] ?? 0).toLocaleString() },
-              { label: 'Net worth', value: netWorthOf(r.id).toLocaleString() }
-            ]}
+            stats={[]}
             onclick={() => openPerson(r)}
           />
         {/each}
@@ -383,8 +380,8 @@
             statusKind={myUnitIds.has(u.id) ? 'warn' : 'dim'}
             accent={myUnitIds.has(u.id)}
             stats={tab === 'chapters'
-              ? [{ label: 'Members', value: String(u.count) }, { label: 'Combined net worth', value: u.total.toLocaleString() }]
-              : [{ label: 'Projects', value: String(u.count) }, { label: 'Staked STR', value: u.total.toLocaleString() }]}
+              ? [{ label: 'Members', value: String(u.count) }]
+              : [{ label: 'Projects', value: String(u.count) }]}
             onclick={() => openUnit(u)}
           />
         {/each}

@@ -160,7 +160,7 @@
         <a href="/wallet" class="su-wallet" class:active={isActive('/wallet', $page.url.pathname)} title={$t('Open your wallet')}>
           <span class="su-amt">{(netValue ?? 0).toLocaleString()}</span>
           <span class="su-unit">STR</span>
-          <span class="su-tag">{$t('Net value')}</span>
+          <span class="su-tag">{$t('Your STR')}</span>
         </a>
         <div class="usermenu">
           <button class="su-id" onclick={() => (menuOpen = !menuOpen)} title={$t('Account')} aria-haspopup="true" aria-expanded={menuOpen}>
