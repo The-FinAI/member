@@ -533,77 +533,102 @@ A WG record is a list of **Projects**, each with a recurring head and a free bod
     *Potential additional languages*, a **References** bag of links (by language), and a **To Do List**
     (tasks with `(owner)` in parens, some with nested detail).
 
-### 14.2 The reality check — this **corrects** §0–13
+### 14.2 The correction — **two logics, two stages** (not one replacing the other)
 
-> **The WG's atomic unit of record is "a named **task** with a person typed in as **owner**." There is
-> no skill, no level, no qualification gate, no chapter-officer-as-matcher anywhere in the real doc.**
+My first read of this doc over-corrected: I concluded the skill-matching seam was over-engineered and
+should be demoted. That was wrong. The truth the President names:
 
-That contradicts the heavy machinery I built up:
-- My **Role = (skill_id, min_level)** matched by **badge rank** via a **Chapter officer** is **heavier
-  than how WGs actually operate.** In reality a WG **lead writes a task and assigns whoever** (a
-  volunteer, a known collaborator) **by name** — the `Add directly` path I had *demoted to an admin edge
-  case is the primary, normal motion.*
-- So the **seam flips direction.** It is **not** "Chapter officer *pushes* qualified people into WG
-  roles." It is "WG lead defines tasks and assigns owners directly; **when they don't know who's free or
-  able, they *pull* — ask 'who could do this?'** and *then* the skill/capacity helper appears." Matching
-  becomes an **optional assist on the WG side**, not a mandatory gate on the Chapter side.
+> **加项目要资源匹配，进去后就直接安排 — there are *two distinct logics* at two lifecycle stages,
+> and both are needed:**
+>
+> 1. **Forming a project = resource matching.** To stand a project up, the WG must **secure the
+>    skills / resources / people** it needs: declare the project's needs and **match capacity** against
+>    them (the qualify · seat · capacity seam of §0–13). A project doesn't run until it's resourced.
+> 2. **Running a project = direct assignment.** Once a project is staffed, the lead breaks the work into
+>    **tasks and assigns owners directly** (the doc's `Task · Status · Owner · Note` table). No skill
+>    gate, no matching ceremony — just "this person, this task."
 
-This is the most important correction in the whole document, because it came from data, not reasoning:
-**lead with the lightweight task-with-owner; make skill-matching an opt-in helper.**
+**Why the doc shows only #2:** the `Multilingual&Multimodal WG` doc is a **running** record — the
+projects already exist and are staffed, so naturally it shows direct task assignment and *no* matching.
+The matching machinery isn't absent because it's wrong; it belongs to the **other stage (formation)**,
+which happened before, and which the doc doesn't capture.
 
-### 14.3 The absorption — one new noun does almost all of it
+So §0–13's **Role / qualify / capacity** seam is the **formation** logic, and §14's **Task** is the
+**execution** logic. Both are real; they are **cleanly split by lifecycle stage**, not competing.
 
-Almost every per-project thing in the doc collapses into **one concept: Task.**
+### 14.3 Two primitives, two layers — Role ≠ Task
+
+| | **Role** (formation) | **Task** (execution) |
+|---|---|---|
+| Question it answers | *who/what is **on** this project?* | *what is the team **doing** right now?* |
+| Carries | a needed skill+level / resource / capacity | a named piece of work + owner + status + note |
+| How it's filled | **matched** (qualify · capacity · seat) — the §0–13 seam | **assigned directly** — pick a person, or leave TBD |
+| Produces | the project's **team & resources** | the project's **worklist** |
+| Source of truth | the redesign's matching seam | this WG doc's table |
+
+These are **two objects, not one** — my earlier "a Role is just an open Task" conflated the layers and
+is retracted. **Matching produces the team; tasks organize that team's work.** A project first gets its
+people/resources by matching (formation), then runs on a task board where the lead assigns those people
+to concrete tasks directly (execution).
+
+### 14.4 The absorption — `Task` is the new execution primitive (Role already exists)
+
+The seam/Role layer already exists in code (slots, needs, `work_seat`, qualify). The **only genuinely new
+noun is `Task`**, for the execution layer:
 
 **Task** = `{ project_id, group?, name, work_type?, owner_member_id?(null = open/TBD), state, note }`
-- The hi-Hindi **table** *is* a task list (`name`, `work_type`=Status-column, `owner`, `note`).
+- The hi-Hindi **table** *is* a task list (`name`, `work_type`=its "Status" column, `owner`, `note`).
 - The ml-Tagging **coverage matrix** *is* a task group (`group`="XBRL Coverage", `name`="EN",
-  `state`=confirmed/need-to-check/potential, `owner`, `note`).
-- The **To Do List** *is* tasks. Nested detail → the `note`.
-- `state` is a tiny set (**Open · Doing · Done**, plus coverage's *Confirmed/Checking/Potential* as a
-  per-group state vocabulary); `work_type` is a small configurable list (Annotation, Raw Data
-  Collection, Evaluation, OCR, Summarization, MCQ-Eval…).
+  `state`=Confirmed/Checking/Potential, `owner`, `note`).
+- The **To Do List** *is* tasks; nested detail → the `note`.
+- `state` is a tiny set (**Open · Doing · Done**, plus coverage's *Confirmed/Checking/Potential* per
+  group); `work_type` is a small configurable list (Annotation · Raw Data Collection · Evaluation · OCR ·
+  Summarization · MCQ-Eval…).
+- **Owner is assigned directly** (pick a person from the project's team, or anyone; or leave TBD). This
+  is *not* the matching gate — it's the lightweight execution assignment.
 
-Everything else maps to things that **already exist** or are trivial:
+Everything else maps to what already exists or is trivial:
 
 | Doc element | System today | To add |
 |---|---|---|
-| Project name + **emoji + code/tag** (`ml-`, `vis-`…) | name exists | an **emoji** + a **tag** (modality/language) field + the `xx-Name` code convention |
-| **Proposal** link | `project_link_add` kind=proposal ✓ | — |
-| **Arxiv** link | link kind=paper/arxiv ✓ | surface Arxiv as a first-class project field |
+| Project name + **emoji + code/tag** (`ml-`, `vis-`…) | name exists | an **emoji** + a **tag** (modality/language) + the `xx-Name` code convention |
+| **Proposal** link | link kind=proposal ✓ | — |
+| **Arxiv** link | link kind=paper/arxiv ✓ | surface Arxiv as a first-class field |
 | **References** (link bag) | links ✓ | a "References" link group |
-| **Task · Status · Owner · Note** table | ✗ (only skill+level *roles*) | **Task** (the new noun) |
+| Project **team & resources** | slots / needs / `work_seat` ✓ (formation seam) | keep — this is logic #1 |
+| **Task · Status · Owner · Note** table | ✗ | **Task** (the new execution noun) |
 | **Coverage** (lang × state × owner) | ✗ | **Task group** with a per-group state set |
-| Free-form todo / coverage prose | single-line summary + notes-timeline | a **rich body** block per project |
-| Owner = **a person, typed directly** | `seat_direct` (demoted) | make **direct owner-pick the primary** assign |
+| Free-form todo / coverage prose | single-line summary + notes timeline | a **rich body** block per project |
 
-**Net: the only genuinely new primitive is `Task` (with an optional `group`).** It replaces the doc's
-tables *and* reframes "Role" — a Role is just **a Task whose owner is still open**, optionally annotated
-with "needs skill X" when the WG wants the matching helper.
+### 14.5 What the WG surface becomes (so the doc dies) — both stages, in order
 
-### 14.4 What the WG surface becomes (so the doc dies)
+The **Projects** surface (WG domain) holds the project across both logics:
+- **Forming:** create the project → declare its needs → **match/secure** the people & resources (logic
+  #1, uses the People/Chapter seam). The project becomes "resourced."
+- **Running — the living record (logic #2):**
+  - **WG home** = the doc's top level: every project a card (emoji · code · status · Proposal/Arxiv ·
+    open-task count). The whole doc on one screen.
+  - **Project page** = the doc's per-project section: the **task board** (inline-editable
+    `Task · Type · Owner · Status · Note`), the **coverage checklist**, the **links**, a **rich body**.
+    Add a task = one row; assign owner = pick a teammate (or TBD); change state = click the cell.
+    *The Google Doc, but queryable, owned, and notifying.*
+  - **Cross-cut views the doc can't give:** "all **open/TBD** tasks across the WG" (the real backlog),
+    "**my** tasks across all projects" (every member's worklist — the P2 member hero), "by owner",
+    "what changed this week."
 
-The **Projects** surface (WG domain) becomes the WG's **living record**:
-- **WG home** = the doc's top level: every project as a card (emoji · code · status · Proposal/Arxiv ·
-  open-task count). The whole doc, on one screen.
-- **Project page** = the doc's per-project section: the **task table** (inline-editable, exactly
-  `Task · Type · Owner · Status · Note`), the **coverage checklist**, the **links** (Proposal / Arxiv /
-  References), and a **rich body** for prose. Add a task = one row; assign = pick a person (or leave
-  TBD); change state = click the cell. *That is the Google Doc, but queryable, owned, and notifying.*
-- **Cross-cut views the doc can't give for free:** "all **open** (ownerless) tasks across the WG" (the
-  real backlog), "**my** tasks across all projects" (every member's worklist — this is the member-facing
-  P2 hero), "tasks by **owner**", "what changed this week."
+### 14.6 Migration — import the doc, don't retype it
 
-### 14.5 Migration — import the doc, don't retype it
+Parse the doc into `projects[]` (+ their links) and `tasks[]` (tables and bullet lists map directly),
+match owners to member cards by name, leave unmatched/`TBD` as **open** tasks. One import pass and the WG
+opens the app to **find their doc already inside it** — the strongest adoption lever (recognition, not
+re-entry). *(Formation/resourcing is layered on afterward; the import seeds the execution record they
+already keep.)*
 
-Parse the existing doc into `projects[]` + `tasks[]` (the tables and bullet lists map directly), match
-owners to member cards by name, leave unmatched/`TBD` as **open** tasks. One import pass and the WG
-opens the app to **find their doc already inside it** — the single strongest adoption lever (recognition,
-not re-entry).
+### 14.7 What this re-orders
+Keep both logics, build them in the order the WG **lives** them:
+1. **Execution first — `Task` + the WG living-record project page + doc import.** This is what the WG
+   opens every week; it's lighter than the matching seam and gives immediate "drop the doc" value.
+2. **Formation second — refine the Role/match/capacity seam** as the gate that *resources* a new
+   project. It's logic #1, real and kept — just not the thing they touch daily.
 
-### 14.6 What this re-orders, again
-The task table is now the **highest-value missing primitive** — it is what the WG opens every week, and
-it is lighter to build than the skill-matching seam. Revised lead of the rollout: **Task (with
-owner/state/type) + the WG living-record project page + the doc import** come **first** — before the
-qualify/badge matching machinery, which is demoted to the opt-in "help me find an owner" assist of §14.2.
-Build the thing they actually use daily; let the economy and the matching cleverness accrue around it.
+Build the daily record they already keep; let the resourcing/matching and the economy accrue around it.
