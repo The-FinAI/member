@@ -65,7 +65,10 @@
       supabase.from('api_model').select('id, provider, name, usd_per_million').eq('is_active', true).order('rank'),
       me ? supabase.from('badge').select('skill_id, level').eq('member_id', me) : Promise.resolve({ data: [] as any[] })
     ]);
-    types = (rt as ResType[]) ?? []; gpus = (gp as Gpu[]) ?? []; apis = (ap as Api[]) ?? [];
+    // exclude "Labor" — a person's hours are now a capacity attribute (Skills tab),
+    // not a resource to declare here. Stops the confusing "Labor/GPU" type list.
+    types = ((rt as ResType[]) ?? []).filter((x) => x.name !== 'Labor');
+    gpus = (gp as Gpu[]) ?? []; apis = (ap as Api[]) ?? [];
     const bmap: Record<string, string> = {};
     for (const b of (bg as { skill_id: string; level: string }[]) ?? []) bmap[b.skill_id] = b.level;
     myBadges = bmap;

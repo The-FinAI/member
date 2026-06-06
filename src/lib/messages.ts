@@ -4666,6 +4666,8 @@ const fr: Table = {
   'clear': 'effacer',
   'Confirm seat': 'Confirmer',
   'Working Groups': 'Groupes de travail',
+  'Email (required)': 'E-mail (requis)',
+  'Full name (required)': 'Nom complet (requis)',
   'first author open': 'premier auteur ouvert',
   'Your STR balance and history.': 'Votre solde STR et l’historique.',
   'older system': 'ancien système',

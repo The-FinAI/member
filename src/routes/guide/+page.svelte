@@ -80,7 +80,7 @@
       <span class="step">Split</span><span class="arr">→</span>
       <span class="step">Settled (spendable)</span>
     </div>
-    <p style="margin-top:.6rem;">Each month a person's committed hours and resources <strong>accrue</strong> STR into the project's pool (locked). Verified <strong>milestones</strong> (submitted, accepted, released) raise the payout. When the project is finished, the pool <strong>settles</strong>: each contributor is paid their share as spendable STR. You see it on <strong>My</strong> (your wallet) and at settlement — nowhere else.</p>
+    <p style="margin-top:.6rem;">Each month a person's committed hours and resources <strong>accrue</strong> STR into the project's pool (locked). Verified <strong>milestones</strong> (submitted, accepted, released) raise the payout. When the project is finished, the pool <strong>settles</strong>: each contributor is paid their share as spendable STR. You see it on <strong>My tasks</strong> (your wallet) and at settlement — nowhere else.</p>
     <a class="ilink" href="/wallet">See your wallet →</a>
   </section>
 

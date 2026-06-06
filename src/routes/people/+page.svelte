@@ -96,8 +96,8 @@
 
   {#if addOpen}
     <div class="pp-addform">
-      <input placeholder={$t('Full name')} bind:value={aName} />
-      <input type="email" placeholder={$t('Email')} bind:value={aEmail} />
+      <input placeholder={$t('Full name (required)')} bind:value={aName} required />
+      <input type="email" placeholder={$t('Email (required)')} bind:value={aEmail} required />
       <input placeholder={$t('Affiliation')} bind:value={aAffil} />
       {#if myChapters.length > 1}
         <select bind:value={aUnit}>
