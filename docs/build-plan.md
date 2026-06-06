@@ -31,11 +31,10 @@ peek-not-pogo. These are not a later phase; they are the definition of "done" fo
 
 **Routes:** `/projects/[id]` = living record · `/projects` = WG/project cards (emoji·code·status·open-task count).
 
-**Import:** a parser (`scripts/import-wg-doc.ts`, run locally) that turns a pasted WG doc into
-`projects[] + tasks[]`, matching owners to member cards by name, leaving unmatched as `owner=null` (open).
+**Import:** *Dropped — WGs re-enter their record in-app (no doc parser).*
 
-**Acceptance:** open a project, add/assign/restate tasks inline without losing place; a real WG's doc
-content is visible in-app after one import.
+**Acceptance:** open a project, add/assign/restate tasks inline without losing place; the project list
+shows emoji · code · open-task count.
 
 ---
 

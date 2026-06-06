@@ -34,6 +34,9 @@
     seatsTotal: number;
     openNeeds: number;
     pool: number;          // Σ nominal_str across the project's commitments
+    emoji: string;
+    code: string;
+    openTasks: number;     // tasks not done/confirmed — the living-record backlog
     summary: string | null;
     active: boolean;       // status.is_active — false for Finished & Hold
     finished: boolean;
@@ -123,6 +126,9 @@
     // migrated with a null slot_id still count — same way a member's nominal is
     // summed. Per-slot member lists still key on slot_id.
     const pool: Record<string, number> = {};
+    const openTasks: Record<string, number> = {};
+    const emojiOf: Record<string, string> = {};
+    const codeOf: Record<string, string> = {};
     if (pids.length) {
       const { data: sl } = await supabase.from('project_slot')
         .select('id, project_id, slot_kind, req_access, quota, headcount, status, skill:skill_id(name), resource_type:resource_type_id(name)')
@@ -143,6 +149,16 @@
         .select('project_id, nominal_value').eq('status', 'verified').in('project_id', pids);
       for (const m of (vms as any[]) ?? [])
         pool[m.project_id] = (pool[m.project_id] ?? 0) + (Number(m.nominal_value) || 0);
+
+      // P0 living-record: emoji/code + open-task count. Fetched defensively in
+      // their own queries so a pre-migration DB (columns/table absent) degrades
+      // to empty rather than blanking the whole list.
+      const { data: meta } = await supabase.from('project').select('id, emoji, code').in('id', pids);
+      for (const r of (meta as any[]) ?? []) { emojiOf[r.id] = r.emoji ?? ''; codeOf[r.id] = r.code ?? ''; }
+      const { data: tk } = await supabase.from('task').select('project_id, state').in('project_id', pids);
+      for (const r of (tk as any[]) ?? [])
+        if (r.state !== 'done' && r.state !== 'confirmed')
+          openTasks[r.project_id] = (openTasks[r.project_id] ?? 0) + 1;
     }
 
     // group slots per project (Slot shape for ProjectSlotCard) + roll up metrics
@@ -201,6 +217,9 @@
         openNeeds: openNeeds[p.id] ?? 0,
         pool: pool[p.id] ?? 0,
         summary: p.summary ?? null,
+        emoji: emojiOf[p.id] ?? '',
+        code: codeOf[p.id] ?? '',
+        openTasks: openTasks[p.id] ?? 0,
         active,
         finished,
         claimable: !hasLeader[p.id] && !finished
@@ -588,16 +607,16 @@
       {#each rows as r}
         <EntityCard
           type={r.type}
-          title={r.name}
-          subtitle={r.venue || ''}
+          title={`${r.emoji ? r.emoji + ' ' : ''}${r.code || r.name}`}
+          subtitle={[r.code && r.name !== r.code ? r.name : '', r.venue].filter(Boolean).join(' · ')}
           status={r.claimable ? $t('lead open') : r.status}
           statusKind={r.claimable ? 'warn' : projKind(r.status)}
           accentColor={r.claimable ? '#f0a35e' : statusColor(r.status)}
           tag={r.wg ? { label: r.wg, color: wgColor(r.wg) } : undefined}
           stats={[
+            ...(r.openTasks ? [{ label: 'Open tasks', value: String(r.openTasks) }] : []),
             { label: 'Nominal pool', value: r.pool.toLocaleString() },
             { label: 'Seats', value: `${r.seatsFilled}/${r.seatsTotal}` },
-            { label: 'Open needs', value: String(r.openNeeds) },
             ...(r.deadline ? [{ label: relDays(r.deadline), value: fmtDate(r.deadline) }] : [])
           ]}
           onclick={() => openProject(r)}
