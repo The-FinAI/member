@@ -6,6 +6,7 @@
   import CountUp from '$lib/CountUp.svelte';
   import GettingStarted from '$lib/GettingStarted.svelte';
   import StartHere from '$lib/StartHere.svelte';
+  import MiningCockpit from '$lib/MiningCockpit.svelte';
   import Medal from '$lib/Medal.svelte';
   import EntityCard from '$lib/EntityCard.svelte';
   import { goto } from '$app/navigation';
@@ -165,6 +166,7 @@
 
 <div class="stack">
   <StartHere bind:dismissed={startHidden} />
+  <MiningCockpit />
 
   <!-- self card: you, as a card — identity + role, two aspects (Craft /
        Standing), the liquid STR resource, and the verbs you act with. -->
