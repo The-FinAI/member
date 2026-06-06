@@ -141,6 +141,7 @@
         <!-- Work: the contribution loop. Projects make STR; the console is the
              officer's matching desk. -->
         <div class="side-section">{$t('Work')}</div>
+        <a href="/my" class="side-link" class:active={isActive('/my', $page.url.pathname)}>{$t('My tasks')}</a>
         <a href="/projects" class="side-link" class:active={isActive('/projects', $page.url.pathname)}>{$t('Projects')}</a>
         {#if $officerUnits.length > 0 || canAdmin}
           <a href="/officer" class="side-link" class:active={isActive('/officer', $page.url.pathname)}>{$t('Console')}</a>
