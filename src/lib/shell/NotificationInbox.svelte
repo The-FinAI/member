@@ -72,7 +72,7 @@
 {/if}
 
 <style>
-  .ni { position: relative; }
+  .ni { position: relative; margin: 0 .25rem; }
   .ni-bell { border: none; background: none; cursor: pointer; font-size: 1.05rem; position: relative; padding: .2rem; }
   .ni-badge { position: absolute; top: -.2rem; right: -.3rem; background: #d9534f; color: #fff; font-size: .62rem; border-radius: 999px; padding: 0 .3rem; min-width: 1rem; }
   .ni-backdrop { position: fixed; inset: 0; background: none; border: none; z-index: 40; }
@@ -84,6 +84,6 @@
   .ni-item:hover { background: var(--card-bg, #fafafa); }
   .ni-item.unread { background: color-mix(in srgb, var(--accent, #6a7cff) 7%, transparent); }
   .ni-title { font-size: .86rem; font-weight: 500; }
-  .ni-body { font-size: .78rem; color: var(--muted, #888); }
+  .ni-body { font-size: .78rem; color: var(--text, #555); }
   .ni-time { font-size: .72rem; color: var(--muted, #aaa); }
 </style>

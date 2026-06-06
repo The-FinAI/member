@@ -129,7 +129,8 @@
     <div class="mb-needs">
       {#each needs as n (n.id)}
         <div class="need" class:open={openNeed === n.id}>
-          <button class="need-row" onclick={() => pickNeed(n)}>
+          <button class="need-row" aria-expanded={openNeed === n.id} onclick={() => pickNeed(n)}>
+            <span class="need-chev" class:open={openNeed === n.id}>▸</span>
             {#if n.slot_kind === 'leader'}
               <span class="need-skill">{$t('First author')}</span>
               <span class="need-kind">{$t('leader')}</span>
@@ -214,6 +215,8 @@
   .need { border: 1px solid var(--line, #eee); border-radius: 10px; margin-bottom: .5rem; overflow: hidden; }
   .need.open { border-color: var(--accent, #6a7cff); }
   .need-row { width: 100%; display: flex; align-items: center; gap: .6rem; background: none; border: none; cursor: pointer; padding: .55rem .7rem; text-align: left; color: inherit; }
+  .need-chev { color: var(--muted, #aaa); transition: transform .12s; display: inline-block; }
+  .need-chev.open { transform: rotate(90deg); }
   .need-skill { font-weight: 600; }
   .need-lvl { font-size: .73rem; border: 1px solid #8aa0ff; color: #5566cc; border-radius: 999px; padding: 0 .45rem; }
   .need-proj { font-size: .8rem; color: var(--muted, #999); }
