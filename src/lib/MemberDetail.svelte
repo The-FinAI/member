@@ -254,7 +254,7 @@
   // in-page section nav (only the sections actually rendered, in DOM order)
   const sections = $derived([
     { id: 'stats', label: 'Overview' },
-    { id: 'badges', label: 'Badges' },
+    { id: 'skills', label: 'Skills' },
     { id: 'projects', label: 'Projects' },
     { id: 'resources', label: 'Resources' }
   ]);
@@ -439,19 +439,22 @@
       <SkillCapacity memberId={id} canEdit={canEditCatalog} />
     </div>
 
-    <div class="card stack" id="badges">
-      <h2 style="margin:0;">{$t('Badges')}</h2>
+    <!-- Skills now live in the card above (SkillCapacity). The old badge tree is
+         demoted to a collapsed, secondary block — kept (not deleted) so badge
+         granting still works until person_skill is confirmed authoritative. -->
+    <details class="card stack legacy" id="badges">
+      <summary class="legacy-sum">{$t('Certified badges')} <span class="muted">· {$t('legacy — skills are set above')}</span></summary>
       {#if canAward}
-        <p class="muted" style="font-size:.8rem; margin:-.3rem 0 0;">{$t('Click ranks to stage raises across skills, then submit the batch for review.')}</p>
+        <p class="muted" style="font-size:.8rem; margin:.3rem 0 0;">{$t('Click ranks to stage raises across skills, then submit the batch for review.')}</p>
         <BadgeTree memberId={id} canEdit={true} onSubmitted={() => load(id)} />
       {:else if badges.length === 0}
         <p class="muted">{$t('No badges yet.')}</p>
       {:else}
-        <div class="row" style="gap:.5rem; flex-wrap:wrap;">
+        <div class="row" style="gap:.5rem; flex-wrap:wrap; margin-top:.4rem;">
           {#each badges as b}<Medal name={b.skill?.name ?? b.skill_id} level={b.level} />{/each}
         </div>
       {/if}
-    </div>
+    </details>
 
     <!-- projects -->
     <div class="card stack" id="projects">

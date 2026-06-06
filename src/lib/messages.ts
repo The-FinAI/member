@@ -4666,6 +4666,8 @@ const fr: Table = {
   'clear': 'effacer',
   'Confirm seat': 'Confirmer',
   'Working Groups': 'Groupes de travail',
+  'Certified badges': 'Badges certifiés',
+  'legacy — skills are set above': 'ancien — compétences ci-dessus',
   'leader': 'responsable',
   'open — match on People': 'ouvert — apparier sur Personnes',
   'First author': 'Premier auteur',
