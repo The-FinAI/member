@@ -104,7 +104,7 @@ honest STR.
 | **Projects** | WG steward (everyone browses) | **The living record.** Every project as its doc-section: task board · coverage · links · body · team · status. The main surface. |
 | **People** | Chapter steward (everyone browses) | The **roster** (skills + capacity bars) and the **matching** board that fills forming projects' Needs. |
 | **My** | everyone | My projects, **my tasks across all of them**, my profile/skills, **my contribution & wallet** (STR — quiet in P1, the **hero in P2**). |
-| **Settings** | admin | Catalogs (skills + rubrics · project types · milestone types · units & stewards) · the **economy** (rates, settlement review) · the few real approvals. |
+| **Settings** | admin | Catalogs (the shared **skill list** · project types · milestone types · units & stewards) · the **economy** (rates, settlement review) · the few real approvals. |
 
 **Home is not a surface — it is a router** that drops you into your domain with a **"what needs me"**
 list on top: *WG steward* — "X finished → settle · a Need is fillable · 3 tasks unowned"; *Chapter
