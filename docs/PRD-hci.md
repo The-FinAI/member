@@ -379,5 +379,84 @@ migrations.
 
 ---
 
+---
+
+## 13. Deeper audit — what the first pass missed
+
+A scan of **every RPC (operation verb) and every config table** surfaced three classes of
+problem the surface-level audit didn't see.
+
+### 13.1 Dead / parallel BACKEND subsystems (the real accretion)
+The DB carries **~6 complete subsystems that the new model replaced but never deleted** —
+confirmed **0 references in `src/`**. They are live attack surface, confuse anyone reading
+the schema, and bloat every "what RPC do I call" decision:
+
+| Dead subsystem | Old (delete) | Replaced by |
+|---|---|---|
+| **Token economy** | `token_account/ledger/policy`, `token_mint/grant/balance_of` | `stater_*` (STR) |
+| **Apply→accept→confirm join** | `open_need`, `need_application`, `apply_to_need`, `accept_application`, `confirm_join`, `join_project*` (4 variants) | `project_slot` + `work_seat` |
+| **Stake commitments** | `stater_project_stake_commitment`, `stater_commitment_period`, `set_labor_commitment`, `set_resource_commitment`, `verify_commitment`, `review_commitment_period` | `work_commitment` |
+| **Skillcards** | `skillcard_request`, `submit/review/cancel_skillcard_request`, `mint_skillcard(_batch)`, `member_skill` | `badge` + `forge_badges` |
+| **Skill exam + endorsement** | `skill_exam(_rubric/_vote)`, `request_skill_exam`, `cast_exam_vote`, `settle_exam`, `set_exam_rubric`, `appoint_skill_master`, `endorse_skill`, `skill_endorsement` | reviewer approval of badges (forge queue) |
+| **Resource offers** | `resource_offer`, `resource_request`, `accept_resource_offer` | `resource` + `forge_resource` |
+| **Paid leadership / bonds** | `create_project_with_leader_stake`, `claim_leadership`, `slash_leader_stake` | `create_project_phase1` (free) |
+
+**Action:** a single "legacy purge" migration to `drop` these tables/functions (after a
+data check). This is the highest-leverage cleanup — it shrinks the mental model of the
+*whole system*, not one screen. (`mint_skillcard` still has 2 `src` refs — a legacy skills
+page to retire with it.)
+
+### 13.2 Research-domain definitions the PRD didn't name (add to §12)
+These are first-class **research** concepts, each a usability surface, none yet audited:
+
+- **Milestones & their price table** (`milestone_catalog`, `forge/claim/verify_milestone`,
+  `multiplier_bonus`): the *output* axis (arXiv, submitted, accepted, top-venue, dataset,
+  SOTA…). **HCI:** present as a legible **achievements catalog** with plain value/boost, not
+  a raw §20.2 table. This is how a project's payout grows — must be obvious to a leader.
+- **Authorship model** (first / co / corresponding / last author, `author_order`): research
+  -native and it drives payout weights. **HCI:** show authorship explicitly on the project
+  team & settlement; name it in plain terms.
+- **Payout weights** (`project_role.payout_weight` leader=3; settlement_item weights,
+  `is_author`, `is_corresponding`): the split logic. **HCI:** the settlement screen must
+  *show why* each person gets their share (contribution + authorship), not just a number.
+- **Venues & deadlines** (`venue`): target publication. Keep; surface as the project's goal.
+- **Skill rates** (`stater_skill_rate`, STR/hr per skill): pricing of hours. **HCI:** one
+  editable rates table (admin), shown to officers as "this skill mints N/hr".
+- **Policy constants** (`stater_policy`: str_per_usd, allowance, finish_bonus, review window,
+  level multipliers, default writing hours): the economy's dials. **HCI:** one "Economy
+  settings" panel with labelled, explained dials — not raw key/value rows.
+- **Valuation reference** (`gpu_model.tflops`, `api_model.usd_per_million`): how compute/API
+  price. Keep as reference data behind the resource form.
+
+### 13.3 Hidden / inconsistent INTERACTIONS the PRD didn't cover
+- **Act-as / proxy ("`p_as`" everywhere, `effective_member`, `manages_card`)** — officers
+  can act *as a card they manage*. This is a powerful, **invisible mode switch** scattered
+  through RPCs. **HCI:** make "acting as X" an explicit, visible mode (a banner: *You're
+  acting as [card]*), with one switcher — or remove it where the new seat-by-officer flow
+  makes it unnecessary. Right now it's implicit and unpredictable.
+- **Unit membership & applications** (`org_unit_member`, `apply_to_unit`,
+  `decide_unit_member`, `leave_unit`): a join-a-chapter/WG flow parallel to officer
+  assignment. **HCI:** decide if members *apply* to units or are *placed* by officers (P1 =
+  placed). Don't expose both.
+- **Meetings** (`project_meeting_*`, recurrence) and **project event log**
+  (`project_event`, `log_project_event`, ~8 event triggers): a scheduling + history feed on
+  the project. Keep, but as quiet sections on the project *page*, not drawer clutter (§8.2).
+- **First-author writing duty** (`seed_first_author_writing`, `writing_laggards`, the
+  `/admin/writing` "laggards" nag): a leader-must-write enforcement. **HCI:** fold into the
+  pipeline ("leader writing: N/20h") rather than a separate admin nag screen.
+- **Milestone claim** (leader claims an achievement → review): wire into the project
+  pipeline as the "grow the payout" action, not a buried form.
+- **Leaderboard** (`Leaderboard.svelte`, multi-board): decide if competitive boards fit a
+  research-collab tone, or demote.
+
+### 13.4 Net effect
+The system is **~2 products in one repo**: a finished new model (stater / slot / seat /
+badge / forge / milestone / settlement) and a **dead older one** still in the DB. The
+single biggest usability + maintainability win is **§13.1 — purge the dead subsystems** so
+the schema and the RPC vocabulary finally match the product. Then §13.2/§13.3 fold the
+real research definitions/interactions into the surfaces from §8.
+
+---
+
 *Principle to hold the line: every change must **remove or unify**. If a proposal adds a
 surface or a component, it must delete one too.*
