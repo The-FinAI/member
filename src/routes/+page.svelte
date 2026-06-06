@@ -1,340 +1,173 @@
 <script lang="ts">
+  // BUILD PLAN P7A — Home rebuilt as the role-aware "what needs me" router
+  // (PRD §4). Not a dashboard: a short, ranked triage list that drops the user
+  // into the right surface. STR stays off the home (it lives on My / Settle).
   import { onMount } from 'svelte';
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { member, capabilities, officerUnits } from '$lib/session';
-  import { PHASE2 } from '$lib/phase';
-  import CountUp from '$lib/CountUp.svelte';
-  import GettingStarted from '$lib/GettingStarted.svelte';
-  import StartHere from '$lib/StartHere.svelte';
-  import MiningCockpit from '$lib/MiningCockpit.svelte';
-  import Medal from '$lib/Medal.svelte';
-  import EntityCard from '$lib/EntityCard.svelte';
-  import { goto } from '$app/navigation';
   import { t } from '$lib/i18n';
 
-  // "Start here" panel — remember if the user hid it
-  let startHidden = $state(false);
-  onMount(() => { startHidden = localStorage.getItem('startHidden') === '1'; });
-  $effect(() => { if (typeof localStorage !== 'undefined') localStorage.setItem('startHidden', startHidden ? '1' : '0'); });
+  type Item = { icon: string; title: string; sub: string; href: string; tone: 'go' | 'info' | 'warn' };
 
-  // ── Home is the overview台: only things you READ. Everything you EDIT
-  // (resources you can bring, identity/affiliation) lives on /profile; the full
-  // ledger lives on /wallet. This page answers "what's my standing, and what
-  // needs me next."
-
-  type MyProject = { project: { id: string; name: string; project_status: { name: string; is_active: boolean } | null } | null; project_role: { name: string } | null };
-  type MyApp = { id: string; status: string; open_need: { project: { id: string; name: string } | null } | null };
-  type Skill = { id: string; name: string; parent_id: string | null };
-  type MySkill = { skill_id: string; certified_level: string | null };
-  type LedgerRow = {
-    id: string; amount: number; entry_type: string; reason: string;
-    from_account: string | null; to_account: string | null; created_at: string;
-  };
-
-  const GUILD_RANK = ['apprentice', 'journeyman', 'craftsman', 'master'];
-  const LEVEL_LABEL: Record<string, string> = {
-    apprentice: 'Apprentice', journeyman: 'Journeyman', craftsman: 'Craftsman', master: 'Master'
-  };
-
-  let myProjects = $state<MyProject[]>([]);
-  let myApps = $state<MyApp[]>([]);
-  let openCount = $state(0);
-  let projectCount = $state(0);
-  let balance = $state(0);
-  let staked = $state(0);
+  let items = $state<Item[]>([]);
   let loading = $state(true);
 
-  let skills = $state<Skill[]>([]);
-  let mySkills = $state<MySkill[]>([]);
-  let accountId = $state('');
-  let totalNominal = $state(0);
-  let ledger = $state<LedgerRow[]>([]);
-  let skillsLoading = $state(true);
+  const initials = (n?: string) =>
+    (n ?? '').split(/\s+/).filter(Boolean).slice(0, 2).map((s) => s[0]?.toUpperCase()).join('') || '·';
+  const myChapters = $derived($officerUnits.filter((u: any) => u.kind === 'chapter'));
+  const myWGs = $derived($officerUnits.filter((u: any) => u.kind === 'working_group'));
+  const canReview = $derived(
+    $capabilities.has('manage_stater') || $capabilities.has('edit_any_project') ||
+    $capabilities.has('manage_resources') || $capabilities.has('review_skillcard') || $capabilities.has('manage_members')
+  );
 
-  async function loadPortfolio(memberId: string) {
+  async function load() {
+    const me = $member?.id;
+    if (!supabaseConfigured || !me) { loading = false; return; }
     loading = true;
-    const [{ data: mp }, { data: ma }, { count: oc }, { count: pc }, { data: bal }, { data: cm }] = await Promise.all([
-      supabase.from('project_member')
-        .select('project(id, name, project_status!project_status_id_fkey(name, is_active)), project_role(name)')
-        .eq('member_id', memberId),
-      supabase.from('need_application')
-        .select('id, status, open_need(project(id, name))')
-        .eq('member_id', memberId)
-        .order('created_at', { ascending: false }),
-      supabase.from('open_need').select('*', { count: 'exact', head: true }).eq('status', 'open'),
-      supabase.from('project').select('*', { count: 'exact', head: true }),
-      supabase.from('stater_balance').select('balance').eq('owner_member_id', memberId).maybeSingle(),
-      supabase.from('stater_project_stake_commitment')
-        .select('token_amount, status').eq('member_id', memberId)
-    ]);
-    myProjects = (mp as MyProject[]) ?? [];
-    myApps = (ma as MyApp[]) ?? [];
-    openCount = oc ?? 0;
-    projectCount = pc ?? 0;
-    balance = Number((bal as { balance: number } | null)?.balance ?? 0);
-    staked = ((cm as { token_amount: number; status: string }[]) ?? [])
-      .filter((c) => ['pledged', 'accepted', 'verified'].includes(c.status))
-      .reduce((a, c) => a + Number(c.token_amount), 0);
+    const out: Item[] = [];
+    const ym = new Date().toISOString().slice(0, 7);
+
+    // projects I lead (leader commitments) + their status
+    const { data: led } = await supabase.from('work_commitment')
+      .select('project_id, slot:slot_id(slot_kind), project:project_id(name, project_status:project_status_id(name))')
+      .eq('member_id', me);
+    const ledIds = new Set<string>();
+    const ledName: Record<string, string> = {};
+    const ledFinished = new Set<string>();
+    for (const w of (led as any[]) ?? []) {
+      if (w.slot?.slot_kind !== 'leader') continue;
+      ledIds.add(w.project_id); ledName[w.project_id] = w.project?.name ?? '';
+      if ((w.project?.project_status?.name ?? '').toLowerCase() === 'finished') ledFinished.add(w.project_id);
+    }
+
+    // 1) finished projects I lead, not yet settled → Settle (highest priority)
+    if (ledFinished.size) {
+      const { data: st } = await supabase.from('stater_settlement')
+        .select('project_id, status').in('project_id', [...ledFinished]);
+      const inFlight = new Set(((st as any[]) ?? [])
+        .filter((s) => ['submitted', 'under_review', 'approved'].includes(s.status)).map((s) => s.project_id));
+      for (const pid of ledFinished) if (!inFlight.has(pid))
+        out.push({ icon: '💰', title: $t('Settle {name}', { name: ledName[pid] }), sub: $t('Finished — split the credit'), href: `/projects/${pid}`, tone: 'go' });
+    }
+
+    // 2) my open tasks
+    const { data: mt } = await supabase.from('task')
+      .select('id, state').eq('owner_member_id', me).in('state', ['open', 'doing', 'checking']);
+    const nOpen = ((mt as any[]) ?? []).length;
+    if (nOpen) out.push({ icon: '✓', title: $t('{n} tasks on your plate', { n: nOpen }), sub: $t('Your worklist across all projects'), href: '/my', tone: 'info' });
+
+    // 3) unowned (TBD) tasks in projects I lead → assign owners
+    if (ledIds.size) {
+      const { data: tbd } = await supabase.from('task')
+        .select('id, project_id').in('project_id', [...ledIds]).is('owner_member_id', null).in('state', ['open', 'doing']);
+      const n = ((tbd as any[]) ?? []).length;
+      if (n) out.push({ icon: '◫', title: $t('{n} tasks need an owner', { n }), sub: $t('In projects you lead'), href: ledIds.size === 1 ? `/projects/${[...ledIds][0]}` : '/projects', tone: 'warn' });
+    }
+
+    // 4) chapter officer: people with free time to place
+    if (myChapters.length) {
+      const unitIds = myChapters.map((u: any) => u.unit_id ?? u.id);
+      const { data: roster } = await supabase.from('member').select('id, monthly_hours').in('home_unit_id', unitIds);
+      const ids = ((roster as any[]) ?? []).map((r) => r.id);
+      let used: Record<string, number> = {};
+      if (ids.length) {
+        const { data: wc } = await supabase.from('work_commitment')
+          .select('member_id, monthly_amount, slot:slot_id(slot_kind)').in('member_id', ids).eq('year_month', ym);
+        for (const w of (wc as any[]) ?? []) if (['work_labor', 'leader'].includes(w.slot?.slot_kind))
+          used[w.member_id] = (used[w.member_id] ?? 0) + (Number(w.monthly_amount) || 0);
+      }
+      const free = ((roster as any[]) ?? []).filter((r) => r.monthly_hours && (used[r.id] ?? 0) < r.monthly_hours).length;
+      if (free) out.push({ icon: '⇄', title: $t('{n} people have free time', { n: free }), sub: $t('Match them to open needs'), href: '/people', tone: 'go' });
+    }
+
+    // 5) WG officer: open needs on my projects
+    if (myWGs.length) {
+      const unitIds = myWGs.map((u: any) => u.unit_id ?? u.id);
+      const { data: prj } = await supabase.from('project').select('id').in('org_unit_id', unitIds);
+      const pids = ((prj as any[]) ?? []).map((p) => p.id);
+      if (pids.length) {
+        const { data: needs } = await supabase.from('project_slot').select('id').in('project_id', pids).eq('status', 'open');
+        const n = ((needs as any[]) ?? []).length;
+        if (n) out.push({ icon: '◷', title: $t('{n} open needs on your projects', { n }), sub: $t('Post details or wait for a match'), href: '/projects', tone: 'info' });
+      }
+    }
+
+    // 6) reviewer: pending review inbox
+    if (canReview) {
+      const { count } = await supabase.from('forge_request').select('id', { count: 'exact', head: true }).eq('status', 'submitted');
+      if (count) out.push({ icon: '⚖', title: $t('{n} waiting for review', { n: count }), sub: $t('Badges, resources, needs & settlements'), href: '/admin/forge-queue', tone: 'warn' });
+    }
+
+    items = out;
     loading = false;
   }
-
-  // badges (read-only craft), accrued contribution, and a short ledger preview
-  async function loadStanding(memberId: string) {
-    skillsLoading = true;
-    const [{ data: tree }, { data: ms }, { data: nom }] = await Promise.all([
-      supabase.from('skill').select('id, name, parent_id').order('name'),
-      supabase.from('member_skill').select('skill_id, certified_level').eq('member_id', memberId),
-      supabase.from('stater_project_member_nominal').select('nominal').eq('member_id', memberId)
-    ]);
-    skills = (tree as Skill[]) ?? [];
-    mySkills = ((ms as MySkill[]) ?? []).sort(
-      (a, b) => GUILD_RANK.indexOf(b.certified_level ?? '') - GUILD_RANK.indexOf(a.certified_level ?? '')
-        || skillName(a.skill_id).localeCompare(skillName(b.skill_id))
-    );
-    totalNominal = ((nom as { nominal: number }[]) ?? []).reduce((a, n) => a + (Number(n.nominal) || 0), 0);
-
-    const { data: bal } = await supabase.from('stater_balance').select('account_id').eq('owner_member_id', memberId).maybeSingle();
-    accountId = (bal as { account_id: string } | null)?.account_id ?? '';
-    if (accountId) {
-      const { data: lg } = await supabase
-        .from('stater_ledger')
-        .select('id, amount, entry_type, reason, from_account, to_account, created_at')
-        .or(`from_account.eq.${accountId},to_account.eq.${accountId}`)
-        .order('created_at', { ascending: false })
-        .limit(6);
-      ledger = (lg as LedgerRow[]) ?? [];
-    }
-    skillsLoading = false;
-  }
-
-  onMount(() => {
-    if (!supabaseConfigured) { loading = false; skillsLoading = false; return; }
-    const unsub = member.subscribe((m) => {
-      if (m) { loadPortfolio(m.id); loadStanding(m.id); }
-      else { loading = false; skillsLoading = false; }
-    });
-    return unsub;
-  });
-
-  function skillName(skillId: string) { return skills.find((s) => s.id === skillId)?.name ?? skillId; }
-  function statusKindOf(name: string | null | undefined): 'pos' | 'warn' | 'dim' {
-    if (name === 'Finished') return 'pos';
-    if (name === 'Hold' || name === 'Under review') return 'warn';
-    return 'dim';
-  }
-  function appKind(status: string): 'pos' | 'warn' | 'down' | 'dim' {
-    if (status === 'joined') return 'pos';
-    if (status === 'accepted') return 'warn';
-    if (status === 'declined') return 'down';
-    return 'dim';
-  }
-  function initials(name: string | undefined) {
-    const p = (name ?? '').trim().split(/\s+/).filter(Boolean);
-    return ((p[0]?.[0] ?? '') + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase() || '·';
-  }
-
-  // the officer's home unit — prefer a chapter (where cards are forged)
-  const myUnit = $derived($officerUnits.find((u) => u.kind === 'chapter') ?? $officerUnits[0] ?? null);
-  const canAdmin = $derived(
-    $capabilities.has('manage_taxonomy') ||
-      $capabilities.has('manage_members') ||
-      $capabilities.has('edit_any_project')
-  );
-  const canApprove = $derived(
-    $capabilities.has('manage_resources') ||
-      $capabilities.has('manage_stater') ||
-      $capabilities.has('manage_members') ||
-      $capabilities.has('review_skillcard')
-  );
-  const isSteward = $derived(canAdmin || canApprove);
-
-  const certifiedCount = $derived(mySkills.filter((s) => s.certified_level).length);
-  const myCards = $derived(mySkills.filter((s) => s.certified_level));
-  const pendingSkills = $derived(mySkills.filter((s) => !s.certified_level));
-  // mySkills is sorted rank-desc, so the first certified card carries the top tier.
-  const topTierLabel = $derived(
-    myCards[0]?.certified_level ? (LEVEL_LABEL[myCards[0].certified_level] ?? '') : ''
-  );
-  // the single most actionable thing: applications the team accepted, awaiting
-  // your confirmation to actually join.
-  const acceptedApps = $derived(myApps.filter((a) => a.status === 'accepted'));
-  // "My projects" = in-play only; status.is_active is the real field (false for
-  // Finished & Hold). Delivered/parked ones drop off the active list.
-  const myActiveProjects = $derived(myProjects.filter((p) => p.project?.project_status?.is_active !== false));
-  const myShipped = $derived(myProjects.length - myActiveProjects.length);
+  onMount(load);
 </script>
 
-<div class="stack">
-  <!-- one home: identity + the cockpit (your STR, status & the next action) -->
-  <header class="home-head">
-    <span class="hh-ava">{initials($member?.full_name)}</span>
-    <div class="hh-id">
-      <h1 class="hh-name">{$member ? $member.full_name.split(' ')[0] : $t('Overview')}</h1>
-      <span class="muted hh-sub">{$member?.affiliation || $member?.email || ''}</span>
-    </div>
-    <div class="hh-roles">
-      {#if myUnit}<span class="rolepill">{$t('Officer')} · {myUnit.name}</span>{/if}
-      {#if isSteward}<span class="rolepill warn">{$t('Community steward')}</span>{/if}
-      <a class="hh-guide" href="/guide">{$t('Guide')} ↗</a>
+<svelte:head><title>{$t('Home')} · The Fin AI</title></svelte:head>
+
+<section class="home">
+  <header class="hh">
+    <div class="hh-av">{initials($member?.full_name)}</div>
+    <div>
+      <h1>{$member ? ($member.full_name?.split(' ')[0] ?? $t('Welcome')) : $t('Welcome')}</h1>
+      <div class="hh-roles">
+        {#each myChapters as c}<span class="pill warn">{$t('Chapter officer')} · {(c as any).name}</span>{/each}
+        {#each myWGs as w}<span class="pill info">{$t('WG officer')} · {(w as any).name}</span>{/each}
+        <a class="hh-guide" href="/guide">{$t('Guide')} ↗</a>
+      </div>
     </div>
   </header>
 
-  <MiningCockpit />
-
-  {#if PHASE2 && $member}<GettingStarted memberId={$member.id} />{/if}
-
-  <!-- needs you now: the one digest of things waiting on your action -->
-  {#if acceptedApps.length > 0}
-    <div class="needs">
-      <span class="nx-ic">!</span>
-      <span class="nx-tx">{$t('{n} application accepted — confirm to join', { n: acceptedApps.length })}</span>
-      <div class="nx-acts">
-        {#each acceptedApps.slice(0, 3) as a}
-          {#if a.open_need?.project}
-            <a class="chip toggle" href={`/projects/${a.open_need.project.id}`}>{a.open_need.project.name} →</a>
-          {/if}
-        {/each}
-      </div>
+  <h2 class="hs">{$t('What needs you')}</h2>
+  {#if loading}
+    <p class="h-dim">{$t('Loading…')}</p>
+  {:else if !items.length}
+    <p class="h-clear">✓ {$t('All clear — nothing needs you right now.')}</p>
+  {:else}
+    <div class="h-list">
+      {#each items as it}
+        <a class="h-item tone-{it.tone}" href={it.href}>
+          <span class="h-ic">{it.icon}</span>
+          <span class="h-txt"><span class="h-t">{it.title}</span><span class="h-s">{it.sub}</span></span>
+          <span class="h-arrow">→</span>
+        </a>
+      {/each}
     </div>
   {/if}
 
-  <!-- my badges: read-only craft. A certified skill IS a badge. -->
-  <section class="block">
-    <div class="block-head">
-      <h2>{$t('My badges')}</h2>
-      <a class="block-link" href="/community?tab=badges">{$t('Badge catalog →')}</a>
-    </div>
-    {#if skillsLoading}
-      <p class="muted">{$t('Loading…')}</p>
-    {:else if mySkills.length === 0}
-      <p class="muted">{$t('No badges yet — a reviewer certifies your skills as you demonstrate them.')}</p>
-    {:else}
-      {#if myCards.length > 0}
-        <div class="row" style="gap:.5rem; flex-wrap:wrap;">
-          {#each myCards as s}<Medal name={skillName(s.skill_id)} level={s.certified_level!} />{/each}
-        </div>
-      {/if}
-      {#if pendingSkills.length > 0}
-        <div class="stack" style="gap:.35rem; margin-top:.6rem;">
-          <span class="muted" style="font-size:.78rem;">{$t('Skills awaiting a badge')}</span>
-          <div class="row" style="gap:.35rem; flex-wrap:wrap;">
-            {#each pendingSkills as s}<span class="badge dim">{skillName(s.skill_id)}</span>{/each}
-          </div>
-        </div>
-      {/if}
-    {/if}
-  </section>
-
-  <!-- footer link to the manage surface (resources + identity) -->
-  {#if $member}
-    <a class="manage-link" href={`/members/${$member.id}`}>{$t('Manage your resources & profile')} →</a>
-  {/if}
-</div>
+  <div class="h-jump">
+    <a href="/my">{$t('My tasks')}</a>
+    <a href="/projects">{$t('Projects')}</a>
+    <a href="/people">{$t('People')}</a>
+  </div>
+</section>
 
 <style>
-  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: .8rem; }
-
-  /* home header: identity + role, sits above the cockpit */
-  .home-head { display: flex; align-items: center; gap: .7rem; }
-  .hh-ava { flex: none; width: 42px; height: 42px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); font-weight: 700; display: grid; place-items: center; }
-  .hh-id { min-width: 0; }
-  .hh-name { margin: 0; font-size: 1.3rem; }
-  .hh-sub { font-size: .82rem; }
-  .hh-roles { margin-left: auto; display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
-  .hh-guide { font-size: .8rem; color: var(--muted); text-decoration: none; }
-  .hh-guide:hover { color: var(--accent); }
-
-  /* self card */
-  .selfcard {
-    border: 1px solid var(--border); border-radius: 16px; background: var(--card);
-    padding: 1.4rem 1.5rem; display: flex; flex-direction: column; gap: 1.25rem;
-    box-shadow: var(--shadow);
-  }
-  .sc-head { display: flex; align-items: center; gap: .9rem; }
-  .sc-ava {
-    width: 48px; height: 48px; border-radius: 14px; flex: none;
-    display: inline-flex; align-items: center; justify-content: center;
-    font-size: 1.05rem; font-weight: 700; color: var(--accent-ink); background: var(--accent);
-  }
-  .sc-id { min-width: 0; display: flex; flex-direction: column; gap: .1rem; }
-  .sc-name { margin: 0; font-size: 1.5rem; line-height: 1.1; letter-spacing: -.01em; }
-  .sc-sub { font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .sc-roles { margin-left: auto; display: flex; gap: .4rem; flex-wrap: wrap; justify-content: flex-end; }
-  .rolepill {
-    font-size: .72rem; font-weight: 600; padding: .25rem .6rem; border-radius: 999px;
-    color: var(--accent); background: var(--accent-soft); white-space: nowrap;
-  }
-  .rolepill.warn { color: var(--warn); background: var(--warn-soft); }
-
-  .sc-aspects {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
-    background: var(--border); border: 1px solid var(--border);
-    border-radius: 12px; overflow: hidden;
-  }
-  .aspect { background: var(--card-2); padding: .85rem 1rem; display: flex; flex-direction: column; gap: .25rem; }
-  .aspect.liquid { background: var(--accent-soft); }
-  .asp-k { font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
-  .asp-v { font-size: 1.7rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; color: var(--text); }
-  .asp-v.accent { color: var(--accent); }
-  .asp-sub { font-size: .76rem; color: var(--muted); }
-  .asp-sub a { color: var(--accent); }
-
-  .sc-verbs { display: grid; grid-template-columns: repeat(3, 1fr); gap: .6rem; }
-  .verb {
-    display: flex; align-items: center; gap: .7rem; padding: .75rem .85rem;
-    border: 1px solid var(--border); border-radius: 11px; background: var(--card-2);
-    text-decoration: none; color: var(--text); transition: border-color .12s, background .12s, transform .12s;
-  }
-  .verb:hover { border-color: var(--accent); background: var(--card); transform: translateY(-1px); }
-  .vb-ic {
-    width: 32px; height: 32px; border-radius: 9px; flex: none;
-    display: inline-flex; align-items: center; justify-content: center;
-    font-size: 1rem; color: var(--accent); background: var(--accent-soft);
-  }
-  .vb-tx { display: flex; flex-direction: column; gap: .05rem; min-width: 0; }
-  .vb-tx strong { font-size: .9rem; font-weight: 600; }
-  .vb-tx .muted { font-size: .74rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-  /* needs-you digest */
-  .needs {
-    display: flex; align-items: center; gap: .7rem; flex-wrap: wrap;
-    border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
-    background: var(--warn-soft); border-radius: 12px; padding: .7rem .9rem;
-  }
-  .nx-ic {
-    width: 22px; height: 22px; border-radius: 50%; flex: none;
-    display: inline-flex; align-items: center; justify-content: center;
-    font-weight: 700; font-size: .8rem; color: var(--accent-ink); background: var(--warn);
-  }
-  .nx-tx { font-size: .88rem; font-weight: 600; }
-  .nx-acts { display: flex; gap: .4rem; flex-wrap: wrap; margin-left: auto; }
-
-  /* generic content block */
-  .block { display: flex; flex-direction: column; gap: .7rem; }
-  .block-head { display: flex; align-items: baseline; justify-content: space-between; gap: .6rem; }
-  .block-head h2 { margin: 0; }
-  .block-meta { font-size: .8rem; color: var(--muted); }
-  .block-link { font-size: .82rem; }
-  .block-sub { display: flex; flex-direction: column; gap: .45rem; margin-top: .5rem; }
-  .block-sublabel { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
-
-  /* activity list */
-  .acts { display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-  .act {
-    display: grid; grid-template-columns: auto 1fr auto; gap: .8rem; align-items: center;
-    padding: .55rem .9rem; border-bottom: 1px solid var(--border); background: var(--card);
-  }
-  .act:last-child { border-bottom: 0; }
-  .act-when { font-size: .76rem; white-space: nowrap; }
-  .act-reason { font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .act-amt { font-size: .85rem; font-weight: 600; white-space: nowrap; }
-
-  .manage-link { font-size: .85rem; color: var(--muted); padding: .2rem 0; }
-  .manage-link:hover { color: var(--accent); }
-
-  @media (max-width: 720px) {
-    .sc-aspects, .sc-verbs { grid-template-columns: 1fr; }
-    .sc-head { flex-wrap: wrap; }
-    .sc-roles { margin-left: 0; width: 100%; justify-content: flex-start; }
-  }
+  .home { max-width: 760px; padding: 1rem 0 3rem; }
+  .hh { display: flex; gap: .9rem; align-items: center; margin-bottom: 1.6rem; }
+  .hh-av { width: 3rem; height: 3rem; border-radius: 50%; background: var(--accent, #6a7cff); color: #fff; display: grid; place-items: center; font-weight: 700; }
+  .hh h1 { margin: 0; font-size: 1.5rem; }
+  .hh-roles { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; margin-top: .25rem; }
+  .pill { font-size: .72rem; padding: .1rem .5rem; border-radius: 999px; border: 1px solid var(--line, #ddd); color: var(--muted, #777); }
+  .pill.warn { border-color: #f0c674; color: #9a7b12; }
+  .pill.info { border-color: #8aa0ff; color: #5566cc; }
+  .hh-guide { font-size: .78rem; color: var(--accent, #6a7cff); text-decoration: none; }
+  .hs { font-size: 1rem; margin: 0 0 .6rem; }
+  .h-dim { color: var(--muted, #999); }
+  .h-clear { color: #2e7d4f; font-size: .95rem; }
+  .h-list { display: flex; flex-direction: column; gap: .5rem; }
+  .h-item { display: flex; align-items: center; gap: .8rem; text-decoration: none; color: inherit; background: var(--card, #fff); border: 1px solid var(--line, #eee); border-left-width: 3px; border-radius: 10px; padding: .7rem .85rem; }
+  .h-item:hover { border-color: var(--accent, #6a7cff); }
+  .tone-go { border-left-color: #4caf72; }
+  .tone-warn { border-left-color: #e0a64a; }
+  .tone-info { border-left-color: #8aa0ff; }
+  .h-ic { font-size: 1.15rem; }
+  .h-txt { display: flex; flex-direction: column; flex: 1; }
+  .h-t { font-weight: 600; }
+  .h-s { font-size: .8rem; color: var(--muted, #888); }
+  .h-arrow { color: var(--muted, #bbb); }
+  .h-jump { display: flex; gap: 1rem; margin-top: 1.6rem; padding-top: 1rem; border-top: 1px solid var(--line, #f0f0f0); }
+  .h-jump a { color: var(--accent, #6a7cff); text-decoration: none; font-size: .88rem; }
 </style>
