@@ -3,12 +3,10 @@
   import { capabilities, officerUnits, member } from '$lib/session';
   import { t } from '$lib/i18n';
   import { get } from 'svelte/store';
-  import ProjectSlotCard, { type Slot } from './ProjectSlotCard.svelte';
-  import SlotSeater from './SlotSeater.svelte';
+  import { type Slot } from './ProjectSlotCard.svelte';
+  import ProjectTeam from '$lib/people/ProjectTeam.svelte';
   import ProjectCardBody from './ProjectCardBody.svelte';
-  import ResourceForgeForm from '$lib/resources/ResourceForgeForm.svelte';
   import TaskBoard from '$lib/record/TaskBoard.svelte';
-  import NeedPost from '$lib/people/NeedPost.svelte';
 
   // Shared body for a single project — used by the /projects/[id] page and the
   // projects-grid quick-view drawer, so the page mirrors the drawer (like
@@ -232,38 +230,15 @@
     </div>
 
     <div class="pd-section">
-      <span class="pd-h">{$t('Team & slots')}</span>
-      {#if canPostNeed && !g.finished}
-        <NeedPost projectId={g.id} onPosted={reload} />
-      {/if}
-      <ProjectSlotCard project={{ id: g.id, name: g.name, status: g.status, deadline: g.deadline }} {slots} canManage={false} />
+      <ProjectTeam projectId={g.id} canManage={canPostNeed} finished={g.finished} />
     </div>
 
-    {#if canPostNeed && !g.finished}
-      <div class="pd-section">
-        <button type="button" class="pd-postneed-toggle" onclick={() => (showPostNeed = !showPostNeed)}>
-          ＋ {$t('Post a need')}<span class="muted"> · {$t('skill (with level) or a resource the project needs')}</span>
-        </button>
-        {#if showPostNeed}
-          <div class="card" style="padding:1rem;">
-            <ResourceForgeForm mode="need" project={g.id} onForged={() => { showPostNeed = false; reload(); }} />
-          </div>
-        {/if}
-      </div>
-    {/if}
-
-    {#if canSeat && !g.finished}
-      <SlotSeater projectId={g.id} projectName={g.name} onSeated={reload} />
-    {/if}
     {#if !g.wg}
       <p class="muted" style="font-size:.82rem; margin:0;">{$t('This project isn’t attributed to a working group yet.')}</p>
     {/if}
 
     {#if g.wgUnitId}
       <div class="row" style="gap:.5rem; flex-wrap:wrap; align-items:center;">
-        <a class="pd-btn" class:ghost={!canManage} href={`/officer/${g.wgUnitId}`}>
-          {canManage ? $t('Manage in slot board') : $t('Open slot board')} →
-        </a>
         {#if canManage}
           <button type="button" class="pd-release" disabled={releasing} onclick={releaseClaim}>
             {releasing ? $t('Releasing…') : $t('Release claim')}
