@@ -148,6 +148,7 @@
         {/if}
 
         <div class="side-section">{$t('More')}</div>
+        <a href="/people" class="side-link" class:active={isActive('/people', $page.url.pathname)}>{$t('People')}</a>
         <a href="/community" class="side-link" class:active={isActive('/community', $page.url.pathname)}>{$t('Community')}</a>
         <a href="/guide" class="side-link" class:active={isActive('/guide', $page.url.pathname)}>{$t('Guide')}</a>
         {#if canAdmin || canApprove}

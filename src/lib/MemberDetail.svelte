@@ -5,6 +5,7 @@
   import { t } from '$lib/i18n';
   import Medal from '$lib/Medal.svelte';
   import BadgeTree from '$lib/cards/BadgeTree.svelte';
+  import SkillCapacity from '$lib/people/SkillCapacity.svelte';
   import SectionNav from '$lib/SectionNav.svelte';
   import Breadcrumbs from '$lib/Breadcrumbs.svelte';
   import ResourceForgeForm from '$lib/resources/ResourceForgeForm.svelte';
@@ -434,6 +435,10 @@
 
     <!-- badges: a certified skill IS a badge (medal); uncertified skills
          are listed as awaiting a badge. One section, no duplicate skills table. -->
+    <div class="card stack" id="skills">
+      <SkillCapacity memberId={id} canEdit={canEditCatalog} />
+    </div>
+
     <div class="card stack" id="badges">
       <h2 style="margin:0;">{$t('Badges')}</h2>
       {#if canAward}
