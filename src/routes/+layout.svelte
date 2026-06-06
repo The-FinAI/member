@@ -153,7 +153,7 @@
         <a href="/community" class="side-link" class:active={isActive('/community', $page.url.pathname)}>{$t('Community')}</a>
         <a href="/guide" class="side-link" class:active={isActive('/guide', $page.url.pathname)}>{$t('Guide')}</a>
         {#if canAdmin || canApprove}
-          <a href="/admin" class="side-link" class:active={isActive('/admin', $page.url.pathname)}>{$t('Admin')}</a>
+          <a href="/admin" class="side-link" class:active={isActive('/admin', $page.url.pathname)}>{$t('Settings')}</a>
         {/if}
       </nav>
 

@@ -23,7 +23,7 @@
   const CONSOLES = [
     { title: 'Officers & access', desc: 'Invite officers, place them in chapters & working groups, and grant capabilities to positions', href: '/admin/access', caps: ['manage_members', 'invite_members'] },
     { title: 'Projects', desc: 'Project types, statuses, roles & target venues', href: '/admin/projects', caps: ['manage_taxonomy', 'edit_any_project'] },
-    { title: 'Guild & skills', desc: 'The skill tree, the leader requirement & the masters', href: '/admin/guild', caps: ['manage_taxonomy', 'manage_guild'] },
+    { title: 'Skills', desc: 'The shared skill list used across people, roles & matching', href: '/admin/guild', caps: ['manage_taxonomy', 'manage_guild'] },
     { title: 'Resources & economy', desc: 'STR supply & policy, community resources & resource types', href: '/admin/economy', caps: ['manage_resources', 'manage_stater'] },
     { title: 'Announcements', desc: 'Post, pin & retire the site-wide notice board', href: '/admin/announcements', caps: ['manage_members'] }
   ];
@@ -36,7 +36,7 @@
   let pendingForge = $state(0), pendingCommits = $state(0), pendingSettlements = $state(0), pendingUnitApps = $state(0), pendingMilestones = $state(0);
 
   const review = $derived([
-    canForge ? { title: 'Review queue', desc: 'Badges, member cards, needs, resources, milestones, over-capacity commitments & settlements', href: '/admin/forge-queue', n: pendingForge + pendingCommits + pendingSettlements + pendingMilestones } : null,
+    canForge ? { title: 'Review inbox', desc: 'Badges, member cards, needs, resources, milestones, over-capacity commitments & settlements', href: '/admin/forge-queue', n: pendingForge + pendingCommits + pendingSettlements + pendingMilestones } : null,
     canUnits ? { title: 'Unit applications', desc: 'Members applying to join a chapter or working group', href: '/admin/review', n: pendingUnitApps } : null
   ].filter(Boolean) as { title: string; desc: string; href: string; n: number }[]);
 
@@ -67,7 +67,7 @@
 
 <div class="stack">
   <header>
-    <h1>{$t('Admin center')}</h1>
+    <h1>{$t('Settings')}</h1>
     <p class="muted hsub">{$t('The community at a glance, what needs a decision, and every knob you’re cleared to turn.')}</p>
   </header>
 
@@ -82,7 +82,7 @@
   <!-- review band -->
   {#if review.length}
     <section class="grp">
-      <span class="sec">{$t('Review queue')}</span>
+      <span class="sec">{$t('Review inbox')}</span>
       <div class="review-grid">
         {#each review as r (r.href)}
           <a class="review-card" class:hot={r.n > 0} href={r.href}>

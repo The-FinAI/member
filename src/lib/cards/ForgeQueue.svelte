@@ -196,7 +196,7 @@
 
 <div class="fq">
   <header class="fq-head">
-    <h2 class="fq-title">{$t('Review queue')}</h2>
+    <h2 class="fq-title">{$t('Review inbox')}</h2>
     <div class="fq-filters">
       {#each ['all', 'badge', 'resource', 'need', 'project_done', ...(canMilestone ? ['milestone'] : []), ...(canSettle ? ['settlement'] : [])] as f}
         <button type="button" class="chip toggle" class:on={filter === f} onclick={() => (filter = f as any)}>

@@ -12,17 +12,17 @@
   );
 </script>
 
-<svelte:head><title>Review queue · The Fin AI</title></svelte:head>
+<svelte:head><title>Review inbox · The Fin AI</title></svelte:head>
 
 <section class="wrap">
   <header>
-    <h1>{$t('Review queue')}</h1>
+    <h1>{$t('Review inbox')}</h1>
     <p class="muted sub">{$t('Approve forged credentials & contributions — badges, member cards, needs, resources, over-capacity commitments & settlements.')}</p>
   </header>
   {#if canReview}
     <ForgeQueue />
   {:else}
-    <p class="muted">{$t('The forge queue is for administrators with review authority.')}</p>
+    <p class="muted">{$t('The review inbox is for administrators with review authority.')}</p>
   {/if}
 </section>
 
