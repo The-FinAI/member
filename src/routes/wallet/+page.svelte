@@ -11,11 +11,10 @@
     from_account: string | null; to_account: string | null; created_at: string;
   };
 
-  let balance = $state(0);
+  let balance = $state(0);     // settled (spendable)
   let accountId = $state('');
   let ledger = $state<LedgerRow[]>([]);
-  let staked = $state(0);
-  let joinStake = $state(20);
+  let accruing = $state(0);    // accruing (locked in live projects)
   let loading = $state(true);
   let gain = $state(0);          // STR gained since last visit → celebrate
   let celebrate = $state(false);
@@ -34,15 +33,13 @@
     }
   }
 
-  const netWorth = $derived(balance + staked);
-  const liquidPct = $derived(netWorth > 0 ? (balance / netWorth) * 100 : 100);
-  const bondedPct = $derived(netWorth > 0 ? (staked / netWorth) * 100 : 0);
+  const total = $derived(balance + accruing);
+  const settledPct = $derived(total > 0 ? (balance / total) * 100 : 100);
+  const accruingPct = $derived(total > 0 ? (accruing / total) * 100 : 0);
 
   function txnIcon(e: LedgerRow, incoming: boolean) {
     const r = (e.reason || '').toLowerCase();
-    if (r.includes('stake')) return '🔒';
     if (r.includes('grant') || r.includes('welcome')) return '🎁';
-    if (r.includes('endorse')) return '★';
     if (r.includes('payout') || r.includes('settle') || r.includes('bonus')) return '🏆';
     return incoming ? '↓' : '↑';
   }
@@ -52,17 +49,13 @@
 
   async function load(memberId: string) {
     loading = true;
-    const [{ data: bal }, { data: pol }, { data: cm }] = await Promise.all([
+    const [{ data: bal }, { data: nom }] = await Promise.all([
       supabase.from('stater_balance').select('account_id, balance').eq('owner_member_id', memberId).maybeSingle(),
-      supabase.from('stater_policy').select('value').eq('key', 'join_stake_normal').maybeSingle(),
-      supabase.from('stater_project_stake_commitment').select('token_amount, status').eq('member_id', memberId)
+      supabase.from('stater_project_member_nominal').select('nominal').eq('member_id', memberId)
     ]);
     balance = Number((bal as { balance: number } | null)?.balance ?? 0);
     accountId = (bal as { account_id: string } | null)?.account_id ?? '';
-    joinStake = Number((pol as { value: number } | null)?.value ?? 20);
-    staked = ((cm as { token_amount: number; status: string }[]) ?? [])
-      .filter((c) => ['pledged', 'accepted', 'verified'].includes(c.status))
-      .reduce((a, c) => a + Number(c.token_amount), 0);
+    accruing = ((nom as { nominal: number }[]) ?? []).reduce((a, c) => a + (Number(c.nominal) || 0), 0);
     if (accountId) {
       const { data: lg } = await supabase
         .from('stater_ledger')
@@ -103,37 +96,37 @@
           {#each Array(14) as _, i}<i style="--i:{i}"></i>{/each}
         </div>
       {/if}
-      <span class="h-label">{$t('Net worth')} <Hint term="nominal" text={$t("Liquid balance plus nominal STR you've staked across projects. Staked STR isn't spendable until each project settles.")} /></span>
+      <span class="h-label">{$t('Your STR')} <Hint term="nominal" text={$t("Settled STR you can spend, plus STR still accruing in live projects (locked until each settles).")} /></span>
       <div class="h-balance">
         {#if loading}<span class="sk sk-line" style="width:200px; height:42px;"></span>
-        {:else}<CountUp value={netWorth} /><span class="unit">STR</span>{/if}
+        {:else}<CountUp value={total} /><span class="unit">STR</span>{/if}
       </div>
 
       <div class="alloc">
-        <i class="liquid" style="width:{liquidPct}%"></i>
-        <i class="bonded" style="width:{bondedPct}%"></i>
+        <i class="liquid" style="width:{settledPct}%"></i>
+        <i class="bonded" style="width:{accruingPct}%"></i>
       </div>
       <div class="alloc-legend">
-        <span class="lg"><span class="sw l"></span> {$t('Liquid')} <strong class="mono" style="color:var(--text);">{balance.toLocaleString()}</strong></span>
-        <span class="lg"><span class="sw b"></span> {$t('Committed')} <strong class="mono" style="color:var(--text);">{staked.toLocaleString()}</strong></span>
+        <span class="lg"><span class="sw l"></span> {$t('Settled')} <strong class="mono" style="color:var(--text);">{balance.toLocaleString()}</strong></span>
+        <span class="lg"><span class="sw b"></span> {$t('Accruing')} <strong class="mono" style="color:var(--text);">{accruing.toLocaleString()}</strong></span>
       </div>
     </div>
 
     <div class="row rise-stagger" style="align-items:stretch;">
       <div class="tile" style="flex:1; min-width:160px;">
-        <span class="label">{$t('Liquid balance')} <Hint term="liquid" text={$t('Spendable STR in your wallet — used to post bonds and pay badge fees.')} /></span>
+        <span class="label">{$t('Settled')} <Hint term="liquid" text={$t('Spendable STR in your wallet.')} /></span>
         <span class="value accent"><CountUp value={balance} /></span>
         <span class="sub">{$t('spendable now')}</span>
       </div>
       <div class="tile" style="flex:1; min-width:160px;">
-        <span class="label">{$t('Committed')} <Hint term="nominal" text={$t('Accruing STR from your committed work in live projects. Locked until each project settles, then becomes settled (spendable) STR.')} /></span>
-        <span class="value"><CountUp value={staked} /></span>
-        <span class="sub">{$t('bonded in projects')}</span>
+        <span class="label">{$t('Accruing')} <Hint term="nominal" text={$t('Accruing STR from your committed work in live projects. Locked until each project settles, then becomes settled (spendable) STR.')} /></span>
+        <span class="value"><CountUp value={accruing} /></span>
+        <span class="sub">{$t('in live projects')}</span>
       </div>
       <div class="tile" style="flex:1; min-width:160px;">
-        <span class="label">{$t('Bonded ratio')}</span>
-        <span class="value"><CountUp value={netWorth > 0 ? bondedPct : 0} decimals={0} suffix="%" /></span>
-        <span class="sub">{$t('of net worth at work')}</span>
+        <span class="label">{$t('Accruing share')}</span>
+        <span class="value"><CountUp value={total > 0 ? accruingPct : 0} decimals={0} suffix="%" /></span>
+        <span class="sub">{$t('still locked in projects')}</span>
       </div>
     </div>
 
@@ -144,11 +137,11 @@
       <div class="earn-steps">
         <div class="earn-step"><span class="es-n">1</span><div class="es-tx"><strong>{$t('Join or lead a project')}</strong><span class="muted">{$t('Take an open need, or start one as first author.')}</span></div></div>
         <span class="es-arrow">→</span>
-        <div class="earn-step"><span class="es-n">2</span><div class="es-tx"><strong>{$t('Contribute monthly')}</strong><span class="muted">{$t('Hours, resources & milestones mint nominal STR (your “Staked”: {n}).', { n: staked.toLocaleString() })}</span></div></div>
+        <div class="earn-step"><span class="es-n">2</span><div class="es-tx"><strong>{$t('Contribute monthly')}</strong><span class="muted">{$t('Hours, resources & milestones accrue STR (your accruing: {n}).', { n: accruing.toLocaleString() })}</span></div></div>
         <span class="es-arrow">→</span>
         <div class="earn-step"><span class="es-n">3</span><div class="es-tx"><strong>{$t('Finish the project')}</strong><span class="muted">{$t('The leader drafts a settlement; milestones lift the payout (up to ×3).')}</span></div></div>
         <span class="es-arrow">→</span>
-        <div class="earn-step done"><span class="es-n">✓</span><div class="es-tx"><strong>{$t('Get liquid STR')}</strong><span class="muted">{$t('Settlement pays out spendable STR by your share (your “Liquid”: {n}).', { n: balance.toLocaleString() })}</span></div></div>
+        <div class="earn-step done"><span class="es-n">✓</span><div class="es-tx"><strong>{$t('Get liquid STR')}</strong><span class="muted">{$t('Settlement pays out spendable STR by your share (your settled: {n}).', { n: balance.toLocaleString() })}</span></div></div>
       </div>
     </div>
 
