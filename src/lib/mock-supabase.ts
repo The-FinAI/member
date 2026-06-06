@@ -75,7 +75,8 @@ const seed: Record<string, any[]> = {
     { id: 's-gpu', project_id: P1, slot_kind: 'work_resource', skill_id: null, resource_type_id: RT_GPU, desired_level: null, quota: 100, headcount: 1, status: 'open', skill: null, resource_type: { name: 'GPU', unit: 'GPU-hours' }, project: { name: 'ml-Tagging', emoji: '🏷️', code: 'ml-Tagging' } }
   ],
   work_commitment: [
-    { id: 'wc-1', project_id: P1, slot_id: 's-ann', member_id: M_ZHAO, monthly_amount: 5, nominal_str: 50, year_month: '2026-06', resource_id: 'r-labor-zhao', slot: { slot_kind: 'work_labor' }, member: { full_name: 'Zhao Lei' }, resource: { unit: 'h' } }
+    { id: 'wc-1', project_id: P1, slot_id: 's-ann', member_id: M_ZHAO, monthly_amount: 5, nominal_str: 50, year_month: '2026-06', resource_id: null, slot: { slot_kind: 'work_labor' }, member: { full_name: 'Zhao Lei' }, resource: { unit: 'h' } },
+    { id: 'wc-me', project_id: P1, slot_id: null, member_id: M_ME, monthly_amount: 34, nominal_str: 340, year_month: '2026-06', resource_id: null, slot: { slot_kind: 'work_labor' }, member: { full_name: 'Chen Wei' }, resource: { unit: 'h' } }
   ],
   task: [
     { id: 't-1', project_id: P1, grp: null, name: 'Confirm EN taxonomy', skill_id: SK_ANN, owner_member_id: M_ME, state: 'doing', note: 'US/EU/SG differ', sort: 1, updated_at: '2026-06-06T00:00:00Z', project: { name: 'ml-Tagging', emoji: '🏷️', code: 'ml-Tagging' } },
@@ -138,6 +139,7 @@ function aliasFor(col: string) {
 }
 
 function builder(table: string) {
+  recompute();
   let rows = resolveEmbeds((seed[table] ?? []).slice(), table);
   let headCount = false;
   const api: any = {
@@ -168,6 +170,15 @@ try {
 function persist() {
   try { if (typeof localStorage !== 'undefined') localStorage.setItem(LS, JSON.stringify(seed)); } catch { /* ignore */ }
 }
+
+// LOGIC LAYER: derive the ledger views from base data, so the whole loop is live
+// (assign → accruing grows; settle → paid). Called before every read.
+function recompute() {
+  const nom: Record<string, number> = {};
+  for (const w of seed.work_commitment) nom[w.member_id] = (nom[w.member_id] || 0) + (Number(w.nominal_str) || 0);
+  seed.stater_project_member_nominal = Object.entries(nom).map(([member_id, nominal]) => ({ member_id, nominal }));
+}
+const PROJECT_POOL = (pid: string) => seed.work_commitment.filter((w) => w.project_id === pid).reduce((t, w) => t + (Number(w.nominal_str) || 0), 0);
 
 let _idc = 1000;
 const nid = (p: string) => `${p}-${++_idc}`;
@@ -267,7 +278,55 @@ function rpc(name: string, a: any) {
       .sort((x, y) => (Number(y.fits) - Number(x.fits)) || ((rank[y.level as string] || 0) - (rank[x.level as string] || 0)) || (y.shipped - x.shipped));
     return Promise.resolve({ data: rows, error: null });
   }
-  if (name === 'skill_raise_suggestions') return Promise.resolve({ data: [], error: null });
+  // --- LOGIC LAYER ---
+  if (name === 'skill_raise_suggestions') {
+    const out: any[] = [];
+    for (const e of seed.person_skill_evidence.filter((x) => x.member_id === a.p_member)) {
+      const ps = seed.person_skill.find((p) => p.member_id === a.p_member && p.skill_id === e.skill_id);
+      const lvl = ps?.level ?? 'learning';
+      let suggest: string | null = null;
+      if (e.shipped >= 2 && lvl === 'independent') suggest = 'lead';
+      else if (e.tasks >= 3 && lvl === 'learning') suggest = 'independent';
+      if (suggest) out.push({ skill_id: e.skill_id, skill_name: (seed.skill.find((s) => s.id === e.skill_id) || {}).name, current_level: lvl, suggested_level: suggest, tasks: e.tasks, shipped: e.shipped });
+    }
+    return Promise.resolve({ data: out, error: null });
+  }
+  if (name === 'project_set_status') {
+    const p = seed.project.find((x) => x.id === a.p_project); if (p) p.status_id = a.p_status; persist();
+    return Promise.resolve({ data: null, error: null });
+  }
+  if (name === 'forge_project_done') {
+    const p = seed.project.find((x) => x.id === a.p_project);
+    if (p) p.status_id = 'ps-fin'; persist();
+    return Promise.resolve({ data: null, error: null });
+  }
+  if (name === 'forge_milestone') {
+    seed.project_milestone.push({ id: nid('ms'), project_id: a.p_project, status: 'verified', nominal_value: 100, multiplier_bonus: 0.2 });
+    persist();
+    return Promise.resolve({ data: null, error: null });
+  }
+  if (name === 'submit_settlement' || name === 'approve_settlement') {
+    const pid = a.p ?? a.project_id ?? (a.settlement_id ? P1 : P1);
+    const pool = PROJECT_POOL(pid);
+    const items = a.items ?? [];
+    const totalW = items.filter((i: any) => i.is_author).reduce((t: number, i: any) => t + (Number(i.final_payout_weight) || 0), 0) || 1;
+    for (const it of items) {
+      if (!it.is_author) continue;
+      const share = (Number(it.final_payout_weight) || 0) / totalW;
+      const paid = Math.round(share * pool);
+      let bal = seed.stater_balance.find((b) => b.owner_member_id === it.member_id);
+      if (!bal) { bal = { owner_member_id: it.member_id, account_id: 'acct-' + it.member_id, balance: 0 }; seed.stater_balance.push(bal); }
+      bal.balance += paid;
+      seed.stater_ledger.push({ id: nid('l'), amount: paid, entry_type: 'payout', reason: 'settlement payout', from_account: null, to_account: bal.account_id, created_at: '2026-06-06T12:00:00Z' });
+    }
+    // settled: zero the project's accruing + mark project finished
+    seed.work_commitment = seed.work_commitment.map((w) => w.project_id === pid ? { ...w, nominal_str: 0 } : w);
+    const p = seed.project.find((x) => x.id === pid); if (p) p.status_id = 'ps-fin';
+    seed.stater_settlement.push({ project_id: pid, status: 'approved', created_at: '2026-06-06T12:00:00Z' });
+    persist();
+    return Promise.resolve({ data: null, error: null });
+  }
+  if (name === 'release_claim') return Promise.resolve({ data: null, error: null });
   if (name === 'can_edit_project' || name === 'manages_card') return Promise.resolve({ data: true, error: null });
   return Promise.resolve({ data: null, error: null });
 }
