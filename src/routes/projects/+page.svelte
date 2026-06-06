@@ -603,7 +603,7 @@
           type={r.type}
           title={`${r.emoji ? r.emoji + ' ' : ''}${r.code || r.name}`}
           subtitle={[r.code && r.name !== r.code ? r.name : '', r.venue].filter(Boolean).join(' · ')}
-          status={r.claimable ? $t('lead open') : r.status}
+          status={r.claimable ? $t('first author open') : r.status}
           statusKind={r.claimable ? 'warn' : projKind(r.status)}
           accentColor={r.claimable ? '#f0a35e' : statusColor(r.status)}
           tag={r.wg ? { label: r.wg, color: wgColor(r.wg) } : undefined}

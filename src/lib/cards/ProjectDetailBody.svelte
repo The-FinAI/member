@@ -184,7 +184,7 @@
 
     <div class="pd-meta">
       <div class="pd-meta-chips">
-        {#if g.claimable}<span class="status st-proposal"><span class="sdot" style="background:currentColor;"></span>{$t('lead open')}</span>{/if}
+        {#if g.claimable}<span class="status st-proposal"><span class="sdot" style="background:currentColor;"></span>{$t('first author open')}</span>{/if}
         <span class="pd-chip">{$t(g.type)}</span>
         {#if g.deadline}<span class="pd-chip {ddlClass(g.deadline)}">⏱ {fmtDate(g.deadline)} · {relDays(g.deadline)}</span>{/if}
       </div>

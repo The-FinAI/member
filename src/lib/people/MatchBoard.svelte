@@ -27,6 +27,7 @@
   let members = $state<Member[]>([]);
   let loading = $state(true);
   let err = $state('');
+  let msg = $state('');
   let openNeed = $state<string | null>(null);
   let cands = $state<Cand[]>([]);
   let candLoading = $state(false);
@@ -106,6 +107,10 @@
     const { error } = await supabase.rpc('assign', { p_member: memberId, p_slot: slot.id, p_hours: hours });
     busy = null;
     if (error) { err = error.message; return; }
+    // explicit confirmation (visibility of system status) — the row vanishing
+    // alone isn't clear feedback
+    const who = memberName(memberId) || cands.find((c) => c.member_id === memberId)?.full_name || '';
+    msg = `✓ ${$t('Assigned')} ${who} · ${hours}${slot.slot_kind === 'work_resource' ? (slot.resource_type?.unit ?? '') : 'h'}`;
     // optimistic: bump filled; drop the need if now full; refresh candidates
     const n = needs.find((x) => x.id === slot.id);
     if (n) { n.filled += 1; if (n.filled >= n.headcount) { needs = needs.filter((x) => x.id !== slot.id); openNeed = null; } }
@@ -119,6 +124,7 @@
   <div class="mb-head">
     <h2>{$t('Match people to needs')}</h2>
     {#if err}<span class="mb-err">{err}</span>{/if}
+    {#if msg}<span class="mb-ok">{msg}</span>{/if}
   </div>
 
   {#if loading}
@@ -211,6 +217,7 @@
   .mb-head { display: flex; align-items: baseline; gap: .7rem; }
   .mb-head h2 { margin: 0 0 .6rem; font-size: 1.1rem; }
   .mb-err { color: var(--neg, #c0392b); font-size: .82rem; }
+  .mb-ok { color: #2e7d4f; font-size: .82rem; }
   .mb-dim { color: var(--muted, #999); font-size: .9rem; }
   .need { border: 1px solid var(--line, #eee); border-radius: 10px; margin-bottom: .5rem; overflow: hidden; }
   .need.open { border-color: var(--accent, #6a7cff); }
