@@ -96,7 +96,9 @@
   // the editor only governs this card's OWN (member-scope) catalog…
   const ownResources = $derived(cardResources.filter((r) => r.scope === 'member'));
   const myLabor = $derived(ownResources.find((r) => r.resource_type?.name === 'Labor') ?? null);
-  const catalogResources = $derived(ownResources);
+  // "My time" (Labor) is now the person's capacity attribute (Skills tab) — keep
+  // it out of the resource catalog so it isn't shown as a duplicate resource.
+  const catalogResources = $derived(ownResources.filter((r) => r.resource_type?.name !== 'Labor'));
   // …while community resources this person STEWARDS (holds for the community)
   // are shown read-only on their page too.
   const stewarded = $derived(cardResources.filter((r) => r.scope === 'community'));
@@ -414,7 +416,7 @@
       <div class="kpi">
         <span class="k-label">{$t('Contribution')}</span>
         <span class="k-value accent">{totalNominal.toLocaleString()}</span>
-        <span class="k-sub">{$t('nominal STR minted through work')}</span>
+        <span class="k-sub">{$t('STR accruing from work')}</span>
       </div>
       <div class="kpi">
         <span class="k-label">{$t('Badges')}</span>

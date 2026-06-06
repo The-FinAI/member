@@ -42,6 +42,15 @@ candidate-pool count makes demand non-blind. *(Test: R ✅ form renders; I ⏳; 
 **HCI acceptance:** free, no stake step; lands on a usable project page; first author is an open *need*
 to be matched, not a hand-pick. *(Test: R 🟡; I ⏳; L ❌.)*
 
+### W6 — "Advance the project as it progresses"
+**Goal:** move the project through its lifecycle and record outcomes.
+**Scenario:** Wang advances status Active → Under review when the draft is in; claims a milestone
+(submission); adds the Arxiv link when it's out.
+**HCI acceptance:** a single status pipeline; milestones/links update optimistically; the deeper project
+admin (status · links · meetings · milestones · history) sits **below** the task board, not above it.
+*(Test: R ✅ pipeline+milestones+links render; **I ✅ task-status flip optimistic** (same pattern); L ❌
+status-advance/milestone persistence need live.)*
+
 ### W5 — "When the paper lands, split the credit fairly" *(highest stakes)*
 **Goal:** distribute the finished project's credit so contributors are paid fairly.
 **Scenario:** Wang finishes the project, opens Split — weights default to each person's logged hours, a
@@ -75,6 +84,16 @@ not granted; no unanchored self-rating. *(Test: R ✅ evidence shows; I ⏳ rais
 it blocks** (constraint visible before the wall); under-level people still show, ranked lower; resource &
 first-author needs match the same way; the person is notified. *(Test: R ✅; **I ✅ capacity guard
 validated** — red bar + disabled Assign at over-book; L ❌ ranking/notify need live.)*
+
+### C5 — "Register what compute/data my people can contribute" *(resources)*
+**Goal:** record the GPU hours, datasets, APIs or funding a person holds, so projects with resource needs
+can be matched to them — contribution isn't only hours.
+**Scenario:** on a member's **Resources** tab, Chen declares "A100 ×2 · 200 GPU-hours/mo". A WG posts a
+**GPU need**; on the Match board the GPU need lists **holders ranked by remaining quota** (unit-aware),
+and Chen assigns one.
+**HCI acceptance:** declaring is one type-adaptive form (GPU/API/dataset/funding); the resource need
+matches by **who holds it + remaining quota** (not skill); "My time" is NOT a resource (it's capacity).
+*(Test: R ✅ supply form + need both render; **I 🟡** quota-bar shown; L ❌ resource match/quota gate need live.)*
 
 ### C4 — "Make sure no one is idle or overloaded"
 **Goal:** scan the roster and see free vs committed at a glance.

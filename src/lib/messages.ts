@@ -4666,6 +4666,7 @@ const fr: Table = {
   'clear': 'effacer',
   'Confirm seat': 'Confirmer',
   'Working Groups': 'Groupes de travail',
+  'STR accruing from work': 'STR cumulés par le travail',
   'This project is finished — draft the settlement below to split the credit.': 'Projet terminé — rédigez le règlement ci-dessous pour répartir le crédit.',
   'Your STR': 'Vos STR',
   'Accruing share': 'Part en cours',
