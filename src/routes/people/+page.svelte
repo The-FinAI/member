@@ -26,6 +26,27 @@
 
   const isOfficer = $derived($officerUnits.length > 0 || $capabilities.has('manage_members'));
   const myUnitIds = $derived(new Set($officerUnits.map((u: any) => u.unit_id ?? u.id)));
+  const myChapters = $derived($officerUnits.filter((u: any) => u.kind === 'chapter'));
+
+  // add a person (forge a member card into a chapter) — moved here from the
+  // retired officer console; skills/hours are set on the person card after.
+  let addOpen = $state(false);
+  let aName = $state(''); let aEmail = $state(''); let aAffil = $state(''); let aUnit = $state('');
+  let aBusy = $state(false); let aErr = $state(''); let aMsg = $state('');
+  async function addPerson() {
+    aErr = ''; aMsg = '';
+    const unit = aUnit || (myChapters[0] as any)?.unit_id || (myChapters[0] as any)?.id;
+    if (!aName.trim() || !aEmail.trim()) { aErr = $t('Name and email are required.'); return; }
+    if (!unit) { aErr = $t('No chapter to add to.'); return; }
+    aBusy = true;
+    const { error } = await supabase.rpc('forge_member_card', {
+      p_full_name: aName.trim(), p_email: aEmail.trim(), p_unit: unit, p_affiliation: aAffil.trim() || null
+    });
+    aBusy = false;
+    if (error) { aErr = error.message; return; }
+    aMsg = $t('Person added.'); aName = ''; aEmail = ''; aAffil = '';
+    load();
+  }
 
   const filtered = $derived.by(() => {
     const needle = q.trim().toLowerCase();
@@ -62,9 +83,29 @@
 
 <section class="pp">
   <div class="pp-head">
-    <h1>{$t('People')}</h1>
+    <div class="pp-titlerow">
+      <h1>{$t('People')}</h1>
+      {#if isOfficer}<button class="pp-add" onclick={() => (addOpen = !addOpen)}>＋ {$t('Add a person')}</button>{/if}
+    </div>
     <p class="pp-sub">{$t('Researchers across the community — their skills and how much time they have.')}</p>
   </div>
+
+  {#if addOpen}
+    <div class="pp-addform">
+      <input placeholder={$t('Full name')} bind:value={aName} />
+      <input type="email" placeholder={$t('Email')} bind:value={aEmail} />
+      <input placeholder={$t('Affiliation')} bind:value={aAffil} />
+      {#if myChapters.length > 1}
+        <select bind:value={aUnit}>
+          <option value="">{$t('Chapter')}</option>
+          {#each myChapters as c}<option value={(c as any).unit_id ?? (c as any).id}>{(c as any).name}</option>{/each}
+        </select>
+      {/if}
+      <button class="pp-go" disabled={aBusy} onclick={addPerson}>{$t('Add')}</button>
+      {#if aErr}<span class="pp-err">{aErr}</span>{/if}
+      {#if aMsg}<span class="pp-ok">{aMsg}</span>{/if}
+    </div>
+  {/if}
 
   {#if isOfficer}
     <MatchBoard />
@@ -108,8 +149,16 @@
 
 <style>
   .pp { padding: 1rem 0 3rem; max-width: 1100px; }
+  .pp-titlerow { display: flex; align-items: center; gap: 1rem; }
   .pp-head h1 { margin: 0; }
+  .pp-add { border: 1px solid var(--accent, #6a7cff); color: var(--accent, #6a7cff); background: none; border-radius: 8px; padding: .25rem .7rem; cursor: pointer; font-size: .85rem; }
   .pp-sub { color: var(--muted, #888); margin: .2rem 0 1rem; font-size: .9rem; }
+  .pp-addform { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; padding: .6rem .7rem; border: 1px solid var(--line, #eee); border-radius: 10px; }
+  .pp-addform input, .pp-addform select { padding: .35rem .5rem; border: 1px solid var(--line, #ddd); border-radius: 7px; }
+  .pp-go { border: none; background: var(--accent, #6a7cff); color: #fff; border-radius: 7px; padding: .35rem .8rem; cursor: pointer; }
+  .pp-go:disabled { opacity: .5; }
+  .pp-err { color: var(--neg, #c0392b); font-size: .82rem; }
+  .pp-ok { color: #2e7d4f; font-size: .82rem; }
   .pp-tools { display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem; }
   .pp-search { flex: 0 1 22rem; padding: .4rem .6rem; border: 1px solid var(--line, #ddd); border-radius: 8px; }
   .pp-toggle { font-size: .85rem; color: var(--muted, #666); display: flex; gap: .35rem; align-items: center; }

@@ -136,21 +136,19 @@
     </a>
 
     {#if $session}
+      <!-- IA = the PRD surfaces: Home · Projects · People · My · Directory · Settings (+ Guide).
+           The officer Console is retired from nav — matching lives on People, project ops on
+           Projects. The /officer route stays reachable (deprecated), nothing deleted. -->
       <nav class="side-nav">
         <a href="/" class="side-link" class:active={$page.url.pathname === '/'}>{$t('Home')}</a>
 
-        <!-- Work: the contribution loop. Projects make STR; the console is the
-             officer's matching desk. -->
         <div class="side-section">{$t('Work')}</div>
         <a href="/my" class="side-link" class:active={isActive('/my', $page.url.pathname)}>{$t('My tasks')}</a>
         <a href="/projects" class="side-link" class:active={isActive('/projects', $page.url.pathname)}>{$t('Projects')}</a>
-        {#if $officerUnits.length > 0 || canAdmin}
-          <a href="/officer" class="side-link" class:active={isActive('/officer', $page.url.pathname)}>{$t('Console')}</a>
-        {/if}
+        <a href="/people" class="side-link" class:active={isActive('/people', $page.url.pathname)}>{$t('People')}</a>
 
         <div class="side-section">{$t('More')}</div>
-        <a href="/people" class="side-link" class:active={isActive('/people', $page.url.pathname)}>{$t('People')}</a>
-        <a href="/community" class="side-link" class:active={isActive('/community', $page.url.pathname)}>{$t('Community')}</a>
+        <a href="/community" class="side-link" class:active={isActive('/community', $page.url.pathname)}>{$t('Directory')}</a>
         <a href="/guide" class="side-link" class:active={isActive('/guide', $page.url.pathname)}>{$t('Guide')}</a>
         {#if canAdmin || canApprove}
           <a href="/admin" class="side-link" class:active={isActive('/admin', $page.url.pathname)}>{$t('Settings')}</a>

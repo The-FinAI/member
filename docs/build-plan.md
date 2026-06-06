@@ -170,18 +170,38 @@ steward confirms on behalf; P2: the member).
 
 ---
 
-## Phase 7 — Cull + the two app-wide interaction refactors · *finish the rebuild*
+## Phase 7 — IA restructure + non-destructive cull · *make it the PRD, keep the data*
 
-1. **Legacy-purge migration `0540_purge.sql`** — drop the 6 dead subsystems (token economy remnants,
-   apply→accept→confirm join, stake commitments, skillcards, skill-exam+endorsement, resource offers,
-   paid-leader bonds) and the orphaned `slot/forge` tables once Needs/Tasks fully replace them.
-2. **Kill reload-everything** — replace every `load()`-after-action with optimistic + targeted update
-   (app-wide pass). *Highest usability-per-effort.*
-3. **Enabled-or-explained + live-inline validation** — one validation pattern applied to every form.
-4. **Vocabulary sweep** — i18n pass enforcing PRD §6 (and zh clean); remove banned terms.
-5. **Route reduction** — to the 5 surfaces (Projects · People · My · Directory · Settings) + Home router.
+**Two corrections to the original plan (per review):** (a) P0–P6 added components onto the OLD pages —
+the app still runs old + new surfaces in parallel; P7 must actually **restructure the IA** to the PRD
+surfaces. (b) **No data is dropped.** The "cull" deprecates and hides; it never `DROP`s a table.
 
-**Acceptance:** the PRD §8 acceptance test passes end-to-end; ~5 routes, ~8 components, 6 nouns.
+### 7A — IA restructure (the PRD's surfaces)
+Target nav = **Home · Projects · People · My · Directory · Settings** (+ Guide). Map the old surfaces in:
+- **Home** → rebuild as the role-aware **"what needs me"** router (replaces the old cockpit/portfolio as
+  the hero; old components kept but demoted).
+- **Console (`/officer`)** → its two halves already moved: **matching → People (MatchBoard)**, **project
+  ops → Projects (NeedPost/TaskBoard)**. **Remove `/officer` from nav**; keep the route alive (redirect /
+  deprecated), no deletion.
+- **Community (`/community`)** → relabel **Directory** (browse people · chapters · WGs · badges). `/people`
+  is the People surface (roster + matching); `/community` is reference.
+- **Settings** = `/admin` (done P6). Paths may stay `/admin/*` (alias, not a forced move).
+
+### 7B — Non-destructive cull (deprecate, never drop)
+- **No purge migration that DROPs.** The 6 dead subsystems' tables **stay** (data preserved); they are
+  simply **not referenced by the new UI** and marked deprecated by comment. Any cleanup migration is
+  ADD/АLTER-only (e.g. a view, a flag) — never `drop table`.
+- Old parallel UIs (old project slot editor, badge tree, old home cockpit) are **removed from the nav /
+  hidden**, not deleted from the repo, until a later, separately-approved hard-removal.
+
+### 7C — App-wide interaction sweeps (as before)
+- **Kill reload-everything** — optimistic + targeted updates app-wide. *Highest usability-per-effort.*
+- **Enabled-or-explained + live-inline validation** — one validation pattern everywhere.
+- **Vocabulary sweep** — i18n enforcing PRD §6 (zh clean); banned terms relabelled in any surface that
+  remains visible.
+
+**Acceptance:** the nav IS the PRD's surfaces; old surfaces are unreachable from nav but no row was
+deleted; PRD §8 test passes for the primary flows.
 
 ---
 
