@@ -24,7 +24,7 @@
     wg: string; wgUnitId: string | null; leader: string;
     seatsFilled: number; seatsTotal: number; openNeeds: number; pool: number;
     summary: string | null; finished: boolean; claimable: boolean;
-    mult: number; milestoneNominal: number; leaderId: string | null;
+    mult: number; milestoneNominal: number; leaderId: string | null; settleStatus: string | null;
   };
   let g = $state<G | null>(null);
   let slots = $state<Slot[]>([]);
@@ -45,6 +45,18 @@
   });
   // a WG officer OR the project's leader (first author) may post needs
   const canPostNeed = $derived(canManage || (!!g?.leaderId && $member?.id === g.leaderId));
+
+  // STR pipeline: nominal accrues → finish → settle → liquid payout
+  const projectedPayout = $derived(g ? Math.round(g.pool * g.mult) : 0);
+  const stage = $derived.by(() => {
+    if (!g) return 'accruing';
+    if (g.settleStatus === 'approved') return 'settled';
+    if (g.settleStatus === 'submitted' || g.settleStatus === 'under_review') return 'settling';
+    if (g.finished) return 'ready';
+    return 'accruing';
+  });
+  const STAGES = ['accruing', 'ready', 'settling', 'settled'];
+  const stageIdx = $derived(STAGES.indexOf(stage));
 
   async function load() {
     if (!supabaseConfigured) { loading = false; return; }
@@ -86,6 +98,10 @@
     }
     // output axis: verified milestones add to the pool and lift the settlement
     // multiplier (capped ×3). nominal pool = work nominal + Σ milestone nominal.
+    const { data: setl } = await supabase.from('stater_settlement')
+      .select('status').eq('project_id', projectId).order('created_at', { ascending: false }).limit(1).maybeSingle();
+    const settleStatus = (setl as { status: string } | null)?.status ?? null;
+
     const { data: vms } = await supabase.from('project_milestone')
       .select('nominal_value, multiplier_bonus').eq('project_id', projectId).eq('status', 'verified');
     let mNominal = 0, mBonus = 0;
@@ -114,7 +130,7 @@
       deadline: p.deadline ?? p.venue?.deadline ?? null,
       wg: (p.org_unit_id && unitName[p.org_unit_id]) || '', wgUnitId: p.org_unit_id ?? null,
       leader, leaderId, seatsFilled, seatsTotal, openNeeds, pool, summary: p.summary ?? null,
-      finished, claimable: !hasLeader && !finished, mult, milestoneNominal: mNominal
+      finished, claimable: !hasLeader && !finished, mult, milestoneNominal: mNominal, settleStatus
     };
     loading = false;
   }
@@ -182,6 +198,31 @@
       {#if g.leader}<div class="pd-stat"><span class="pd-v">{g.leader}</span><span class="pd-l">{$t('first author')}</span></div>{/if}
     </div>
 
+    <!-- STR pipeline: how this project's work becomes spendable STR -->
+    <div class="pd-pipe">
+      <div class="pp-head">
+        <span class="pd-h">{$t('STR pipeline')}</span>
+        <span class="pp-payout">{$t('Projected payout')}: <strong class="mono accent">{projectedPayout.toLocaleString()}</strong>{#if g.mult > 1}<span class="muted"> ({g.pool.toLocaleString()} × {g.mult.toFixed(2)})</span>{/if}</span>
+      </div>
+      <div class="pp-track">
+        {#each [['accruing', $t('Accruing'), $t('contributors mint nominal STR')], ['ready', $t('Finish'), $t('mark done & draft settlement')], ['settling', $t('Settle'), $t('under review')], ['settled', $t('Paid out'), $t('liquid STR to wallets')]] as [k, label, sub], i}
+          <div class="pp-step" class:on={stageIdx === i} class:done={stageIdx > i}>
+            <span class="pp-dot"></span>
+            <span class="pp-tx"><strong>{label}</strong><span class="muted">{sub}</span></span>
+          </div>
+        {/each}
+      </div>
+      {#if stage === 'accruing'}
+        <p class="pp-note muted">{$t('Keep contributing — every seated person’s hours/resources grow the pool. STR is paid only when the project finishes and settles.')}</p>
+      {:else if stage === 'ready'}
+        <p class="pp-note">{canPostNeed ? $t('This project is finished — draft the settlement below to pay out STR.') : $t('Finished — waiting for the leader to draft the settlement.')}</p>
+      {:else if stage === 'settling'}
+        <p class="pp-note muted">{$t('Settlement submitted — an admin is reviewing it. Payout happens on approval.')}</p>
+      {:else}
+        <p class="pp-note">{$t('Settled — STR has been paid out to contributors.')}</p>
+      {/if}
+    </div>
+
     <ProjectCardBody projectId={g.id} {venues} {workingGroups} {statuses} onChanged={reload} />
 
     <div class="pd-section">
@@ -244,6 +285,20 @@
   .pd-h { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .pd-btn { align-self: flex-start; display: inline-flex; align-items: center; gap: .3rem; padding: .5rem .9rem; background: var(--accent); color: #fff; border: 1px solid transparent; border-radius: 8px; text-decoration: none; font-weight: 600; }
   .pd-btn.ghost { background: transparent; color: var(--accent); border-color: var(--border); }
+  .pd-pipe { border: 1px solid var(--border); border-radius: 12px; background: var(--card); padding: .8rem .9rem; display: flex; flex-direction: column; gap: .55rem; }
+  .pp-head { display: flex; align-items: baseline; justify-content: space-between; gap: .6rem; flex-wrap: wrap; }
+  .pp-payout { font-size: .82rem; color: var(--text-dim); }
+  .pp-track { display: flex; gap: .4rem; flex-wrap: wrap; }
+  .pp-step { flex: 1; min-width: 130px; display: flex; gap: .45rem; align-items: flex-start; padding: .4rem .5rem; border-radius: 8px; opacity: .55; }
+  .pp-step.on { opacity: 1; background: var(--accent-soft); }
+  .pp-step.done { opacity: .85; }
+  .pp-dot { flex: none; width: .7rem; height: .7rem; border-radius: 50%; background: var(--border-2); margin-top: .2rem; }
+  .pp-step.on .pp-dot { background: var(--accent); }
+  .pp-step.done .pp-dot { background: var(--up); }
+  .pp-tx { display: flex; flex-direction: column; gap: .05rem; min-width: 0; }
+  .pp-tx strong { font-size: .8rem; }
+  .pp-tx .muted { font-size: .72rem; }
+  .pp-note { margin: 0; font-size: .8rem; }
   .pd-postneed-toggle { align-self: flex-start; background: transparent; border: 0; padding: 0; cursor: pointer; font: inherit; color: var(--accent); font-weight: 600; }
   .pd-postneed-toggle:hover { text-decoration: underline; }
   .pd-release { padding: .5rem .9rem; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--down); font: inherit; font-weight: 600; cursor: pointer; }
