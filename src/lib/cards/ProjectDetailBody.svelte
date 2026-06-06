@@ -7,6 +7,7 @@
   import SlotSeater from './SlotSeater.svelte';
   import ProjectCardBody from './ProjectCardBody.svelte';
   import ResourceForgeForm from '$lib/resources/ResourceForgeForm.svelte';
+  import TaskBoard from '$lib/record/TaskBoard.svelte';
 
   // Shared body for a single project — used by the /projects/[id] page and the
   // projects-grid quick-view drawer, so the page mirrors the drawer (like
@@ -224,6 +225,10 @@
     </div>
 
     <ProjectCardBody projectId={g.id} {venues} {workingGroups} {statuses} onChanged={reload} />
+
+    <div class="pd-section">
+      <TaskBoard projectId={g.id} canEdit={canManage || canPostNeed} onChanged={onChanged} />
+    </div>
 
     <div class="pd-section">
       <span class="pd-h">{$t('Team & slots')}</span>

@@ -203,9 +203,12 @@ For each phase: write migration → user `db push` → RPCs → components (DoD-
 `cd /Users/huangjimin/thefin-community && npm run build` → i18n keys (zh/ja/fr) → commit → push. Keep old
 surfaces alive until the new one replaces them (incremental retirement, never big-bang).
 
-## Open questions
+## Open questions — all resolved
 - **P3 — RESOLVED:** matching (A) is the default — we want the ecosystem; direct name-and-go (B) is an
   always-available override. Build `match_candidates` (A) **and** `DirectAssign` (B).
-- **P4:** STR prominence dial (PRD §8) — confirm "legible but quiet" vs a contribution number on cards.
+- **P4 — RESOLVED:** STR stays **legible but quiet** (visible on My / profile / Settle; absent on board /
+  roster / home). No contribution number on person cards.
+- **P0 — RESOLVED:** task `state` = `open · doing · done`; coverage groups use `confirmed · checking ·
+  potential`. One `state` column, validated against the group's allowed set.
 - **P0:** task `state` set — is Open/Doing/Done enough, or do coverage groups need their own states as a
   first-class per-group vocabulary?
