@@ -9,6 +9,7 @@
   import { theme, toggleTheme } from '$lib/theme';
   import { t } from '$lib/i18n';
   import LangSwitcher from '$lib/LangSwitcher.svelte';
+  import NotificationInbox from '$lib/shell/NotificationInbox.svelte';
   import LaunchBanner from '$lib/LaunchBanner.svelte';
 
   let { children } = $props();
@@ -189,6 +190,8 @@
     <header class="topbar">
       <div class="container row" style="justify-content: flex-end; padding-block: .55rem; gap: 1rem;">
         <LangSwitcher />
+
+        {#if $session && $member}<NotificationInbox />{/if}
 
         <button class="icon-btn" onclick={toggleTheme} title={$t('Toggle theme')} aria-label={$t('Toggle theme')}>
           {$theme === 'dark' ? '☀' : '☾'}
