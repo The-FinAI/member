@@ -204,3 +204,41 @@ concept · one gesture per act.**
 > manages the other's domain, and neither meets *slot, forge, nominal, seat, or harvest*. If a screen
 > shows a person their *own* projects next to their *team*, or one act needs two forms — it's pointed at
 > the wrong structure, and must be split or removed.
+
+---
+
+## 11. HCI foundations & precedents (why each decision is not arbitrary)
+
+*Each design choice above maps to a named principle and a product that solved the same problem. Canon
+referenced: Norman, *The Design of Everyday Things* (affordances/signifiers, mapping, constraints,
+feedback, conceptual model, gulfs of execution & evaluation); Nielsen's **10 Usability Heuristics**;
+Shneiderman's **8 Golden Rules** + **Direct Manipulation** (Hutchins–Hollan–Norman, 1985); Pirolli &
+Card, **Information Foraging** (information scent); **Fitts's** & **Hick's** Laws; Miller's **7±2**;
+Krug, *Don't Make Me Think*; Cooper, *About Face* (goal-directed design, personas); Tidwell, *Designing
+Interfaces* (UI patterns).*
+
+| Decision (this doc) | HCI principle it rests on | Real-world precedent to borrow from |
+|---|---|---|
+| **§0–2 Bipartite People/Projects, never merged** | Norman **conceptual model** must mirror the user's mental model; Nielsen #2 **match system ↔ real world**; IA (Rosenfeld–Morville) — organize by the user's domains, not the DB schema | **GitHub** (People/Org vs Repos), **Linear** (Teams vs Projects), **Workday/HR** (People vs Work) all keep the two axes structurally apart |
+| **§1 One Role = the single seam** | Reduce **modes**; one clean conceptual bridge between domains | **Two-sided marketplaces** — Upwork/ATS: demand (jobs) and supply (talent) meet at one listing object |
+| **§3 One Assign gesture; select→fitting-counterparts-glow** | **Direct Manipulation** (continuous representation, reversible physical actions, immediate feedback) closes Norman's **gulf of execution**; **Information scent** (Pirolli–Card); Nielsen #6 **recognition over recall**; Norman **constraints** (only valid targets are actionable) | Move-highlighting in **chess/lichess**; **Trello/kanban** drag; **Google Calendar** "find a time"; IDE autocomplete narrowing valid options. *Click-to-highlight beats pure drag — see caveat below.* |
+| **§3.2 Capacity bar visible before it blocks** | Nielsen #1 **visibility of system status**; Norman **forcing functions / visible constraints**; Nielsen #5 **prevent errors** > #9 good error messages | **Float / Resource Guru / Harvest** (utilization bars), airline **seat maps**, Calendar busy-bars — you see the budget before you spend |
+| **§4.4 Progressive disclosure of STR** | **Progressive disclosure** (Nielsen/Tidwell); Nielsen #8 **aesthetic & minimalist**; defer complexity | **Stripe** (complex money, calm surface); **Stack Overflow** rep is visible but never the workspace; banking apps hide the ledger behind the task |
+| **§7 Trust + undo, not review-everything** | Nielsen #3 **user control & freedom (undo)**; Shneiderman rule #6 **reversible actions**; cut ceremony | **Gmail "Undo Send"**, **Linear/Notion** optimistic edits + undo, Google Docs — vs heavyweight SAP-style approval chains users route around |
+| **§6 One word per concept** | Nielsen #4 **consistency & standards**; Nielsen #2 **users' language**; Krug **"don't make me think"** | **Apple HIG** terminology discipline; the whole anti-jargon canon |
+| **§5 One object pattern (card → drawer peek → route deep)** | Nielsen #4 consistency; spatial memory; **master–detail** pattern (Tidwell) | **Gmail / Linear / Superhuman** list→peek→full; macOS Finder |
+| **§2 Role-aware Home router; ~20→5 surfaces; 6 nouns** | **Hick's Law** (fewer top-level choices = faster decisions); **Miller 7±2** (6 nouns ≈ one chunk); Cooper **goal-directed** role dashboards | **Salesforce / GitHub** role-contextual homes |
+| **Card shells, glow, grouping** | **Gestalt** (proximity, similarity, common region); **Fitts's Law** (big click targets, short travel) | Card UIs everywhere — Trello, Linear, Notion |
+
+### Where precedent should actually *change* the design (honest caveats)
+- **Don't ship pure drag-and-drop matching.** Drag is a *hidden* affordance (Norman **signifiers** problem) — poor discoverability, weak accessibility, awkward on touch. Float/Trello all provide click-equivalents. So §3's primary gesture is **select → valid targets glow → click**, with drag as an optional accelerator, not the only path.
+- **Capacity is time-phased, not a single number.** Resource-management tools (Float, Resource Guru) learned that "free hours" must be shown **per period** (this week / this month), because a person free in March is busy in April. The capacity bar should carry a month/period context, not one lifetime figure.
+- **A matching board tends to rot into a spreadsheet.** The failure mode of allocation tools is a dense grid no one reads. Keep it **card-based with strong scent** (glow, capacity bars, dim-with-reason) — closer to a kanban than to Excel.
+- **Two-sided markets need the demand side to feel the supply.** Upwork/ATS show posters how many qualified candidates exist. A WG officer posting a Role should see *"~4 people across chapters could fill this"* — otherwise demand is posted blind.
+
+### Honest gap
+v1/v2's body applied these heuristics **implicitly** and cited **none**. This section is the missing
+grounding. Two things still need real-world validation rather than authority: (1) the **player-coach →
+two-domain-officer** split is reasoned from the org chart, not from observing the actual officers — it
+should be checked against how a real chapter secretary vs WG lead actually works; (2) the
+**select-glow-assign** gesture should be **usability-tested** with one officer before we commit Phase C.
