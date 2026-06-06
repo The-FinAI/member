@@ -9,6 +9,15 @@
   const chapters = $derived($officerUnits.filter((u) => u.kind === 'chapter'));
   const wgs = $derived($officerUnits.filter((u) => u.kind === 'working_group'));
   const isAdmin = $derived($capabilities.has('manage_members') || $capabilities.has('edit_any_project'));
+
+  // a plain officer with a single unit shouldn't have to pick from a list of one
+  let redirected = false;
+  $effect(() => {
+    if ($authReady && !isAdmin && $officerUnits.length === 1 && !redirected) {
+      redirected = true;
+      goto(`/officer/${$officerUnits[0].unit_id}`, { replaceState: true });
+    }
+  });
 </script>
 
 <svelte:head><title>Officer console · The Fin AI</title></svelte:head>
