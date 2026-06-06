@@ -1,133 +1,206 @@
-# Rebuild from HCI — the decisive blueprint
+# Rebuild from HCI — the decisive blueprint (v2: bipartite)
 
-*This supersedes `north-star.md`, `phase1-officer-reality.md`, and PRD-hci §1–13 by turning them into
-one executable plan, now grounded in the full as-is map (`interaction-detail.md`). Those were the
-reasoning; this is the build order. Every claim below points at a real component we inventoried.*
-
----
-
-## 0. The one-sentence diagnosis
-
-> **The app is an instrument for an *economy* (mint nominal STR → settle → liquid STR), but the only
-> hand on it in Phase 1 is an *officer staffing a team*.**
-
-Every screen is organized around the **data model** (cards, slots, needs, forge_requests, ledgers),
-not the officer's **three jobs** (register people · staff projects · credit on publish). That single
-mismatch produces every concrete defect the inventory found:
-
-| HCI law broken | What the inventory shows (real components) |
-|---|---|
-| **One concept → one control.** | "Put a person on work" has **3 UIs + 4 RPCs**: `SlotSeater` (project page), `MatchConsole` inline seat (console), `SlotSeater`'s admin-only "Add directly" → `work_seat` / `seat_direct`. Posting a role has **2 forms**: `ForgeCard mode="need"` *and* `ResourceForgeForm mode="need"`. Badges have **3 paths**: `BadgeTree`, `ForgeCard mode="badge"`, Community award → `forge_badges` / `forge_badge`. |
-| **Speak the user's language.** | UI still leaks `slot_kind`, `work_labor`, `req_access`, `nominal`, `forge_*`; internal ranks `apprentice/journeyman/craftsman/master` coexist with display `Beginner…Expert`. |
-| **Match between system and the real world.** | "My time" is modeled as a *resource you forge* (`forge_resource`, name=`'My time'`) — but to an officer it's just **how many hours this person has**. Dead `saveLabor`/`addResource` code still sits in `MemberDetail`. |
-| **Recognition over recall; visibility of constraints.** | Capacity (`usedHoursOf`, `over`/`under`) is invisible until it **greys out Confirm**. The officer can't see "12/20h used" *before* trying. |
-| **Minimize ceremony.** | **Everything** funnels through one `forge_request` review queue — adding your own roster member, setting their hours, posting a role — even though the officer is a trusted proxy acting on their *own* unit. |
-| **One model, not two.** | The home leads with a **claimable-STR mining ring** (`MiningCockpit`) — the *economy's* view — to a user who is a **staffing coordinator**. Two mental models collide on the first screen. |
-| **Consistency.** | A project opens as a **drawer with an embedded body** *or* a **full page**; member card the same. Two patterns for one object. |
+*v1 of this doc made a structural error: it merged "my projects" and "my people" into one
+**Bench** (a player-coach two-lane home). That is wrong. **People and Projects are two separate
+domains, governed by two separate officer roles**, and they touch at exactly one seam. This v2
+rebuilds the whole redesign around that separation. Supersedes `north-star.md`,
+`phase1-officer-reality.md`, PRD-hci §1–13, and v1, grounded in the as-is map (`interaction-detail.md`).*
 
 ---
 
-## 1. Six principles (the test for every screen)
+## 0. The correcting insight
 
-1. **One user, one workbench.** Phase 1 has exactly one operator: the officer **player-coach**. Design the whole product as *their* bench. Members-logging-in and STR-as-hero are **Phase 2** — the same data, the view flipped.
-2. **One concept = one word = one component = one gesture.** If two screens do the same act, they are the same component. Delete synonyms in code *and* copy.
-3. **Direct manipulation over forms.** Staffing is "put A on B." Make it a **single gesture** (select a person → the roles they fit light up with their spare capacity → click to assign), not `openPicker → search → pickCard → amount → resource → confirm` across a drawer.
-4. **Progressive disclosure of the economy.** STR is accounting. Show it **only where it becomes real** — a finished project's payout. Never lead with "claimable STR" for an officer.
-5. **Make the constraint visible before it blocks.** Every person carries a **capacity bar** (`14/20h this month`). You see the budget, then spend it — you never hit a mystery-greyed button.
-6. **Trust + undo, not review-everything.** An officer's edits to their *own* unit apply **immediately and reversibly**. The heavy queue is reserved for acts that **cross units** or **bear value** (badge grants, settlement payout).
+> **The org is bipartite. People live in Chapters; Projects live in Working Groups. These are two
+> separate axes with two separate stewards — and the *only* place they meet is the open Role.**
+
+| Domain | Container (org unit) | Steward | Objects | The job |
+|---|---|---|---|---|
+| **People** | **Chapter** | **Chapter officer** | Person (skills · capacity) | register people · certify skills · **place them into open roles** (matching) |
+| **Projects** | **Working Group** | **WG officer** | Project · Role · Milestone | create/claim projects · **post what they need (roles)** · run to Finish · split the credit |
+
+The two never share a screen except at the **seam**. v1's two-lane Bench violated this by mixing a
+person's own projects with their team on one home. v2 keeps the domains apart and makes the seam explicit.
 
 ---
 
-## 2. Target architecture — surfaces
+## 1. The object model — bipartite, one seam
 
-From the inventoried **~20 routes** to **3 work surfaces + 3 reference**:
+```
+   PEOPLE DOMAIN                                    PROJECTS DOMAIN
+   (Chapter — Chapter officer)                      (Working Group — WG officer)
 
-| Surface | Replaces | What it is |
+   Chapter                                          Working Group
+     └─ Person                                        └─ Project
+          • skills (at a level)                            • status (lifecycle)
+          • capacity (hours / month)                       • Milestone (lifts payout)
+          • credit so far (quiet)                          └─ Role  ← demand, posted by WG
+                         ╲                              ╱        (a skill+level, or a resource)
+                          ╲                            ╱
+                           ╲——— THE SEAM: MATCHING ———╱
+                            Chapter officer assigns a Person → an open Role
+                                          ↓
+                              Contribution  (the person's monthly hours on that role,
+                                             valued in STR — the ledger, kept quiet)
+                                          ↓
+                              Finish → Split  →  STR  (credit becomes real only here)
+```
+
+- A **Person** belongs to exactly one **Chapter** (their home unit). Chapters *contain people*.
+- A **Project** belongs to exactly one **Working Group**. Working Groups *contain projects*.
+- A **Role** is **exposed by a project** (WG posts it) and **filled by a person** (Chapter places them).
+  The Role is the *contract surface* between the two domains — the one shared noun.
+- **Contribution → Finish → Split → STR** is the value pipeline; STR is the ledger unit, never the hero.
+
+**The seam is a two-sided market:** WG officers post **demand** (open roles, community-wide);
+Chapter officers supply **labor** (their roster) by matching people into those roles.
+
+---
+
+## 2. Surfaces — organized by domain, filtered by role
+
+From ~20 routes to **4 + Settings**, each surface owning **one** domain:
+
+| Surface | Domain | Everyone sees | The steward additionally does |
+|---|---|---|---|
+| **People** | Chapter | browse the directory of people & chapters | **Chapter officer:** their roster (skills + capacity bars) **and the Matching board** (place roster → open roles) |
+| **Projects** | Working Group | browse all projects & groups | **WG officer:** their group's projects — create/claim, **post roles**, run pipeline, **Finish → Split** |
+| **My** | personal (researcher) | my card · my contributions · wallet (STR) — *quiet in P1, the hero in P2* | — |
+| **Directory** | reference | chapters · working groups · badges catalog | — |
+| **Settings** | governance | — | **Admin:** one **Review inbox** + catalog editors (skills · types · roles · venues · economy) |
+
+**No merged "Console."** The old officer console split cleanly in two: its **people+matching** half is
+the steward view of **People**; its **projects** half is the steward view of **Projects**. A person who
+is *both* a Chapter officer and a WG officer simply has steward powers on *both* surfaces — never a
+mashed-together home. **Home** is a thin router: it sends you to the surface(s) you steward, with the
+matching board front-and-centre for chapter officers and the project worklist for WG officers.
+
+---
+
+## 3. The seam — matching, designed as one gesture (People surface, Chapter officer)
+
+This is the product's beating heart, and today it is the worst offender: **3 UIs + 4 RPCs** for one act
+(`SlotSeater` on the project page, `MatchConsole` inline seat, `SlotSeater` "Add directly";
+`work_seat`/`seat_direct`). Rebuild it as **one gesture on the People surface**:
+
+1. The Chapter officer sees two columns: **my roster** (left, each person a chip with a **capacity bar**
+   `14/20h`) and **open roles across the community** (right, each posted by some WG project).
+2. **Pick a person** → the roles they qualify for **light up**, each annotated with *their* spare
+   capacity ("can give 6 of their 8 free hours"). **Pick a role** → qualified people light up,
+   dimmed-with-reason if short on skill or hours.
+3. Click the lit counterpart → an **inline confirm** pre-filled to the role's quota → **Assign**.
+4. "Add directly" stops being a separate admin form: assigning a person to a project that has *no
+   matching open role* simply **creates the role behind the scenes** (same gesture; the permission still
+   gates it, the interaction is identical).
+5. One RPC: `assign(person, role | newRole, hours)` wrapping today's `work_seat`/`seat_direct`.
+
+**The WG officer never matches people** — they only **post roles** (declare demand) and **run** the
+project. Supply and demand stay on opposite sides of the seam, which is exactly the org separation.
+
+---
+
+## 4. Six principles (the test for every screen)
+
+1. **Two domains, never merged.** People-screens show people; Project-screens show projects. They meet
+   only at the Role. If a screen mixes "my team" and "my projects," it's wrong.
+2. **One concept = one word = one component = one gesture.** Kill the duplicate seating UIs, the two
+   need-forms, the three badge paths.
+3. **Direct manipulation over forms.** Matching is "put A on B" — a single gesture (§3), not a 6-step
+   picker across a drawer.
+4. **Progressive disclosure of the economy.** STR is accounting; surface it only at **Finish → Split**
+   and on the personal **My** surface. Never lead an officer with "claimable STR."
+5. **Make the constraint visible before it blocks.** Every person carries a **capacity bar**; you see
+   the budget, then spend it — never a mystery-greyed Confirm.
+6. **Trust + undo, not review-everything.** A steward's edits to their *own* unit apply immediately and
+   reversibly. The queue is for acts that **cross the seam with value** (badges, settlement payout).
+
+---
+
+## 5. Interaction rebuilds, slotted into the two domains
+
+### People surface (Chapter)
+- **Roster:** each PersonChip = skills + a **capacity bar** (the one number an officer scans).
+- **Add a person:** name · email · affiliation · **hours** · skills. Hours are a **person attribute**,
+  not a `forge_resource` named "My time" — delete that modeling and the dead `saveLabor`/`addResource`.
+- **Matching board:** the one Assign gesture (§3).
+- **Skills/badges:** one `SkillTree` everywhere (read = filled pips, edit = clickable); awarding to
+  someone = the same tree on their card. Kill `ForgeCard mode="badge"` and the Community award panel's
+  separate path.
+
+### Projects surface (Working Group)
+- **Project worklist:** each ProjectCard = status + open-role count + **one stage-action**.
+- **Create / claim** a project (free, no bond; first-author seat stays open).
+- **Post a role:** one form (skill+level+hours, or a resource) — kill `ForgeCard mode="need"`, keep one.
+- **Run:** the single `Pipeline` stepper; rename **Mint done → Finish**, **Settle → Split the credit**.
+- **One object pattern:** peek = drawer, deep = route — never a drawer hosting a full tabbed body
+  (kill the dual-body project rendering).
+
+### My surface (personal / researcher) — quiet in P1, hero in P2
+- My card, my contributions, my wallet. This is the "player" hat from the old player-coach idea —
+  but it lives **here, on the person's own surface**, not as a lane bolted onto an officer console.
+
+---
+
+## 6. Vocabulary — final, enforced in nav · buttons · copy · admin · tooltips
+
+| Drop (banned) | Use | Domain |
 |---|---|---|
-| **Bench** (home) | `MiningCockpit` + officer console + StartHere | The player-coach workbench: **two lanes**, *My work* (projects I'm on, my next action) and *My team* (my people, each with a capacity bar). The lanes are **live**: tap a free person → roles they fit glow; tap a role → who's free glows. Staffing happens here. |
-| **Project** | `/projects/[id]` + drawer + `ProjectCardBody`/`SlotSeater`/`ProjectSlotCard` | One project: roles (filled / open), the **one** stage-action, links/meetings/milestones, finish & split. **One pattern** — drawer for peek, route for deep edit, never both bodies. |
-| **Person** | `/members/[id]` + `MemberDetail` | One person: skills, **capacity**, projects, credit-so-far (quiet). |
-| Directory | `/community` | Browse people / chapters / groups. Reference, not a workspace. |
-| Wallet | `/wallet` | STR ledger. Quiet in P1; the **hero in P2**. |
-| Settings | ~15 admin routes | **One review inbox** + catalog editors (skills, types, roles, venues, economy). |
-
-The "Console" disappears as a separate place — its job *is* the Bench.
+| slot / open_need / work_labor | **Role** | the seam |
+| seat / bind / forge / seat_direct | **Assign** | People (matching) |
+| "My time" resource / monthly_quota | **Hours / capacity** (person attribute) | People |
+| nominal / liquid STR (as hero) | **Credit** (quiet); STR is the ledger unit | My / Finish |
+| Mint done / settle / harvest | **Finish** → **Split the credit** | Projects |
+| apprentice…master | **Beginner · Intermediate · Advanced · Expert** (DB keeps ranks; UI never shows old words) | People |
+| Forge queue | **Review inbox** | Settings |
+| Chapter / Working Group | keep — they are the two domains; make them the IA spine | — |
 
 ---
 
-## 3. The interaction rebuilds (the heart)
+## 7. Review — three tiers (one inbox, in Settings)
 
-### 3.1 Staffing — collapse 3 UIs + 4 RPCs into one gesture
-**Today:** `SlotSeater` (project), `MatchConsole` inline (console), `SlotSeater` "Add directly" (admin) — three forms; `work_seat` + `seat_direct`.
-**Target:** one **Assign** gesture, available wherever a person or a role appears:
-- Select a **person** → every role they qualify for lights up, each annotated with *their* spare capacity ("can give 6 of 8h"). Click a role → an inline confirm pre-filled to the need's quota. Done.
-- Select a **role** → qualified people light up, dimmed-with-reason if short on skill or hours.
-- "**Add directly**" stops being a separate admin form: assigning a person to a project that has *no matching open role* simply **creates the role behind the scenes** (same gesture, system forges the slot). No second UI, no admin-only branch — the *permission* still gates it, the *interaction* is identical.
-- One RPC surface: `assign(person, project, role?, hours)` (wrapping today's `work_seat`/`seat_direct`).
-
-### 3.2 Capacity — a budget you can see
-Every PersonChip shows `used/total h` as a bar. Over-allocation is shown as a **red overflow on the bar**, not only as a disabled Confirm. The officer scans the team and instantly sees who's free — the single number `phase1-officer-reality.md` says they actually want.
-
-### 3.3 Hours ≠ a resource named "My time"
-A person **has** `skills` + `monthly hours`. That's an attribute of the person, edited on their card — **not** a `forge_resource` call named `'My time'`. Compute/data/funding stay as real **Resources** (rare, `ResourceForgeForm`). Delete the dead `saveLabor`/`addResource` paths.
-
-### 3.4 One form per act
-- **Role** (was need): one picker — skill + level + hours/headcount. Kill `ForgeCard mode="need"`; keep one form.
-- **Badge:** `BadgeTree` everywhere. Awarding to someone else = the same tree opened on their card. Kill `ForgeCard mode="badge"` and the Community award panel's separate `forge_badge` loop.
-- **Resource:** one `ResourceForgeForm`, type-adaptive (already good) — minus the labor/"My time" special case (now a person attribute).
-
-### 3.5 Review — three tiers, not one queue
 | Tier | Acts | Mechanism |
 |---|---|---|
-| **Immediate + undo** | add/edit your own roster member, set hours, assign within your unit, post a role on your project | applies now; an Undo affordance; no queue |
-| **Light review** (officer↔officer) | assign your person to *another* group's project; claim an unowned project | a notification the receiving officer accepts |
-| **Value review** (admin) | badge grants (confer credit), settlement payout, capacity overrides | the queue stays **only here** |
+| **Immediate + undo** | Chapter officer adds/edits own roster, sets hours, assigns within scope; WG officer posts a role / edits own project | applies now; Undo; no queue |
+| **Light handshake** (crosses the seam) | a Chapter places a person onto **another WG's** project; a WG **claims** an unowned project | a notification the receiving steward accepts |
+| **Value review** (admin) | badge grants (confer credit), settlement payout, capacity overrides | the queue stays **only** here |
 
-This is the biggest ceremony cut: the officer's day-to-day stops asking permission to manage their own team.
-
-### 3.6 Vocabulary — final, enforced in nav, buttons, copy, admin, tooltips
-| Drop (banned) | Use |
-|---|---|
-| slot / open_need / work_labor | **Role** |
-| seat / bind / forge / seat_direct | **Assign** |
-| "My time" resource / monthly_quota | **Hours** (a person's capacity) |
-| nominal / liquid STR as hero | **Credit** (quiet); STR is the ledger unit, not the headline |
-| Mint done / settle / harvest | **Finish** → **Split the credit** |
-| apprentice…master | **Beginner · Intermediate · Advanced · Expert** (DB keeps ranks; UI never shows the old words) |
-| Forge queue | **Review inbox** |
-
-### 3.7 One object pattern
-**Card** (Person/Project/Role share one shell: type · status · title · one metric · one action) → **peek = drawer**, **deep = route**. Never a drawer hosting a full tabbed body. Kill the dual-body project rendering.
+Biggest ceremony cut: stewards stop asking permission to run their own domain.
 
 ---
 
-## 4. Component cull
+## 8. Component cull
 
-Down to ~**8** components, one of each:
-`PersonChip` (with capacity bar) · `ProjectCard` (roles + stage action) · `RoleRow` · `AssignSheet` (the single in-place assign confirm) · `SkillTree` (one picker, read = filled pips, edit = clickable) · `ResourceForm` (rare) · `Pipeline` (the stepper) · `ReviewItem`.
+~**8** components, one each:
+`PersonChip` (capacity bar) · `ProjectCard` (roles + stage action) · `RoleRow` · `AssignSheet`
+(the single in-place confirm) · `SkillTree` · `ResourceForm` (rare: GPU/data/funding only) ·
+`Pipeline` · `ReviewItem`.
 
-Delete: `SlotSeater`'s second/third paths, `ForgeCard` modes need+badge, `MiningCockpit` ring-as-hero, `StartHere` (folded into empty-states of the Bench), legacy `saveLabor`/`addResource`, and the **6 dead backend subsystems** (token economy, apply→accept→confirm join, stake commitments, skillcards, skill-exam+endorsement, resource offers, paid-leader bonds) via one legacy-purge migration.
-
----
-
-## 5. Rollout — incremental, each step reversible (not big-bang)
-
-A "彻底重构" that ships in one drop is the riskiest possible plan. Stage it so every phase is independently
-useful and revertible:
-
-- **A — Language & dedup (pure relabel + delete, zero data change).** Apply §3.6 vocabulary across nav/buttons/copy; delete the duplicate forms (`ForgeCard` need+badge), wire those entry points to the single component. *Ship, observe.*
-- **B — One staffing gesture.** Replace the 3 seating UIs with the one Assign gesture (§3.1) + visible capacity bar (§3.2). Behind one `assign()` RPC wrapper.
-- **C — Bench home.** Home becomes the two-lane player-coach workbench; demote the STR ring to a quiet credit number (§2.4, §4).
-- **D — Review tiering.** Officer's own-unit edits go immediate+undo; queue shrinks to value/cross-unit acts (§3.5).
-- **E — Cull.** Legacy-purge migration (6 dead subsystems) + surface reduction (~20 → 6 routes) + hours-as-attribute (§3.3).
-
-Target end state: **6 surfaces · ~8 components · 6 nouns · 1 word per concept · 1 gesture per act.**
+Delete: the 2nd/3rd seating UIs, `ForgeCard` need+badge modes, the STR-ring-as-hero home, `StartHere`
+(fold into empty-states), legacy `saveLabor`/`addResource`, and the **6 dead backend subsystems**
+(token economy, apply→accept→confirm join, stake commitments, skillcards, skill-exam+endorsement,
+resource offers, paid-leader bonds) via one legacy-purge migration.
 
 ---
 
-## 6. The acceptance test (for any future change)
+## 9. Rollout — incremental, each step reversible
 
-> Would a lab coordinator who never read this doc sit down at the **Bench**, see *their people and their
-> projects*, drag a free person onto an open role, and never once meet the words *slot, forge, nominal,
-> seat, or harvest*? If the first thing they see is their own STR balance, or if one act needs two
-> different forms, the change is pointed at the wrong user — or something must be removed.
+- **A — Language & dedup** (pure relabel + delete; zero data change): §6 vocabulary; collapse duplicate
+  forms to single components. *Ship, observe.*
+- **B — Split the console into the two domain surfaces** (People = roster + matching · Projects = WG
+  worklist). Wire Home as the role-aware router. No new gesture yet — just the clean separation.
+- **C — One matching gesture + visible capacity bar** (§3) behind one `assign()` wrapper.
+- **D — Review tiering** (immediate + undo for own-domain acts; queue shrinks to value/cross-seam).
+- **E — Cull** (legacy-purge migration · routes ~20→5 · hours-as-attribute).
+
+End state: **People + Projects + My + Directory + Settings · ~8 components · one seam · one word per
+concept · one gesture per act.**
+
+---
+
+## 10. Acceptance test
+
+> A **Chapter** officer opens **People**, sees their roster with capacity bars and the open roles, drags
+> a free person onto a fitting role — done, no economy words in sight. A **WG** officer opens
+> **Projects**, sees their group's projects, posts a role, later clicks **Finish → Split**. Neither ever
+> manages the other's domain, and neither meets *slot, forge, nominal, seat, or harvest*. If a screen
+> shows a person their *own* projects next to their *team*, or one act needs two forms — it's pointed at
+> the wrong structure, and must be split or removed.
