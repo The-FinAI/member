@@ -7,6 +7,7 @@
   import { member, capabilities, officerUnits } from '$lib/session';
   import { t } from '$lib/i18n';
   import { get } from 'svelte/store';
+  import MatchBoard from '$lib/people/MatchBoard.svelte';
 
   type Person = {
     id: string; full_name: string; kind: string; affiliation: string | null;
@@ -64,6 +65,10 @@
     <h1>{$t('People')}</h1>
     <p class="pp-sub">{$t('Researchers across the community — their skills and how much time they have.')}</p>
   </div>
+
+  {#if isOfficer}
+    <MatchBoard />
+  {/if}
 
   <div class="pp-tools">
     <input class="pp-search" placeholder={$t('Search by name…')} bind:value={q} />

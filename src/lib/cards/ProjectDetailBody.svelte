@@ -8,6 +8,7 @@
   import ProjectCardBody from './ProjectCardBody.svelte';
   import ResourceForgeForm from '$lib/resources/ResourceForgeForm.svelte';
   import TaskBoard from '$lib/record/TaskBoard.svelte';
+  import NeedPost from '$lib/people/NeedPost.svelte';
 
   // Shared body for a single project — used by the /projects/[id] page and the
   // projects-grid quick-view drawer, so the page mirrors the drawer (like
@@ -232,6 +233,9 @@
 
     <div class="pd-section">
       <span class="pd-h">{$t('Team & slots')}</span>
+      {#if canPostNeed && !g.finished}
+        <NeedPost projectId={g.id} onPosted={reload} />
+      {/if}
       <ProjectSlotCard project={{ id: g.id, name: g.name, status: g.status, deadline: g.deadline }} {slots} canManage={false} />
     </div>
 
