@@ -190,7 +190,7 @@
       </div>
       {#if isOfficer}
         <button type="button" class="stake" onclick={() => (showForgeMember = !showForgeMember)}>
-          + {$t('Forge member card')}
+          + {$t('Add a member')}
         </button>
       {/if}
     </header>
@@ -199,7 +199,7 @@
 
     {#if showForgeMember}
       <div class="tile b-forge">
-        <ForgeCard mode="member" busy={busy === 'member'} title={$t('Forge member card')}
+        <ForgeCard mode="member" busy={busy === 'member'} title={$t('Add a member')}
           onSubmit={doForgeMember} onCancel={() => (showForgeMember = false)} />
       </div>
     {/if}

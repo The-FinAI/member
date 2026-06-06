@@ -112,7 +112,7 @@
       <li><a href="/officer">{$t('Officer console')}</a> — {$t('your matching desk: forge cards, take on projects, post needs, seat people.')}</li>
       <li><a href="/community">{$t('Community')}</a> — {$t('everyone, the chapters & working groups, the badge catalog, and the standing boards.')}</li>
       <li><a href="/projects">{$t('Projects')}</a> — {$t('every project card: status, slots, the nominal pool, milestones & history.')}</li>
-      <li><a href="/admin/forge-queue">{$t('Forge queue')}</a> — {$t('one review queue for every forge — badges, cards, needs, resources, milestones, over-capacity & settlements.')}</li>
+      <li><a href="/admin/forge-queue">{$t('Review queue')}</a> — {$t('one review queue for every forge — badges, cards, needs, resources, milestones, over-capacity & settlements.')}</li>
       <li><a href="/wallet">{$t('Wallet')}</a> — {$t('your own STR — liquid and nominal — and where it came from.')}</li>
     </ul>
   </section>

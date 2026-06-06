@@ -312,7 +312,7 @@
                     disabled={busy === s.id || over || under || (s.slot_kind === 'work_resource' && !resId)}
                     onclick={() => seat(s)}
                   >
-                    {#if busy === s.id}<span class="spin"></span>{/if}{$t('Seat into slot')}
+                    {#if busy === s.id}<span class="spin"></span>{/if}{$t('Seat')}
                   </button>
                 </div>
               {/if}
@@ -379,7 +379,7 @@
               {/if}
 
               <button type="button" class="st-go" disabled={daBusy} onclick={seatDirect}>
-                {#if daBusy}<span class="spin"></span>{/if}{$t('Forge slot & seat')}
+                {#if daBusy}<span class="spin"></span>{/if}{$t('Create & seat')}
               </button>
             </div>
           {/if}

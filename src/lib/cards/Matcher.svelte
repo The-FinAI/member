@@ -149,7 +149,7 @@
               onclick={() => confirm(d.s)}
             >
               {#if busy === d.s.id}<span class="spin"></span>{/if}
-              {$t('Seat into slot')}
+              {$t('Seat')}
             </button>
           </div>
         {/if}

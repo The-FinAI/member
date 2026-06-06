@@ -12,11 +12,11 @@
   );
 </script>
 
-<svelte:head><title>Forge queue · The Fin AI</title></svelte:head>
+<svelte:head><title>Review queue · The Fin AI</title></svelte:head>
 
 <section class="wrap">
   <header>
-    <h1>{$t('Forge queue')}</h1>
+    <h1>{$t('Review queue')}</h1>
     <p class="muted sub">{$t('Approve forged credentials & contributions — badges, member cards, needs, resources, over-capacity commitments & settlements.')}</p>
   </header>
   {#if canReview}

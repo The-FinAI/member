@@ -193,7 +193,7 @@
       <input type="number" step="any" bind:value={fUsd} placeholder={selType?.usd_per_unit != null ? String(selType.usd_per_unit) : ''} style="max-width:6rem;" /></label>
   {/if}
 
-  <button class="go" onclick={forge} disabled={busy}>{busy ? $t('Working…') : editId ? $t('Save changes') : mode === 'need' ? $t('Post need') : $t('Forge resource')}</button>
+  <button class="go" onclick={forge} disabled={busy}>{busy ? $t('Working…') : editId ? $t('Save changes') : mode === 'need' ? $t('Post need') : $t('Add resource')}</button>
 
   {#if isLabour}
     <div class="skills-row">

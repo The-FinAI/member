@@ -185,7 +185,7 @@
 
     <div class="sc-aspects">
       <div class="aspect">
-        <span class="asp-k">{$t('Craft')}</span>
+        <span class="asp-k">{$t('Skills')}</span>
         <span class="asp-v">{certifiedCount}</span>
         <span class="asp-sub">{topTierLabel ? $t(topTierLabel) : $t(certifiedCount === 1 ? 'badge earned' : 'badges earned')}</span>
       </div>
@@ -209,7 +209,7 @@
       {#if myUnit && myUnit.kind === 'chapter'}
         <a class="verb" href={`/units/${myUnit.unit_id}#forge`}>
           <span class="vb-ic">✦</span>
-          <span class="vb-tx"><strong>{$t('Forge a member card')}</strong><span class="muted">{myUnit.name}</span></span>
+          <span class="vb-tx"><strong>{$t('Add a member')}</strong><span class="muted">{myUnit.name}</span></span>
         </a>
       {:else if $member}
         <a class="verb" href={`/members/${$member.id}`}>
@@ -220,7 +220,7 @@
       {#if canApprove}
         <a class="verb" href="/admin/forge-queue">
           <span class="vb-ic">⊞</span>
-          <span class="vb-tx"><strong>{$t('Review forge queue')}</strong><span class="muted">{$t('clear pending approvals')}</span></span>
+          <span class="vb-tx"><strong>{$t('Open review queue')}</strong><span class="muted">{$t('clear pending approvals')}</span></span>
         </a>
       {:else}
         <a class="verb" href="/guide">

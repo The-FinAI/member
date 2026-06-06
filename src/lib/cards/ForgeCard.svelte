@@ -151,7 +151,7 @@
     {#if onCancel}<button type="button" class="chip toggle" onclick={onCancel}>{$t('Cancel')}</button>{/if}
     <button type="submit" class="stake" disabled={busy || !valid}>
       {#if busy}<span class="spin"></span>{/if}
-      {$t('Forge')}
+      {$t('Create')}
     </button>
   </div>
 </form>

@@ -381,7 +381,7 @@
         </p>
       </div>
       {#if isOfficer && isChapter}
-        <button type="button" class="stake" onclick={() => (showForgeMember = !showForgeMember)}>+ {$t('Forge member card')}</button>
+        <button type="button" class="stake" onclick={() => (showForgeMember = !showForgeMember)}>+ {$t('Add a member')}</button>
       {/if}
       {#if isOfficer && !isChapter}
         <button type="button" class="stake" onclick={() => (showCreate = !showCreate)}>+ {$t('Create project')}</button>
@@ -409,7 +409,7 @@
 
     {#if showForgeMember}
       <div class="tile" style="padding:1rem;">
-        <ForgeCard mode="member" busy={busy === 'member'} title={$t('Forge member card')}
+        <ForgeCard mode="member" busy={busy === 'member'} title={$t('Add a member')}
           onSubmit={forgeMember} onCancel={() => (showForgeMember = false)} />
       </div>
     {/if}
@@ -454,7 +454,7 @@
               </label>
             {/if}
             <button type="button" class="stake" disabled={busy === 'seat' || seatOver || seatUnder || (!!selNeed.resource_type_id && !resId)} onclick={seat}>
-              {#if busy === 'seat'}<span class="spin"></span>{/if}{$t('Seat into slot')}
+              {#if busy === 'seat'}<span class="spin"></span>{/if}{$t('Seat')}
             </button>
           </div>
         {/if}

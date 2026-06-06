@@ -148,7 +148,7 @@
             <a href="/officer" class="side-link" class:active={isActive('/officer', $page.url.pathname)}>{$t('Officer console')}</a>
           {/if}
           {#if canApprove}
-            <a href="/admin/forge-queue" class="side-link" class:active={isActive('/admin/forge-queue', $page.url.pathname)}>{$t('Forge queue')}</a>
+            <a href="/admin/forge-queue" class="side-link" class:active={isActive('/admin/forge-queue', $page.url.pathname)}>{$t('Review queue')}</a>
           {/if}
         {/if}
 

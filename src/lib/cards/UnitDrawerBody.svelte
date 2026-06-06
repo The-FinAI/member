@@ -112,7 +112,7 @@
         <div class="ud-h-row">
           <span class="ud-h">{$t('Members')}{#if members.length}<span class="ud-ct"> · {members.length}</span>{/if}</span>
           {#if canEdit && !forgeOpen}
-            <button type="button" class="ud-link" onclick={() => { forgeOpen = true; forgeErr = ''; forgeMsg = ''; }}>+ {$t('Forge member card')}</button>
+            <button type="button" class="ud-link" onclick={() => { forgeOpen = true; forgeErr = ''; forgeMsg = ''; }}>+ {$t('Add a member')}</button>
           {/if}
         </div>
         {#if forgeErr}<p class="ud-err">{forgeErr}</p>{/if}

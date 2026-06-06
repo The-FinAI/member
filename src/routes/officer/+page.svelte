@@ -77,7 +77,7 @@
         {#if isAdmin}
           <EntityCard
             type="Review"
-            title={$t('Forge queue')}
+            title={$t('Review queue')}
             subtitle={$t('One approval queue for every forge')}
             onclick={() => goto('/admin/forge-queue')}
           />
