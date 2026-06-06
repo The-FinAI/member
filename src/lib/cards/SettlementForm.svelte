@@ -59,6 +59,19 @@
     return rows.filter((x) => x.isAuthor).indexOf(r) + 1;
   }
 
+  // fairness: contribution (nominal) share vs payout (weight) share. Flag an
+  // author who did a big share of the work but is set to get a much smaller cut.
+  const nominalTotal = $derived(rows.reduce((s, r) => s + (Number(r.nominal) || 0), 0));
+  const unfair = $derived(
+    rows.filter((r) => r.isAuthor && nominalTotal > 0 && totalWeight > 0)
+        .map((r) => ({
+          name: r.name,
+          contribPct: Math.round((Number(r.nominal) || 0) / nominalTotal * 100),
+          sharePct: Math.round((Number(r.weight) || 0) / totalWeight * 100)
+        }))
+        .filter((x) => x.contribPct - x.sharePct >= 15)
+  );
+
   async function submit() {
     const authors = rows.filter((r) => r.isAuthor);
     if (!authors.length) { err = get(t)('At least one author is required.'); return; }
@@ -127,6 +140,16 @@
       </tbody>
     </table>
 
+    <!-- fairness summary: shares total 100%, flag big-contributor / tiny-share -->
+    <div class="sf-fair" class:warn={unfair.length}>
+      {#if unfair.length}
+        ⚠ {$t('Check the split:')}
+        {#each unfair as u}<span class="sf-flag">{u.name} — {u.contribPct}% {$t('of work')} → {u.sharePct}% {$t('share')}</span>{/each}
+      {:else}
+        ✓ {$t('Shares total 100% and track contribution.')}
+      {/if}
+    </div>
+
     <label class="sf-field"><span>{$t('Settlement notes')} <span class="dim">{$t('(meeting decision, optional)')}</span></span>
       <textarea rows="2" bind:value={notes} placeholder={$t('How the split was agreed…')}></textarea></label>
 
@@ -142,6 +165,9 @@
 
 <style>
   .sf { display: flex; flex-direction: column; gap: .7rem; padding: .8rem; border: 1px solid color-mix(in srgb, var(--up) 30%, transparent); border-radius: 12px; background: color-mix(in srgb, var(--up) 6%, transparent); }
+  .sf-fair { font-size: .82rem; color: #2e7d4f; display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; }
+  .sf-fair.warn { color: #b8860b; }
+  .sf-flag { background: #fff8e6; border: 1px solid #f0d98a; border-radius: 999px; padding: 0 .5rem; }
   .sf-head { display: flex; flex-direction: column; gap: .15rem; }
   .sf-title { font-weight: 600; color: var(--text); }
   .sf-sub { font-size: .78rem; color: var(--muted); }
