@@ -80,7 +80,7 @@
   <div class="row" style="justify-content:space-between; align-items:flex-end;">
     <div>
       <h1 style="margin-bottom:.15rem;">{$t('Wallet')}</h1>
-      <span class="muted" style="font-size:.85rem;">{$t('Your Stater (STR) balance and transaction history.')}</span>
+      <span class="muted" style="font-size:.85rem;">{$t('Your STR balance and history.')}</span>
     </div>
   </div>
 

@@ -99,10 +99,17 @@
       if (count) out.push({ icon: '⚖', title: $t('{n} waiting for review', { n: count }), sub: $t('Badges, resources, needs & settlements'), href: '/admin/forge-queue', tone: 'warn' });
     }
 
+    // 7) unread notifications — so "all clear" never contradicts the bell
+    const { count: nUnread } = await supabase.from('notification')
+      .select('id', { count: 'exact', head: true }).is('read_at', null);
+    if (nUnread) out.push({ icon: '🔔', title: $t('{n} new notifications', { n: nUnread }), sub: $t('Someone updated work that touches you'), href: '/my', tone: 'info' });
+
     items = out;
     loading = false;
   }
-  onMount(load);
+  // reactive: re-run when the member store resolves (avoids a one-shot onMount
+  // race that would leave Home stuck on "all clear" if member wasn't ready yet)
+  $effect(() => { if ($member) load(); else loading = false; });
 </script>
 
 <svelte:head><title>{$t('Home')} · The Fin AI</title></svelte:head>

@@ -19,14 +19,14 @@
 <div class="stack guide">
   <header>
     <h1>{$t('How The Fin AI works')}</h1>
-    <p class="muted lead">{$t('A research community run as an economy: contribution is minted into a shared pool, and when a project ships the pool pays out. Phase 1 is officers only — this is your manual.')}</p>
+    <p class="muted lead">{$t('A research community run as an economy: contribution is accrued into a shared pool, and when a project ships the pool pays out. Phase 1 is officers only — this is your manual.')}</p>
   </header>
 
   <!-- Phase 1 callout -->
   <div class="callout">
     <span class="cbadge">{$t('Phase 1 · live now')}</span>
     <h2>{$t('Officers only — mirror reality into the system')}</h2>
-    <p>{@html $t('We switch the economy on in stages. <strong>Phase 1 is officers only;</strong> ordinary researchers don’t log in yet — they exist as <em>member cards</em> their officer manages. Your job: forge a card for each person you steward, take on the projects you already run, and seat the people who are really on them. Three acts → the system matches reality.')}</p>
+    <p>{@html $t('We switch the economy on in stages. <strong>Phase 1 is officers only;</strong> ordinary researchers don’t log in yet — they exist as <em>member cards</em> their officer manages. Your job: add a card for each person you steward, take on the projects you already run, and seat the people who are really on them. Three acts → the system matches reality.')}</p>
     <a class="cbtn" href="/officer">{$t('Open your officer console →')}</a>
   </div>
 
@@ -39,7 +39,7 @@
     <h2>{$t('Phase 1 — what you’re here to do')}</h2>
     <p>{@html $t('The goal isn’t to start fresh operations — it’s <strong>reality-mirroring onboarding</strong>: make the system’s state equal what your community already does, as fast as possible. Everything you do is one of three acts:')}</p>
     <ol class="acts">
-      <li><strong>{$t('Forge')}</strong> — {$t('create or stamp a card: a member card, a badge, a resource, a project need. Forging goes through a review queue.')}</li>
+      <li><strong>{$t('Add')}</strong> — {$t('create or stamp a card: a member card, a badge, a resource, a project need. Adding goes through a review queue.')}</li>
       <li><strong>{$t('Seat')}</strong> — {$t('place a person into an open slot on a project, with their monthly hours. This is how work is committed.')}</li>
       <li><strong>{$t('Settle')}</strong> — {$t('when a project ships, its pool is paid out by contribution. (Mostly later in the phase.)')}</li>
     </ol>
@@ -60,9 +60,9 @@
     </div>
 
     <div class="flow">
-      <span class="step">{$t('Forge cards')}</span><span class="arr">→</span>
+      <span class="step">{$t('Add cards')}</span><span class="arr">→</span>
       <span class="step">{$t('Seat into slots (monthly)')}</span><span class="arr">→</span>
-      <span class="step">{$t('Work mints nominal STR')}</span><span class="arr">→</span>
+      <span class="step">{$t('Work mints accruing STR')}</span><span class="arr">→</span>
       <span class="step">{$t('Project ships → Settle')}</span><span class="arr">→</span>
       <span class="step">{$t('Pool pays out')}</span>
     </div>
@@ -73,7 +73,7 @@
     <h2>{$t('If you run a chapter')}</h2>
     <p class="muted">{$t('A chapter officer is the custodian of people. You steward member cards.')}</p>
     <ol class="steps">
-      <li>{@html $t('<strong>Forge a member card</strong> for each researcher you steward (name + email). Do it from your officer console or a chapter drawer.')}</li>
+      <li>{@html $t('<strong>Add a member card</strong> for each researcher you steward (name + email). Do it from your officer console or a chapter drawer.')}</li>
       <li>{@html $t('<strong>Stamp their badges and add their resources</strong> — certify skills (the talent tree), and declare their monthly working hours (a <em>Labor</em> resource) and any compute/data they hold.')}</li>
       <li>{@html $t('<strong>Seat them into open needs.</strong> Your console is a matching desk: pick an open need, qualified roster members light up (skill + spare hours); pick a person, the needs they can fill light up. Seat them with their monthly amount.')}</li>
     </ol>
@@ -87,7 +87,7 @@
     <ol class="steps">
       <li>{@html $t('<strong>Take on your projects</strong> — claim the project cards your group already runs (claiming is instant for your own group).')}</li>
       <li>{@html $t('<strong>Post needs</strong> — open the slots you need filled (a skill at a level, or a resource type, with a monthly quota). Posting a need goes through review.')}</li>
-      <li>{@html $t('<strong>Claim milestones & mint completion</strong> — as the project hits verifiable outcomes (submitted, accepted, released…), claim the milestone; when it ships, mint completion to open settlement.')}</li>
+      <li>{@html $t('<strong>Claim milestones & accrue completion</strong> — as the project hits verifiable outcomes (submitted, accepted, released…), claim the milestone; when it ships, accrue completion to open settlement.')}</li>
     </ol>
     <a class="ilink" href="/officer">{$t('Open your officer console →')}</a>
   </section>
@@ -95,11 +95,11 @@
   <!-- STR -->
   <section id="str" class="card stack">
     <h2>{$t('How STR flows')}</h2>
-    <p>{@html $t('<strong>STR</strong> is the unit of account. Work and milestones mint <strong>nominal</strong> STR (locked, accruing in the project pool); only when a project ships does it <strong>settle</strong> into <strong>liquid</strong> STR you can spend.')}</p>
+    <p>{@html $t('<strong>STR</strong> is the unit of account. Work and milestones accrue <strong>accruing</strong> STR (locked, accruing in the project pool); only when a project ships does it <strong>settle</strong> into <strong>liquid</strong> STR you can spend.')}</p>
     <ul class="bul">
-      <li>{@html $t('<strong>Input axis — Work.</strong> Each month a seated person’s hours/resources mint nominal STR into the pool (trust-based; over-capacity goes to review).')}</li>
-      <li>{@html $t('<strong>Output axis — Milestones.</strong> A verified outcome (arXiv, accepted, SOTA…) adds its nominal to the pool <em>and</em> bumps the settlement multiplier — capped at ×3.')}</li>
-      <li>{@html $t('<strong>Settlement.</strong> When the project is Finished: <code>payout = your share × pool × multiplier</code>. No ship, no payout — your nominal stays locked.')}</li>
+      <li>{@html $t('<strong>Input axis — Work.</strong> Each month a seated person’s hours/resources accrue accruing STR into the pool (trust-based; over-capacity goes to review).')}</li>
+      <li>{@html $t('<strong>Output axis — Milestones.</strong> A verified outcome (arXiv, accepted, SOTA…) adds its accruing to the pool <em>and</em> bumps the settlement multiplier — capped at ×3.')}</li>
+      <li>{@html $t('<strong>Settlement.</strong> When the project is Finished: <code>payout = your share × pool × multiplier</code>. No ship, no payout — your accruing stays locked.')}</li>
     </ul>
     <p class="muted">{$t('So milestones make the pie bigger and raise the conversion rate; monthly work decides the slices.')}</p>
     <a class="ilink" href="/str">{$t('Read the full STR paper — the dollar anchor & pricing →')}</a>
@@ -109,11 +109,11 @@
   <section id="pages" class="card stack">
     <h2>{$t('Your pages')}</h2>
     <ul class="pages">
-      <li><a href="/officer">{$t('Officer console')}</a> — {$t('your matching desk: forge cards, take on projects, post needs, seat people.')}</li>
+      <li><a href="/officer">{$t('Officer console')}</a> — {$t('your matching desk: add cards, take on projects, post needs, seat people.')}</li>
       <li><a href="/community">{$t('Community')}</a> — {$t('everyone, the chapters & working groups, the badge catalog, and the standing boards.')}</li>
-      <li><a href="/projects">{$t('Projects')}</a> — {$t('every project card: status, slots, the nominal pool, milestones & history.')}</li>
-      <li><a href="/admin/forge-queue">{$t('Review queue')}</a> — {$t('one review queue for every forge — badges, cards, needs, resources, milestones, over-capacity & settlements.')}</li>
-      <li><a href="/wallet">{$t('Wallet')}</a> — {$t('your own STR — liquid and nominal — and where it came from.')}</li>
+      <li><a href="/projects">{$t('Projects')}</a> — {$t('every project card: status, slots, the accruing pool, milestones & history.')}</li>
+      <li><a href="/admin/add-queue">{$t('Review queue')}</a> — {$t('one review queue for every add — badges, cards, needs, resources, milestones, over-capacity & settlements.')}</li>
+      <li><a href="/wallet">{$t('Wallet')}</a> — {$t('your own STR — liquid and accruing — and where it came from.')}</li>
     </ul>
   </section>
 
@@ -121,13 +121,13 @@
   <section id="glossary" class="card stack">
     <h2>{$t('Glossary')}</h2>
     <dl class="gloss">
-      <dt>{$t('Forge')}</dt><dd>{$t('Create or update a card (member, badge, resource, need) — reviewed once.')}</dd>
-      <dt>{$t('Seat / Work')}</dt><dd>{$t('Place a person into a slot with a monthly commitment; mints nominal STR.')}</dd>
+      <dt>{$t('Add')}</dt><dd>{$t('Create or update a card (member, badge, resource, need) — reviewed once.')}</dd>
+      <dt>{$t('Seat / Work')}</dt><dd>{$t('Place a person into a slot with a monthly commitment; mints accruing STR.')}</dd>
       <dt>{$t('Slot / Need')}</dt><dd>{$t('A position on a project card: leader, a labor need, or a resource need.')}</dd>
       <dt>{$t('Badge')}</dt><dd>{$t('A certified skill on a member card, ranked apprentice → master.')}</dd>
       <dt>{$t('Nominal STR')}</dt><dd>{$t('Locked value accruing in a project pool; can’t be spent until settlement.')}</dd>
       <dt>{$t('Liquid STR')}</dt><dd>{$t('Spendable STR, paid out at settlement.')}</dd>
-      <dt>{$t('Milestone')}</dt><dd>{$t('A verified project outcome that adds nominal and lifts the settlement multiplier.')}</dd>
+      <dt>{$t('Milestone')}</dt><dd>{$t('A verified project outcome that adds accruing and lifts the settlement multiplier.')}</dd>
       <dt>{$t('Settle')}</dt><dd>{$t('Convert a finished project’s pool into liquid STR, split by contribution.')}</dd>
     </dl>
   </section>

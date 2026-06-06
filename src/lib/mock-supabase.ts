@@ -154,6 +154,19 @@ function builder(table: string) {
   return api;
 }
 
+// persist the seed across full reloads so mutations survive (the harness is
+// only useful if "add task / assign / add person" actually stick).
+const LS = 'mockSeedV2';
+try {
+  if (typeof localStorage !== 'undefined') {
+    const s = localStorage.getItem(LS);
+    if (s) { const p = JSON.parse(s); for (const k of Object.keys(p)) (seed as any)[k] = p[k]; }
+  }
+} catch { /* ignore */ }
+function persist() {
+  try { if (typeof localStorage !== 'undefined') localStorage.setItem(LS, JSON.stringify(seed)); } catch { /* ignore */ }
+}
+
 let _idc = 1000;
 const nid = (p: string) => `${p}-${++_idc}`;
 
@@ -163,36 +176,36 @@ function rpc(name: string, a: any) {
     const row = { id: nid('t'), project_id: a.p_project, grp: a.p_grp ?? null, name: a.p_name,
       skill_id: a.p_skill ?? null, owner_member_id: a.p_owner ?? null, state: a.p_state ?? 'open',
       note: a.p_note ?? null, sort: 99, updated_at: '2026-06-06T12:00:00Z' };
-    seed.task.push(row);
+    seed.task.push(row); persist();
     return Promise.resolve({ data: resolveEmbeds([row], 'task')[0], error: null });
   }
   if (name === 'task_update') {
     const t = seed.task.find((x) => x.id === a.p_task);
-    if (t) Object.assign(t, a.p_patch, { updated_at: '2026-06-06T12:00:00Z' });
+    if (t) Object.assign(t, a.p_patch, { updated_at: '2026-06-06T12:00:00Z' }); persist();
     return Promise.resolve({ data: t ? resolveEmbeds([t], 'task')[0] : null, error: null });
   }
-  if (name === 'task_remove') { seed.task = seed.task.filter((x) => x.id !== a.p_task); return Promise.resolve({ data: null, error: null }); }
+  if (name === 'task_remove') { seed.task = seed.task.filter((x) => x.id !== a.p_task); return Promise.resolve({ data: null, error: null }); } persist();
   if (name === 'task_reorder') return Promise.resolve({ data: null, error: null });
   if (name === 'project_set_meta') {
     const p = seed.project.find((x) => x.id === a.p_project);
-    if (p) Object.assign(p, { emoji: a.p_emoji ?? p.emoji, code: a.p_code ?? p.code, tag: a.p_tag ?? p.tag, body: a.p_body ?? p.body });
+    if (p) Object.assign(p, { emoji: a.p_emoji ?? p.emoji, code: a.p_code ?? p.code, tag: a.p_tag ?? p.tag, body: a.p_body ?? p.body }); persist();
     return Promise.resolve({ data: null, error: null });
   }
   if (name === 'person_skill_set') {
     const m = a.p_member;
     seed.person_skill = seed.person_skill.filter((x) => !(x.member_id === m && x.skill_id === a.p_skill));
-    if (a.p_level) seed.person_skill.push({ member_id: m, skill_id: a.p_skill, level: a.p_level });
+    if (a.p_level) seed.person_skill.push({ member_id: m, skill_id: a.p_skill, level: a.p_level }); persist();
     return Promise.resolve({ data: null, error: null });
   }
   if (name === 'person_set_capacity') {
     const m = seed.member.find((x) => x.id === a.p_member);
-    if (m) m.monthly_hours = a.p_hours;
+    if (m) m.monthly_hours = a.p_hours; persist();
     return Promise.resolve({ data: null, error: null });
   }
   if (name === 'forge_member_card') {
     const id = nid('m');
     seed.member.push({ id, full_name: a.p_full_name, email: a.p_email, affiliation: a.p_affiliation ?? null,
-      kind: 'card', status: 'active', home_unit_id: a.p_unit, auth_user_id: null, monthly_hours: null, member_position: [] });
+      kind: 'card', status: 'active', home_unit_id: a.p_unit, auth_user_id: null, monthly_hours: null, member_position: [] }); persist();
     return Promise.resolve({ data: id, error: null });
   }
   if (name === 'need_post') {
@@ -202,7 +215,7 @@ function rpc(name: string, a: any) {
       headcount: a.p_headcount ?? 1, status: 'open',
       skill: a.p_skill ? { name: (seed.skill.find((s) => s.id === a.p_skill) || {}).name } : null,
       resource_type: a.p_resource_type ? seed.resource_type.find((r) => r.id === a.p_resource_type) : null,
-      project: { name: 'ml-Tagging', emoji: '🏷️', code: 'ml-Tagging' } });
+      project: { name: 'ml-Tagging', emoji: '🏷️', code: 'ml-Tagging' } }); persist();
     return Promise.resolve({ data: seed.project_slot.find((s) => s.id === id), error: null });
   }
   if (name === 'assign') {
@@ -212,11 +225,11 @@ function rpc(name: string, a: any) {
       slot: { slot_kind: s?.slot_kind }, member: { full_name: (seed.member.find((m) => m.id === a.p_member) || {}).full_name }, resource: { unit: 'h' } });
     // notify the assignee
     seed.notification.push({ id: nid('n'), recipient_member_id: a.p_member, kind: 'assigned',
-      title: 'You were assigned to a project', body: 'ml-Tagging', link: '/projects/p-ml', read_at: null, created_at: '2026-06-06T12:00:00Z' });
+      title: 'You were assigned to a project', body: 'ml-Tagging', link: '/projects/p-ml', read_at: null, created_at: '2026-06-06T12:00:00Z' }); persist();
     return Promise.resolve({ data: nid('wc'), error: null });
   }
-  if (name === 'notification_read') { const n = seed.notification.find((x) => x.id === a.p_id); if (n) n.read_at = '2026-06-06T12:00:00Z'; return Promise.resolve({ data: null, error: null }); }
-  if (name === 'notification_read_all') { seed.notification.forEach((n) => (n.read_at = '2026-06-06T12:00:00Z')); return Promise.resolve({ data: null, error: null }); }
+  if (name === 'notification_read') { const n = seed.notification.find((x) => x.id === a.p_id); if (n) n.read_at = '2026-06-06T12:00:00Z'; return Promise.resolve({ data: null, error: null }); } persist();
+  if (name === 'notification_read_all') { seed.notification.forEach((n) => (n.read_at = '2026-06-06T12:00:00Z')); return Promise.resolve({ data: null, error: null }); } persist();
 
   if (name === 'match_candidates') {
     return Promise.resolve({ data: [

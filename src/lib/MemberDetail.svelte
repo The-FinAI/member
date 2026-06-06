@@ -445,7 +445,7 @@
          demoted to a collapsed, secondary block — kept (not deleted) so badge
          granting still works until person_skill is confirmed authoritative. -->
     <details class="card stack legacy" id="badges">
-      <summary class="legacy-sum">{$t('Certified badges')} <span class="muted">· {$t('legacy — skills are set above')}</span></summary>
+      <summary class="legacy-sum">{$t('Certified badges')} <span class="muted">· {$t('older system')}</span></summary>
       {#if canAward}
         <p class="muted" style="font-size:.8rem; margin:.3rem 0 0;">{$t('Click ranks to stage raises across skills, then submit the batch for review.')}</p>
         <BadgeTree memberId={id} canEdit={true} onSubmitted={() => load(id)} />
