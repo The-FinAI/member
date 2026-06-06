@@ -81,6 +81,33 @@ hours, assign, credit.**
 4. **STR becomes legible only where it's real**: a person's accrued credit, a project's
    pool at settlement, the member's wallet (P2).
 
+## Correction to the correction: the officer is a **player-coach**
+
+The officer isn't *only* a coordinator. **They are also a researcher** — on their own
+projects as leader/first-author or contributor, accruing their **own** contribution. So
+"their own STR is meaningless" was too strong. The truth is two hats at once:
+
+- **Player** — *my* projects, *my* contribution, *my* next action (e.g. settle a finished
+  project I lead). Here their own STR/credit **is** meaningful.
+- **Coach** — *my team*, who's free, staff them onto projects.
+
+So neither a pure STR cockpit (only player) nor a pure staffing board (only coach) is
+right. The home is a **player-coach dashboard — two equal lanes:**
+
+```
+MY WORK (player)                         MY TEAM (coach)
+─ XBRL Tagging  first author  me 14h  ↑  ─ Zhang  NLP·Adv  20h  14/20 staffed
+─ Audit-LLM     Finished → settle         ─ Li     Audit    10h  free → assign
+  next: settle Audit-LLM →                  next: assign Li to XBRL →
+```
+
+- **Left (player):** projects I'm on · my contribution accruing · my next action. STR is
+  meaningful here, but phrased as *contribution/credit*, not a giant "claimable balance".
+- **Right (coach):** my team with **free hours** · assign to projects.
+
+STR stays the underlying unit and stays visible (contribution rising, finished →
+settle) — but it is **not the single dominating hero number**. Two lanes, balanced.
+
 ## The phase split, stated plainly
 
 - **Phase 1 = a staffing tool for officers.** Hero = my team & my projects. STR = quiet
