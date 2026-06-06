@@ -5,10 +5,16 @@
   import { PHASE2 } from '$lib/phase';
   import CountUp from '$lib/CountUp.svelte';
   import GettingStarted from '$lib/GettingStarted.svelte';
+  import StartHere from '$lib/StartHere.svelte';
   import Medal from '$lib/Medal.svelte';
   import EntityCard from '$lib/EntityCard.svelte';
   import { goto } from '$app/navigation';
   import { t } from '$lib/i18n';
+
+  // "Start here" panel — remember if the user hid it
+  let startHidden = $state(false);
+  onMount(() => { startHidden = localStorage.getItem('startHidden') === '1'; });
+  $effect(() => { if (typeof localStorage !== 'undefined') localStorage.setItem('startHidden', startHidden ? '1' : '0'); });
 
   // ── Home is the overview台: only things you READ. Everything you EDIT
   // (resources you can bring, identity/affiliation) lives on /profile; the full
@@ -158,6 +164,8 @@
 </script>
 
 <div class="stack">
+  <StartHere bind:dismissed={startHidden} />
+
   <!-- self card: you, as a card — identity + role, two aspects (Craft /
        Standing), the liquid STR resource, and the verbs you act with. -->
   <section class="selfcard">
