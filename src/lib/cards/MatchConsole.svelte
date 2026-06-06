@@ -430,33 +430,17 @@
       </section>
     {/if}
 
-    <!-- seat bar: appears when a need + a person are both picked (chapter) -->
-    {#if isChapter && selNeed && selPerson}
-      <div class="seatbar" class:bad={seatFit && !seatFit.ok}>
-        <div class="sb-text">
-          <strong>{selPerson.full_name}</strong> → <strong>{selNeed.project_name}</strong>
-          <span class="sb-kind">{kindLabel(selNeed.slot_kind)}{#if selNeed.skill_name} · {selNeed.skill_name}{/if}</span>
-          {#if seatFit && !seatFit.ok}<span class="sb-reason">· {seatFit.reason}</span>{/if}
-        </div>
-        {#if seatFit?.ok}
-          <div class="sb-form">
-            <label>{$t('Monthly amount')}{#if seatMinReq > 0}<span class="sb-kind"> · {$t('need {q}', { q: seatMinReq })}</span>{/if}{#if seatRemaining != null}<span class="sb-kind"> · {$t('{n} left', { n: seatRemaining })}</span>{/if}<input type="number" min="0" step="any" bind:value={amount} /></label>
-            {#if seatOver}<span class="sb-reason">{$t('Over capacity — only {n} left this month', { n: seatRemaining })}</span>
-            {:else if seatUnder}<span class="sb-reason">{seatMinReq > 0 ? $t('Must commit at least {q}', { q: seatMinReq }) : $t('Must be more than 0')}</span>{/if}
-            {#if selNeed.resource_type_id}
-              <label>{$t('Resource')}
-                <select bind:value={resId}>
-                  <option value="">{$t('Select resource')}</option>
-                  {#each (resOf[selPerson.id] ?? []).filter((r) => r.type_id === selNeed.resource_type_id) as r (r.id)}
-                    <option value={r.id}>{r.name}</option>
-                  {/each}
-                </select>
-              </label>
-            {/if}
-            <button type="button" class="stake" disabled={busy === 'seat' || seatOver || seatUnder || (!!selNeed.resource_type_id && !resId)} onclick={seat}>
-              {#if busy === 'seat'}<span class="spin"></span>{/if}{$t('Seat')}
-            </button>
-          </div>
+    <!-- one-line guide: narrate the matching state so it's never a mystery -->
+    {#if isChapter}
+      <div class="mc-guide" class:active={selNeed || selPerson}>
+        {#if !selNeed && !selPerson}
+          <span>{$t('Pick an open need, then seat a qualified person from your roster.')}</span>
+        {:else if selNeed && !selPerson}
+          <span>{$t('Filling')} <strong>{selNeed.skill_name ?? kindLabel(selNeed.slot_kind)}</strong> · {selNeed.project_name} — <span class="muted">{$t('seat a highlighted candidate →')}</span></span>
+          <button type="button" class="mc-clear" onclick={() => (selNeed = null)}>✕ {$t('clear')}</button>
+        {:else if selPerson && !selNeed}
+          <span>{$t('Placing')} <strong>{selPerson.full_name}</strong> — <span class="muted">{$t('pick a need they can fill →')}</span></span>
+          <button type="button" class="mc-clear" onclick={() => (selPerson = null)}>✕ {$t('clear')}</button>
         {/if}
       </div>
     {/if}
@@ -516,19 +500,39 @@
               {#each peopleView.slice(0, 120) as p (p.id)}
                 {@const fit = selNeed ? qualify(selNeed, p.id) : null}
                 {@const cap = capOf(p)}
+                {@const seating = !!selNeed && selPerson?.id === p.id}
                 <div class="prow" class:on={selPerson?.id === p.id} class:fit={fit?.ok} class:dim={cap.full || (fit && !fit.ok)}>
-                  <button type="button" class="row person" onclick={() => pickPerson(p)}>
-                    <span class="r-main">
-                      <span class="r-title">{p.full_name}{#if p.kind === 'card'}<span class="badge dim card-b">{$t('card')}</span>{/if}{#if cap.full}<span class="badge warn card-b">{$t('hours full')}</span>{/if}</span>
-                      <span class="r-sub">
-                        {#if cap.quota != null}<span class:r-reason={cap.full}>{$t('{used}/{quota} {unit} used', { used: cap.used, quota: cap.quota, unit: cap.unit })}</span>{:else}{p.affiliation ?? '—'}{/if}
-                        {#if (badgesOf[p.id] ?? []).length} · {$t('{n} badges', { n: (badgesOf[p.id] ?? []).length })}{/if}
-                        {#if fit && !fit.ok} · <span class="r-reason">{fit.reason}</span>{/if}
+                  <div class="prow-top">
+                    <button type="button" class="row person" onclick={() => pickPerson(p)}>
+                      <span class="r-main">
+                        <span class="r-title">{p.full_name}{#if p.kind === 'card'}<span class="badge dim card-b">{$t('card')}</span>{/if}{#if cap.full}<span class="badge warn card-b">{$t('hours full')}</span>{/if}</span>
+                        <span class="r-sub">
+                          {#if cap.quota != null}<span class:r-reason={cap.full}>{$t('{used}/{quota} {unit} used', { used: cap.used, quota: cap.quota, unit: cap.unit })}</span>{:else}{p.affiliation ?? '—'}{/if}
+                          {#if (badgesOf[p.id] ?? []).length} · {$t('{n} badges', { n: (badgesOf[p.id] ?? []).length })}{/if}
+                          {#if fit && !fit.ok} · <span class="r-reason">{fit.reason}</span>{/if}
+                        </span>
                       </span>
-                    </span>
-                  </button>
-                  {#if isOfficer}
-                    <button type="button" class="r-badge" title={$t('Badges')} onclick={() => (forgeBadgeFor = p)}>✦</button>
+                    </button>
+                    {#if selNeed && fit?.ok && !seating}
+                      <button type="button" class="prow-seatbtn" onclick={() => pickPerson(p)}>{$t('Seat')} →</button>
+                    {/if}
+                    {#if isOfficer}
+                      <button type="button" class="r-badge" title={$t('Badges')} onclick={() => (forgeBadgeFor = p)}>✦</button>
+                    {/if}
+                  </div>
+                  {#if seating && seatFit?.ok}
+                    <div class="prow-seat">
+                      <label>{$t('Monthly amount')}{#if seatMinReq > 0}<span class="muted"> · {$t('need {q}', { q: seatMinReq })}</span>{/if}{#if seatRemaining != null}<span class="muted"> · {$t('{n} left', { n: seatRemaining })}</span>{/if}
+                        <input type="number" min="0" step="any" bind:value={amount} class:over={seatOver || seatUnder} /></label>
+                      {#if selNeed.resource_type_id}
+                        <label>{$t('Resource')}<select bind:value={resId}><option value="">{$t('Select resource')}</option>{#each (resOf[p.id] ?? []).filter((r) => r.type_id === selNeed.resource_type_id) as r (r.id)}<option value={r.id}>{r.name}</option>{/each}</select></label>
+                      {/if}
+                      <button type="button" class="stake" disabled={busy === 'seat' || seatOver || seatUnder || (!!selNeed.resource_type_id && !resId)} onclick={seat}>
+                        {#if busy === 'seat'}<span class="spin"></span>{/if}{$t('Confirm seat')}
+                      </button>
+                      {#if seatOver}<span class="r-reason">{$t('Over capacity — only {n} left this month', { n: seatRemaining })}</span>
+                      {:else if seatUnder}<span class="r-reason">{seatMinReq > 0 ? $t('Must commit at least {q}', { q: seatMinReq }) : $t('Must be more than 0')}</span>{/if}
+                    </div>
                   {/if}
                 </div>
               {/each}
@@ -636,11 +640,23 @@
   .r-ddl { font-size: .7rem; color: var(--muted); }
   .card-b { font-size: .64rem; }
 
-  .prow { display: flex; align-items: stretch; gap: .35rem; }
-  .prow.on > .person { border-color: var(--accent); background: var(--accent-soft); }
-  .prow.fit > .person { border-color: color-mix(in srgb, var(--up, var(--accent)) 45%, transparent); }
+  .prow { display: flex; flex-direction: column; gap: .35rem; }
+  .prow-top { display: flex; align-items: stretch; gap: .35rem; }
+  .prow.on .person { border-color: var(--accent); background: var(--accent-soft); }
+  .prow.fit .person { border-color: color-mix(in srgb, var(--up, var(--accent)) 45%, transparent); }
   .prow.dim { opacity: .5; }
-  .prow > .person { flex: 1; min-width: 0; }
+  .prow .person { flex: 1; min-width: 0; }
+  .prow-seatbtn { flex: none; padding: 0 .75rem; border: 1px solid var(--accent); border-radius: 9px; background: var(--accent); color: #fff; font: inherit; font-weight: 600; font-size: .82rem; cursor: pointer; white-space: nowrap; }
+  .prow-seatbtn:hover { filter: brightness(1.06); }
+  .prow-seat { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .5rem; padding: .55rem .65rem; border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); border-radius: 10px; background: var(--accent-soft); }
+  .prow-seat label { display: flex; flex-direction: column; gap: .2rem; font-size: .74rem; color: var(--muted); }
+  .prow-seat input, .prow-seat select { padding: .35rem .5rem; border-radius: 7px; border: 1px solid var(--border-2); background: var(--card); color: var(--text); font-size: .85rem; }
+  .prow-seat input.over { border-color: var(--down); }
+  .prow-seat .r-reason { flex-basis: 100%; font-size: .78rem; color: var(--down); }
+  .mc-guide { font-size: .85rem; color: var(--text-dim); padding: .55rem .8rem; border: 1px solid var(--border); border-radius: 10px; background: var(--card); display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
+  .mc-guide.active { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); background: var(--accent-soft); }
+  .mc-clear { background: transparent; border: 0; color: var(--muted); cursor: pointer; font: inherit; font-size: .8rem; white-space: nowrap; }
+  .mc-clear:hover { color: var(--down); }
   .r-badge { flex: none; width: 2rem; border: 1px solid var(--border); border-radius: 9px; background: var(--card);
     color: var(--accent); font-size: .9rem; cursor: pointer; }
   .r-badge:hover { border-color: var(--accent); }
