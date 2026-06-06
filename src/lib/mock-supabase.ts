@@ -54,8 +54,10 @@ const seed: Record<string, any[]> = {
     { id: RT_GPU, name: 'GPU', unit: 'GPU-hours', rank: 1, valuation_method: 'gpu' }
   ],
   resource: [
-    { id: 'r-labor-li', holder_member_id: M_LI, type_id: RT_LABOR, scope: 'member', monthly_quota: 10, name: 'My time' },
-    { id: 'r-gpu-wang', holder_member_id: M_WANG, type_id: RT_GPU, scope: 'member', monthly_quota: 200, name: 'A100 ×2' }
+    { id: 'r-labor-li', holder_member_id: M_LI, type_id: RT_LABOR, scope: 'member', monthly_quota: 10, name: 'My time', approval_status: 'approved', availability: 'available', resource_type: { name: 'Labor', unit: 'hour' } },
+    { id: 'r-gpu-li', holder_member_id: M_LI, type_id: RT_GPU, scope: 'member', monthly_quota: 80, name: 'RTX 4090', approval_status: 'approved', availability: 'available', resource_type: { name: 'GPU', unit: 'GPU-hours' } },
+    { id: 'r-gpu-wang', holder_member_id: M_WANG, type_id: RT_GPU, scope: 'member', monthly_quota: 200, name: 'A100 ×2', approval_status: 'approved', availability: 'available', resource_type: { name: 'GPU', unit: 'GPU-hours' } },
+    { id: 'r-cluster-li', holder_member_id: M_LI, type_id: RT_GPU, scope: 'community', monthly_quota: 500, name: 'PKU shared cluster', approval_status: 'approved', availability: 'available', resource_type: { name: 'GPU', unit: 'GPU-hours' } }
   ],
   project: [
     { id: P1, name: 'ml-Tagging', emoji: '🏷️', code: 'ml-Tagging', tag: 'ml', body: 'XBRL multilingual tagging.', summary: 'XBRL tagging across languages', org_unit_id: U_WG, status_id: 'ps-active', target_venue: 'ACL', deadline: '2026-07-30', proposal_url: 'https://example.com' }
