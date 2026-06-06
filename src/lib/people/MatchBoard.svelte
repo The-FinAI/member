@@ -83,10 +83,11 @@
   }
 
   // graded fit (Strong / Fits / Stretch) + capacity bar, per the research
-  function grade(c: Cand): { cls: string; label: string } {
-    if (!c.fits) return { cls: 'stretch', label: 'Stretch' };
-    if (c.level === 'lead' || (c.shipped ?? 0) >= 2) return { cls: 'strong', label: 'Strong fit' };
-    return { cls: 'ok', label: 'Fits' };
+  // graded fit, encoded by SHAPE + LABEL too (not colour alone — colour-blind safe)
+  function grade(c: Cand): { cls: string; label: string; glyph: string } {
+    if (!c.fits) return { cls: 'stretch', label: 'Stretch', glyph: '○' };
+    if (c.level === 'lead' || (c.shipped ?? 0) >= 2) return { cls: 'strong', label: 'Strong fit', glyph: '●' };
+    return { cls: 'ok', label: 'Fits', glyph: '◐' };
   }
   // live capacity bar: how much of this person's FREE capacity the planned
   // amount consumes — fills as you type, turns red when it exceeds free.
@@ -156,7 +157,7 @@
                 {@const b = bar(c, num(hoursFor[c.member_id]))}
                 <div class="cand" class:busy={busy === c.member_id}>
                   <div class="cand-info">
-                    <span class="cand-grade gr-{g.cls}" title={$t(g.label)}>●</span>
+                    <span class="cand-grade gr-{g.cls}">{g.glyph}<span class="gr-label">{$t(g.label)}</span></span>
                     <span class="cand-name">{c.full_name}</span>
                     {#if c.level}<span class="cand-lvl lv-{c.level}">{$t(LEVEL_LABEL[c.level] ?? c.level)}</span>{/if}
                     {#if n.slot_kind === 'work_labor'}
@@ -170,7 +171,7 @@
                     <div class="capbar" title="{c.free ?? '∞'} {c.unit} {$t('free')}">
                       {#if b.unconstrained}<span class="cap-inf">∞</span>{:else}<div class="capfill" class:over={b.over} style="width:{b.pct}%"></div>{/if}
                     </div>
-                    <span class="cap-txt" class:over={b.over}>{c.free ?? '∞'}{c.unit} {$t('free')}</span>
+                    <span class="cap-txt" class:over={b.over}>{#if b.over}⚠ {/if}{c.free ?? '∞'}{c.unit} {$t('free')}</span>
                   </div>
                   <div class="cand-act">
                     <input class="cand-h" class:over={b.over} type="number" min="1" bind:value={hoursFor[c.member_id]} />
@@ -223,7 +224,8 @@
   .cand.dim { opacity: .6; }
   .cand.busy { opacity: .5; }
   .cand-info { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; flex: 1 1 14rem; }
-  .cand-grade { font-size: .7rem; }
+  .cand-grade { font-size: .72rem; display: inline-flex; align-items: center; gap: .25rem; }
+  .gr-label { font-size: .68rem; color: var(--muted, #999); }
   .gr-strong { color: #2e7d4f; } .gr-ok { color: #6a7cff; } .gr-stretch { color: #cbb24a; }
   .cand-name { font-weight: 500; }
   .cand-lvl { font-size: .73rem; color: var(--muted, #888); }
