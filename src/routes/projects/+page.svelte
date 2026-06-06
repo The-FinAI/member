@@ -84,7 +84,7 @@
   let typeFilter = $state('');
   let statusFilter = $state('');
   let venueFilter = $state('');
-  type SortKey = 'deadline' | 'pool' | 'seats' | 'openNeeds' | 'name';
+  type SortKey = 'deadline' | 'openTasks' | 'openNeeds' | 'name';
   let sortKey = $state<SortKey>('deadline');
   let sortDir = $state<1 | -1>(1);
 
@@ -501,7 +501,6 @@
           <span class="muted" style="font-size:.85rem;">{$t('{n} shipped', { n: finished.length })}</span>
         </div>
         <div class="row" style="gap:.6rem; align-items:center;">
-          {#if hofMinted > 0}<span class="muted" style="font-size:.82rem;">{$t('{n} STR minted', { n: hofMinted.toLocaleString() })}</span>{/if}
           <span class="chev" class:open={showHof}>▾</span>
         </div>
       </div>
@@ -519,10 +518,6 @@
                 {#if r.venue}<span class="sep">·</span><span>{r.venue}</span>{/if}
               </span>
               <div class="hof-stats">
-                <div class="hof-stat">
-                  <span class="mono accent">{r.pool.toLocaleString()}</span>
-                  <span class="muted">{$t('STR minted')}</span>
-                </div>
                 <div class="hof-stat">
                   <span class="mono">{r.seatsFilled}</span>
                   <span class="muted">{$t('contributors')}</span>
@@ -589,8 +584,7 @@
     <div class="row" style="gap:.3rem; align-items:center;">
       <select bind:value={sortKey} title={$t('Sort by')}>
         <option value="deadline">{$t('Deadline')}</option>
-        <option value="pool">{$t('Nominal pool')}</option>
-        <option value="seats">{$t('Seats')}</option>
+        <option value="openTasks">{$t('Open tasks')}</option>
         <option value="openNeeds">{$t('Open needs')}</option>
         <option value="name">{$t('Name')}</option>
       </select>
@@ -614,9 +608,9 @@
           accentColor={r.claimable ? '#f0a35e' : statusColor(r.status)}
           tag={r.wg ? { label: r.wg, color: wgColor(r.wg) } : undefined}
           stats={[
-            ...(r.openTasks ? [{ label: 'Open tasks', value: String(r.openTasks) }] : []),
-            { label: 'Nominal pool', value: r.pool.toLocaleString() },
-            { label: 'Seats', value: `${r.seatsFilled}/${r.seatsTotal}` },
+            { label: 'Open tasks', value: String(r.openTasks) },
+            { label: 'Open needs', value: String(r.openNeeds) },
+            { label: 'Team', value: String(r.seatsFilled) },
             ...(r.deadline ? [{ label: relDays(r.deadline), value: fmtDate(r.deadline) }] : [])
           ]}
           onclick={() => openProject(r)}
