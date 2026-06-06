@@ -242,3 +242,137 @@ grounding. Two things still need real-world validation rather than authority: (1
 two-domain-officer** split is reasoned from the org chart, not from observing the actual officers — it
 should be checked against how a real chapter secretary vs WG lead actually works; (2) the
 **select-glow-assign** gesture should be **usability-tested** with one officer before we commit Phase C.
+
+---
+
+## 12. Deeper friction — what still blocks *understanding* and *operation*
+
+*§0–11 fixed **structure** (two domains) and **gesture** (one assign). But a user can sit on a perfectly
+organized screen and still be lost. The remaining blockers are not layout — they are about the four
+things a person needs to act with confidence: a **mental model**, a sense of **time**, **feedback on
+what happened**, and a model that **matches how collaboration actually works**. Each below is written in
+the user's voice, then answered with a concrete design move.*
+
+### The root friction (name it plainly)
+> *"I'm being asked to run a **token economy** I don't understand, on behalf of **people who never
+> agreed to it**."*
+
+That sentence is under everything else. Two consequences shape the whole layer: the **economy is a black
+box** (A) and the **person is treated as inventory** (E). Fixing the surface won't help until these do.
+
+---
+
+### A. Conceptual-model blockers — *the user can't form a correct picture*
+
+**A1 — STR is an unexplained black box.** *"Hours turn into… credit? nominal vs liquid? worth what?"*
+Hiding STR (§4.4) is not the same as making it understood; the moment it surfaces at Finish→Split, the
+officer faces a weighting form with **zero grounding**.
+→ **Design:** never require understanding STR to *operate*; show it only as **"credit ≈ N"** derived
+live, with a one-tap **"how is this computed"** that states it in the user's units (*hours × rate*).
+Rename **nominal/liquid → accruing/paid**. Put **one worked example** on the Wallet ("12h writing this
+month → ≈ 120 credit, paid when the paper settles"). Principle: Norman **conceptual model** made visible;
+Nielsen #2.
+
+**A2 — Skill levels are unanchored.** *"'Advanced Writing' by whose standard? who decided? can I trust
+it?"* A badge is granted but the **rubric and provenance are invisible**, so neither the rater nor the
+filler trusts the level the whole match depends on.
+→ **Design:** every level carries a **one-line rubric** on hover ("Advanced = has led a paper's
+writing") and a **provenance chip** (*certified by Li · 2026-03* vs *self-claimed · pending*).
+Self-claimed and certified must **look different**. Without provenance the matching premise is hollow.
+
+**A3 — Valuation is a hidden rate.** *"I'm offering a GPU / 200h — worth how much credit? no idea."*
+GPU-hours, 1M-tokens, USD, hours all convert to STR by rates the user never sees.
+→ **Design:** **live valuation preview** the instant a resource or role is declared ("200 GPU-h/mo ≈ N
+credit/mo"). Legible rate, not a black box. Same preview when a WG posts a role.
+
+### B. Temporal-model blockers — *the user can't reason about time*
+
+**B1 — Commitments have no visible duration or renewal.** *"20h/month — for how many months? does it
+renew? when is Zhang free again?"* Commitments are stored per `year_month` but the UI shows an
+open-ended "20h" with **no start, end, or horizon**. This is the biggest hidden-state trap.
+→ **Design:** an assignment shows **a window** (from–until / "ongoing, renews monthly") and the roster
+carries a tiny **per-period capacity** (this month / next month toggle), because someone free in March is
+busy in April. Precedent: Float / Resource Guru learned capacity must be **time-phased**, never one
+lifetime number.
+
+**B2 — Deadlines and commitments are disconnected.** A project has a venue deadline; a person has a
+monthly commitment; nothing links them. *"Will this role even be staffed in time?"*
+→ **Design:** show a role's **demand against its deadline** ("needs 2 writers, deadline in 18 days,
+0 filled") so urgency is visible where the decision is made.
+
+### C. Feedback & state blockers — *the user can't tell what happened or what's next*
+
+**C1 — Acting into a void.** *"I assigned Zhang. Did anything happen? Does he know? Did the WG see it?"*
+The act returns to a reloaded list with **no consequence shown**.
+→ **Design:** after every act, show the **consequence inline**: "Zhang now 18/20h · role 2/2 filled · WG
+lead notified." Plus a real notification to the assignee. Nielsen #1 at the **workflow** level.
+
+**C2 — No "what needs me."** A user logs in and must **hunt across surfaces** to find what's pending,
+blocked, or waiting on them. There is no inbox-zero.
+→ **Design:** Home leads with a **"your turn" list**, role-scoped: *Chapter* — "3 new roles your people
+fit · 1 person just freed up · 2 awaiting review"; *WG* — "your project finished → split credit · a role
+you posted got filled → confirm." The dashboard becomes a **triage queue**, not a wall of stats.
+
+**C3 — Pending/blocked states are scattered and silent.** Approval, capacity-review, claimed-but-not-
+confirmed all live in different places with no unified signal.
+→ **Design:** one **status vocabulary** surfaced as consistent badges + a personal **activity trail**
+("things I did") so state is recognizable, not recalled.
+
+### D. Decision-support blockers — *the user can't make a good choice*
+
+**D1 — An open role gives no context to place against.** *"'Writing Advanced ×2' — but what's the
+project, who's already on it, what's the deadline, is it a fit?"* The filler decides **blind**.
+→ **Design:** the RoleRow expands into a **decision card**: project one-liner · deadline · who's already
+seated · the actual monthly commitment. Strong **information scent** (Pirolli–Card) where the choice is made.
+
+**D2 — "Qualified" explains nothing.** A fitting person just **glows**; the officer doesn't see *why*.
+→ **Design:** show the **positive reason**, not only the blocking one: "Advanced Writing ✓ · 6h free ·
+on 2 similar projects." Make the match legible, so the officer trusts it.
+
+**D3 — No triage among many roles → decision paralysis.** Everything looks equally urgent (Hick's Law at
+the data level).
+→ **Design:** rank/flag roles by **urgency** (deadline, headcount gap) and surface "most urgent
+unfilled" first. Give demand a **priority signal**.
+
+**D4 — Demand is posted blind.** A WG officer posts a role with no idea whether anyone can fill it.
+→ **Design:** at post time, show the **candidate-pool size** ("~4 people across chapters qualify").
+Two-sided markets must let the demand side feel the supply (Upwork/ATS).
+
+### E. Social-model blockers — *the model misrepresents collaboration*
+
+**E1 — People as inventory; assignment without consent.** The Chapter officer **moves a person onto
+work like a token**. Even as a P1 proxy, the model has **no notion of the researcher agreeing**.
+→ **Design:** model an assignment as a **proposal with a state** — *proposed → active*. In P1 the
+officer confirms on the person's behalf, but the state exists, the assignee is **notified**, and P2 turns
+it into a real accept/decline. Removes the "silent conscription" feel; future-proofs the social contract.
+
+**E2 — No negotiation / decline / re-fit.** Real staffing is a conversation; the UI only allows
+top-down placement.
+→ **Design:** a lightweight **decline-with-reason** and **re-propose** path (P1: officer records it; P2:
+the person does). The seam becomes a handshake, not a push.
+
+**E3 — The highest-stakes moment is the least-supported.** **Credit split** decides real reward, yet the
+officer does it in a **bare weights form** with no record of who actually did what.
+→ **Design:** default each contributor's weight to **their logged hours over the project's life**, show
+a **fairness summary** (shares sum to 100%; flag "big contributor, tiny share"), and surface the
+**contribution history** beside the form. Make the moment that matters most the best-supported one.
+
+**E4 — No notification spine.** Everything is **pull** (go look). Async coordination across people is
+impossible without push.
+→ **Design:** an in-app **notification inbox** (+ optional email) for the events above: a fillable role
+opened, you were proposed to a role, your settlement was approved.
+
+---
+
+### What this re-orders in the rollout
+Several of these block comprehension **more** than the matching-gesture polish does. **Legibility should
+precede gesture.** Revised priority inside the staged plan:
+
+1. **A + C2 first** (make the economy legible; give the user a "what needs me" home) — the cheapest, highest-trust wins, mostly copy + a derived value + one list.
+2. **D1–D2 + B1** (decision context on roles; time-phased capacity) — these make the *one gesture* actually usable; do them **with**, not after, Phase C.
+3. **E1 + E4** (proposal-state + notifications) — the social spine; unlocks Phase 2 and removes the conscription feel.
+4. **E3** (supported credit split) — before the first real settlement happens, not after.
+
+The acceptance test (§10) gains a clause: *the officer can answer, without asking anyone — "what is this
+credit worth, when is this person free, what happened after I acted, and does the researcher know?"* If
+not, the screen is still a black box, however well-organized.
