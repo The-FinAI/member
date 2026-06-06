@@ -19,28 +19,20 @@
 
   let team = $state<Member[]>([]);
   let needs = $state<Need[]>([]);
-  let loading = $state(true);
-
-  // first-author (leader) slot — a designation, not a market need
-  let leaderSlot = $state<string | null>(null);
   let leaderName = $state<string | null>(null);
-  let members = $state<{ id: string; full_name: string }[]>([]);
-  let setOpen = $state(false);
-  let laPick = $state(''); let laHours = $state('20'); let laBusy = $state(false); let laErr = $state('');
+  let loading = $state(true);
 
   async function load() {
     if (!supabaseConfigured || !projectId) { loading = false; return; }
     loading = true;
-    const [{ data: wc }, { data: sl }, { data: mem }] = await Promise.all([
+    const [{ data: wc }, { data: sl }] = await Promise.all([
       supabase.from('work_commitment')
         .select('member_id, monthly_amount, slot:slot_id(slot_kind), member:member_id(full_name), resource:resource_id(unit)')
         .eq('project_id', projectId),
       supabase.from('project_slot')
         .select('id, slot_kind, desired_level, quota, headcount, status, skill:skill_id(name), resource_type:resource_type_id(name, unit)')
-        .eq('project_id', projectId),
-      supabase.from('member').select('id,full_name').order('full_name')
+        .eq('project_id', projectId)
     ]);
-    members = (mem as any[]) ?? [];
     // team: dedupe by member, label leader/contributor
     const byM: Record<string, Member> = {};
     for (const w of (wc as any[]) ?? []) {
@@ -52,21 +44,16 @@
       else byM[id] = { id, name: w.member?.full_name ?? '—', role, amount: Number(w.monthly_amount) || 0, unit: w.resource?.unit ?? 'h' };
     }
     team = Object.values(byM).sort((a, b) => Number(b.role === 'first author') - Number(a.role === 'first author'));
-
-    // leader (first-author) slot: find it, and who (if anyone) fills it
-    const slotsAll = (sl as any[]) ?? [];
-    const lslot = slotsAll.find((s) => s.slot_kind === 'leader');
-    leaderSlot = lslot?.id ?? null;
     leaderName = team.find((m) => m.role === 'first author')?.name ?? null;
 
     // needs: filled per slot
-    const slots = slotsAll;
+    const slots = (sl as any[]) ?? [];
     const filled: Record<string, number> = {};
     for (const w of (wc as any[]) ?? []) if (w.slot_id ?? false) {} // counted below by slot
     const { data: f } = await supabase.from('work_commitment').select('slot_id, member_id').eq('project_id', projectId);
     const setBy: Record<string, Set<string>> = {};
     for (const r of (f as any[]) ?? []) if (r.slot_id) (setBy[r.slot_id] ??= new Set()).add(r.member_id);
-    needs = slots.filter((s) => s.status === 'open' && s.slot_kind !== 'leader').map((s) => ({
+    needs = slots.filter((s) => s.status === 'open').map((s) => ({
       id: s.id, kind: s.slot_kind,
       skill: s.skill?.name ?? null, level: s.desired_level,
       resource: s.resource_type?.name ?? null,
@@ -76,43 +63,14 @@
     loading = false;
   }
   $effect(() => { projectId; load(); });
-
-  // designate the first author (leader). Uses assign → work_seat handles the
-  // leader slot (mints writing hours, sets first author).
-  async function setLeader() {
-    laErr = '';
-    if (!laPick || !leaderSlot) { laErr = $t('Pick a person'); return; }
-    laBusy = true;
-    const { error } = await supabase.rpc('assign', { p_member: laPick, p_slot: leaderSlot, p_hours: Number(laHours) || 20 });
-    laBusy = false;
-    if (error) { laErr = error.message; return; }
-    setOpen = false; laPick = '';
-    load();
-  }
 </script>
 
 <section class="pt">
-  <!-- first author (leader) — a designation, set here, not in the needs market -->
+  <!-- first author shown for context; an OPEN first-author seat appears in
+       Open needs below and is filled by matching on People, like any need -->
   <div class="pt-lead">
     <span class="pt-lead-l">{$t('First author')}</span>
-    {#if leaderName}
-      <span class="pt-lead-n">{leaderName}</span>
-    {:else if canManage && !finished && leaderSlot}
-      {#if setOpen}
-        <select bind:value={laPick}>
-          <option value="">{$t('Pick a person')}</option>
-          {#each members as m}<option value={m.id}>{m.full_name}</option>{/each}
-        </select>
-        <input class="pt-lead-h" type="number" min="1" bind:value={laHours} title={$t('Monthly writing hours')} />
-        <button class="pt-go" disabled={laBusy} onclick={setLeader}>{$t('Set')}</button>
-        <button class="pt-ghost" onclick={() => (setOpen = false)}>{$t('Cancel')}</button>
-        {#if laErr}<span class="pt-err">{laErr}</span>{/if}
-      {:else}
-        <button class="pt-lead-set" onclick={() => (setOpen = true)}>＋ {$t('Set first author')}</button>
-      {/if}
-    {:else}
-      <span class="pt-lead-open">{$t('open')}</span>
-    {/if}
+    {#if leaderName}<span class="pt-lead-n">{leaderName}</span>{:else}<span class="pt-lead-open">{$t('open — match on People')}</span>{/if}
   </div>
 
   <div class="pt-head"><span class="pt-h">{$t('Team')}</span></div>
@@ -140,7 +98,9 @@
       <div class="pt-needs">
         {#each needs as n (n.id)}
           <div class="nrow">
-            {#if n.kind === 'work_resource'}
+            {#if n.kind === 'leader'}
+              <span class="n-skill">{$t('First author')}</span><span class="n-kind">{$t('leader')}</span>
+            {:else if n.kind === 'work_resource'}
               <span class="n-skill">{n.resource}</span><span class="n-kind">{$t('resource')}</span>
             {:else}
               <span class="n-skill">{n.skill}</span>

@@ -49,7 +49,7 @@
     const [nd, mem] = await Promise.all([
       supabase.from('project_slot')
         .select('id,project_id,slot_kind,skill_id,resource_type_id,desired_level,quota,headcount,status,skill:skill_id(name),resource_type:resource_type_id(name,unit),project:project_id(name,emoji,code)')
-        .in('slot_kind', ['work_labor', 'work_resource']).eq('status', 'open'),
+        .in('slot_kind', ['work_labor', 'work_resource', 'leader']).eq('status', 'open'),
       supabase.from('member').select('id,full_name').order('full_name')
     ]);
     const rows = (nd.data as any[]) ?? [];
@@ -129,7 +129,10 @@
       {#each needs as n (n.id)}
         <div class="need" class:open={openNeed === n.id}>
           <button class="need-row" onclick={() => pickNeed(n)}>
-            {#if n.slot_kind === 'work_resource'}
+            {#if n.slot_kind === 'leader'}
+              <span class="need-skill">{$t('First author')}</span>
+              <span class="need-kind">{$t('leader')}</span>
+            {:else if n.slot_kind === 'work_resource'}
               <span class="need-skill">{n.resource_type?.name}</span>
               <span class="need-kind">{$t('resource')}</span>
             {:else}
