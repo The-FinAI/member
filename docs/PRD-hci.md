@@ -276,5 +276,108 @@ Each step is **removal/unification**, not addition.
 
 ---
 
+---
+
+## 12. Definitions & taxonomy — the HCI audit of the **content/config layer**
+
+Interaction polish can't fix a model that doesn't match how researchers think. The
+*definitions* (terms, ranks, skill tree, positions, permissions, statuses) are themselves
+a usability surface — judged by **match-to-real-world**, **recognition**, **consistency**,
+**plain language**. Current state vs target:
+
+### 12.1 Skill ranks (the level ladder)
+- **Now:** `Apprentice → Journeyman → Craftsman → Master` (a medieval **guild** metaphor;
+  "guild ladder", "Guild & skills"). Researchers must translate every time.
+- **Target:** plain proficiency — **Beginner → Intermediate → Advanced → Expert** (4 kept).
+  Drop the word **"guild"** entirely → "Skills". Pips/medals stay; only the labels change.
+- *(DB: keep the `guild_level` enum values to avoid a migration storm; rename only the
+  human labels in i18n + a display map. The enum is internal.)*
+
+### 12.2 Skill tree taxonomy
+- **Now:** the top level literally contains a node named **"Domain"**; structure is uneven
+  (Engineering, Language, Domain[=finance subfields], plus loose research skills).
+- **Target — research-grounded domains**, named the way a Fin-AI researcher self-describes:
+  1. **Research & Writing** — Paper Writing, Literature Review, Experiment Design, Benchmark
+     Design, Evaluation & Metrics.
+  2. **Engineering** — Data Pipelines, Distributed Training / GPU, Inference & Serving,
+     Frontend / Backend.
+  3. **Finance domain** — (the current finance subfields: Equities/Trading, Risk, Audit/XBRL,
+     Portfolio, Banking/Credit, RegTech, Macro, ESG). Rename the node "Domain" → **"Finance"**.
+  4. **Languages** — for multilingual annotation/eval.
+  5. **Coordination** — Mentoring/Onboarding, Outreach, Facilitation, Organization.
+- One **SkillTree** component renders this everywhere (§8.7). Domains must be **mutually
+  legible** (a person knows which bucket their skill is in in <2s).
+
+### 12.3 Positions / roles — **two parallel systems, collapse them**
+- **Now:** a corporate `position` ladder (`President · Board · Steering · Executive Chair ·
+  Executive · Researcher`) **and** a separate `org_unit_officer` role (`chair · secretary ·
+  leader`). Two ways to say "who someone is" → confusion, and the board layers aren't used.
+- **Target — one small, legible role set:**
+  - **President** (org owner) — global authority.
+  - **Officer** — *of a unit*, with a unit role: **Chapter Chair / Chapter Secretary** (steward
+    people) or **Group Lead** (steward projects). This is the real operating role in P1.
+  - **Researcher** — a member (P2: logs in).
+  - Drop `Board / Steering / Executive Chair / Executive` unless a real governance need
+    exists; they're unused ladder cruft.
+
+### 12.4 Capabilities → **human permission groups**
+- **Now:** raw technical keys shown to admins: `manage_stater, mint_skillcard,
+  review_skillcard, manage_members, invite_members, edit_any_project, manage_guild,
+  manage_taxonomy, manage_resources, manage_tokens`.
+- **Target:** keep the keys *internal*; in the Permissions UI show **named groups**:
+
+  | Group (UI) | wraps |
+  |---|---|
+  | **Approve credentials** | review_skillcard, mint_skillcard |
+  | **Manage people & access** | manage_members, invite_members |
+  | **Manage projects** | edit_any_project |
+  | **Manage skills & catalog** | manage_guild, manage_taxonomy |
+  | **Manage resources** | manage_resources |
+  | **Run the STR economy** | manage_stater, manage_tokens |
+
+  An officer's position grants groups, not cryptic keys. (Recognition over recall.)
+
+### 12.5 Project statuses (lifecycle)
+- **Now:** `Proposal · Data Collecting · Work in progress · Under review · Finished · Hold`.
+  "Data Collecting" is over-specific (not all research collects data) and splits "active".
+- **Target — clean lifecycle that drives the pipeline (§8.2):**
+  **Proposed → Active → Under review → Finished** (+ **On hold**). Merge *Data Collecting*
+  + *Work in progress* → **Active**. The status set IS the pipeline; one vocabulary.
+
+### 12.6 Resource types
+- **Now:** Compute/GPU · API Credits · Funding/Budget · Dataset/Data Access · Annotation
+  Labor · Software/License · Expert Time · **Labor** · Other. Three "hours" types (Labor,
+  Expert Time, Annotation Labor) overlap.
+- **Target:** group by *what it is*: **People-time** (one type, with the skill/level on the
+  resource — collapses Labor/Expert Time/Annotation), **Compute**, **API**, **Data**,
+  **Funding**, **Software**, **Other**. Fewer, cleaner buckets; pricing still per type.
+
+### 12.7 Core glossary (the canonical word for each concept)
+
+| Concept | Use (EN) | 中文 | Banned (old/jargon) |
+|---|---|---|---|
+| the token | **STR** | STR | — |
+| earned, locked | **nominal STR** | 名义 STR | (keep) |
+| earned, spendable | **liquid STR** | 流动 STR | (keep) |
+| create something | **Add / Create** | 添加 / 创建 | Forge, mint |
+| an open role on a project | **Need / Seat** | 需求 / 席位 | slot |
+| put a person on a need | **Seat** | 安排入座 | bind, commit |
+| pay out a finished project | **Settle** | 结算 | harvest |
+| skill level | **Beginner…Expert** | 初级…专家 | Apprentice…Master, guild |
+| a person's record | **card** (P1) / member | 卡片 / 成员 | — |
+| approval list | **Review queue** | 审核队列 | Forge queue |
+| a lab/group | **Chapter** | 分会 | — |
+| a project team | **Group** (working group) | 工作组 | WG (spell out) |
+
+*Rule: one word per concept, used identically in nav, buttons, copy, and admin labels.*
+
+### 12.8 Migration discipline
+Most of this is **labels, not schema**: change i18n + display maps + seed *names*; keep
+enum values & keys internal so we don't churn the DB. Only §12.5 (merge two statuses) and
+§12.6 (collapse hours types) touch seed rows — do those as small, reversible data
+migrations.
+
+---
+
 *Principle to hold the line: every change must **remove or unify**. If a proposal adds a
 surface or a component, it must delete one too.*
