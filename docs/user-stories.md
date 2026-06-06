@@ -1,86 +1,99 @@
-# User stories — test scenarios for the rebuilt flows
+# User stories — the two officers' jobs (HCI, goal-directed)
 
-*Concrete, step-by-step scenarios to test the new architecture. Each has a persona, steps, and the
-expected result. Use these for live verification after `db push` (real logic) and for local UI
-screenshot review (rendering/vocabulary/layout). "✅ expect" = what should happen.*
+*Rewritten from the operators' real goals, not a feature walkthrough. Phase 1 has exactly two people who
+log in: the **WG officer** (stewards projects) and the **Chapter officer** (stewards people). Each story
+is **Goal → Scenario (their actual job) → HCI acceptance** (did they reach the goal without confusion,
+know the next step, and get feedback). Test status: **R**=renders · **I**=interaction validated (mock) ·
+**L**=logic (needs live `db push`).*
 
-Personas (Phase-1, officers as proxies):
-- **Chen** — Chapter officer (stewards people).
-- **Wang** — WG officer (stewards projects) + leads a project.
-- **Li** — a member/card (no login in P1; appears as a person).
-- **Admin** — President.
-
----
-
-## US-1 — Chen registers a person and sets their skills (People + skills)
-1. Chen opens **People** → clicks **＋ Add a person** → name "Li", email, affiliation → **Add**.
-   ✅ Li appears in the roster.
-2. Chen opens Li's card → **Skills** section → adds skill "Annotation" → taps **Independent** → sets **Capacity** 20h.
-   ✅ skill shows `Annotation · Independent` with evidence `0 tasks · 0 shipped`; capacity bar = 20h.
-3. ✅ No badge tree / certification queue in the main flow; "Certified badges" is a collapsed legacy block.
-
-## US-2 — Wang creates & forms a project (Projects + matching seam)
-1. Wang opens **Projects** → **Start a project** → name "ml-Tagging", type, proposal link → **Create project**.
-   ✅ project created (free), appears with status; first-author seat is **open**.
-2. Wang opens the project → **Open needs** → **＋ Post a role** → Skill "Annotation", level Independent, 10h, ×1 → **Post role**.
-   ✅ "Posted · N people qualify"; the need shows in Open needs.
-3. ✅ The page shows **Task board · Team · Open needs · First author: open — match on People** — no old slot/seat UI.
-
-## US-3 — Chen matches Li onto the role (the seam, on People)
-1. Chen opens **People** → "Match people to needs" → picks the **Annotation** need.
-   ✅ ranked candidates show: Li `Independent · 0 tasks · 6h free`, capacity bar, grade dot.
-2. Chen sets hours 6 → **Assign**.
-   ✅ Li seated; need filled count ticks; capacity bar fills; Li gets a **notification** "assigned to ml-Tagging".
-3. Over-capacity guard: try assigning more than free hours.
-   ✅ bar turns red, **Assign disabled**, reason shown.
-
-## US-4 — First author is matched like a need (leader = need)
-1. On People matching, pick the **First author** need (a `leader` slot).
-   ✅ it appears as a need ("First author · leader"); candidates ranked by capacity (no skill requirement).
-2. Assign someone with writing hours.
-   ✅ they become first author; the project's "First author: open" flips to their name.
-
-## US-5 — Resource need (not just hours)
-1. Wang posts a need → toggle **Resource** → type "GPU", quantity → **Post role**.
-2. On People matching, pick the GPU need.
-   ✅ candidates = people who **hold a GPU resource**, ranked by **remaining quota** (unit-aware), not skill.
-3. Assign → consumes that resource's monthly quota; over-quota blocked.
-
-## US-6 — Run the living record (task board replaces the doc)
-1. Wang opens the project → **Task board** → adds a task "Confirm EN taxonomy", type Annotation, owner Li, status Doing.
-   ✅ row added inline, optimistic (no full reload); Li notified "given a task".
-2. A coverage group (e.g. "XBRL Coverage" with EN/JP rows, states Confirmed/Checking).
-   ✅ renders as a grouped checklist.
-3. Li opens **My tasks**.
-   ✅ sees "Confirm EN taxonomy" under Doing, across all projects; can flip state.
-
-## US-7 — Home is a router ("what needs you")
-1. Wang signs in → **Home**.
-   ✅ a triage list: "N tasks need an owner", "open needs on your projects", and (if a led project is finished) "Settle {name}". No mining cockpit, no STR hero.
-2. Chen's Home → "N people have free time" → People; pending reviews if reviewer.
-
-## US-8 — Finish & settle (STR appears only here)
-1. Wang advances the project to Finished (pipeline / Finish).
-2. Opens **Settlement** → weights default to logged hours → **fairness summary** ("shares total 100%"); a big-contributor/tiny-share is flagged.
-3. Submit → review → STR paid.
-   ✅ contributors' **Wallet** shows accruing → settled; Home no longer lists it as needing settlement.
-
-## US-9 — Wallet & vocabulary (economy quiet & legible)
-1. Open **Wallet**.
-   ✅ "Your STR" = Settled + Accruing split; "How you earn STR" loop; **no** stake/bond/net-worth wording.
-2. Across Home / Projects / People / task board: **no** words *slot · forge · nominal · stake · guild · harvest · Mint done*. (Finish, Accruing, Assign, Need, Task instead.)
-
-## US-10 — Directory (browse, no leaderboard)
-1. Open **Directory** → tabs People / Chapters / Working Groups / Badges.
-   ✅ browse-only; **no** Standing/Leaderboard ranking; people sorted alphabetically.
-
-## US-11 — Notifications
-1. After being assigned / given a task, the **🔔 bell** shows an unread count.
-   ✅ opening it lists the events; clicking marks read + navigates to the project.
+Personas:
+- **Wang Fang** — WG officer, leads *Multilingual & Multimodal*. A grad student running a research group.
+- **Chen Wei** — Chapter officer, *Beijing*. Secretary who staffs people onto work.
 
 ---
 
-### What local UI review CAN check (no DB): rendering, layout, vocabulary, navigation, empty states, the
-5-surface IA, old-structure leftovers.
-### What needs a live `db push` to verify: the RPC logic — match ranking, capacity hard-gate, leader
-minting, assign→notify, settlement payout, person_skill backfill from badges.
+## A. WG OFFICER (Wang) — "run my group's projects, and credit the team when work lands"
+
+### W1 — "What needs me in my group this week?"
+**Goal:** open the app and immediately see where my attention is needed — no hunting.
+**Scenario:** Wang signs in. Home should surface: projects with unowned tasks, open needs not yet filled,
+and any finished project waiting to be split.
+**HCI acceptance:** Home is a *triage list*, not a dashboard; each item is one tap to the right place;
+if nothing's pending it says so. *(Test: R 🟡 — saw the router shell; the populated list needs real data.)*
+
+### W2 — "Keep the project's record alive instead of the Google Doc" *(the heartbeat)*
+**Goal:** maintain ml-Tagging's living record — tasks, owners, coverage, progress — in-app.
+**Scenario:** Wang opens ml-Tagging, the **task board leads**. She adds "Collect KO filings", sets its
+type and owner, flips "Confirm EN taxonomy" to Done, updates the XBRL coverage row.
+**HCI acceptance:** add/assign/restate a task **inline, optimistically** (no full reload, no losing place);
+coverage renders as a grouped checklist; the assignee is notified. The WG never opens the Doc.
+*(Test: R ✅ board+coverage render; I ⏳ add/toggle not yet clicked; L ❌ notify/persist need live.)*
+
+### W3 — "Tell the community what this project needs, and not post it blind"
+**Goal:** declare an open role so a chapter can staff it — and know someone *can* fill it.
+**Scenario:** Wang clicks **Post a role** → Annotation, Independent, 10h. After posting she sees
+"~N people qualify."
+**HCI acceptance:** one form (skill **or** resource); applies immediately (trusted officer); the
+candidate-pool count makes demand non-blind. *(Test: R ✅ form renders; I ⏳; L ❌ pool count needs live.)*
+
+### W4 — "Stand up a new project in under a minute"
+**Goal:** start a project without ceremony or a bond.
+**Scenario:** Projects → Start a project → name/type/proposal → Create. The first-author seat stays open.
+**HCI acceptance:** free, no stake step; lands on a usable project page; first author is an open *need*
+to be matched, not a hand-pick. *(Test: R 🟡; I ⏳; L ❌.)*
+
+### W5 — "When the paper lands, split the credit fairly" *(highest stakes)*
+**Goal:** distribute the finished project's credit so contributors are paid fairly.
+**Scenario:** Wang finishes the project, opens Split — weights default to each person's logged hours, a
+**fairness line** flags anyone who did a lot but is set to get little.
+**HCI acceptance:** the highest-stakes moment is the **best-supported** (defaults + fairness check +
+contribution visible), not a bare weights form; STR is loud *here* and quiet elsewhere.
+*(Test: R ❌ not yet; I ❌; L ❌ — must verify before first real settlement.)*
+
+---
+
+## B. CHAPTER OFFICER (Chen) — "keep my people current, and get them placed on the right work"
+
+### C1 — "Register a new member with their skills and time"
+**Goal:** add a person so they can be matched.
+**Scenario:** People → Add a person → name/email/affiliation → then on their card set skills
+(Annotation · Independent) and capacity (20h).
+**HCI acceptance:** add is one short form; skills are a **one-tap level** (no badge tree/exam); capacity
+is a plain attribute; edits apply immediately with undo. *(Test: R ✅ form+skill editor render; I ⏳; L ❌.)*
+
+### C2 — "Keep skills honest and current"
+**Goal:** a person's level reflects reality, trustworthy to a WG that staffs them.
+**Scenario:** as Li owns more annotation tasks, the system suggests "mark Independent?"; Chen accepts.
+**HCI acceptance:** level is **behaviorally anchored + evidence-backed** (`4 tasks · 2 shipped`), earned
+not granted; no unanchored self-rating. *(Test: R ✅ evidence shows; I ⏳ raise-suggestion; L ❌.)*
+
+### C3 — "See who's free, and place them onto open work" *(the daily job / the seam)*
+**Goal:** match my roster onto the community's open needs without over-committing anyone.
+**Scenario:** People → Match board → pick the Annotation need → ranked candidates show level, evidence,
+**free capacity**; Chen assigns Li 6h; tries to over-book Li and is stopped.
+**HCI acceptance:** **select→glow→click**, one gesture; capacity is a **visible bar that turns red before
+it blocks** (constraint visible before the wall); under-level people still show, ranked lower; resource &
+first-author needs match the same way; the person is notified. *(Test: R ✅; **I ✅ capacity guard
+validated** — red bar + disabled Assign at over-book; L ❌ ranking/notify need live.)*
+
+### C4 — "Make sure no one is idle or overloaded"
+**Goal:** scan the roster and see free vs committed at a glance.
+**Scenario:** People roster — each person shows a capacity bar (used/total this month).
+**HCI acceptance:** the one number an officer scans (free hours) is visible per person; Home flags
+"N people have free time." *(Test: R 🟡 capacity shown as text/bar; I ⏳; L ❌ Home free-count needs data.)*
+
+---
+
+## What the local mock CAN and CANNOT validate
+- **CAN (interaction-layer HCI / §13 DoD):** optimistic update (no reload), inline feedback, the capacity
+  bar turning red before the disabled Assign, modeless select→glow, enabled-or-explained, layout/vocab.
+  *(C3's capacity guard is proven this way.)*
+- **CANNOT (logic correctness):** real match ranking, the capacity/quota gate server-side, first-author
+  hour minting, assign→notification delivery, settlement payout, person_skill backfill — these need a
+  live `db push` and a real session.
+
+## Test plan (interaction sweep, in officer-job order)
+1. **W2** add a task + flip a state → watch optimistic, no reload (next).
+2. **C1** add a skill one-tap; **C2** accept a raise suggestion.
+3. **C3** click Assign on a valid candidate → consequence feedback; open the 🔔 to see the notification.
+4. **W3** post a role → pool count. **W5** open Split → fairness line (needs a finished project).
