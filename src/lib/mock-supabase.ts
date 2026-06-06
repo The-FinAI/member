@@ -66,6 +66,8 @@ const seed: Record<string, any[]> = {
   project_status: [
     { id: 'ps-prop', name: 'Proposal', rank: 1, is_active: true },
     { id: 'ps-active', name: 'Active', rank: 2, is_active: true },
+    { id: 'ps-review', name: 'Under review', rank: 3, is_active: true },
+    { id: 'ps-hold', name: 'Hold', rank: 4, is_active: false },
     { id: 'ps-fin', name: 'Finished', rank: 5, is_active: false }
   ],
   venue: [{ id: 'v-acl', name: 'ACL', kind: 'conference', deadline: '2026-07-30', rank: 1 }],
