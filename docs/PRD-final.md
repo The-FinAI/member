@@ -6,27 +6,30 @@ this, today's code is wrong. The reasoning trail lives in `redesign-hci.md`; thi
 
 ---
 
-## 0. The one decision everything else follows from
+## 0. The two decisions everything else follows from
 
-> **The product is a *record*, not an *exchange*.**
+> **STR is the *goal*. A true, daily-used *record* is how STR becomes real.**
 
-A research community's working groups keep their life in a Google Doc; its chapters keep "who can do
-what" in their heads. The product replaces **those** — a shared, queryable record of **projects, people,
-and work**. That is the whole product.
+These are not in tension — they are sequential. The community's purpose **is** the STR economy: turning
+research contribution into settled, spendable credit. But an economy can only settle what it can
+**measure**, and it can only measure contribution if the community's real work — projects, people, tasks,
+hours — actually **lives in the system** instead of in a Google Doc. So:
 
-Two consequences, stated without hedging:
+1. **STR is the spine, kept legible and quiet — never cut.** Every logged hour, every finished project
+   feeds the ledger; contribution accrues as **credit**; finished work **settles** into spendable STR.
+   This is the reason the product exists. What we *don't* do is make a **mining/wallet dashboard the
+   officer's home** — STR is shown **where it becomes meaningful** (a person's accruing contribution, a
+   project's pool, the Finish→Split moment, the wallet) and stays **out of the way of the daily record**.
+   *Legible and quiet, not absent.*
+2. **The record is what makes the economy true.** If the WG runs on this instead of its doc, every hour
+   and task is captured — and STR settles on **real data**. A record nobody keeps = an economy measuring
+   nothing. So we win the record first, and STR rides on it, visible at the moments it matters.
 
-1. **Phase 1 has no economy UI. None.** No wallet hero, no STR balance, no nominal/liquid, no mining, no
-   stake, no settlement ceremony, no leaderboard. The officers who use Phase 1 **do not care about STR**
-   (we established this from how they actually work), and the real WG record **contains no STR anywhere**.
-   Contribution still **accrues silently** in the ledger (every logged hour is recorded); it simply has
-   **zero surface** until Phase 2 turns it into a member-facing wallet. Hiding the economy isn't a UX
-   trick — in Phase 1 it genuinely **is not part of the product**.
-2. **The unit of value is the *record being true and useful*, not a token.** Success = a WG runs on this
-   instead of its doc; a chapter staffs a project from it in minutes. Credit is a Phase-2 reward layered
-   on a record that already works.
+The Phase split restated: **Phase 1** — officers run the record; STR accrues, legible but quiet (it is
+*their proxies'* credit, not the officer's hero number). **Phase 2** — members log in; **STR becomes the
+member's hero** (my contribution, my wallet, settle). *Same ledger, the spotlight moved onto it.*
 
-Everything below is the minimal system that delivers that, and nothing more.
+Everything below is the minimal system that captures the work **and** lets STR settle honestly on it.
 
 ---
 
@@ -48,10 +51,12 @@ Unit ─┬─ Chapter ─── Person ──< holds >── Skill@level (+ pro
 | **Project** | work toward a publication, owned by one WG. Identity (emoji · code · title) · status · links (Proposal/Arxiv/References) · body · **team** · **tasks** · **milestones**. |
 | **Need** | what a project requires to **form**: a skill@level, or a resource, with a capacity & headcount. Filled by **matching** → creates a Membership. |
 | **Task** | the **execution** unit: `{group?, name, type?, owner?(TBD=open), state, note}`. Assigned **directly**. |
-| **Membership** | a Person on a Project: their role, monthly hours, since-date. The only place hours/contribution live. |
+| **Membership** | a Person on a Project: their role, monthly hours, since-date. The source of **contribution** (hours), which the ledger values in **STR**. |
 
-Plus two flat reference lists: **Skill** (name + a one-line rubric) and **Milestone type**. That is the
-entire schema. ~6 core tables. If something needs a seventh noun, question it before adding it.
+Plus reference lists: **Skill** (name + a one-line rubric), **Milestone type**, and the **STR ledger**
+(contribution → accruing credit → settled, spendable STR). STR is the **value layer beneath** the six
+nouns — every logged hour feeds it — but it is *shown* only at the moments it means something (§4.4,
+§4.5, the wallet), never as the daily surface. ~7 core tables.
 
 ---
 
@@ -60,20 +65,25 @@ entire schema. ~6 core tables. If something needs a seventh noun, question it be
 A project moves through two logics, in order — both first-class, never conflated:
 
 ```
- Propose ──▶ FORM (resource matching) ──▶ RUN (direct task work) ──▶ Finish ──▶ [Split, silent in P1]
-   create        post Needs · match            task board · owners        close       credit accrues,
-   the project   people by skill+capacity      assigned directly          the work    revealed in P2
+ Propose ──▶ FORM (resource matching) ──▶ RUN (direct task work) ──▶ Finish ──▶ Settle (Split → STR)
+   create        post Needs · match            task board · owners        close       contribution → credit,
+   the project   people by skill+capacity      assigned directly          the work    split & paid in STR
 ```
+
+*Throughout, contribution (logged hours) accrues into the STR ledger silently; STR becomes **visible**
+at Settle, on a person's profile, and in the wallet — not on the daily task board.*
 
 - **FORM = matching.** The project declares **Needs**; a chapter steward matches **People** to them by
   skill and **spare capacity**. Output: the **team**. This is the only place skill/level/capacity gating
   exists. A project doesn't run until it's resourced.
 - **RUN = the living record.** The team works **Tasks**; the lead assigns **owners directly** (a
   teammate, or TBD), tracks status, keeps coverage checklists, links, prose. **This is the thing that
-  replaces the Google Doc** — and it is the product's daily heartbeat.
+  replaces the Google Doc** — and it is the product's daily heartbeat. Every hour logged here is what the
+  STR ledger later settles on.
 
 **Need ≠ Task.** Matching produces the team; tasks organize the team's work. Different objects, different
-stages.
+stages. And the record those tasks form is **the ground truth the economy settles on** — no record, no
+honest STR.
 
 ---
 
@@ -83,13 +93,14 @@ stages.
 |---|---|---|
 | **Projects** | WG steward (everyone browses) | **The living record.** Every project as its doc-section: task board · coverage · links · body · team · status. The main surface. |
 | **People** | Chapter steward (everyone browses) | The **roster** (skills + capacity bars) and the **matching** board that fills forming projects' Needs. |
-| **My** | everyone | My projects, **my tasks across all of them**, my profile/skills. (P2: + my contribution & wallet — the hero then.) |
-| **Settings** | admin | Catalogs (skills + rubrics · project types · milestone types · units & stewards) and the few real approvals. |
+| **My** | everyone | My projects, **my tasks across all of them**, my profile/skills, **my contribution & wallet** (STR — quiet in P1, the **hero in P2**). |
+| **Settings** | admin | Catalogs (skills + rubrics · project types · milestone types · units & stewards) · the **economy** (rates, settlement review) · the few real approvals. |
 
 **Home is not a surface — it is a router** that drops you into your domain with a **"what needs me"**
-list on top: *WG steward* — "X finished · a Need is fillable · 3 tasks unowned"; *Chapter steward* — "2
-Needs your people fit · 1 person freed up." A dual-role person sees **two clean surfaces**, never a
-blended one. No console. No wallet. No leaderboard. No forge queue.
+list on top: *WG steward* — "X finished → settle · a Need is fillable · 3 tasks unowned"; *Chapter
+steward* — "2 Needs your people fit · 1 person freed up." A dual-role person sees **two clean surfaces**,
+never a blended one. **STR lives on My and at Settle — not on the home, not on the task board.** No
+mining console, no wallet-hero home, no leaderboard, no forge queue.
 
 ---
 
@@ -110,9 +121,17 @@ surface, select a person → fitting Needs glow with their **spare capacity** an
 level carries a **rubric** and a **provenance** — certified-by / self-claimed, visually distinct). Own-
 roster edits apply **immediately, with undo**.
 
-**4.4 Finish.** Mark finished; **contribution (logged hours) is sealed**. In P1 that's the end the
-officer sees. *(P2: a Split view distributes credit, defaulting weights to logged hours, with a fairness
-summary — built when the economy surfaces.)*
+**4.4 Finish & Settle (Split → STR).** Mark finished; contribution (logged hours) is sealed. The **Split**
+view distributes the project's pool: each contributor's weight **defaults to their logged hours**, with a
+**fairness summary** (shares = 100% · flags "big contributor, tiny share") and contribution history
+beside it; authors/corresponding marked; submit → review → **STR paid**. This is the moment STR is loud
+and central — the payoff the whole record was building toward. *(In P1 the officer settles on the
+proxies' behalf; in P2 the member sees their own STR land.)*
+
+**4.5 STR, where it lives.** A person's profile shows **contribution accruing** (credit so far); the
+**wallet** (My) shows accruing vs settled STR with a one-tap "how it's computed" (hours × rate); a
+forming project shows its **projected pool**. Everywhere else — the task board, the roster, the home —
+STR is **absent by design**, so the daily record stays about the work.
 
 ---
 
@@ -133,8 +152,10 @@ Non-negotiable; a screen that violates these is unfinished (full rationale & pre
 7. **Trust + undo:** own-domain edits apply now with **toast-undo**; cross-domain acts are a
    **handshake**; only value/credential acts reach **one Settings review**. Guard hard-deletes.
 8. **Built for the 20th action:** full keyboard path, smart zero-typing defaults, **batch** matching.
-9. **Skill legibility:** every level shows a **rubric + provenance**. (No economy legibility needed in
-   P1 — there is no economy on screen.)
+9. **Legibility of skill & value:** every skill level shows a **rubric + provenance**; **STR is always
+   shown legibly** where it appears — as *contribution ≈ N* / *accruing vs settled* with a one-tap
+   "how it's computed" (hours × rate) — and is **absent everywhere it isn't the point** (task board,
+   roster, home). Quiet, not hidden; legible, not loud.
 10. **Feedback & social state:** every act shows its **consequence inline** and **notifies** the people
     affected; an assignment is a **proposal with state** (proposed → active), so no silent conscription.
 11. **One object pattern:** card → drawer (peek) → route (deep); peeking a related entity never loses the
@@ -146,11 +167,15 @@ Non-negotiable; a screen that violates these is unfinished (full rationale & pre
 ## 6. Vocabulary (the only words that exist in the UI)
 
 **Unit · Chapter · Working Group · Person · Project · Need · Task · Owner · Assign · Skill · level
-(Beginner/Intermediate/Advanced/Expert) · capacity (hours) · Milestone · Finish · steward · Review.**
+(Beginner/Intermediate/Advanced/Expert) · capacity (hours) · Milestone · Finish · Settle · Split ·
+contribution · STR · wallet · steward · Review.**
 
-Banned, everywhere: *slot · open_need · work_labor · seat · bind · forge · seat_direct · nominal · liquid
-· stake · mint · harvest · settle · guild · apprentice/journeyman/craftsman/master · STR · wallet ·
-credit* — none appear in Phase 1.
+Kept (the value layer, used only on My / Settle / Settings): **STR · contribution · accruing · settled ·
+Settle · Split · wallet · pool.**
+
+Banned, everywhere: *slot · open_need · work_labor · seat · bind · forge · seat_direct · nominal/liquid
+(say **accruing/settled**) · stake · mint · harvest (say **Settle**) · guild · apprentice/journeyman/
+craftsman/master · mining · miner.*
 
 ---
 
@@ -163,23 +188,29 @@ This is a rebuild, not a patch; build it in the order it delivers truth:
 1. **My tasks** — the cross-project worklist (the seed of the P2 member view).
 2. **People + capacity** — roster, skills with provenance, time-phased capacity bars.
 3. **Form by matching** — Needs + the select→glow→click seam.
-4. **Social spine** — assignment-as-proposal + notification inbox.
-5. **Settings** — catalogs + the minimal approvals.
-6. *(Phase 2)* — the economy reveal: contribution → credit, Split, wallet, the member-as-self mode.
+4. **Contribution + Settle** — hours feed the STR ledger; **Finish → Split → STR paid** (§4.4); STR shows
+   on My / profile (quiet). *The economy, riding on a record that already works.*
+5. **Social spine** — assignment-as-proposal + notification inbox.
+6. **Settings** — catalogs · economy (rates, settlement review) · the minimal approvals.
+7. *(Phase 2)* — flip the spotlight: STR becomes the **member's hero** (my wallet, my contribution,
+   member logs in & acts for self). Same ledger, same Settle — new point of view.
 
-Everything in the current build that isn't on this path — the STR/forge/stake/exam/endorsement
-machinery, the slots/needs/commitments tangle, the 20-route admin sprawl, the wallet home — is **not
-migrated. It is left behind.**
+The current build's **STR ledger and settlement logic are reused** (they're the goal); what's **left
+behind** is everything that buried them — the forge/stake/exam/endorsement machinery, the
+slots/needs/commitments tangle, the 20-route admin sprawl, and the **wallet/mining home** that pointed
+the economy at the wrong user.
 
 ---
 
 ## 8. Done means
 
 > A working group **runs on this instead of its Google Doc**; a chapter **staffs a project in minutes**;
-> a member opens **My** and sees **every task they own across every project** — and in all of Phase 1, no
-> one ever sees, types, or has to understand a single unit of currency. The economy is real in the
-> ledger and **invisible on screen** until the community is ready to make it the point.
+> a member opens **My** and sees **every task they own across every project** — and when a project ships,
+> it **Settles into STR** that lands on the contributors' wallets. The economy is the **goal**, settled on
+> a record that is finally **true** because the community actually keeps it here. STR is loud at Settle
+> and on the wallet, **quiet everywhere the daily work happens.**
 
-**The one call that is yours, not mine:** shipping Phase 1 with **zero economy UI** is a product-strategy
-bet (record-first, incentives-later). I've made it the spine because our logic points there unanimously —
-but if STR must be visible in Phase 1, say so, and only §0.1 changes; the rest of the system stands.
+**The dial, stated plainly:** STR is the spine and is never cut. The only judgment is **how present** it
+is in Phase 1 — this PRD keeps it *legible but quiet* (visible on My / profile / Settle; absent on the
+task board / roster / home). If you want it more prominent in Phase 1 (e.g. a contribution number on
+every person card), that's a one-knob change to §4.5/§5.9 — the structure doesn't move.
