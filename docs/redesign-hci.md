@@ -505,3 +505,105 @@ worth doing as their own pass, because they touch every screen:
 Acceptance test gains its final clause: *can the officer staff ten people, by keyboard, without losing
 their place, without re-finding a single row, undoing any misstep in one tap, and never meeting a grey
 button that won't say why?* That is the difference between "organized" and "usable."
+
+---
+
+## 14. Absorbing the WG record — grounded in a real working-group doc
+
+*Until now this redesign was reasoned from the org chart and the as-is code. This section is reasoned
+from **how a WG actually keeps its record today** — the live `Multilingual&Multimodal WG` Google Doc.
+The goal the President set: **internalize this logic so the WG no longer needs the doc.** Reading the
+real artifact both gives a concrete schema to absorb and — more importantly — **corrects a core
+assumption in §0–13.***
+
+### 14.1 What the real doc actually contains (observed, verbatim-grounded)
+
+A WG record is a list of **Projects**, each with a recurring head and a free body:
+
+- **Head (every project):** an **emoji + short code** (`ml-Tagging`, `ja-Ebisu`, `ar-SAHM`, `hi-Hindi`,
+  `vis-OCR`, `au-SONAR` — the prefix is a **modality/language tag**: ml/ja/ar/hi/vis/au), a **Proposal**
+  link (a Drive doc), and an **Arxiv** link (the publication outcome).
+- **Body (varies, but two shapes recur):**
+  - **A task table** — verbatim columns **`Task · Status · Owner · Note`** (hi-Hindi: *Chart-QAR ·
+    Annotation · Vanshikaa Jani*; *OCR · Raw Data Collection · Person*; *Exam-MCQ · Evaluation · …*).
+    Note "Status" here is the **kind of work** (Annotation / Raw Data Collection / Evaluation), and
+    "Owner" is a **person typed in directly**, with `Person`/`TBD` meaning *unassigned*.
+  - **A coverage checklist** — ml-Tagging tracks **language × state × owner × note**: *Confirmed XBRL
+    Coverage* (EN — Yan; JP — Ruoyu, Fan; ES — Ruoyu; AR — Rania), *Need to check* (CN, HI — TBD),
+    *Potential additional languages*, a **References** bag of links (by language), and a **To Do List**
+    (tasks with `(owner)` in parens, some with nested detail).
+
+### 14.2 The reality check — this **corrects** §0–13
+
+> **The WG's atomic unit of record is "a named **task** with a person typed in as **owner**." There is
+> no skill, no level, no qualification gate, no chapter-officer-as-matcher anywhere in the real doc.**
+
+That contradicts the heavy machinery I built up:
+- My **Role = (skill_id, min_level)** matched by **badge rank** via a **Chapter officer** is **heavier
+  than how WGs actually operate.** In reality a WG **lead writes a task and assigns whoever** (a
+  volunteer, a known collaborator) **by name** — the `Add directly` path I had *demoted to an admin edge
+  case is the primary, normal motion.*
+- So the **seam flips direction.** It is **not** "Chapter officer *pushes* qualified people into WG
+  roles." It is "WG lead defines tasks and assigns owners directly; **when they don't know who's free or
+  able, they *pull* — ask 'who could do this?'** and *then* the skill/capacity helper appears." Matching
+  becomes an **optional assist on the WG side**, not a mandatory gate on the Chapter side.
+
+This is the most important correction in the whole document, because it came from data, not reasoning:
+**lead with the lightweight task-with-owner; make skill-matching an opt-in helper.**
+
+### 14.3 The absorption — one new noun does almost all of it
+
+Almost every per-project thing in the doc collapses into **one concept: Task.**
+
+**Task** = `{ project_id, group?, name, work_type?, owner_member_id?(null = open/TBD), state, note }`
+- The hi-Hindi **table** *is* a task list (`name`, `work_type`=Status-column, `owner`, `note`).
+- The ml-Tagging **coverage matrix** *is* a task group (`group`="XBRL Coverage", `name`="EN",
+  `state`=confirmed/need-to-check/potential, `owner`, `note`).
+- The **To Do List** *is* tasks. Nested detail → the `note`.
+- `state` is a tiny set (**Open · Doing · Done**, plus coverage's *Confirmed/Checking/Potential* as a
+  per-group state vocabulary); `work_type` is a small configurable list (Annotation, Raw Data
+  Collection, Evaluation, OCR, Summarization, MCQ-Eval…).
+
+Everything else maps to things that **already exist** or are trivial:
+
+| Doc element | System today | To add |
+|---|---|---|
+| Project name + **emoji + code/tag** (`ml-`, `vis-`…) | name exists | an **emoji** + a **tag** (modality/language) field + the `xx-Name` code convention |
+| **Proposal** link | `project_link_add` kind=proposal ✓ | — |
+| **Arxiv** link | link kind=paper/arxiv ✓ | surface Arxiv as a first-class project field |
+| **References** (link bag) | links ✓ | a "References" link group |
+| **Task · Status · Owner · Note** table | ✗ (only skill+level *roles*) | **Task** (the new noun) |
+| **Coverage** (lang × state × owner) | ✗ | **Task group** with a per-group state set |
+| Free-form todo / coverage prose | single-line summary + notes-timeline | a **rich body** block per project |
+| Owner = **a person, typed directly** | `seat_direct` (demoted) | make **direct owner-pick the primary** assign |
+
+**Net: the only genuinely new primitive is `Task` (with an optional `group`).** It replaces the doc's
+tables *and* reframes "Role" — a Role is just **a Task whose owner is still open**, optionally annotated
+with "needs skill X" when the WG wants the matching helper.
+
+### 14.4 What the WG surface becomes (so the doc dies)
+
+The **Projects** surface (WG domain) becomes the WG's **living record**:
+- **WG home** = the doc's top level: every project as a card (emoji · code · status · Proposal/Arxiv ·
+  open-task count). The whole doc, on one screen.
+- **Project page** = the doc's per-project section: the **task table** (inline-editable, exactly
+  `Task · Type · Owner · Status · Note`), the **coverage checklist**, the **links** (Proposal / Arxiv /
+  References), and a **rich body** for prose. Add a task = one row; assign = pick a person (or leave
+  TBD); change state = click the cell. *That is the Google Doc, but queryable, owned, and notifying.*
+- **Cross-cut views the doc can't give for free:** "all **open** (ownerless) tasks across the WG" (the
+  real backlog), "**my** tasks across all projects" (every member's worklist — this is the member-facing
+  P2 hero), "tasks by **owner**", "what changed this week."
+
+### 14.5 Migration — import the doc, don't retype it
+
+Parse the existing doc into `projects[]` + `tasks[]` (the tables and bullet lists map directly), match
+owners to member cards by name, leave unmatched/`TBD` as **open** tasks. One import pass and the WG
+opens the app to **find their doc already inside it** — the single strongest adoption lever (recognition,
+not re-entry).
+
+### 14.6 What this re-orders, again
+The task table is now the **highest-value missing primitive** — it is what the WG opens every week, and
+it is lighter to build than the skill-matching seam. Revised lead of the rollout: **Task (with
+owner/state/type) + the WG living-record project page + the doc import** come **first** — before the
+qualify/badge matching machinery, which is demoted to the opt-in "help me find an owner" assist of §14.2.
+Build the thing they actually use daily; let the economy and the matching cleverness accrue around it.
