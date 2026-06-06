@@ -50,6 +50,8 @@
   let catalog = $state<{ id: string; category: string; item: string; nominal_value: number; multiplier_bonus: number }[]>([]);
   let milestones = $state<{ id: string; status: string; nominal_value: number; multiplier_bonus: number; catalog: { item: string } | null }[]>([]);
   let mClaim = $state('');
+  let settleStatus = $state<string | null>(null);
+  const isSettled = $derived(settleStatus === 'approved' || settleStatus === 'submitted');
   let loading = $state(true);
   const MST_CLASS: Record<string, string> = { verified: 'pos', claimed: 'dim', under_review: 'warn', rejected: 'down', revoked: 'down', expired: 'dim' };
   const MST_LABEL: Record<string, string> = { verified: 'Verified', claimed: 'Claimed', under_review: 'Under review', rejected: 'Rejected', revoked: 'Revoked', expired: 'Expired' };
@@ -81,14 +83,15 @@
   async function load() {
     if (!supabaseConfigured) { loading = false; return; }
     loading = true; err = '';
-    const [{ data: p }, { data: ce }, { data: lk }, { data: mt }, { data: ev }, { data: cat }, { data: pm }] = await Promise.all([
+    const [{ data: p }, { data: ce }, { data: lk }, { data: mt }, { data: ev }, { data: cat }, { data: pm }, { data: setl }] = await Promise.all([
       supabase.from('project').select('id, name, summary, venue_id, org_unit_id, status_id, held_from_status_id, project_status:status_id(name)').eq('id', projectId).maybeSingle(),
       supabase.rpc('can_edit_project', { p_project: projectId }),
       supabase.from('project_link').select('id, kind, title, url, notes, created_at, member:added_by(full_name)').eq('project_id', projectId).order('created_at', { ascending: false }),
       supabase.from('project_meeting').select('id, title, scheduled_at, ends_at, location, agenda, recurrence, member:created_by(full_name)').eq('project_id', projectId).order('scheduled_at', { ascending: false }),
       supabase.from('project_event').select('id, event_type, summary, created_at, member:actor_member_id(full_name)').eq('project_id', projectId).order('created_at', { ascending: false }).limit(40),
       supabase.from('milestone_catalog').select('id, category, item, nominal_value, multiplier_bonus').eq('is_active', true).order('rank'),
-      supabase.from('project_milestone').select('id, status, nominal_value, multiplier_bonus, catalog:catalog_id(item)').eq('project_id', projectId).order('created_at', { ascending: false })
+      supabase.from('project_milestone').select('id, status, nominal_value, multiplier_bonus, catalog:catalog_id(item)').eq('project_id', projectId).order('created_at', { ascending: false }),
+      supabase.from('stater_settlement').select('status').eq('project_id', projectId).order('created_at', { ascending: false }).limit(1).maybeSingle()
     ]);
     proj = (p as Proj) ?? null;
     canEdit = ce === true;
@@ -97,6 +100,7 @@
     events = (ev as Event[]) ?? [];
     catalog = (cat as any[]) ?? [];
     milestones = (pm as any[]) ?? [];
+    settleStatus = (setl as { status: string } | null)?.status ?? null;
     loading = false;
   }
 
@@ -134,7 +138,8 @@
     const { error: e } = await supabase.rpc('forge_project_done', { p_project: projectId });
     busy = '';
     if (e) { err = e.message; return; }
-    msg = get(t)('Completion submitted for review.');
+    msg = get(t)('Project finished — open settlement to split the pool.');
+    await load(); onChanged?.();   // re-render to the Finished state (no reload needed)
   }
 
   async function addLink() {
@@ -292,7 +297,12 @@
       {/if}
 
       <!-- settlement opens once the project is Finished -->
-      {#if isFinishedProj}
+      {#if isFinishedProj && isSettled}
+        <div class="pcb-settle pcb-settled">
+          <span class="pcb-settle-h">✅ {$t('Settled — pool paid out')}</span>
+          <span class="pcb-hint">{$t('This project is finished and its pool has been split into spendable STR for each contributor. See it on each wallet.')}</span>
+        </div>
+      {:else if isFinishedProj}
         <div class="pcb-settle">
           <span class="pcb-settle-h">💰 {$t('Settlement')}</span>
           <span class="pcb-hint">{$t('The project is finished — split its pool into liquid STR.')}</span>
