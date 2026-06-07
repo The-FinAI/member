@@ -412,14 +412,25 @@ function rpc(name: string, a: any) {
     const m = seed.member.find((x: any) => x.id === a.p_member); if (m) m.email = a.p_email;
     persist(); return Promise.resolve({ data: null, error: null });
   }
-  if (name === 'stater_mint' || name === 'stater_grant') {
+  if (name === 'stater_mint') {
+    // mint = create new supply into the treasury
     const amt = Number(a.amt) || 0;
-    const acct = name === 'stater_grant' ? ('acct-' + a.target) : 'acct-treasury';
-    const ownerId = name === 'stater_grant' ? a.target : 'treasury';
+    let tre = seed.stater_balance.find((b: any) => b.account_id === 'acct-treasury');
+    if (!tre) { tre = { owner_member_id: 'treasury', account_id: 'acct-treasury', balance: 0, account_type: 'treasury' }; seed.stater_balance.push(tre); }
+    tre.balance += amt;
+    seed.stater_ledger.unshift({ id: nid('l'), amount: amt, entry_type: 'mint', reason: a.reason ?? 'mint', from_account: null, to_account: 'acct-treasury', created_at: new Date(2026, 5, 6, 12, seed.stater_ledger.length).toISOString() });
+    persist(); return Promise.resolve({ data: null, error: null });
+  }
+  if (name === 'stater_grant') {
+    // grant = TRANSFER from the treasury to a member (no new supply created)
+    const amt = Number(a.amt) || 0;
+    const tre = seed.stater_balance.find((b: any) => b.account_id === 'acct-treasury');
+    if (!tre || tre.balance < amt) return Promise.resolve({ data: null, error: { message: 'Treasury has insufficient STR — mint into the treasury first.' } });
+    const acct = 'acct-' + a.target;
     let bal = seed.stater_balance.find((b: any) => b.account_id === acct);
-    if (!bal) { bal = { owner_member_id: ownerId, account_id: acct, balance: 0, account_type: name === 'stater_grant' ? 'member' : 'treasury' }; seed.stater_balance.push(bal); }
-    bal.balance += amt;
-    seed.stater_ledger.unshift({ id: nid('l'), amount: amt, entry_type: name === 'stater_grant' ? 'grant' : 'mint', reason: a.reason ?? name, from_account: null, to_account: acct, created_at: new Date(2026, 5, 6, 12, seed.stater_ledger.length).toISOString() });
+    if (!bal) { bal = { owner_member_id: a.target, account_id: acct, balance: 0, account_type: 'member' }; seed.stater_balance.push(bal); }
+    tre.balance -= amt; bal.balance += amt;
+    seed.stater_ledger.unshift({ id: nid('l'), amount: amt, entry_type: 'grant', reason: a.reason ?? 'grant', from_account: 'acct-treasury', to_account: acct, created_at: new Date(2026, 5, 6, 12, seed.stater_ledger.length).toISOString() });
     persist(); return Promise.resolve({ data: null, error: null });
   }
   if (name === 'issue_monthly_allowance') {
