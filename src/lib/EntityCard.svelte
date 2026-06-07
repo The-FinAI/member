@@ -34,8 +34,9 @@
 </script>
 
 {#snippet body()}
-  <!-- persistent right-edge handle: signals the card opens a detail page -->
-  <span class="ec-go" aria-hidden="true">›</span>
+  <!-- right-edge handle: only on link cards (href) — signals "opens its page".
+       drawer cards (onclick) don't get it, so the › never over-promises. -->
+  {#if href}<span class="ec-go" aria-hidden="true">›</span>{/if}
   <div class="ec-top">
     <span class="ec-type">{$t(type)}</span>
     {#if status}<span class="ec-status {statusKind}">{$t(status)}</span>{/if}
@@ -54,7 +55,7 @@
 {/snippet}
 
 {#if href}
-  <a class="ecard" class:accent={accent || !!accentColor} style={tintStyle} {href} aria-label={`${$t('Open')} ${title}`}>{@render body()}</a>
+  <a class="ecard has-go" class:accent={accent || !!accentColor} style={tintStyle} {href} aria-label={`${$t('Open')} ${title}`}>{@render body()}</a>
 {:else}
   <button class="ecard" class:accent={accent || !!accentColor} style={tintStyle} {onclick} type="button" aria-label={`${$t('Open')} ${title}`}>{@render body()}</button>
 {/if}
@@ -64,10 +65,11 @@
     position: relative;
     display: flex; flex-direction: column; gap: .4rem; text-align: left;
     background: var(--ec-tint, var(--card)); border: 1px solid var(--border); border-radius: 12px;
-    padding: .8rem 2.1rem .8rem .9rem; cursor: pointer; width: 100%;
+    padding: .8rem .9rem; cursor: pointer; width: 100%;
     color: var(--text); font: inherit; text-decoration: none;
     transition: border-color .12s, box-shadow .12s, transform .12s;
   }
+  .ecard.has-go { padding-right: 2.1rem; }
   .ecard:hover { border-color: var(--accent); box-shadow: 0 4px 16px -8px var(--accent); transform: translateY(-1px); }
   /* persistent right-edge handle → the whole card opens its detail page */
   .ec-go {
