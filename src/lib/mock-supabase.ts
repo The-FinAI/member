@@ -17,13 +17,17 @@ const seed: Record<string, any[]> = {
   ],
   member: [
     { id: M_ME, full_name: 'Chen Wei', email: 'chen@test', affiliation: 'The Fin AI', kind: 'member', status: 'active', home_unit_id: U_CHAP, auth_user_id: 'mock-uid', monthly_hours: 20, bio: 'Chapter & WG officer.', links: {}, member_position: [{ position: { name: 'President' } }] },
-    { id: M_LI, full_name: 'Li Hua', email: 'li@test', affiliation: 'PKU', kind: 'card', status: 'active', home_unit_id: U_CHAP, auth_user_id: null, monthly_hours: 10, member_position: [] },
+    { id: M_LI, full_name: 'Li Hua', email: 'li@test', affiliation: 'PKU', kind: 'member', status: 'active', home_unit_id: U_CHAP, auth_user_id: 'uid-member', monthly_hours: 10, bio: 'Researcher — no officer role.', links: {}, member_position: [] },
     { id: M_WANG, full_name: 'Wang Fang', email: 'wang@test', affiliation: 'THU', kind: 'card', status: 'active', home_unit_id: U_CHAP, auth_user_id: null, monthly_hours: 30, member_position: [] },
-    { id: M_ZHAO, full_name: 'Zhao Lei', email: 'zhao@test', affiliation: 'SJTU', kind: 'card', status: 'active', home_unit_id: U_CHAP, auth_user_id: null, monthly_hours: 8, member_position: [] }
+    { id: M_ZHAO, full_name: 'Zhao Lei', email: 'zhao@test', affiliation: 'SJTU', kind: 'card', status: 'active', home_unit_id: U_CHAP, auth_user_id: null, monthly_hours: 8, member_position: [] },
+    { id: 'm-wg', full_name: 'Wu Jing', email: 'wu@test', affiliation: 'The Fin AI', kind: 'member', status: 'active', home_unit_id: U_WG, auth_user_id: 'uid-wg', monthly_hours: 20, bio: 'Working-group officer.', links: {}, member_position: [] },
+    { id: 'm-chap', full_name: 'Chan Min', email: 'chan@test', affiliation: 'The Fin AI', kind: 'member', status: 'active', home_unit_id: U_CHAP, auth_user_id: 'uid-chap', monthly_hours: 20, bio: 'Chapter officer.', links: {}, member_position: [] }
   ],
   org_unit_officer: [
-    { member_id: M_ME, org_unit_id: U_CHAP, ended_on: null, org_unit: { id: U_CHAP, name: 'Beijing Chapter', kind: 'chapter' } },
-    { member_id: M_ME, org_unit_id: U_WG, ended_on: null, org_unit: { id: U_WG, name: 'Multilingual & Multimodal', kind: 'working_group' } }
+    { member_id: M_ME, org_unit_id: U_CHAP, role: 'officer', ended_on: null, org_unit: { id: U_CHAP, code: 'BJ', name: 'Beijing Chapter', kind: 'chapter' } },
+    { member_id: M_ME, org_unit_id: U_WG, role: 'officer', ended_on: null, org_unit: { id: U_WG, code: 'MM', name: 'Multilingual & Multimodal', kind: 'working_group' } },
+    { member_id: 'm-wg', org_unit_id: U_WG, role: 'officer', ended_on: null, org_unit: { id: U_WG, code: 'MM', name: 'Multilingual & Multimodal', kind: 'working_group' } },
+    { member_id: 'm-chap', org_unit_id: U_CHAP, role: 'officer', ended_on: null, org_unit: { id: U_CHAP, code: 'BJ', name: 'Beijing Chapter', kind: 'chapter' } }
   ],
   org_unit_member: [],
   member_position: [{ member_id: M_ME, position_id: 'pos-pres' }],
@@ -349,11 +353,38 @@ function rpc(name: string, a: any) {
     return Promise.resolve({ data: null, error: null });
   }
   if (name === 'release_claim') return Promise.resolve({ data: null, error: null });
-  if (name === 'can_edit_project' || name === 'manages_card') return Promise.resolve({ data: true, error: null });
+  if (name === 'can_edit_project') {
+    const me = CURRENT_MEMBER();
+    const proj = seed.project.find((p: any) => p.id === a.p_project);
+    return Promise.resolve({ data: !!me && (isPresident(me) || isOfficerOf(me, proj?.org_unit_id)), error: null });
+  }
+  if (name === 'manages_card') {
+    const me = CURRENT_MEMBER();
+    return Promise.resolve({ data: !!me && (isPresident(me) || isChapterOfficer(me)), error: null });
+  }
   return Promise.resolve({ data: null, error: null });
 }
 
-const fakeSession = { user: { id: 'mock-uid', email: 'chen@test' } };
+// ── identity (switchable for role testing): localStorage 'mockAs' holds the
+// auth uid of the logged-in persona. Default = Chen Wei (President, both hats).
+function currentUid(): string {
+  try { return (typeof localStorage !== 'undefined' && localStorage.getItem('mockAs')) || 'mock-uid'; }
+  catch { return 'mock-uid'; }
+}
+function CURRENT_MEMBER(): any { return seed.member.find((m: any) => m.auth_user_id === currentUid()); }
+function isPresident(me: any): boolean {
+  return (seed.member_position || []).some((mp: any) => mp.member_id === me.id && mp.position_id === 'pos-pres');
+}
+function isOfficerOf(me: any, unitId: string | undefined): boolean {
+  return !!unitId && (seed.org_unit_officer || []).some((o: any) => o.member_id === me.id && o.org_unit_id === unitId && !o.ended_on);
+}
+function isChapterOfficer(me: any): boolean {
+  return (seed.org_unit_officer || []).some((o: any) => o.member_id === me.id && !o.ended_on && o.org_unit?.kind === 'chapter');
+}
+
+const _u = currentUid();
+const _m = (seed.member || []).find((m: any) => m.auth_user_id === _u);
+const fakeSession = { user: { id: _u, email: _m?.email ?? 'chen@test' } };
 
 export const mockSupabase: any = {
   from: builder,
