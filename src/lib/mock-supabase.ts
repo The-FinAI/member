@@ -10,6 +10,16 @@ const P1 = 'p-ml';
 const SK_ANN = 'sk-ann', SK_WRI = 'sk-wri', SK_OCR = 'sk-ocr', DOM = 'sk-dom';
 const RT_LABOR = 'rt-labor', RT_GPU = 'rt-gpu';
 
+// capabilities the President position grants — embedded into member_position so
+// loadProfile's nested select (position → position_capability → capability_key)
+// resolves and the admin's Settings consoles actually appear.
+const PRES_CAPS = [
+  { capability_key: 'manage_members' }, { capability_key: 'invite_members' },
+  { capability_key: 'edit_any_project' }, { capability_key: 'manage_taxonomy' },
+  { capability_key: 'manage_guild' }, { capability_key: 'manage_resources' },
+  { capability_key: 'manage_stater' }, { capability_key: 'review_skillcard' }
+];
+
 const seed: Record<string, any[]> = {
   org_unit: [
     { id: U_CHAP, code: 'BJ', name: 'Beijing Chapter', kind: 'chapter', description: 'People in Beijing', rank: 1 },
@@ -21,7 +31,8 @@ const seed: Record<string, any[]> = {
     { id: M_WANG, full_name: 'Wang Fang', email: 'wang@test', affiliation: 'THU', kind: 'card', status: 'active', home_unit_id: U_CHAP, auth_user_id: null, monthly_hours: 30, member_position: [] },
     { id: M_ZHAO, full_name: 'Zhao Lei', email: 'zhao@test', affiliation: 'SJTU', kind: 'card', status: 'active', home_unit_id: U_CHAP, auth_user_id: null, monthly_hours: 8, member_position: [] },
     { id: 'm-wg', full_name: 'Wu Jing', email: 'wu@test', affiliation: 'The Fin AI', kind: 'member', status: 'active', home_unit_id: U_WG, auth_user_id: 'uid-wg', monthly_hours: 20, bio: 'Working-group officer.', links: {}, member_position: [] },
-    { id: 'm-chap', full_name: 'Chan Min', email: 'chan@test', affiliation: 'The Fin AI', kind: 'member', status: 'active', home_unit_id: U_CHAP, auth_user_id: 'uid-chap', monthly_hours: 20, bio: 'Chapter officer.', links: {}, member_position: [] }
+    { id: 'm-chap', full_name: 'Chan Min', email: 'chan@test', affiliation: 'The Fin AI', kind: 'member', status: 'active', home_unit_id: U_CHAP, auth_user_id: 'uid-chap', monthly_hours: 20, bio: 'Chapter officer.', links: {}, member_position: [] },
+    { id: 'm-admin', full_name: 'Sai Tan', email: 'admin@test', affiliation: 'The Fin AI', kind: 'member', status: 'active', home_unit_id: U_CHAP, auth_user_id: 'uid-admin', monthly_hours: 0, bio: 'Community administrator.', links: {}, member_position: [{ position: { name: 'President' } }] }
   ],
   org_unit_officer: [
     { member_id: M_ME, org_unit_id: U_CHAP, role: 'officer', ended_on: null, org_unit: { id: U_CHAP, code: 'BJ', name: 'Beijing Chapter', kind: 'chapter' } },
@@ -30,7 +41,10 @@ const seed: Record<string, any[]> = {
     { member_id: 'm-chap', org_unit_id: U_CHAP, role: 'officer', ended_on: null, org_unit: { id: U_CHAP, code: 'BJ', name: 'Beijing Chapter', kind: 'chapter' } }
   ],
   org_unit_member: [],
-  member_position: [{ member_id: M_ME, position_id: 'pos-pres' }],
+  member_position: [
+    { member_id: M_ME, position_id: 'pos-pres', position: { name: 'President', position_capability: PRES_CAPS } },
+    { member_id: 'm-admin', position_id: 'pos-pres', position: { name: 'President', position_capability: PRES_CAPS } }
+  ],
   position: [{ id: 'pos-pres', name: 'President' }],
   position_capability: [
     { position_id: 'pos-pres', capability: 'manage_members' }, { position_id: 'pos-pres', capability: 'edit_any_project' },
@@ -91,7 +105,7 @@ const seed: Record<string, any[]> = {
     { id: 't-4', project_id: P1, grp: 'XBRL Coverage', name: 'JP', skill_id: null, owner_member_id: null, state: 'checking', note: null, sort: 4, updated_at: '2026-06-03T00:00:00Z', project: { name: 'ml-Tagging', emoji: '🏷️', code: 'ml-Tagging' } }
   ],
   project_milestone: [],
-  stater_balance: [{ owner_member_id: M_ME, account_id: 'acct-me', balance: 120 }],
+  stater_balance: [{ owner_member_id: M_ME, account_id: 'acct-me', balance: 120, account_type: 'member' }],
   stater_project_member_nominal: [{ member_id: M_ME, nominal: 340 }],
   stater_ledger: [
     { id: 'l-1', amount: 100, entry_type: 'grant', reason: 'welcome_grant', from_account: null, to_account: 'acct-me', created_at: '2026-06-01T00:00:00Z' },
@@ -157,15 +171,46 @@ function builder(table: string) {
   const api: any = {
     select: (_c?: string, opts?: any) => { if (opts?.head) headCount = true; return api; },
     eq: (c: string, v: any) => { rows = rows.filter((r) => r[c] === v); return api; },
+    neq: (c: string, v: any) => { rows = rows.filter((r) => r[c] !== v); return api; },
     in: (c: string, v: any[]) => { rows = rows.filter((r) => v.includes(r[c])); return api; },
     is: (c: string, v: any) => { rows = rows.filter((r) => (r[c] ?? null) === v); return api; },
+    gt: (c: string, v: any) => { rows = rows.filter((r) => r[c] > v); return api; },
+    lt: (c: string, v: any) => { rows = rows.filter((r) => r[c] < v); return api; },
+    ilike: (c: string, v: any) => { const s = String(v).replace(/%/g, '').toLowerCase(); rows = rows.filter((r) => String(r[c] ?? '').toLowerCase().includes(s)); return api; },
     not: () => api, or: () => api, gte: () => api, lte: () => api, order: () => api, limit: () => api,
     maybeSingle: () => Promise.resolve({ data: rows[0] ?? null, error: null }),
     single: () => Promise.resolve({ data: rows[0] ?? null, error: null }),
     then: (res: any) => res(headCount ? { count: rows.length, data: null, error: null } : { data: rows, error: null }),
-    insert: () => ({ select: () => ({ single: () => Promise.resolve({ data: rows[0] ?? {}, error: null }) }), then: (r: any) => r({ data: null, error: null }) }),
-    update: () => ({ eq: () => ({ then: (r: any) => r({ data: null, error: null }) }), then: (r: any) => r({ data: null, error: null }) }),
-    delete: () => ({ eq: () => ({ then: (r: any) => r({ data: null, error: null }) }) })
+    // real mutations: actually change the seed so admin/config writes persist
+    insert: (payload: any) => {
+      const list = Array.isArray(payload) ? payload : [payload];
+      const inserted = list.map((p) => { const row = { id: p?.id ?? nid(table.slice(0, 3)), ...p }; (seed[table] ??= []).push(row); return row; });
+      persist();
+      const result = { data: inserted, error: null };
+      const single = { data: inserted[0] ?? null, error: null };
+      return {
+        select: () => ({ single: () => Promise.resolve(single), maybeSingle: () => Promise.resolve(single), then: (r: any) => r(result) }),
+        then: (r: any) => r(result)
+      };
+    },
+    update: (patch: any) => {
+      const applyWhere = (pred: (r: any) => boolean) => { let n = 0; for (const r of (seed[table] ?? [])) if (pred(r)) { Object.assign(r, patch); n++; } persist(); return n; };
+      const chain = (pred: (r: any) => boolean) => ({
+        eq: (c: string, v: any) => chain((r: any) => pred(r) && r[c] === v),
+        in: (c: string, v: any[]) => chain((r: any) => pred(r) && v.includes(r[c])),
+        select: () => ({ single: () => { applyWhere(pred); return Promise.resolve({ data: (seed[table] ?? []).find(pred) ?? null, error: null }); }, then: (r: any) => { applyWhere(pred); r({ data: null, error: null }); } }),
+        then: (r: any) => { applyWhere(pred); r({ data: null, error: null }); }
+      });
+      return chain(() => true);
+    },
+    delete: () => {
+      const chain = (pred: (r: any) => boolean) => ({
+        eq: (c: string, v: any) => chain((r: any) => pred(r) && r[c] === v),
+        in: (c: string, v: any[]) => chain((r: any) => pred(r) && v.includes(r[c])),
+        then: (r: any) => { seed[table] = (seed[table] ?? []).filter((x: any) => !pred(x)); persist(); r({ data: null, error: null }); }
+      });
+      return chain(() => true);
+    }
   };
   return api;
 }
@@ -353,6 +398,33 @@ function rpc(name: string, a: any) {
     return Promise.resolve({ data: null, error: null });
   }
   if (name === 'release_claim') return Promise.resolve({ data: null, error: null });
+  // ── admin: officers, member email, STR economy (real mutations) ──
+  if (name === 'assign_org_officer') {
+    const unit = seed.org_unit.find((u: any) => u.id === a.p_unit);
+    (seed.org_unit_officer ??= []).push({ member_id: a.p_member, org_unit_id: a.p_unit, role: a.p_role ?? 'officer', ended_on: null, org_unit: unit ? { id: unit.id, code: unit.code, name: unit.name, kind: unit.kind } : null });
+    persist(); return Promise.resolve({ data: null, error: null });
+  }
+  if (name === 'remove_org_officer') {
+    seed.org_unit_officer = (seed.org_unit_officer ?? []).filter((o: any) => !(o.org_unit_id === a.p_unit && o.member_id === a.p_member && o.role === a.p_role));
+    persist(); return Promise.resolve({ data: null, error: null });
+  }
+  if (name === 'set_member_email') {
+    const m = seed.member.find((x: any) => x.id === a.p_member); if (m) m.email = a.p_email;
+    persist(); return Promise.resolve({ data: null, error: null });
+  }
+  if (name === 'stater_mint' || name === 'stater_grant') {
+    const amt = Number(a.amt) || 0;
+    const acct = name === 'stater_grant' ? ('acct-' + a.target) : 'acct-treasury';
+    const ownerId = name === 'stater_grant' ? a.target : 'treasury';
+    let bal = seed.stater_balance.find((b: any) => b.account_id === acct);
+    if (!bal) { bal = { owner_member_id: ownerId, account_id: acct, balance: 0, account_type: name === 'stater_grant' ? 'member' : 'treasury' }; seed.stater_balance.push(bal); }
+    bal.balance += amt;
+    seed.stater_ledger.unshift({ id: nid('l'), amount: amt, entry_type: name === 'stater_grant' ? 'grant' : 'mint', reason: a.reason ?? name, from_account: null, to_account: acct, created_at: new Date(2026, 5, 6, 12, seed.stater_ledger.length).toISOString() });
+    persist(); return Promise.resolve({ data: null, error: null });
+  }
+  if (name === 'issue_monthly_allowance') {
+    return Promise.resolve({ data: { granted: 0 }, error: null });
+  }
   if (name === 'can_edit_project') {
     const me = CURRENT_MEMBER();
     const proj = seed.project.find((p: any) => p.id === a.p_project);
@@ -389,6 +461,20 @@ const fakeSession = { user: { id: _u, email: _m?.email ?? 'chen@test' } };
 export const mockSupabase: any = {
   from: builder,
   rpc,
+  functions: {
+    // mock edge functions (e.g. invite-member): record an invited member so the
+    // admin's invite flow visibly works end-to-end.
+    invoke: (name: string, opts?: any) => {
+      if (name === 'invite-member') {
+        const b = opts?.body ?? {};
+        const id = nid('m');
+        (seed.member ??= []).push({ id, full_name: b.full_name ?? b.email ?? 'Invited', email: b.email ?? '', affiliation: b.affiliation ?? null, kind: b.kind ?? 'operator', status: 'invited', home_unit_id: b.unit_id ?? null, auth_user_id: null, monthly_hours: null, member_position: [] });
+        persist();
+        return Promise.resolve({ data: { id }, error: null });
+      }
+      return Promise.resolve({ data: null, error: null });
+    }
+  },
   auth: {
     onAuthStateChange: (cb: any) => { setTimeout(() => cb('INITIAL_SESSION', fakeSession), 0); return { data: { subscription: { unsubscribe() {} } } }; },
     getSession: () => Promise.resolve({ data: { session: fakeSession }, error: null }),
