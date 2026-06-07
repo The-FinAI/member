@@ -245,14 +245,16 @@ function persist() {
   try { if (typeof localStorage !== 'undefined') localStorage.setItem(LS, JSON.stringify(seed)); } catch { /* ignore */ }
 }
 
-// append a project History event (actor = the logged-in mock user, Chen Wei),
-// so status/finish/settle actions show up in the project's living record.
+// append a project History event, attributed to whoever is currently logged in
+// (matches how the live RPCs stamp the acting auth user), so the audit trail is
+// honest under role-switching.
 function logEvent(projectId: string, eventType: string, summary: string) {
-  const actor = seed.member.find((m: any) => m.id === M_ME);
+  const actor = CURRENT_MEMBER() ?? seed.member.find((m: any) => m.id === M_ME);
+  const now = new Date(); // dev mock runs in the browser; real wall-clock is fine here
   seed.project_event.unshift({
     id: nid('pe'), project_id: projectId, event_type: eventType, summary,
-    actor_member_id: M_ME, member: { full_name: actor?.full_name ?? 'You' },
-    created_at: new Date(2026, 5, 6, 12, seed.project_event.length).toISOString()
+    actor_member_id: actor?.id ?? M_ME, member: { full_name: actor?.full_name ?? 'You' },
+    created_at: now.toISOString()
   });
 }
 
@@ -415,6 +417,23 @@ function rpc(name: string, a: any) {
     return Promise.resolve({ data: null, error: null });
   }
   if (name === 'release_claim') return Promise.resolve({ data: null, error: null });
+  // ── offerable resources on a person/community card ──
+  if (name === 'forge_resource') {
+    const rt = (seed.resource_type ?? []).find((t: any) => t.id === a.p_type);
+    (seed.resource ??= []).unshift({
+      id: nid('r'), holder_member_id: a.p_holder, type_id: a.p_type, scope: a.p_scope ?? 'member',
+      monthly_quota: a.p_monthly_quota ?? null, unit: rt?.unit ?? null, name: a.p_name,
+      approval_status: 'pending', availability: 'available',
+      usd_per_unit: a.p_usd_per_unit ?? null, details: a.p_details ?? null,
+      resource_type: rt ? { name: rt.name, unit: rt.unit } : null
+    });
+    persist(); return Promise.resolve({ data: null, error: null });
+  }
+  if (name === 'update_resource') {
+    const r = (seed.resource ?? []).find((x: any) => x.id === a.p_resource);
+    if (r) { r.name = a.p_name ?? r.name; r.monthly_quota = a.p_monthly_quota ?? r.monthly_quota; r.usd_per_unit = a.p_usd_per_unit ?? r.usd_per_unit; r.details = a.p_details ?? r.details; r.approval_status = 'pending'; }
+    persist(); return Promise.resolve({ data: null, error: null });
+  }
   // ── project living record: links · notes · meetings ──
   if (name === 'project_link_add') {
     const actor = seed.member.find((m: any) => m.id === (CURRENT_MEMBER()?.id));
