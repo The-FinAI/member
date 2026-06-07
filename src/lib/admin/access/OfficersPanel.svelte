@@ -51,7 +51,10 @@
     const [{ data: u }, { data: o }, { data: m }, { data: p }, { data: inv }] = await Promise.all([
       supabase.from('org_unit').select('id, code, name, kind, rank, description').order('rank'),
       supabase.from('org_unit_officer').select('org_unit_id, member_id, role, member:member_id(full_name)').is('ended_on', null),
-      supabase.from('member').select('id, full_name').eq('kind', 'operator').eq('status', 'active').order('full_name'),
+      // assignable officers = active real members (not managed 'card' people).
+      // (was kind='operator' — a kind nothing in the system ever creates, so the
+      // dropdown was always empty; this matches the invited-members query below.)
+      supabase.from('member').select('id, full_name').neq('kind', 'card').eq('status', 'active').order('full_name'),
       supabase.from('position').select('id, name').order('rank'),
       supabase.from('member').select('id, full_name, email').eq('status', 'invited').neq('kind', 'card').order('full_name')
     ]);

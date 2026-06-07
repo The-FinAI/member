@@ -398,6 +398,31 @@ function rpc(name: string, a: any) {
     return Promise.resolve({ data: null, error: null });
   }
   if (name === 'release_claim') return Promise.resolve({ data: null, error: null });
+  // ── project living record: links · notes · meetings ──
+  if (name === 'project_link_add') {
+    const actor = seed.member.find((m: any) => m.id === (CURRENT_MEMBER()?.id));
+    (seed.project_link ??= []).unshift({ id: nid('lk'), project_id: a.p_project, kind: a.p_kind, title: a.p_title ?? null, url: a.p_url, notes: a.p_notes ?? null, added_by: actor?.id ?? M_ME, member: { full_name: actor?.full_name ?? 'You' }, created_at: new Date(2026, 5, 6, 12, (seed.project_link ?? []).length).toISOString() });
+    logEvent(a.p_project, 'link', 'Added a ' + a.p_kind + ' link'); persist();
+    return Promise.resolve({ data: null, error: null });
+  }
+  if (name === 'project_link_remove') {
+    seed.project_link = (seed.project_link ?? []).filter((l: any) => l.id !== a.p_link); persist();
+    return Promise.resolve({ data: null, error: null });
+  }
+  if (name === 'project_note') {
+    logEvent(a.p_project, 'note', a.p_text); persist();
+    return Promise.resolve({ data: null, error: null });
+  }
+  if (name === 'project_meeting_add') {
+    const actor = CURRENT_MEMBER();
+    (seed.project_meeting ??= []).unshift({ id: nid('mt'), project_id: a.p_project, title: a.p_title, scheduled_at: a.p_scheduled_at, ends_at: a.p_ends_at ?? null, location: a.p_location ?? null, agenda: a.p_agenda ?? null, recurrence: a.p_recurrence ?? 'none', created_by: actor?.id ?? M_ME, member: { full_name: actor?.full_name ?? 'You' } });
+    logEvent(a.p_project, 'meeting', 'Scheduled “' + a.p_title + '”'); persist();
+    return Promise.resolve({ data: null, error: null });
+  }
+  if (name === 'project_meeting_remove') {
+    seed.project_meeting = (seed.project_meeting ?? []).filter((m: any) => m.id !== a.p_meeting); persist();
+    return Promise.resolve({ data: null, error: null });
+  }
   // ── admin: officers, member email, STR economy (real mutations) ──
   if (name === 'assign_org_officer') {
     const unit = seed.org_unit.find((u: any) => u.id === a.p_unit);
