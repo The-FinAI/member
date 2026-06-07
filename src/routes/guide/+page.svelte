@@ -19,7 +19,9 @@
   <header>
     <h1>How The Fin AI Community works</h1>
     <p class="lead">A shared, living record of the community's <strong>projects</strong> and
-      <strong>people</strong>. Working groups run their projects in it; chapters keep their people in it;
+      <strong>people</strong> — the <em>coordination</em> layer: who's doing what, who's free, what's still
+      unstaffed, what's due. Your draft and notes stay in their own tools (Overleaf, a repo, meeting notes)
+      and link in here. Working groups run their projects in it; chapters keep their people in it;
       finished work settles into <strong>STR</strong> credit. In Phase 1, officers keep the record on
       behalf of members who don't log in yet.</p>
   </header>
@@ -33,7 +35,7 @@
       <div class="mc"><div class="mh">Person</div><p>A researcher, with <strong>skills</strong> (at a level) and a monthly <strong>capacity</strong> (hours). Lives in a <strong>chapter</strong>.</p></div>
       <div class="mc"><div class="mh">Project</div><p>Work toward a publication, owned by a <strong>working group</strong>. Has a task board, a team, needs and milestones.</p></div>
       <div class="mc"><div class="mh">Need</div><p>What a project requires to form: a skill at a level, or a resource, with a capacity. Filled by <strong>matching</strong>.</p></div>
-      <div class="mc"><div class="mh">Task</div><p>A piece of work with an owner and a status — the living record that replaces a shared doc.</p></div>
+      <div class="mc"><div class="mh">Task</div><p>A piece of work with an owner and a status — the living record of who's doing what, the part a shared doc always does worst.</p></div>
       <div class="mc"><div class="mh">Skill</div><p>What someone can do, at <strong>Learning · Independent · Lead</strong>, backed by evidence from the record.</p></div>
       <div class="mc"><div class="mh">STR</div><p>The credit. Contribution <em>accrues</em>; a finished project <em>settles</em> it into spendable STR.</p></div>
     </div>
@@ -63,7 +65,7 @@
     <h2>If you run a working group — you steward projects</h2>
     <ol class="acts">
       <li><strong>Create or claim a project</strong> (free, no bond). Its first-author seat starts open.</li>
-      <li><strong>Run its record.</strong> On the project, the <strong>task board</strong> leads — add tasks, set owners and status, keep coverage checklists, links and notes. This replaces the Google Doc.</li>
+      <li><strong>Run its record.</strong> On the project, the <strong>task board</strong> leads — add tasks, set owners and status, keep coverage checklists. Link your draft (Overleaf), repo and dataset under <strong>Draft &amp; links</strong>, and keep notes under <strong>Meetings</strong>. This takes over the coordination your Google Doc did — the writing stays where you write it.</li>
       <li><strong>Post what it needs.</strong> "Post a role" — a skill at a level, or a resource — and you'll see how many people qualify. Chapter officers match their people into it.</li>
       <li><strong>Finish &amp; split.</strong> When the paper lands, mark it finished and split the credit; weights default to logged hours with a fairness check.</li>
     </ol>

@@ -322,7 +322,7 @@
   <!-- media links -->
   <div class="pcb-section">
     <div class="pcb-h-row">
-      <span class="pcb-h">{$t('Media & links')}{#if links.length}<span class="pcb-ct"> · {links.length}</span>{/if}</span>
+      <span class="pcb-h">{$t('Draft & links')}{#if links.length}<span class="pcb-ct"> · {links.length}</span>{/if}</span>
       {#if canEdit}<button type="button" class="pcb-link" onclick={() => (showAddLink = !showAddLink)}>{showAddLink ? $t('Cancel') : '+ ' + $t('Add link')}</button>{/if}
     </div>
 
@@ -343,7 +343,7 @@
     {/if}
 
     {#if links.length === 0}
-      <p class="pcb-muted">{$t('No links yet.')}</p>
+      <p class="pcb-muted">{$t('No links yet — add your Overleaf draft, repo, dataset or paper here. The writing stays in its own tool; this record tracks the work around it.')}</p>
     {:else}
       <ul class="pcb-links">
         {#each links as l (l.id)}
