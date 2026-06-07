@@ -106,6 +106,17 @@ const seed: Record<string, any[]> = {
   ],
   project_milestone: [],
   stater_balance: [{ owner_member_id: M_ME, account_id: 'acct-me', balance: 120, account_type: 'member' }],
+  stater_account: [{ id: 'acct-treasury', account_type: 'treasury' }, { id: 'acct-me', account_type: 'member' }],
+  stater_policy: [
+    { key: 'str_per_hour', value: 10, description: 'STR accrued per committed hour of labour' },
+    { key: 'monthly_allowance', value: 0, description: 'Base STR granted to every active member each month' },
+    { key: 'settlement_review_hours', value: 72, description: 'Hours a finished project waits in review before its pool can settle' },
+    { key: 'leader_multiplier', value: 1.5, description: 'Weight multiplier applied to the first-author share at settlement' }
+  ],
+  stater_skill_rate: [
+    { skill_id: SK_ANN, rate: 8, skill: { name: 'Annotation' } },
+    { skill_id: SK_WRI, rate: 12, skill: { name: 'Writing' } }
+  ],
   stater_project_member_nominal: [{ member_id: M_ME, nominal: 340 }],
   stater_ledger: [
     { id: 'l-1', amount: 100, entry_type: 'grant', reason: 'welcome_grant', from_account: null, to_account: 'acct-me', created_at: '2026-06-01T00:00:00Z' },
@@ -177,7 +188,13 @@ function builder(table: string) {
     gt: (c: string, v: any) => { rows = rows.filter((r) => r[c] > v); return api; },
     lt: (c: string, v: any) => { rows = rows.filter((r) => r[c] < v); return api; },
     ilike: (c: string, v: any) => { const s = String(v).replace(/%/g, '').toLowerCase(); rows = rows.filter((r) => String(r[c] ?? '').toLowerCase().includes(s)); return api; },
-    not: () => api, or: () => api, gte: () => api, lte: () => api, order: () => api, limit: () => api,
+    not: (c: string, op: string, v: any) => {
+      if (op === 'is') rows = rows.filter((r) => (r[c] ?? null) !== v);
+      else if (op === 'eq') rows = rows.filter((r) => r[c] !== v);
+      else if (op === 'in') rows = rows.filter((r) => !((Array.isArray(v) ? v : [])).includes(r[c]));
+      return api;
+    },
+    or: () => api, gte: () => api, lte: () => api, order: () => api, limit: () => api,
     maybeSingle: () => Promise.resolve({ data: rows[0] ?? null, error: null }),
     single: () => Promise.resolve({ data: rows[0] ?? null, error: null }),
     then: (res: any) => res(headCount ? { count: rows.length, data: null, error: null } : { data: rows, error: null }),
