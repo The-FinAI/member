@@ -39,7 +39,7 @@
         { key: 'is_active', label: 'Active', type: 'bool' }
       ]} />
     {:else}
-      <p class="muted blurb">{$t('Project types — Dataset & Benchmark, Model, Agent…')}</p>
+      <p class="muted blurb">{$t('The kinds of project your community runs. Add, rename or reorder them here.')}</p>
       <LookupEditor table="project_type" columns={[
         { key: 'name', label: 'Name' },
         { key: 'rank', label: 'Rank', type: 'number' }

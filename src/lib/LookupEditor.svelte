@@ -66,6 +66,7 @@
   {#if loading}
     <p class="muted">{$t('Loading…')}</p>
   {:else}
+    <div class="le-scroll">
     <table>
       <thead>
         <tr>{#each columns as c}<th>{$t(c.label)}</th>{/each}<th></th></tr>
@@ -114,5 +115,13 @@
         </tr>
       </tbody>
     </table>
+    </div>
   {/if}
 </div>
+
+<style>
+  /* keep wide config tables (e.g. Venues: name·kind·deadline·url·actions) from
+     pushing the Save/Add buttons off-screen on narrow viewports */
+  .le-scroll { overflow-x: auto; }
+  .le-scroll table { min-width: max-content; }
+</style>
