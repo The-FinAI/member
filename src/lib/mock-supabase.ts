@@ -94,6 +94,9 @@ const seed: Record<string, any[]> = {
     { id: 'l-2', amount: 20, entry_type: 'payout', reason: 'settlement payout', from_account: null, to_account: 'acct-me', created_at: '2026-06-05T00:00:00Z' }
   ],
   stater_settlement: [],
+  project_event: [
+    { id: 'pe-1', project_id: P1, event_type: 'created', summary: 'Project created', actor_member_id: M_ME, member: { full_name: 'Chen Wei' }, created_at: '2026-06-01T09:00:00Z' }
+  ],
   notification: [
     { id: 'n-1', recipient_member_id: M_ME, kind: 'assigned', title: 'You were assigned to a project', body: 'ml-Tagging · Writing · 6', link: '/projects/' + P1, read_at: null, created_at: '2026-06-06T00:00:00Z' }
   ],
@@ -174,6 +177,17 @@ try {
 } catch { /* ignore */ }
 function persist() {
   try { if (typeof localStorage !== 'undefined') localStorage.setItem(LS, JSON.stringify(seed)); } catch { /* ignore */ }
+}
+
+// append a project History event (actor = the logged-in mock user, Chen Wei),
+// so status/finish/settle actions show up in the project's living record.
+function logEvent(projectId: string, eventType: string, summary: string) {
+  const actor = seed.member.find((m: any) => m.id === M_ME);
+  seed.project_event.unshift({
+    id: nid('pe'), project_id: projectId, event_type: eventType, summary,
+    actor_member_id: M_ME, member: { full_name: actor?.full_name ?? 'You' },
+    created_at: new Date(2026, 5, 6, 12, seed.project_event.length).toISOString()
+  });
 }
 
 // LOGIC LAYER: derive the ledger views from base data, so the whole loop is live
@@ -297,12 +311,15 @@ function rpc(name: string, a: any) {
     return Promise.resolve({ data: out, error: null });
   }
   if (name === 'project_set_status') {
-    const p = seed.project.find((x) => x.id === a.p_project); if (p) p.status_id = a.p_status; persist();
+    const p = seed.project.find((x) => x.id === a.p_project); if (p) p.status_id = a.p_status;
+    const sn = (seed.project_status.find((s) => s.id === a.p_status) || {}).name ?? '—';
+    logEvent(a.p_project, 'status', 'Status → ' + sn); persist();
     return Promise.resolve({ data: null, error: null });
   }
   if (name === 'forge_project_done') {
     const p = seed.project.find((x) => x.id === a.p_project);
-    if (p) p.status_id = 'ps-fin'; persist();
+    if (p) p.status_id = 'ps-fin';
+    logEvent(a.p_project, 'finished', 'Project finished — ready to settle'); persist();
     return Promise.resolve({ data: null, error: null });
   }
   if (name === 'forge_milestone') {
@@ -328,7 +345,7 @@ function rpc(name: string, a: any) {
     seed.work_commitment = seed.work_commitment.map((w) => w.project_id === pid ? { ...w, nominal_str: 0 } : w);
     const p = seed.project.find((x) => x.id === pid); if (p) p.status_id = 'ps-fin';
     seed.stater_settlement.push({ project_id: pid, status: 'approved', created_at: '2026-06-06T12:00:00Z' });
-    persist();
+    logEvent(pid, 'settled', 'Pool of ' + pool + ' STR settled and paid out to contributors'); persist();
     return Promise.resolve({ data: null, error: null });
   }
   if (name === 'release_claim') return Promise.resolve({ data: null, error: null });

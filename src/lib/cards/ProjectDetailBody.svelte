@@ -184,7 +184,7 @@
 
     <div class="pd-meta">
       <div class="pd-meta-chips">
-        {#if g.claimable}<span class="status st-proposal"><span class="sdot" style="background:currentColor;"></span>{$t('first author open')}</span>{/if}
+        {#if g.claimable}<span class="pd-chip pd-chip-seat" title={$t('The first-author seat is an open need — match someone into it like any other role.')}>✍ {$t('1st-author seat: open')}</span>{/if}
         <span class="pd-chip">{$t(g.type)}</span>
         {#if g.deadline}<span class="pd-chip {ddlClass(g.deadline)}">⏱ {fmtDate(g.deadline)} · {relDays(g.deadline)}</span>{/if}
       </div>
@@ -238,6 +238,7 @@
   .pd-meta-chips { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
   .pd-chip { display: inline-flex; align-items: center; gap: .3rem; font-size: .76rem; color: var(--text-dim); background: var(--card-2); border: 1px solid var(--border); border-radius: 999px; padding: .15rem .55rem; }
   .pd-chip.warn { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
+  .pd-chip-seat { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 30%, transparent); background: var(--accent-soft); }
   .pd-chip.neg { color: var(--down); border-color: color-mix(in srgb, var(--down) 35%, transparent); }
   .pd-stats { display: flex; flex-wrap: wrap; gap: .3rem 1.4rem; padding: .7rem .9rem; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
   .pd-stat { display: flex; flex-direction: column; gap: .1rem; }
