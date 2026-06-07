@@ -8,7 +8,7 @@
   // key numbers at the foot. The whole card is one click → its edit drawer.
   let {
     type, title, subtitle = '', status = '', statusKind = 'dim',
-    stats = [], onclick, badges, accent = false, accentColor = '', tag
+    stats = [], onclick, href, badges, accent = false, accentColor = '', tag
   }: {
     type: string;
     title: string;
@@ -17,6 +17,9 @@
     statusKind?: 'pos' | 'warn' | 'dim' | 'down';
     stats?: { label: string; value: string }[];
     onclick?: () => void;
+    // when set, the whole card is a link that navigates straight to this page
+    // (preferred over an onclick drawer — testers expected a real page).
+    href?: string;
     badges?: Snippet;
     accent?: boolean;
     // accentColor tints the left border + a faint background (e.g. by status)
@@ -24,17 +27,15 @@
     // a small coloured pill (e.g. the working group) for at-a-glance grouping
     tag?: { label: string; color: string };
   } = $props();
+
+  const tintStyle = accentColor
+    ? `--ec-accent:${accentColor}; --ec-tint:color-mix(in srgb, ${accentColor} 6%, var(--card))`
+    : undefined;
 </script>
 
-<button
-  class="ecard"
-  class:accent={accent || !!accentColor}
-  style={accentColor ? `--ec-accent:${accentColor}; --ec-tint:color-mix(in srgb, ${accentColor} 6%, var(--card))` : undefined}
-  {onclick}
-  type="button"
-  aria-label={`${$t('Open')} ${title}`}
->
-  <span class="ec-open" aria-hidden="true">{$t('Open')} →</span>
+{#snippet body()}
+  <!-- persistent right-edge handle: signals the card opens a detail page -->
+  <span class="ec-go" aria-hidden="true">›</span>
   <div class="ec-top">
     <span class="ec-type">{$t(type)}</span>
     {#if status}<span class="ec-status {statusKind}">{$t(status)}</span>{/if}
@@ -50,28 +51,35 @@
       {/each}
     </div>
   {/if}
-</button>
+{/snippet}
+
+{#if href}
+  <a class="ecard" class:accent={accent || !!accentColor} style={tintStyle} {href} aria-label={`${$t('Open')} ${title}`}>{@render body()}</a>
+{:else}
+  <button class="ecard" class:accent={accent || !!accentColor} style={tintStyle} {onclick} type="button" aria-label={`${$t('Open')} ${title}`}>{@render body()}</button>
+{/if}
 
 <style>
   .ecard {
     position: relative;
     display: flex; flex-direction: column; gap: .4rem; text-align: left;
     background: var(--ec-tint, var(--card)); border: 1px solid var(--border); border-radius: 12px;
-    padding: .8rem .9rem; cursor: pointer; width: 100%;
-    color: var(--text); font: inherit;
+    padding: .8rem 2.1rem .8rem .9rem; cursor: pointer; width: 100%;
+    color: var(--text); font: inherit; text-decoration: none;
     transition: border-color .12s, box-shadow .12s, transform .12s;
   }
   .ecard:hover { border-color: var(--accent); box-shadow: 0 4px 16px -8px var(--accent); transform: translateY(-1px); }
-  /* affordance: signal that the whole card opens a detail panel */
-  .ec-open {
-    position: absolute; top: .55rem; right: .7rem; z-index: 1;
-    font-size: .66rem; font-weight: 700; letter-spacing: .03em; text-transform: uppercase;
-    color: var(--accent); background: var(--accent-soft);
-    padding: .08rem .4rem; border-radius: 999px;
-    opacity: 0; transform: translateX(-3px); transition: opacity .12s, transform .12s;
-    pointer-events: none;
+  /* persistent right-edge handle → the whole card opens its detail page */
+  .ec-go {
+    position: absolute; top: 0; right: 0; bottom: 0; width: 1.7rem;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem; font-weight: 700; line-height: 1;
+    color: var(--muted); background: var(--card-2);
+    border-left: 1px solid var(--border);
+    border-radius: 0 12px 12px 0;
+    transition: background .12s, color .12s;
   }
-  .ecard:hover .ec-open, .ecard:focus-visible .ec-open { opacity: 1; transform: translateX(0); }
+  .ecard:hover .ec-go, .ecard:focus-visible .ec-go { background: var(--accent-soft); color: var(--accent); }
   .ecard.accent { border-left: 3px solid var(--ec-accent, var(--accent)); }
   .ec-tag { display: inline-flex; align-items: center; gap: .35rem; font-size: .72rem; color: var(--text-dim); }
   .ec-tagdot { width: .5rem; height: .5rem; border-radius: 50%; background: var(--tag); flex: none; }

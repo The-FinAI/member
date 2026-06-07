@@ -5,9 +5,7 @@
   import { t } from '$lib/i18n';
   import { get } from 'svelte/store';
   import EntityCard from '$lib/EntityCard.svelte';
-  import CardDrawer from '$lib/CardDrawer.svelte';
   import { type Slot } from '$lib/cards/ProjectSlotCard.svelte';
-  import ProjectDetailBody from '$lib/cards/ProjectDetailBody.svelte';
 
   // Projects = the community portfolio. Each project belongs to a working group
   // and exposes a slot map (1 leader/first-author + N need slots). Members are
@@ -51,16 +49,6 @@
   let workingGroups = $state<WGroup[]>([]);
   let loading = $state(true);
 
-  // quick-view drawer
-  let sel = $state<Grid | null>(null);
-  function openProject(r: Grid) { sel = r; }
-  function closeDrawer() { sel = null; }
-  // after an in-drawer edit: reload the grid and re-point sel at the fresh row
-  async function refreshSel() {
-    const id = sel?.id;
-    await loadGrid();
-    if (id) sel = grid.find((g) => g.id === id) ?? sel;
-  }
   // status name → EntityCard status dot kind
   function projKind(name: string): 'pos' | 'warn' | 'dim' {
     if (name === 'Finished') return 'pos';
@@ -613,29 +601,16 @@
             { label: 'Team', value: String(r.seatsFilled) },
             ...(r.deadline ? [{ label: relDays(r.deadline), value: fmtDate(r.deadline) }] : [])
           ]}
-          onclick={() => openProject(r)}
+          href={`/projects/${r.id}`}
         />
       {/each}
     </div>
   {/if}
 </div>
 
-<!-- quick-view drawer: read-only slot map + officer hand-off -->
-{#if sel}
-  {@const r = sel}
-  <CardDrawer
-    open={sel !== null}
-    type={r.type}
-    title={r.name}
-    subtitle={[r.wg, r.venue].filter(Boolean).join(' · ')}
-    onClose={closeDrawer}
-  >
-    <div class="pdrawer">
-      <a class="pd-open" href={`/projects/${r.id}`}>{$t('Open full page')} →</a>
-      <ProjectDetailBody projectId={r.id} showHeader={false} onChanged={() => { refreshSel(); loadGrid(); }} />
-    </div>
-  </CardDrawer>
-{/if}
+<!-- Project cards now link straight to /projects/[id] (the full page). The old
+     quick-view drawer was removed: testers expected a real page, and a stray
+     backdrop click kept dismissing the peek. -->
 
 <style>
   .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: .8rem; }

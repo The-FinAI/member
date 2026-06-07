@@ -336,7 +336,7 @@
             statusKind={positionsOf(r) ? 'dim' : 'pos'}
             accent={!!($member && r.id === $member.id)}
             stats={[]}
-            onclick={() => openPerson(r)}
+            href={`/members/${r.id}`}
           />
         {/each}
       </div>

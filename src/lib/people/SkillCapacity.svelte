@@ -88,7 +88,7 @@
 </script>
 
 <section class="sc">
-  <div class="sc-head"><h3>{$t('Skills & capacity')}</h3>{#if err}<span class="sc-err">{err}</span>{/if}</div>
+  <div class="sc-head"><h3>{$t('Skills & capacity')}</h3>{#if canEdit}<span class="sc-edit" title={$t('You manage this person. Tap a skill level, add a skill, or edit their monthly hours — changes save instantly.')}>✎ {$t('editable')}</span>{/if}{#if err}<span class="sc-err">{err}</span>{/if}</div>
 
   {#if loading}
     <p class="sc-dim">{$t('Loading…')}</p>
@@ -161,6 +161,8 @@
   .sc { margin: 1rem 0; }
   .sc-head { display: flex; align-items: baseline; gap: .7rem; }
   .sc-head h3 { margin: 0 0 .5rem; font-size: 1rem; }
+  .sc-edit { font-size: .7rem; font-weight: 700; letter-spacing: .02em; text-transform: uppercase;
+    color: var(--accent); background: var(--accent-soft); padding: .1rem .45rem; border-radius: 999px; cursor: help; }
   .sc-err { color: var(--neg, #c0392b); font-size: .82rem; }
   .sc-dim { color: var(--muted, #999); font-size: .9rem; }
   .sc-cap { display: flex; align-items: center; gap: .5rem; margin-bottom: .6rem; }
