@@ -318,6 +318,21 @@ function rpc(name: string, a: any) {
       project: { name: 'ml-Tagging', emoji: '🏷️', code: 'ml-Tagging' } }); persist();
     return Promise.resolve({ data: seed.project_slot.find((s) => s.id === id), error: null });
   }
+  if (name === 'need_update') {
+    const committed = (seed.work_commitment ?? []).filter((w: any) => w.slot_id === a.p_slot).length;
+    if (committed > 0) return Promise.resolve({ data: null, error: { message: 'this need already has people on it — release them before changing it' } });
+    const s = seed.project_slot.find((x: any) => x.id === a.p_slot);
+    if (s) {
+      s.slot_kind = a.p_kind;
+      s.skill_id = a.p_kind === 'work_labor' ? (a.p_skill ?? null) : null;
+      s.desired_level = a.p_kind === 'work_labor' ? (a.p_level ?? null) : null;
+      s.resource_type_id = a.p_kind === 'work_resource' ? (a.p_resource_type ?? null) : null;
+      s.quota = a.p_capacity; s.headcount = a.p_headcount ?? 1;
+      s.skill = s.skill_id ? { name: (seed.skill.find((k: any) => k.id === s.skill_id) || {}).name } : null;
+      s.resource_type = s.resource_type_id ? seed.resource_type.find((r: any) => r.id === s.resource_type_id) : null;
+    }
+    persist(); return Promise.resolve({ data: s, error: null });
+  }
   if (name === 'assign') {
     const s = seed.project_slot.find((x) => x.id === a.p_slot);
     seed.work_commitment.push({ id: nid('wc'), project_id: s?.project_id, slot_id: a.p_slot, member_id: a.p_member,

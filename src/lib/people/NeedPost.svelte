@@ -5,7 +5,10 @@
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { t } from '$lib/i18n';
 
-  let { projectId, onPosted }: { projectId: string; onPosted?: () => void } = $props();
+  // edit: when set, the form opens pre-filled and saves via need_update (issue #9).
+  type NeedEdit = { id: string; kind: string; skill_id: string | null; level: string | null; resource_type_id: string | null; quota: number | null; headcount: number };
+  let { projectId, onPosted, edit = null, onSaved }:
+    { projectId: string; onPosted?: () => void; edit?: NeedEdit | null; onSaved?: () => void } = $props();
 
   type Skill = { id: string; name: string };
   type RType = { id: string; name: string; unit: string | null };
@@ -39,21 +42,37 @@
     skills = rows.filter((r) => r.parent_id && !parents.has(r.id)).map((r) => ({ id: r.id, name: r.name }));
     rtypes = ((rt.data as RType[]) ?? []).filter((r) => r.name !== 'Labor');
   }
-  $effect(() => { if (open && !skills.length) load(); });
+  $effect(() => { if ((open || edit) && !skills.length) load(); });
+  // prefill from the need being edited
+  $effect(() => {
+    if (edit) {
+      open = true;
+      kind = edit.kind === 'work_resource' ? 'work_resource' : 'work_labor';
+      fSkill = edit.skill_id ?? '';
+      fLevel = edit.level ?? 'independent';
+      fRType = edit.resource_type_id ?? '';
+      fHours = edit.quota != null ? String(edit.quota) : '';
+      fHead = String(edit.headcount ?? 1);
+    }
+  });
 
   async function post() {
     err = ''; pool = null;
     if (kind === 'work_labor' && !fSkill) { err = $t('Pick a skill'); return; }
     if (kind === 'work_resource' && !fRType) { err = $t('Pick a resource type'); return; }
     busy = true;
-    const { data, error } = await supabase.rpc('need_post', {
-      p_project: projectId, p_kind: kind,
+    const args = {
+      p_kind: kind,
       p_skill: kind === 'work_labor' ? fSkill : null,
       p_level: kind === 'work_labor' ? fLevel : null,
       p_resource_type: kind === 'work_resource' ? fRType : null,
       p_capacity: Number(fHours) || null, p_headcount: Number(fHead) || 1
-    });
+    };
+    const { data, error } = edit
+      ? await supabase.rpc('need_update', { p_slot: edit.id, ...args })
+      : await supabase.rpc('need_post', { p_project: projectId, ...args });
     if (error) { busy = false; err = error.message; return; }
+    if (edit) { busy = false; onSaved?.(); return; }
     // show the candidate pool so demand isn't blind
     const slotId = (data as any)?.id;
     if (slotId) {
@@ -89,8 +108,8 @@
         <input class="np-n" type="number" min="1" placeholder={rtUnit || $t('qty')} bind:value={fHours} />
       {/if}
       <input class="np-n" type="number" min="1" placeholder="×" bind:value={fHead} />
-      <button class="np-go" disabled={busy} onclick={post}>{$t('Post role')}</button>
-      <button class="np-ghost" onclick={() => (open = false)}>{$t('Cancel')}</button>
+      <button class="np-go" disabled={busy} onclick={post}>{edit ? $t('Save') : $t('Post role')}</button>
+      <button class="np-ghost" onclick={() => { if (edit) onSaved?.(); else open = false; }}>{$t('Cancel')}</button>
     </div>
     {#if err}<span class="np-err">{err}</span>{/if}
     {#if pool !== null}<span class="np-pool">{$t('Posted')} · {pool} {$t('people qualify')}</span>{/if}
