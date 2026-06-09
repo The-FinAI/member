@@ -23,6 +23,7 @@
   let allSkills = $state<Skill[]>([]);
   let hours = $state<number | null>(null);
   let hoursDraft = $state<string>('');
+  let freeHours = $state<number | null>(null);   // remaining this month (member_free_hours)
   let loading = $state(true);
   let err = $state('');
   let busy = $state<string | null>(null);
@@ -36,12 +37,14 @@
   async function load() {
     if (!supabaseConfigured || !memberId) { loading = false; return; }
     loading = true; err = '';
-    const [ps, ev, sk, mem, sug] = await Promise.all([
+    const ym = new Date().toISOString().slice(0, 7); // current YYYY-MM
+    const [ps, ev, sk, mem, sug, free] = await Promise.all([
       supabase.from('person_skill').select('skill_id,level').eq('member_id', memberId),
       supabase.from('person_skill_evidence').select('skill_id,tasks,shipped').eq('member_id', memberId),
       supabase.from('skill').select('id,name,parent_id'),
       supabase.from('member').select('monthly_hours').eq('id', memberId).maybeSingle(),
-      supabase.rpc('skill_raise_suggestions', { p_member: memberId })
+      supabase.rpc('skill_raise_suggestions', { p_member: memberId }),
+      supabase.rpc('member_free_hours', { p_member: memberId, p_ym: ym })
     ]);
     skills = (ps.data as PSkill[]) ?? [];
     const em: Record<string, Ev> = {};
@@ -52,6 +55,7 @@
     allSkills = rows.filter((r) => r.parent_id && !parents.has(r.id)).map((r) => ({ id: r.id, name: r.name }));
     hours = (mem.data as any)?.monthly_hours ?? null;
     hoursDraft = hours == null ? '' : String(hours);
+    freeHours = free.error ? null : (free.data == null ? null : Number(free.data));
     suggestions = (sug.data as Sug[]) ?? [];
     loading = false;
   }
@@ -83,7 +87,9 @@
     hours = v; busy = 'hours'; err = '';
     const { error } = await supabase.rpc('person_set_capacity', { p_hours: v, p_member: memberId });
     busy = null;
-    if (error) { hours = before; hoursDraft = before == null ? '' : String(before); err = error.message; }
+    if (error) { hours = before; hoursDraft = before == null ? '' : String(before); err = error.message; return; }
+    // keep "free now" in step with the new total (committed hours unchanged)
+    if (freeHours != null) freeHours = Math.max(0, freeHours + (v - (before ?? 0)));
   }
 </script>
 
@@ -93,14 +99,18 @@
   {#if loading}
     <p class="sc-dim">{$t('Loading…')}</p>
   {:else}
-    <!-- capacity -->
+    <!-- capacity: available time shown as remaining / total per month -->
     <div class="sc-cap">
-      <span class="sc-label">{$t('Capacity')}</span>
+      <span class="sc-label" title={$t('Time available now / total monthly hours.')}>{$t('Available time')}</span>
       {#if canEdit}
         <input class="sc-hours" type="number" min="0" bind:value={hoursDraft}
-          onchange={saveHours} disabled={busy === 'hours'} /> <span class="sc-unit">{$t('hours / month')}</span>
+          onchange={saveHours} disabled={busy === 'hours'} /> <span class="sc-unit">{$t('hours / month total')}</span>
+        {#if freeHours != null}<span class="sc-free" class:sc-over={freeHours < 0} title={$t('Remaining after current commitments this month.')}>· {Math.max(0, freeHours)} {$t('free now')}{#if freeHours < 0} ⚠ {$t('over')}{/if}</span>{/if}
+      {:else if hours == null}
+        <span class="sc-dim">{$t('Not set')}</span>
       {:else}
-        <span>{hours ?? '—'} {$t('hours / month')}</span>
+        <span class="sc-capval" class:sc-over={(freeHours ?? hours) < 0}><b>{Math.max(0, freeHours ?? hours)}</b> / {hours}</span>
+        <span class="sc-unit">{$t('hours free / month')}</span>{#if (freeHours ?? 0) < 0}<span class="sc-over"> ⚠ {$t('over')}</span>{/if}
       {/if}
     </div>
 
@@ -163,6 +173,10 @@
   .sc-head h3 { margin: 0 0 .5rem; font-size: 1rem; }
   .sc-edit { font-size: .7rem; font-weight: 700; letter-spacing: .02em; text-transform: uppercase;
     color: var(--accent); background: var(--accent-soft); padding: .1rem .45rem; border-radius: 999px; cursor: help; }
+  .sc-capval { font-family: var(--font-mono); }
+  .sc-capval b { font-size: 1.05em; }
+  .sc-free { font-size: .82rem; color: var(--up, #2e9e5b); font-weight: 600; }
+  .sc-over { color: var(--down, #c0392b); }
   .sc-err { color: var(--neg, #c0392b); font-size: .82rem; }
   .sc-dim { color: var(--muted, #999); font-size: .9rem; }
   .sc-cap { display: flex; align-items: center; gap: .5rem; margin-bottom: .6rem; }

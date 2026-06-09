@@ -20,6 +20,7 @@
   const LEVEL_RANK: Record<string, number> = { lead: 3, independent: 2, learning: 1 };
 
   let people = $state<Person[]>([]);
+  let capacity = $state<Record<string, { total: number | null; free: number | null }>>({});
   let skillsBy = $state<Record<string, { name: string; level: string }[]>>({});
   let loading = $state(true);
   let q = $state('');
@@ -64,12 +65,17 @@
   async function load() {
     if (!supabaseConfigured) { loading = false; return; }
     loading = true;
-    const [mem, sk, skn] = await Promise.all([
+    const ym = new Date().toISOString().slice(0, 7);
+    const [mem, sk, skn, cap] = await Promise.all([
       supabase.from('member').select('id,full_name,kind,affiliation,home_unit_id,monthly_hours').order('full_name'),
       supabase.from('person_skill').select('member_id,skill_id,level'),
-      supabase.from('skill').select('id,name')
+      supabase.from('skill').select('id,name'),
+      supabase.rpc('member_capacity_all', { p_ym: ym })
     ]);
     people = (mem.data as Person[]) ?? [];
+    capacity = {};
+    for (const c of (cap.data as { member_id: string; total: number | null; free: number | null }[]) ?? [])
+      capacity[c.member_id] = { total: c.total == null ? null : Number(c.total), free: c.free == null ? null : Number(c.free) };
     const nameOf: Record<string, string> = {};
     for (const s of (skn.data as any[]) ?? []) nameOf[s.id] = s.name;
     const by: Record<string, { name: string; level: string }[]> = {};
@@ -136,8 +142,14 @@
           </div>
           {#if p.affiliation}<div class="pc-aff">{p.affiliation}</div>{/if}
           <div class="pc-cap">
-            <span class="pc-cap-label">{$t('Capacity')}</span>
-            <span class="pc-cap-val">{p.monthly_hours ?? '—'} {$t('h/mo')}</span>
+            <span class="pc-cap-label">{$t('Available')}</span>
+            {#if (capacity[p.id]?.total ?? p.monthly_hours) == null}
+              <span class="pc-cap-val pc-unset">{$t('time not set')}</span>
+            {:else}
+              {@const cap = capacity[p.id]}
+              {@const free = cap?.free ?? cap?.total ?? p.monthly_hours ?? 0}
+              <span class="pc-cap-val" class:pc-over={free < 0}><b>{Math.max(0, free)}</b>/{cap?.total ?? p.monthly_hours} {$t('h/mo')}{#if free < 0} ⚠{/if}</span>
+            {/if}
           </div>
           <div class="pc-skills">
             {#each (skillsBy[p.id] ?? []).slice(0, 5) as s}
@@ -177,6 +189,9 @@
   .pc-cap { display: flex; gap: .4rem; align-items: baseline; margin: .5rem 0 .4rem; }
   .pc-cap-label { font-size: .72rem; color: var(--muted, #aaa); }
   .pc-cap-val { font-size: .85rem; font-weight: 600; }
+  .pc-cap-val b { font-family: var(--font-mono, monospace); }
+  .pc-unset { color: var(--muted, #999); font-weight: 500; font-style: italic; }
+  .pc-over { color: var(--down, #c0392b); }
   .pc-skills { display: flex; flex-wrap: wrap; gap: .3rem; }
   .pc-skill { font-size: .73rem; padding: .1rem .45rem; border-radius: 999px; border: 1px solid var(--line, #e6e6e6); color: var(--muted, #666); }
   .pc-skill.lv-lead { border-color: #c9a227; color: #9a7b12; }

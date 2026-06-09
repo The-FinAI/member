@@ -468,9 +468,10 @@
         <input bind:value={cProposal} placeholder="https://…" /></label>
       <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Summary')}</span>
         <textarea bind:value={cSummary} rows="2" placeholder={$t('One-line description')}></textarea></label>
-      <div class="row">
+      <div class="row" style="gap:.5rem;">
         <button onclick={createProject} disabled={creating}>
           {creating ? $t('Creating…') : $t('Create project')}</button>
+        <button type="button" class="ghost" onclick={() => (showForm = false)} disabled={creating}>{$t('Cancel')}</button>
       </div>
     </div>
   {/if}

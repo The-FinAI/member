@@ -417,6 +417,24 @@ function rpc(name: string, a: any) {
     return Promise.resolve({ data: null, error: null });
   }
   if (name === 'release_claim') return Promise.resolve({ data: null, error: null });
+  if (name === 'member_free_hours') {
+    const m = seed.member.find((x: any) => x.id === a.p_member);
+    const total = m?.monthly_hours ?? null; if (total == null) return Promise.resolve({ data: null, error: null });
+    const used = (seed.work_commitment ?? []).filter((w: any) => w.member_id === a.p_member && (w.slot?.slot_kind === 'work_labor' || w.slot?.slot_kind === 'leader')).reduce((s: number, w: any) => s + (Number(w.monthly_amount) || 0), 0);
+    return Promise.resolve({ data: total - used, error: null });
+  }
+  if (name === 'member_capacity_all') {
+    const rows = (seed.member ?? []).map((m: any) => {
+      const total = m.monthly_hours ?? null;
+      let free = null;
+      if (total != null) {
+        const used = (seed.work_commitment ?? []).filter((w: any) => w.member_id === m.id && (w.slot?.slot_kind === 'work_labor' || w.slot?.slot_kind === 'leader')).reduce((s: number, w: any) => s + (Number(w.monthly_amount) || 0), 0);
+        free = total - used;
+      }
+      return { member_id: m.id, total, free };
+    });
+    return Promise.resolve({ data: rows, error: null });
+  }
   // ── offerable resources on a person/community card ──
   if (name === 'forge_resource') {
     const rt = (seed.resource_type ?? []).find((t: any) => t.id === a.p_type);
