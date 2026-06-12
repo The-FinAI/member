@@ -211,10 +211,10 @@
   .forge-form { display: flex; flex-wrap: wrap; gap: .6rem; align-items: flex-end; }
   .forge-form label { display: flex; flex-direction: column; gap: .2rem; }
   .forge-form label span { font-size: .75rem; color: var(--muted); }
-  .forge-form input, .forge-form select, .forge-form textarea { padding: .4rem .55rem; border-radius: 8px; border: 1px solid var(--border-2); background: var(--card-2); color: var(--text); font-size: .85rem; font-family: inherit; }
+  .forge-form input, .forge-form select, .forge-form textarea { padding: .4rem .55rem; border-radius: var(--r-sm); border: 1px solid var(--border-2); background: var(--card-2); color: var(--text); font-size: .85rem; font-family: inherit; }
   .forge-form textarea { width: 100%; resize: vertical; }
   .skills-row { flex-basis: 100%; display: flex; flex-direction: column; gap: .35rem; }
   .skills-h { font-size: .75rem; color: var(--muted); }
-  .go { padding: .5rem .9rem; border-radius: 8px; border: 1px solid transparent; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+  .go { padding: .5rem .9rem; border-radius: var(--r-sm); border: 1px solid transparent; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
   .go:disabled { opacity: .55; cursor: not-allowed; }
 </style>

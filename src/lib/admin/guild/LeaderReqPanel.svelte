@@ -91,15 +91,15 @@
   .blurb { margin: 0; font-size: .85rem; }
   .err { color: var(--down); font-size: .85rem; margin: 0; }
   .reqs { display: flex; flex-direction: column; gap: .4rem; }
-  .req { display: flex; align-items: center; gap: .6rem; padding: .5rem .7rem; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
+  .req { display: flex; align-items: center; gap: .6rem; padding: .5rem .7rem; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--card); }
   .r-skill { flex: 1; font-weight: 500; color: var(--text); }
-  .req select { padding: .3rem .5rem; border-radius: 7px; border: 1px solid var(--border-2); background: var(--card-2); color: var(--text); font-size: .85rem; }
+  .req select { padding: .3rem .5rem; border-radius: var(--r-sm); border: 1px solid var(--border-2); background: var(--card-2); color: var(--text); font-size: .85rem; }
   .x { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: .8rem; }
   .x:hover { color: var(--down); filter: none; }
   .add { display: flex; flex-wrap: wrap; gap: .6rem; align-items: flex-end; }
   .add label { display: flex; flex-direction: column; gap: .2rem; }
   .add label span { font-size: .75rem; color: var(--muted); }
-  .add select { padding: .4rem .55rem; border-radius: 8px; border: 1px solid var(--border-2); background: var(--card); color: var(--text); }
-  .go { padding: .5rem .9rem; border-radius: 8px; border: 1px solid transparent; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+  .add select { padding: .4rem .55rem; border-radius: var(--r-sm); border: 1px solid var(--border-2); background: var(--card); color: var(--text); }
+  .go { padding: .5rem .9rem; border-radius: var(--r-sm); border: 1px solid transparent; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
   .go:disabled { opacity: .55; cursor: not-allowed; }
 </style>

@@ -23,7 +23,7 @@
 <style>
   .medal {
     display: inline-flex; align-items: center; gap: .35rem;
-    padding: .2rem .5rem; border-radius: 999px;
+    padding: .2rem .5rem; border-radius: var(--r-full);
     border: 1px solid var(--border); background: var(--card-2);
     font-size: .76rem; line-height: 1; white-space: nowrap;
   }

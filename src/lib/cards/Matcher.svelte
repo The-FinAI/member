@@ -178,7 +178,7 @@
   .m-field { display: flex; flex-direction: column; gap: .25rem; font-size: .78rem; color: var(--muted); }
   .m-hint { color: var(--info); }
   .m-field input, .m-field select {
-    padding: .45rem .55rem; border-radius: 8px; border: 1px solid var(--border-2);
+    padding: .45rem .55rem; border-radius: var(--r-sm); border: 1px solid var(--border-2);
     background: var(--card-2); color: var(--text); font-size: .88rem;
   }
 </style>

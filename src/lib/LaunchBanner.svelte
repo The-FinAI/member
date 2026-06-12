@@ -78,7 +78,7 @@
     position: relative;
     display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
     border: 1px solid var(--accent); border-left: 3px solid var(--accent);
-    background: var(--accent-soft); border-radius: 10px;
+    background: var(--accent-soft); border-radius: var(--r-md);
     padding: .55rem 2.3rem .55rem .9rem; margin-bottom: 1rem;
   }
   .pin-bar.lvl-success { border-color: var(--up, #2e9e5b); }
@@ -89,7 +89,7 @@
     font-family: var(--font-mono); font-size: .66rem; font-weight: 700;
     letter-spacing: .03em; text-transform: uppercase; color: var(--accent);
     background: color-mix(in srgb, var(--accent) 14%, transparent);
-    padding: .2rem .5rem; border-radius: 6px; white-space: nowrap;
+    padding: .2rem .5rem; border-radius: var(--r-sm); white-space: nowrap;
   }
   .pin-text { flex: 1; min-width: 220px; font-size: .9rem; line-height: 1.4; }
   .pin-text strong { font-weight: 600; }
@@ -98,7 +98,7 @@
   .pin-btn {
     display: inline-block; background: var(--accent); color: #fff;
     font-weight: 600; font-size: .82rem; padding: .35rem .8rem;
-    border-radius: 8px; text-decoration: none; white-space: nowrap;
+    border-radius: var(--r-sm); text-decoration: none; white-space: nowrap;
   }
   .pin-btn:hover { filter: brightness(1.08); }
   .pin-x {
@@ -114,7 +114,7 @@
     display: inline-flex; align-items: center; gap: .35rem;
     border: 1px solid var(--accent); background: var(--accent-soft);
     color: var(--accent); font-size: .76rem; font-weight: 600;
-    padding: .25rem .65rem; border-radius: 999px; cursor: pointer;
+    padding: .25rem .65rem; border-radius: var(--r-full); cursor: pointer;
   }
   .pin-tab:hover { filter: brightness(1.05); }
   .pin-dot { font-size: .8rem; }

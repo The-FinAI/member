@@ -125,7 +125,7 @@
 </div>
 
 <style>
-  .mcard { border: 1px solid var(--border); border-radius: 12px; background: var(--card); overflow: hidden; }
+  .mcard { border: 1px solid var(--border); border-radius: var(--r-md); background: var(--card); overflow: hidden; }
   .mcard.expanded { border-color: var(--border-2); }
   .mc-head {
     display: grid; grid-template-columns: auto 1fr auto auto; gap: .8rem; align-items: center;

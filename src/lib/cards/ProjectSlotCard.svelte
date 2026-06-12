@@ -98,13 +98,13 @@
 </div>
 
 <style>
-  .pscard { border: 1px solid var(--border); border-radius: 12px; background: var(--card); overflow: hidden; }
+  .pscard { border: 1px solid var(--border); border-radius: var(--r-md); background: var(--card); overflow: hidden; }
   .ps-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .75rem .9rem; border-bottom: 1px solid var(--border); }
   .ps-id { display: flex; align-items: center; gap: .55rem; min-width: 0; }
   .ps-name { font-weight: 600; color: var(--text); }
   .ps-actions { display: flex; gap: .4rem; flex: none; }
   .ps-seats { display: flex; flex-direction: column; gap: .4rem; padding: .7rem .9rem .85rem; }
-  .ps-slot { display: flex; flex-direction: column; gap: .35rem; padding: .5rem .6rem; border-radius: 9px; background: var(--card-2); }
+  .ps-slot { display: flex; flex-direction: column; gap: .35rem; padding: .5rem .6rem; border-radius: var(--r-sm); background: var(--card-2); }
   .ps-slot.leader { background: var(--warn-soft); }
   .ps-slot-h { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
   .ps-auth { font-size: .72rem; color: var(--muted); }

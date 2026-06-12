@@ -164,10 +164,10 @@
 </div>
 
 <style>
-  .sf { display: flex; flex-direction: column; gap: .7rem; padding: .8rem; border: 1px solid color-mix(in srgb, var(--up) 30%, transparent); border-radius: 12px; background: color-mix(in srgb, var(--up) 6%, transparent); }
+  .sf { display: flex; flex-direction: column; gap: .7rem; padding: .8rem; border: 1px solid color-mix(in srgb, var(--up) 30%, transparent); border-radius: var(--r-md); background: color-mix(in srgb, var(--up) 6%, transparent); }
   .sf-fair { font-size: .82rem; color: #2e7d4f; display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; }
   .sf-fair.warn { color: #b8860b; }
-  .sf-flag { background: #fff8e6; border: 1px solid #f0d98a; border-radius: 999px; padding: 0 .5rem; }
+  .sf-flag { background: #fff8e6; border: 1px solid #f0d98a; border-radius: var(--r-full); padding: 0 .5rem; }
   .sf-head { display: flex; flex-direction: column; gap: .15rem; }
   .sf-title { font-weight: 600; color: var(--text); }
   .sf-sub { font-size: .78rem; color: var(--muted); }
@@ -180,12 +180,12 @@
   .sf-table .ctr { text-align: center; }
   .sf-name { font-weight: 500; color: var(--text); }
   .sf-tag { margin-left: .35rem; font-size: .62rem; }
-  .sf-w { width: 5rem; padding: .3rem .4rem; border-radius: 6px; border: 1px solid var(--border-2); background: var(--card-2); color: var(--text); font-size: .82rem; text-align: right; }
+  .sf-w { width: 5rem; padding: .3rem .4rem; border-radius: var(--r-sm); border: 1px solid var(--border-2); background: var(--card-2); color: var(--text); font-size: .82rem; text-align: right; }
   .sf-ord { font-size: .72rem; color: var(--muted); margin-left: .2rem; }
   .sf-field { display: flex; flex-direction: column; gap: .25rem; font-size: .78rem; color: var(--muted); }
-  .sf-field textarea { padding: .45rem .55rem; border-radius: 8px; border: 1px solid var(--border-2); background: var(--card-2); color: var(--text); font-size: .88rem; font-family: inherit; }
+  .sf-field textarea { padding: .45rem .55rem; border-radius: var(--r-sm); border: 1px solid var(--border-2); background: var(--card-2); color: var(--text); font-size: .88rem; font-family: inherit; }
   .sf-actions { display: flex; gap: .5rem; align-items: center; }
-  .sf-go { display: inline-flex; align-items: center; gap: .4rem; padding: .5rem .9rem; border-radius: 8px; border: 1px solid transparent; background: var(--up); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+  .sf-go { display: inline-flex; align-items: center; gap: .4rem; padding: .5rem .9rem; border-radius: var(--r-sm); border: 1px solid transparent; background: var(--up); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
   .sf-go:disabled { opacity: .55; cursor: not-allowed; }
-  .sf-ghost { padding: .5rem .9rem; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text); font: inherit; cursor: pointer; }
+  .sf-ghost { padding: .5rem .9rem; border-radius: var(--r-sm); border: 1px solid var(--border); background: transparent; color: var(--text); font: inherit; cursor: pointer; }
 </style>

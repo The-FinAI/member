@@ -125,7 +125,7 @@
   .review-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: .7rem; }
   .review-card {
     display: flex; flex-direction: column; gap: .3rem; padding: .9rem 1rem;
-    border: 1px solid var(--border); border-radius: 12px; background: var(--card);
+    border: 1px solid var(--border); border-radius: var(--r-md); background: var(--card);
     text-decoration: none; color: var(--text); transition: border-color .12s, transform .12s;
   }
   .review-card:hover { border-color: var(--accent); transform: translateY(-2px); }
@@ -134,7 +134,7 @@
   .rc-title { font-weight: 600; font-size: 1rem; }
   .rc-count {
     min-width: 1.6rem; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums;
-    padding: .1rem .45rem; border-radius: 999px; background: var(--accent); color: #fff; font-size: .82rem;
+    padding: .1rem .45rem; border-radius: var(--r-full); background: var(--accent); color: #fff; font-size: .82rem;
   }
   .rc-count.zero { background: var(--card-2); color: var(--muted); }
   .rc-desc { font-size: .8rem; line-height: 1.45; color: var(--muted); }
@@ -142,7 +142,7 @@
   .admin-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(248px, 1fr)); gap: .7rem; }
   .admin-card {
     display: flex; flex-direction: column; gap: .25rem; padding: .85rem .95rem;
-    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+    background: var(--card); border: 1px solid var(--border); border-radius: var(--r-md);
     text-decoration: none; color: var(--text); transition: border-color .12s ease, transform .12s ease;
   }
   .admin-card:hover { border-color: var(--accent); transform: translateY(-2px); }

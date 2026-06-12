@@ -47,7 +47,7 @@
 {/if}
 
 <style>
-  .wal { background: var(--card-bg, #fafafa); border: 1px solid var(--line, #eee); border-radius: 12px; padding: .7rem .9rem; margin-bottom: 1.2rem; }
+  .wal { background: var(--card-bg, #fafafa); border: 1px solid var(--line, #eee); border-radius: var(--r-md); padding: .7rem .9rem; margin-bottom: 1.2rem; }
   .wal-row { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
   .wal-fig { display: flex; flex-direction: column; }
   .wal-n { font-size: 1.4rem; font-weight: 700; line-height: 1; }

@@ -593,25 +593,25 @@
   .mc-msg { font-size: .85rem; color: var(--accent); margin: 0; }
   .mc-h { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .cpf { display: flex; flex-direction: column; gap: .25rem; font-size: .76rem; color: var(--muted); }
-  .cpf input, .cpf select { padding: .45rem .55rem; border-radius: 8px; border: 1px solid var(--border-2); background: var(--card-2); color: var(--text); font-size: .88rem; }
+  .cpf input, .cpf select { padding: .45rem .55rem; border-radius: var(--r-sm); border: 1px solid var(--border-2); background: var(--card-2); color: var(--text); font-size: .88rem; }
   .mc-ct { color: var(--text-dim); }
   .muted { color: var(--muted); font-size: .88rem; }
 
   .mc-claims { display: flex; flex-direction: column; gap: .5rem; }
   .claim-rows { display: flex; flex-direction: column; gap: .4rem; }
-  .claim-row { display: flex; align-items: center; gap: .6rem; padding: .5rem .7rem; border: 1px solid var(--border); border-radius: 9px; background: var(--card); }
+  .claim-row { display: flex; align-items: center; gap: .6rem; padding: .5rem .7rem; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--card); }
   .claim-name { font-weight: 500; color: var(--text); flex: 1; min-width: 0; }
 
   /* seat bar */
   .seatbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem 1rem;
-    padding: .7rem .9rem; border: 1px solid var(--accent); border-radius: 12px; background: var(--accent-soft); }
+    padding: .7rem .9rem; border: 1px solid var(--accent); border-radius: var(--r-md); background: var(--accent-soft); }
   .seatbar.bad { border-color: var(--border); background: var(--card-2); }
   .sb-text { font-size: .9rem; color: var(--text); }
   .sb-kind { color: var(--muted); font-size: .8rem; margin-left: .3rem; }
   .sb-reason { color: var(--down); font-size: .8rem; }
   .sb-form { display: flex; flex-wrap: wrap; gap: .5rem; align-items: flex-end; }
   .sb-form label { display: flex; flex-direction: column; gap: .2rem; font-size: .72rem; color: var(--muted); }
-  .sb-form input, .sb-form select { padding: .4rem .5rem; border-radius: 8px; border: 1px solid var(--border-2); background: var(--card); color: var(--text); font-size: .85rem; max-width: 9rem; }
+  .sb-form input, .sb-form select { padding: .4rem .5rem; border-radius: var(--r-sm); border: 1px solid var(--border-2); background: var(--card); color: var(--text); font-size: .85rem; max-width: 9rem; }
 
   /* board */
   .board { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; align-items: start; }
@@ -625,7 +625,7 @@
   .rows { display: flex; flex-direction: column; gap: .4rem; }
 
   .row { display: flex; align-items: center; justify-content: space-between; gap: .6rem; width: 100%;
-    text-align: left; padding: .55rem .7rem; border: 1px solid var(--border); border-radius: 9px;
+    text-align: left; padding: .55rem .7rem; border: 1px solid var(--border); border-radius: var(--r-sm);
     background: var(--card); color: var(--text); font: inherit; cursor: pointer; transition: border-color .12s ease, background .12s ease; }
   .row:hover { border-color: var(--accent); }
   .row.on { border-color: var(--accent); background: var(--accent-soft); }
@@ -646,18 +646,18 @@
   .prow.fit .person { border-color: color-mix(in srgb, var(--up, var(--accent)) 45%, transparent); }
   .prow.dim { opacity: .5; }
   .prow .person { flex: 1; min-width: 0; }
-  .prow-seatbtn { flex: none; padding: 0 .75rem; border: 1px solid var(--accent); border-radius: 9px; background: var(--accent); color: #fff; font: inherit; font-weight: 600; font-size: .82rem; cursor: pointer; white-space: nowrap; }
+  .prow-seatbtn { flex: none; padding: 0 .75rem; border: 1px solid var(--accent); border-radius: var(--r-sm); background: var(--accent); color: #fff; font: inherit; font-weight: 600; font-size: .82rem; cursor: pointer; white-space: nowrap; }
   .prow-seatbtn:hover { filter: brightness(1.06); }
-  .prow-seat { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .5rem; padding: .55rem .65rem; border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); border-radius: 10px; background: var(--accent-soft); }
+  .prow-seat { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .5rem; padding: .55rem .65rem; border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); border-radius: var(--r-md); background: var(--accent-soft); }
   .prow-seat label { display: flex; flex-direction: column; gap: .2rem; font-size: .74rem; color: var(--muted); }
-  .prow-seat input, .prow-seat select { padding: .35rem .5rem; border-radius: 7px; border: 1px solid var(--border-2); background: var(--card); color: var(--text); font-size: .85rem; }
+  .prow-seat input, .prow-seat select { padding: .35rem .5rem; border-radius: var(--r-sm); border: 1px solid var(--border-2); background: var(--card); color: var(--text); font-size: .85rem; }
   .prow-seat input.over { border-color: var(--down); }
   .prow-seat .r-reason { flex-basis: 100%; font-size: .78rem; color: var(--down); }
-  .mc-guide { font-size: .85rem; color: var(--text-dim); padding: .55rem .8rem; border: 1px solid var(--border); border-radius: 10px; background: var(--card); display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
+  .mc-guide { font-size: .85rem; color: var(--text-dim); padding: .55rem .8rem; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--card); display: flex; align-items: center; justify-content: space-between; gap: .6rem; }
   .mc-guide.active { border-color: color-mix(in srgb, var(--accent) 40%, var(--border)); background: var(--accent-soft); }
   .mc-clear { background: transparent; border: 0; color: var(--muted); cursor: pointer; font: inherit; font-size: .8rem; white-space: nowrap; }
   .mc-clear:hover { color: var(--down); }
-  .r-badge { flex: none; width: 2rem; border: 1px solid var(--border); border-radius: 9px; background: var(--card);
+  .r-badge { flex: none; width: 2rem; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--card);
     color: var(--accent); font-size: .9rem; cursor: pointer; }
   .r-badge:hover { border-color: var(--accent); }
 

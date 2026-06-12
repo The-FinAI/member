@@ -391,7 +391,7 @@
 </div>
 
 <style>
-  .seater { border: 1px solid var(--border); border-radius: 12px; background: var(--card); overflow: hidden; }
+  .seater { border: 1px solid var(--border); border-radius: var(--r-md); background: var(--card); overflow: hidden; }
   .st-head { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; padding: .7rem .9rem; border-bottom: 1px solid var(--border); }
   .st-title { font-weight: 600; color: var(--text); }
   .st-sub { font-size: .76rem; color: var(--muted); }
@@ -411,13 +411,13 @@
   .st-gap { font-family: var(--font-mono); font-size: .8rem; color: var(--muted); flex: none; }
   .st-pick { padding: 0 .9rem .8rem; display: flex; flex-direction: column; gap: .5rem; }
   .st-search {
-    padding: .45rem .55rem; border-radius: 8px; border: 1px solid var(--border-2);
+    padding: .45rem .55rem; border-radius: var(--r-sm); border: 1px solid var(--border-2);
     background: var(--card-2); color: var(--text); font-size: .88rem;
   }
   .st-cards { display: flex; flex-direction: column; gap: .25rem; max-height: 220px; overflow-y: auto; }
   .st-card {
     display: flex; align-items: center; justify-content: space-between; gap: .5rem;
-    padding: .4rem .55rem; border: 1px solid var(--border); border-radius: 8px;
+    padding: .4rem .55rem; border: 1px solid var(--border); border-radius: var(--r-sm);
     background: var(--card); cursor: pointer; font: inherit; color: var(--text); text-align: left;
   }
   .st-card:hover { border-color: var(--accent); }
@@ -429,12 +429,12 @@
   .st-field { display: flex; flex-direction: column; gap: .25rem; font-size: .78rem; color: var(--muted); }
   .st-hint { color: var(--info); }
   .st-field input, .st-field select {
-    padding: .45rem .55rem; border-radius: 8px; border: 1px solid var(--border-2);
+    padding: .45rem .55rem; border-radius: var(--r-sm); border: 1px solid var(--border-2);
     background: var(--card-2); color: var(--text); font-size: .88rem;
   }
   .st-field input.over { border-color: var(--down); }
   .st-go {
-    align-self: flex-start; padding: .5rem .9rem; border-radius: 8px; border: 1px solid transparent;
+    align-self: flex-start; padding: .5rem .9rem; border-radius: var(--r-sm); border: 1px solid transparent;
     background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer;
     display: inline-flex; align-items: center; gap: .4rem;
   }
@@ -450,7 +450,7 @@
   .st-direct-form { padding: 0 .9rem .8rem; display: flex; flex-direction: column; gap: .5rem; }
   .st-kind { display: inline-flex; gap: .3rem; }
   .st-kind button {
-    padding: .35rem .7rem; border-radius: 8px; border: 1px solid var(--border-2);
+    padding: .35rem .7rem; border-radius: var(--r-sm); border: 1px solid var(--border-2);
     background: var(--card-2); color: var(--muted); font: inherit; font-size: .82rem; cursor: pointer;
   }
   .st-kind button.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }

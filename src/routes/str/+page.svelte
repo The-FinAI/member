@@ -180,17 +180,17 @@
 <style>
   .paper { max-width: 820px; gap: 1rem; }
   .lead { margin-top: -.4rem; font-size: .95rem; line-height: 1.6; }
-  .toc { display: flex; flex-wrap: wrap; gap: .4rem .9rem; padding: .7rem .9rem; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
+  .toc { display: flex; flex-wrap: wrap; gap: .4rem .9rem; padding: .7rem .9rem; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--card); }
   .toc a { font-size: .85rem; color: var(--muted); text-decoration: none; }
   .toc a:hover { color: var(--accent); }
   section.card { padding: 1.1rem 1.2rem; }
   section h2 { margin: 0 0 .2rem; }
   section p, section li { line-height: 1.65; }
   .bul, .acts { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: .5rem; }
-  .eq { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem .9rem; padding: .7rem .9rem; border: 1px solid var(--border-2); border-radius: 10px; background: var(--card-2); }
+  .eq { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem .9rem; padding: .7rem .9rem; border: 1px solid var(--border-2); border-radius: var(--r-md); background: var(--card-2); }
   .eq code { font-size: 1rem; color: var(--accent); }
   .eq-where { font-size: .8rem; color: var(--muted); }
-  .card2 { border: 1px solid var(--border); border-radius: 10px; background: var(--card); overflow-x: auto; }
+  .card2 { border: 1px solid var(--border); border-radius: var(--r-md); background: var(--card); overflow-x: auto; }
   table.ex { width: 100%; border-collapse: collapse; font-size: .88rem; }
   table.ex th { text-align: left; font-size: .72rem; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); padding: .55rem .8rem; border-bottom: 1px solid var(--border); }
   table.ex td { padding: .5rem .8rem; border-bottom: 1px solid var(--border); }
@@ -200,17 +200,17 @@
   .dim { color: var(--muted); }
   .states { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; }
   @media (max-width: 560px) { .states { grid-template-columns: 1fr; } }
-  .st { border: 1px solid var(--border); border-radius: 11px; padding: .8rem .9rem; background: var(--card-2); }
+  .st { border: 1px solid var(--border); border-radius: var(--r-md); padding: .8rem .9rem; background: var(--card-2); }
   .st-nom { border-left: 3px solid var(--info, var(--accent)); }
   .st-liq { border-left: 3px solid var(--up, var(--accent)); }
   .st-h { font-size: .72rem; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
   .st p { margin: .3rem 0 0; font-size: .88rem; }
   .flow { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; }
-  .step { font-size: .8rem; padding: .3rem .6rem; border: 1px solid var(--border); border-radius: 999px; background: var(--card-2); }
+  .step { font-size: .8rem; padding: .3rem .6rem; border: 1px solid var(--border); border-radius: var(--r-full); background: var(--card-2); }
   .step.total { border-color: var(--accent); color: var(--accent); font-weight: 600; }
   .plus, .eqls { color: var(--muted); font-weight: 600; }
   .foot { font-size: .9rem; }
-  .note { border: 1px solid var(--border-2); border-left: 3px solid var(--accent); border-radius: 10px; background: var(--card-2); padding: .7rem .9rem; display: flex; flex-direction: column; gap: .35rem; }
+  .note { border: 1px solid var(--border-2); border-left: 3px solid var(--accent); border-radius: var(--r-md); background: var(--card-2); padding: .7rem .9rem; display: flex; flex-direction: column; gap: .35rem; }
   .note .mh { font-size: .72rem; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
   .note p { margin: 0; font-size: .9rem; }
 </style>

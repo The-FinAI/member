@@ -617,7 +617,7 @@
   .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: .8rem; }
   .btn {
     display: inline-flex; align-items: center; gap: .3rem; padding: .5rem .9rem;
-    background: var(--accent); color: #fff; border: 1px solid transparent; border-radius: 8px;
+    background: var(--accent); color: #fff; border: 1px solid transparent; border-radius: var(--r-sm);
     text-decoration: none; font: inherit; font-weight: 600; cursor: pointer;
   }
   .btn.ghost { background: transparent; color: var(--accent); border-color: var(--border); }
@@ -631,13 +631,13 @@
   .pd-chip {
     display: inline-flex; align-items: center; gap: .3rem;
     font-size: .76rem; color: var(--text-dim); background: var(--card-2);
-    border: 1px solid var(--border); border-radius: 999px; padding: .15rem .55rem;
+    border: 1px solid var(--border); border-radius: var(--r-full); padding: .15rem .55rem;
   }
   .pd-chip.warn { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
   .pd-chip.neg { color: var(--down); border-color: color-mix(in srgb, var(--down) 35%, transparent); }
   .pd-stats {
     display: flex; flex-wrap: wrap; gap: .3rem 1.4rem;
-    padding: .7rem .9rem; border: 1px solid var(--border); border-radius: 12px; background: var(--card);
+    padding: .7rem .9rem; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--card);
   }
   .pd-stat { display: flex; flex-direction: column; gap: .1rem; }
   .pd-v { font-weight: 700; font-size: 1rem; color: var(--text); }
@@ -661,7 +661,7 @@
   .hof-card {
     display: flex; flex-direction: column; gap: .5rem; text-align: left;
     padding: .8rem .9rem; border: 1px solid var(--border-2, var(--border));
-    border-radius: 12px; background: var(--bg-elev, transparent);
+    border-radius: var(--r-md); background: var(--bg-elev, transparent);
     cursor: pointer; font: inherit; color: inherit;
     transition: border-color .15s ease, transform .15s ease;
   }

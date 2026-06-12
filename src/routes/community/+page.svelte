@@ -513,7 +513,7 @@
   .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: .8rem; }
   .btn {
     display: inline-flex; align-items: center; gap: .3rem; padding: .5rem .9rem;
-    background: var(--accent); color: #fff; border: 1px solid transparent; border-radius: 8px;
+    background: var(--accent); color: #fff; border: 1px solid transparent; border-radius: var(--r-sm);
     text-decoration: none; font: inherit; font-weight: 600; cursor: pointer;
   }
   .btn:disabled { opacity: .55; cursor: not-allowed; }
@@ -521,14 +521,14 @@
   .search input { width: 100%; }
   .seg { display: inline-flex; gap: 0; }
   .seg .chip.toggle { border-radius: 0; }
-  .seg .chip.toggle:first-child { border-radius: 999px 0 0 999px; }
+  .seg .chip.toggle:first-child { border-radius: var(--r-full) 0 0 999px; }
   .seg .chip.toggle:last-child { border-radius: 0 999px 999px 0; margin-left: -1px; }
   .award-cards { display: flex; flex-wrap: wrap; gap: .35rem; max-height: 9rem; overflow-y: auto; }
-  .award-card { padding: .3rem .55rem; border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text); font: inherit; font-size: .82rem; cursor: pointer; }
+  .award-card { padding: .3rem .55rem; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--card); color: var(--text); font: inherit; font-size: .82rem; cursor: pointer; }
   .award-card:hover { border-color: var(--accent); }
   .award-card.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
   .u-desc { margin: 0; font-size: .9rem; line-height: 1.5; color: var(--text); }
-  .u-stats { display: flex; flex-wrap: wrap; gap: .3rem 1.6rem; align-items: center; padding: .7rem .9rem; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
+  .u-stats { display: flex; flex-wrap: wrap; gap: .3rem 1.6rem; align-items: center; padding: .7rem .9rem; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--card); }
   .u-stat { display: flex; flex-direction: column; gap: .1rem; }
   .u-v { font-weight: 700; font-size: 1rem; color: var(--text); }
   .u-l { font-size: .68rem; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }

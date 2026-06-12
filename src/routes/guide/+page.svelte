@@ -382,8 +382,8 @@
 <style>
   .guide { max-width: 860px; gap: 1rem; }
   .lead { margin-top: -.4rem; font-size: .95rem; line-height: 1.6; }
-  .cbtn { align-self: flex-start; margin-top: .4rem; padding: .5rem .9rem; border-radius: 8px; background: var(--accent); color: #fff; text-decoration: none; font-weight: 600; display: inline-block; }
-  .toc { display: flex; flex-wrap: wrap; gap: .4rem .9rem; padding: .7rem .9rem; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
+  .cbtn { align-self: flex-start; margin-top: .4rem; padding: .5rem .9rem; border-radius: var(--r-sm); background: var(--accent); color: #fff; text-decoration: none; font-weight: 600; display: inline-block; }
+  .toc { display: flex; flex-wrap: wrap; gap: .4rem .9rem; padding: .7rem .9rem; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--card); }
   .toc a { font-size: .85rem; color: var(--muted); text-decoration: none; }
   .toc a:hover { color: var(--accent); }
   section.card { padding: 1.1rem 1.2rem; }
@@ -392,11 +392,11 @@
   .acts { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: .55rem; }
   .bul { margin: .3rem 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: .4rem; }
   .grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: .7rem; margin-top: .5rem; }
-  .mc { border: 1px solid var(--border); border-radius: 11px; background: var(--card-2); padding: .7rem .8rem; }
+  .mc { border: 1px solid var(--border); border-radius: var(--r-md); background: var(--card-2); padding: .7rem .8rem; }
   .mh { font-size: .72rem; letter-spacing: .05em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
   .mc p { margin: .3rem 0 0; font-size: .88rem; }
   .flow { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin-top: .5rem; }
-  .step { font-size: .8rem; padding: .3rem .6rem; border: 1px solid var(--border); border-radius: 999px; background: var(--card-2); color: var(--text); }
+  .step { font-size: .8rem; padding: .3rem .6rem; border: 1px solid var(--border); border-radius: var(--r-full); background: var(--card-2); color: var(--text); }
   .arr { color: var(--muted); }
   .pages { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: .5rem; }
   .pages a { font-weight: 600; }

@@ -28,12 +28,12 @@
   .lang-backdrop { position: fixed; inset: 0; z-index: 30; }
   .lang-menu {
     position: absolute; top: calc(100% + 8px); right: 0; z-index: 40;
-    background: var(--elevate); border: 1px solid var(--border); border-radius: 10px;
+    background: var(--elevate); border: 1px solid var(--border); border-radius: var(--r-md);
     box-shadow: var(--shadow); padding: .3rem; min-width: 150px;
   }
   .lang-item {
     display: flex; align-items: center; gap: .5rem; width: 100%;
-    background: transparent; border: none; border-radius: 7px;
+    background: transparent; border: none; border-radius: var(--r-sm);
     padding: .45rem .55rem; font-size: .85rem; color: var(--text-dim); cursor: pointer; text-align: left;
   }
   .lang-item:hover { background: var(--card); color: var(--text); }

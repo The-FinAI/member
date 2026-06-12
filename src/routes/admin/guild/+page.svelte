@@ -62,7 +62,7 @@
 <style>
   .blurb { margin: 0 0 .2rem; font-size: .85rem; }
   .mlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .5rem; }
-  .m { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .55rem .8rem; border: 1px solid var(--border); border-radius: 10px; background: var(--card); text-decoration: none; color: var(--text); }
+  .m { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .55rem .8rem; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--card); text-decoration: none; color: var(--text); }
   .m:hover { border-color: var(--accent); }
   .m-name { font-weight: 600; }
   .m-skill { font-size: .78rem; color: var(--warn, var(--accent)); }

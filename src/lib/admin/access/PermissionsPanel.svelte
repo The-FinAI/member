@@ -100,12 +100,12 @@
   .err { color: var(--down); font-size: .85rem; margin: 0; }
   .sec { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: .6rem; }
-  .pos { border: 1px solid var(--border); border-radius: 11px; background: var(--card); padding: .7rem .85rem; display: flex; flex-direction: column; gap: .5rem; }
+  .pos { border: 1px solid var(--border); border-radius: var(--r-md); background: var(--card); padding: .7rem .85rem; display: flex; flex-direction: column; gap: .5rem; }
   .pos-name { font-weight: 600; color: var(--text); }
   .chips { display: flex; flex-wrap: wrap; gap: .35rem; }
   .cap {
     font-family: var(--mono, ui-monospace, monospace); font-size: .72rem; padding: .2rem .5rem;
-    border: 1px solid var(--border-2); border-radius: 999px; background: var(--card-2); color: var(--muted);
+    border: 1px solid var(--border-2); border-radius: var(--r-full); background: var(--card-2); color: var(--muted);
     cursor: pointer; transition: all .1s;
   }
   .cap:hover { border-color: var(--accent); }
@@ -116,8 +116,8 @@
   .link { background: transparent; border: 0; color: var(--accent); font: inherit; font-size: .8rem; cursor: pointer; padding: 0; }
   .link:hover { text-decoration: underline; }
   .glist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .3rem; }
-  .glist li { display: grid; grid-template-columns: 12rem 1fr; gap: .6rem; align-items: center; font-size: .82rem; padding: .35rem .6rem; border: 1px solid var(--border); border-radius: 8px; background: var(--card); }
+  .glist li { display: grid; grid-template-columns: 12rem 1fr; gap: .6rem; align-items: center; font-size: .82rem; padding: .35rem .6rem; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--card); }
   .glist code { color: var(--accent); }
   .cd { color: var(--muted); }
-  .glist input { padding: .3rem .5rem; border-radius: 6px; border: 1px solid var(--border-2); background: var(--card-2); color: var(--text); font-size: .82rem; }
+  .glist input { padding: .3rem .5rem; border-radius: var(--r-sm); border: 1px solid var(--border-2); background: var(--card-2); color: var(--text); font-size: .82rem; }
 </style>

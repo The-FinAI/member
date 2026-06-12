@@ -43,7 +43,7 @@
     position: absolute; bottom: calc(100% + 7px); left: 50%; transform: translateX(-50%);
     width: max-content; max-width: 248px; z-index: 40;
     background: var(--elevate); color: var(--text-dim);
-    border: 1px solid var(--border); border-radius: 9px;
+    border: 1px solid var(--border); border-radius: var(--r-sm);
     padding: .55rem .65rem; font-size: .76rem; font-weight: 400; line-height: 1.45;
     box-shadow: var(--shadow); text-align: left; white-space: normal;
   }

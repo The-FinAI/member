@@ -57,13 +57,13 @@
   .tab {
     display: inline-flex; align-items: center; gap: .4rem; padding: .45rem .8rem;
     border: 0; border-bottom: 2px solid transparent; background: transparent;
-    color: var(--muted); font: inherit; font-size: .9rem; cursor: pointer; border-radius: 6px 6px 0 0;
+    color: var(--muted); font: inherit; font-size: .9rem; cursor: pointer; border-radius: var(--r-sm) 6px 0 0;
   }
   .tab:hover { color: var(--text); background: var(--card-2); }
   .tab.on { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
   .tab-count {
     font-size: .72rem; font-weight: 700; font-variant-numeric: tabular-nums;
-    background: var(--accent); color: #fff; border-radius: 999px; padding: 0 .4rem; min-width: 1.2rem; text-align: center;
+    background: var(--accent); color: #fff; border-radius: var(--r-full); padding: 0 .4rem; min-width: 1.2rem; text-align: center;
   }
   .panel { display: flex; flex-direction: column; gap: 1rem; }
 </style>

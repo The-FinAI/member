@@ -157,7 +157,7 @@
   .hh-av { width: 3rem; height: 3rem; border-radius: 50%; background: var(--accent, #6a7cff); color: #fff; display: grid; place-items: center; font-weight: 700; }
   .hh h1 { margin: 0; font-size: 1.5rem; }
   .hh-roles { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; margin-top: .25rem; }
-  .pill { font-size: .72rem; padding: .1rem .5rem; border-radius: 999px; border: 1px solid var(--line, #ddd); color: var(--muted, #777); }
+  .pill { font-size: .72rem; padding: .1rem .5rem; border-radius: var(--r-full); border: 1px solid var(--line, #ddd); color: var(--muted, #777); }
   .pill.warn { border-color: #f0c674; color: #9a7b12; }
   .pill.info { border-color: #8aa0ff; color: #5566cc; }
   .hh-guide { font-size: .78rem; color: var(--accent, #6a7cff); text-decoration: none; }
@@ -165,7 +165,7 @@
   .h-dim { color: var(--muted, #999); }
   .h-clear { color: #2e7d4f; font-size: .95rem; }
   .h-list { display: flex; flex-direction: column; gap: .5rem; }
-  .h-item { display: flex; align-items: center; gap: .8rem; text-decoration: none; color: inherit; background: var(--card, #fff); border: 1px solid var(--line, #eee); border-left-width: 3px; border-radius: 10px; padding: .7rem .85rem; }
+  .h-item { display: flex; align-items: center; gap: .8rem; text-decoration: none; color: inherit; background: var(--card, #fff); border: 1px solid var(--line, #eee); border-left-width: 3px; border-radius: var(--r-md); padding: .7rem .85rem; }
   .h-item:hover { border-color: var(--accent, #6a7cff); }
   .tone-go { border-left-color: #4caf72; }
   .tone-warn { border-left-color: #e0a64a; }

@@ -143,7 +143,7 @@
 
 <style>
   .ck { display: flex; flex-direction: column; gap: .8rem; }
-  .ck-hero { display: flex; gap: 1.2rem; align-items: center; padding: 1.1rem 1.2rem; border: 1px solid var(--border); border-radius: 16px; background: var(--card); }
+  .ck-hero { display: flex; gap: 1.2rem; align-items: center; padding: 1.1rem 1.2rem; border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--card); }
   .ck-ring { --pct: 0; flex: none; width: 116px; height: 116px; border-radius: 50%;
     background: conic-gradient(var(--accent) calc(var(--pct) * 1%), color-mix(in srgb, var(--accent) 16%, var(--border)) 0);
     display: grid; place-items: center; }
@@ -154,19 +154,19 @@
   .ck-accrue { font-size: 1.05rem; font-weight: 700; color: var(--text); }
   .ck-accrue .muted { font-size: .82rem; font-weight: 400; }
   .ck-status { margin: 0; font-size: .88rem; color: var(--text-dim); }
-  .ck-cta { align-self: flex-start; padding: .55rem 1rem; border-radius: 9px; background: var(--accent); color: #fff; font-weight: 700; text-decoration: none; font-size: .9rem; }
+  .ck-cta { align-self: flex-start; padding: .55rem 1rem; border-radius: var(--r-sm); background: var(--accent); color: #fff; font-weight: 700; text-decoration: none; font-size: .9rem; }
   .ck-cta:hover { filter: brightness(1.06); }
   .ck-cta.ghost { background: transparent; color: var(--accent); border: 1px solid var(--border); }
   .ck-allgood { font-size: .85rem; color: var(--up, var(--accent)); }
   .ck-sec { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .ck-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: .5rem; margin-top: .4rem; }
-  .ck-card { display: flex; flex-direction: column; gap: .4rem; padding: .65rem .75rem; border: 1px solid var(--border); border-radius: 11px; background: var(--card); text-decoration: none; color: var(--text); }
+  .ck-card { display: flex; flex-direction: column; gap: .4rem; padding: .65rem .75rem; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--card); text-decoration: none; color: var(--text); }
   .ck-card:hover { border-color: var(--accent); transform: translateY(-1px); }
   .ck-card.hot { border-color: color-mix(in srgb, var(--up) 45%, transparent); background: color-mix(in srgb, var(--up) 7%, var(--card)); }
   .cc-top { display: flex; justify-content: space-between; gap: .5rem; align-items: center; }
   .cc-name { font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .cc-foot { display: flex; justify-content: space-between; gap: .5rem; font-size: .78rem; }
-  .ck-team { display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: .6rem .9rem; border: 1px dashed var(--border-2); border-radius: 11px; font-size: .85rem; color: var(--text-dim); text-decoration: none; }
+  .ck-team { display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: .6rem .9rem; border: 1px dashed var(--border-2); border-radius: var(--r-md); font-size: .85rem; color: var(--text-dim); text-decoration: none; }
   .ck-team:hover { border-color: var(--accent); }
   .ck-team .free { color: var(--accent); }
   .ck-team-go { font-size: .8rem; color: var(--muted); white-space: nowrap; }

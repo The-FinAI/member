@@ -176,7 +176,7 @@
 <style>
   .earn { display: flex; flex-direction: column; gap: .4rem; }
   .earn-steps { display: flex; align-items: stretch; gap: .4rem; flex-wrap: wrap; }
-  .earn-step { flex: 1; min-width: 180px; display: flex; gap: .55rem; padding: .65rem .7rem; border: 1px solid var(--border); border-radius: 10px; background: var(--card-2); }
+  .earn-step { flex: 1; min-width: 180px; display: flex; gap: .55rem; padding: .65rem .7rem; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--card-2); }
   .earn-step.done { border-color: color-mix(in srgb, var(--accent) 45%, transparent); background: var(--accent-soft); }
   .es-n { flex: none; width: 1.5rem; height: 1.5rem; border-radius: 50%; background: var(--muted); color: var(--card); font-weight: 700; font-size: .82rem; display: grid; place-items: center; }
   .earn-step.done .es-n { background: var(--accent); color: #fff; }

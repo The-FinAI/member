@@ -83,17 +83,17 @@
   .err { color: var(--down); font-size: .85rem; margin: 0; }
   .add { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
   .add input { flex: 1; min-width: 160px; }
-  .go { padding: .5rem .9rem; border-radius: 8px; border: 1px solid transparent; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+  .go { padding: .5rem .9rem; border-radius: var(--r-sm); border: 1px solid transparent; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
   .go:disabled { opacity: .55; }
   .tree { display: flex; flex-direction: column; gap: .6rem; }
-  .domain { border: 1px solid var(--border); border-radius: 11px; background: var(--card); padding: .7rem .9rem; }
+  .domain { border: 1px solid var(--border); border-radius: var(--r-md); background: var(--card); padding: .7rem .9rem; }
   .d-head { display: flex; align-items: center; gap: .5rem; }
   .d-name { font-weight: 600; color: var(--text); }
-  .d-ct { font-size: .72rem; color: var(--muted); background: var(--card-2); border-radius: 999px; padding: 0 .45rem; }
+  .d-ct { font-size: .72rem; color: var(--muted); background: var(--card-2); border-radius: var(--r-full); padding: 0 .45rem; }
   .x { margin-left: auto; border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: .8rem; }
   .x:hover { color: var(--down); filter: none; }
   .leaves { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .5rem; }
-  .leaf { display: inline-flex; align-items: center; gap: .3rem; padding: .2rem .25rem .2rem .6rem; border: 1px solid var(--border-2); border-radius: 999px; background: var(--card-2); font-size: .82rem; color: var(--text); }
+  .leaf { display: inline-flex; align-items: center; gap: .3rem; padding: .2rem .25rem .2rem .6rem; border: 1px solid var(--border-2); border-radius: var(--r-full); background: var(--card-2); font-size: .82rem; color: var(--text); }
   .lx { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: .72rem; padding: 0 .15rem; }
   .lx:hover { color: var(--down); filter: none; }
   .none { font-size: .8rem; }

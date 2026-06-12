@@ -169,21 +169,21 @@
   .ud-link:hover { text-decoration: underline; }
   .ud-err { font-size: .78rem; color: var(--down); margin: 0; }
   .ud-ok { font-size: .78rem; color: var(--accent); margin: 0; }
-  .ud-forge { display: flex; flex-direction: column; gap: .4rem; padding: .6rem .7rem; border: 1px solid var(--border); border-radius: 9px; background: var(--card-2); }
-  .ud-forge input { padding: .45rem .55rem; border-radius: 8px; border: 1px solid var(--border-2); background: var(--card); color: var(--text); font-size: .88rem; }
+  .ud-forge { display: flex; flex-direction: column; gap: .4rem; padding: .6rem .7rem; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--card-2); }
+  .ud-forge input { padding: .45rem .55rem; border-radius: var(--r-sm); border: 1px solid var(--border-2); background: var(--card); color: var(--text); font-size: .88rem; }
   .ud-forge-act { display: flex; gap: .5rem; }
-  .ud-go { padding: .45rem .8rem; border-radius: 8px; border: 1px solid transparent; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+  .ud-go { padding: .45rem .8rem; border-radius: var(--r-sm); border: 1px solid transparent; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
   .ud-go:disabled { opacity: .55; cursor: not-allowed; }
-  .ud-ghost { padding: .45rem .8rem; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text); font: inherit; cursor: pointer; }
+  .ud-ghost { padding: .45rem .8rem; border-radius: var(--r-sm); border: 1px solid var(--border); background: transparent; color: var(--text); font: inherit; cursor: pointer; }
   .ud-sec { display: flex; flex-direction: column; gap: .5rem; }
   .ud-h { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .ud-ct { color: var(--text-dim); }
   .ud-muted { font-size: .82rem; color: var(--muted); margin: 0; }
   .ud-officers { display: flex; flex-wrap: wrap; gap: .4rem; }
-  .ud-officer { display: inline-flex; align-items: center; gap: .4rem; padding: .3rem .6rem; border: 1px solid var(--border); border-radius: 999px; background: var(--card); text-decoration: none; color: inherit; }
+  .ud-officer { display: inline-flex; align-items: center; gap: .4rem; padding: .3rem .6rem; border: 1px solid var(--border); border-radius: var(--r-full); background: var(--card); text-decoration: none; color: inherit; }
   .ud-officer:hover { border-color: var(--accent); }
   .ud-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .3rem; }
-  .ud-row { display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: .45rem .6rem; border: 1px solid var(--border); border-radius: 9px; background: var(--card); text-decoration: none; color: inherit; }
+  .ud-row { display: flex; align-items: center; justify-content: space-between; gap: .6rem; padding: .45rem .6rem; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--card); text-decoration: none; color: inherit; }
   .ud-row:hover { border-color: var(--accent); }
   .ud-name { font-size: .88rem; color: var(--text); font-weight: 500; }
   .ud-sub { font-size: .8rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

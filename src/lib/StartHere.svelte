@@ -55,14 +55,14 @@
 {/if}
 
 <style>
-  .start { border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border)); background: var(--accent-soft); border-radius: 14px; padding: .9rem 1rem; display: flex; flex-direction: column; gap: .5rem; }
+  .start { border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border)); background: var(--accent-soft); border-radius: var(--r-lg); padding: .9rem 1rem; display: flex; flex-direction: column; gap: .5rem; }
   .start-head { display: flex; align-items: center; justify-content: space-between; }
   .start-title { font-weight: 700; font-size: 1rem; color: var(--text); }
   .start-x { background: transparent; border: 0; cursor: pointer; color: var(--muted); font-size: .9rem; }
   .start-x:hover { color: var(--text); }
   .start-sub { margin: 0; font-size: .82rem; }
   .start-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: .5rem; }
-  .step { display: flex; align-items: flex-start; gap: .6rem; padding: .65rem .75rem; background: var(--card); border: 1px solid var(--border); border-radius: 10px; text-decoration: none; color: var(--text); }
+  .step { display: flex; align-items: flex-start; gap: .6rem; padding: .65rem .75rem; background: var(--card); border: 1px solid var(--border); border-radius: var(--r-md); text-decoration: none; color: var(--text); }
   .step:hover { border-color: var(--accent); transform: translateY(-1px); }
   .step-n { flex: none; width: 1.5rem; height: 1.5rem; border-radius: 50%; background: var(--accent); color: #fff; font-weight: 700; font-size: .82rem; display: grid; place-items: center; }
   .step-tx { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }

@@ -77,10 +77,10 @@
   .grp { display: flex; flex-direction: column; gap: .4rem; }
   .sec { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .rows { display: flex; flex-direction: column; gap: .3rem; }
-  .row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .45rem .7rem; border: 1px solid var(--border); border-radius: 9px; background: var(--card); transition: border-color .3s; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .45rem .7rem; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--card); transition: border-color .3s; }
   .row.on { border-color: var(--up, var(--accent)); }
   .r-name { font-size: .88rem; color: var(--text); }
   .r-rate { display: inline-flex; align-items: center; gap: .4rem; }
-  .r-rate input { width: 4.5rem; padding: .35rem .5rem; border-radius: 7px; border: 1px solid var(--border-2); background: var(--card-2); color: var(--text); text-align: right; }
+  .r-rate input { width: 4.5rem; padding: .35rem .5rem; border-radius: var(--r-sm); border: 1px solid var(--border-2); background: var(--card-2); color: var(--text); text-align: right; }
   .r-unit { font-size: .76rem; color: var(--muted); }
 </style>

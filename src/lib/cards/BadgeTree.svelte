@@ -148,7 +148,7 @@
   .bt-nodes { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .5rem; }
   .bt-node {
     display: flex; flex-direction: column; gap: .35rem; padding: .55rem .65rem;
-    border: 1px solid var(--border); border-radius: 10px; background: var(--card-2);
+    border: 1px solid var(--border); border-radius: var(--r-md); background: var(--card-2);
   }
   .bt-node.has { border-color: color-mix(in srgb, var(--up) 40%, transparent); }
   .bt-node.staged { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
@@ -165,9 +165,9 @@
   .bt-pip:not(:disabled):hover { border-color: var(--accent); }
   .bt-bar { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; padding-top: .4rem; border-top: 1px solid var(--border); }
   .bt-go {
-    display: inline-flex; align-items: center; gap: .4rem; padding: .45rem .85rem; border-radius: 8px;
+    display: inline-flex; align-items: center; gap: .4rem; padding: .45rem .85rem; border-radius: var(--r-sm);
     border: 1px solid transparent; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer;
   }
   .bt-go:disabled { opacity: .55; cursor: not-allowed; }
-  .bt-ghost { padding: .45rem .8rem; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--text); font: inherit; cursor: pointer; }
+  .bt-ghost { padding: .45rem .8rem; border-radius: var(--r-sm); border: 1px solid var(--border); background: transparent; color: var(--text); font: inherit; cursor: pointer; }
 </style>

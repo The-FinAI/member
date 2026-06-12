@@ -71,7 +71,7 @@
   .sec { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .ct { color: var(--text-dim); }
   .rlist { display: flex; flex-direction: column; gap: .4rem; margin-top: .4rem; }
-  .r { display: flex; align-items: center; gap: .8rem; padding: .55rem .8rem; border: 1px solid var(--border); border-radius: 10px; background: var(--card); }
+  .r { display: flex; align-items: center; gap: .8rem; padding: .55rem .8rem; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--card); }
   .r-main { display: flex; flex-direction: column; gap: .1rem; flex: 1; min-width: 0; }
   .r-name { font-weight: 600; color: var(--text); }
   .r-sub { font-size: .78rem; color: var(--muted); }

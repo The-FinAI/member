@@ -81,13 +81,13 @@
   .err { color: var(--down); font-size: .85rem; margin: 0; }
   .empty { display: flex; justify-content: center; padding: 1.4rem; }
   .list { display: flex; flex-direction: column; gap: .5rem; }
-  .app { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .7rem .9rem; border: 1px solid var(--border); border-radius: 11px; background: var(--card); }
+  .app { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: .7rem .9rem; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--card); }
   .app-main { display: flex; flex-direction: column; gap: .15rem; min-width: 0; }
   .app-name { font-weight: 600; color: var(--text); text-decoration: none; }
   .app-name:hover { color: var(--accent); }
   .app-sub { font-size: .8rem; color: var(--muted); }
   .app-act { display: flex; gap: .4rem; flex: none; }
-  .btn { padding: .4rem .8rem; border-radius: 8px; border: 1px solid transparent; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+  .btn { padding: .4rem .8rem; border-radius: var(--r-sm); border: 1px solid transparent; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
   .btn:disabled { opacity: .55; cursor: not-allowed; }
   .btn.ghost { background: transparent; color: var(--text); border-color: var(--border-2); }
   .btn.ghost:hover { background: var(--card-2); }

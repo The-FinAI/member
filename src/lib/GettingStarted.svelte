@@ -88,7 +88,7 @@
   .onboard { border: 1px solid var(--accent-soft); }
   .dismiss { background: transparent; border: none; color: var(--muted); font-size: .78rem; cursor: pointer; padding: .2rem; }
   .dismiss:hover { color: var(--text); }
-  .progress { height: 5px; background: var(--elevate); border-radius: 999px; overflow: hidden; margin: .7rem 0 .2rem; }
+  .progress { height: 5px; background: var(--elevate); border-radius: var(--r-full); overflow: hidden; margin: .7rem 0 .2rem; }
   .progress span { display: block; height: 100%; background: var(--accent); transition: width .4s ease; }
   ol.steps { list-style: none; margin: .4rem 0 0; padding: 0; display: flex; flex-direction: column; }
   ol.steps li { display: flex; align-items: center; gap: .75rem; padding: .65rem .15rem; border-top: 1px solid var(--border); }

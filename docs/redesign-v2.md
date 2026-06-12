@@ -369,8 +369,9 @@ Each step is a deployable commit batch; M0–M1 carry zero regression risk.
 ## 10. What v2 deliberately does *not* do
 
 - **No domain-model change.** Six nouns, two logics, quiet STR — all PRD-final.
-- **No visual redesign.** Direction C tokens, type, motion stay; every survey
-  and tester rated them the strongest asset.
+- ~~No visual redesign.~~ **Overruled (2026-06-12):** the visual layer was
+  redesigned from scratch as “The Daily Ledger” — see `design-system.md`. The
+  grammar rules (§3) and IA (§4) here are unchanged and still pending M2–M5.
 - **No prose editor.** The writing stays in Overleaf et al. (decided earlier);
   Draft & links + honest copy is the answer.
 - **No member-facing buildout** beyond first-person copy and request-a-change —

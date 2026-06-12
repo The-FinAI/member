@@ -162,7 +162,7 @@
   .f-field { display: flex; flex-direction: column; gap: .25rem; font-size: .76rem; color: var(--muted); }
   .f-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
   .f-field input, .f-field select {
-    padding: .45rem .55rem; border-radius: 8px; border: 1px solid var(--border-2);
+    padding: .45rem .55rem; border-radius: var(--r-sm); border: 1px solid var(--border-2);
     background: var(--card-2); color: var(--text); font-size: .88rem;
   }
   .f-actions { display: flex; justify-content: flex-end; gap: .5rem; margin-top: .3rem; }

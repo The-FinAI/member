@@ -129,74 +129,78 @@
 </script>
 
 <div class="app-shell">
-  <aside class="sidebar">
-    <a href="/" class="side-brand">
-      <img src="/logo.png" alt="The Fin AI" class="brand-logo" />
-      <span>The&nbsp;Fin&nbsp;AI <span class="muted" style="font-weight:500;">· Community</span></span>
-    </a>
+  <!-- THE MASTHEAD — the app is typeset like the record it keeps.
+       Row 1: dateline (date · your hats · utilities). Row 2: the title.
+       Row 3: sections, ruled thick-over-thin, sticky. -->
+  <header class="masthead">
+    <div class="mast-inner">
+      <div class="dateline">
+        <span class="dl-date">{new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
+        {#if $member}
+          <span class="dl-hats">
+            {$member.full_name}{#if $officerUnits.length} · {$officerUnits.map((u) => u.name).join(' · ')}{/if}
+          </span>
+        {/if}
+        <span class="dl-utils">
+          <LangSwitcher />
+          {#if $session && $member}<NotificationInbox />{/if}
+          <button class="icon-btn" onclick={toggleTheme} title={$t('Toggle theme')} aria-label={$t('Toggle theme')}>
+            {$theme === 'dark' ? '☀' : '☾'}
+          </button>
+        </span>
+      </div>
+
+      <div class="mast-title">
+        <img src="/logo.png" alt="" class="brand-logo" />
+        <a href="/" class="mast-brand">The Fin AI <span class="mb-sub">{$t('Community')} · {$t('The Living Record')}</span></a>
+        {#if $session}
+          <span class="mast-right">
+            <a href="/wallet" class="mast-wallet" title={$t('Open your wallet')}>
+              ◈ {(netValue ?? 0).toLocaleString()} <span class="mw-unit">STR</span>
+            </a>
+            <div class="usermenu">
+              <button class="avatar-btn" onclick={() => (menuOpen = !menuOpen)} title={$t('Account')} aria-haspopup="true" aria-expanded={menuOpen}>
+                {initials($member?.full_name)}
+              </button>
+              {#if menuOpen}
+                <div class="menu-backdrop" onclick={() => (menuOpen = false)} role="presentation"></div>
+                <div class="menu">
+                  <div class="menu-head">
+                    <div class="mh-name">{$member?.full_name ?? 'Account'}</div>
+                    <div class="mh-mail">{$session.user.email}</div>
+                  </div>
+                  <div class="menu-sep"></div>
+                  <button class="menu-item" onclick={() => go($member ? `/members/${$member.id}` : '/profile')}><span class="mi-ico">✎</span> {$t('My profile')}</button>
+                  <button class="menu-item" onclick={() => go('/wallet')}><span class="mi-ico">◈</span> {$t('Wallet')}</button>
+                  <div class="menu-sep"></div>
+                  <button class="menu-item" onclick={signOut}><span class="mi-ico">⏻</span> {$t('Sign out')}</button>
+                </div>
+              {/if}
+            </div>
+          </span>
+        {/if}
+      </div>
+    </div>
 
     {#if $session}
-      <!-- IA = the PRD surfaces: Home · Projects · People · My · Directory · Settings (+ Guide).
-           The officer Console is retired from nav — matching lives on People, project ops on
-           Projects. The /officer route stays reachable (deprecated), nothing deleted. -->
-      <nav class="side-nav">
-        <a href="/" class="side-link" class:active={$page.url.pathname === '/'}>{$t('Home')}</a>
-
-        <div class="side-section">{$t('Work')}</div>
-        <a href="/my" class="side-link" class:active={isActive('/my', $page.url.pathname)}>{$t('My tasks')}</a>
-        <a href="/projects" class="side-link" class:active={isActive('/projects', $page.url.pathname)}>{$t('Projects')}</a>
-        <a href="/people" class="side-link" class:active={isActive('/people', $page.url.pathname)}>{$t('People')}</a>
-
-        <div class="side-section">{$t('More')}</div>
-        <a href="/community" class="side-link" class:active={isActive('/community', $page.url.pathname)}>{$t('Directory')}</a>
-        <a href="/guide" class="side-link" class:active={isActive('/guide', $page.url.pathname)}>{$t('Guide')}</a>
-        {#if canAdmin || canApprove}
-          <a href="/admin" class="side-link" class:active={isActive('/admin', $page.url.pathname)}>{$t('Settings')}</a>
-        {/if}
-      </nav>
-
-      <!-- pinned footer: the member's own corner — net value (→ Wallet) + avatar (→ Profile) -->
-      <div class="side-user">
-        <a href="/wallet" class="su-wallet" class:active={isActive('/wallet', $page.url.pathname)} title={$t('Open your wallet')}>
-          <span class="su-amt">{(netValue ?? 0).toLocaleString()}</span>
-          <span class="su-unit">STR</span>
-          <span class="su-tag">{$t('Your STR')}</span>
-        </a>
-        <div class="usermenu">
-          <button class="su-id" onclick={() => (menuOpen = !menuOpen)} title={$t('Account')} aria-haspopup="true" aria-expanded={menuOpen}>
-            <span class="su-ava">{initials($member?.full_name)}</span>
-            <span class="su-meta">
-              <span class="su-name">{$member?.full_name ?? 'Account'}</span>
-              <span class="su-mail">{$session.user.email}</span>
-            </span>
-          </button>
-          {#if menuOpen}
-            <div class="menu-backdrop" onclick={() => (menuOpen = false)} role="presentation"></div>
-            <div class="menu menu-up">
-              <button class="menu-item" onclick={() => go('/')}><span class="mi-ico">◷</span> {$t('Overview')}</button>
-              <button class="menu-item" onclick={() => go($member ? `/members/${$member.id}` : '/profile')}><span class="mi-ico">⚙</span> {$t('My profile')}</button>
-              <div class="menu-sep"></div>
-              <button class="menu-item" onclick={signOut}><span class="mi-ico">⏻</span> {$t('Sign out')}</button>
-            </div>
+      <nav class="sections">
+        <div class="sections-inner">
+          <a href="/" class="sec-link" class:active={$page.url.pathname === '/'}>{$t('Front page')}</a>
+          <a href="/my" class="sec-link" class:active={isActive('/my', $page.url.pathname)}>{$t('My tasks')}</a>
+          <a href="/projects" class="sec-link" class:active={isActive('/projects', $page.url.pathname)}>{$t('Projects')}</a>
+          <a href="/people" class="sec-link" class:active={isActive('/people', $page.url.pathname)}>{$t('People')}</a>
+          <a href="/community" class="sec-link" class:active={isActive('/community', $page.url.pathname)}>{$t('Directory')}</a>
+          <span class="sec-spacer"></span>
+          <a href="/guide" class="sec-link" class:active={isActive('/guide', $page.url.pathname)}>{$t('Guide')}</a>
+          {#if canAdmin || canApprove}
+            <a href="/admin" class="sec-link" class:active={isActive('/admin', $page.url.pathname)}>{$t('Settings')}</a>
           {/if}
         </div>
-      </div>
+      </nav>
     {/if}
-  </aside>
+  </header>
 
   <div class="main-col">
-    <header class="topbar">
-      <div class="container row" style="justify-content: flex-end; padding-block: .55rem; gap: 1rem;">
-        <LangSwitcher />
-
-        {#if $session && $member}<NotificationInbox />{/if}
-
-        <button class="icon-btn" onclick={toggleTheme} title={$t('Toggle theme')} aria-label={$t('Toggle theme')}>
-          {$theme === 'dark' ? '☀' : '☾'}
-        </button>
-      </div>
-    </header>
-
     <main class="container">
       {#if $session && $member}<LaunchBanner />{/if}
       {#if !supabaseConfigured}

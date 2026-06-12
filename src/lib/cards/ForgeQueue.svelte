@@ -317,8 +317,8 @@
   .fq-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .25rem; }
   .fq-detail-line { font-size: .78rem; color: var(--muted); }
   .fq-detail { display: flex; flex-wrap: wrap; gap: .25rem; }
-  .fq-chip { font-size: .72rem; padding: .1rem .4rem; border: 1px solid var(--border-2); border-radius: 6px; color: var(--text-dim); }
-  .fq-row { display: flex; align-items: flex-start; gap: .7rem; padding: .6rem .75rem; border: 1px solid var(--border); border-radius: 9px; background: var(--card); }
+  .fq-chip { font-size: .72rem; padding: .1rem .4rem; border: 1px solid var(--border-2); border-radius: var(--r-sm); color: var(--text-dim); }
+  .fq-row { display: flex; align-items: flex-start; gap: .7rem; padding: .6rem .75rem; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--card); }
   .fq-sum { flex: 1; min-width: 0; font-size: .88rem; color: var(--text); }
   .fq-mono { font-family: var(--font-mono); color: var(--info); }
   .fq-fee { font-family: var(--font-mono); font-size: .76rem; color: var(--down); flex: none; }

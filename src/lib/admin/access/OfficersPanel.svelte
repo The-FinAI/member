@@ -202,24 +202,24 @@
   .forge-form { display: flex; flex-wrap: wrap; gap: .6rem; align-items: flex-end; }
   .forge-form label { display: flex; flex-direction: column; gap: .2rem; flex: 1; min-width: 140px; }
   .forge-form label span { font-size: .75rem; color: var(--muted); }
-  .go { padding: .5rem .9rem; border-radius: 8px; border: 1px solid transparent; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+  .go { padding: .5rem .9rem; border-radius: var(--r-sm); border: 1px solid transparent; background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
   .go:disabled { opacity: .55; cursor: not-allowed; }
   .pending { font-size: .8rem; color: var(--muted); display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
-  .pchip { display: inline-flex; align-items: center; gap: .35rem; border: 1px dashed var(--border-2); border-radius: 999px; padding: .15rem .5rem; }
+  .pchip { display: inline-flex; align-items: center; gap: .35rem; border: 1px dashed var(--border-2); border-radius: var(--r-full); padding: .15rem .5rem; }
   .pname { color: var(--text); }
   .pmail { color: var(--muted); font-size: .74rem; }
   .pedit, .pok, .pno { background: transparent; border: 0; cursor: pointer; font: inherit; color: var(--muted); padding: 0 .15rem; }
   .pedit:hover, .pok:hover { color: var(--accent); }
   .pno:hover { color: var(--down); }
-  .pmail-input { padding: .15rem .35rem; border-radius: 6px; border: 1px solid var(--border-2); background: var(--card-2); color: var(--text); font-size: .78rem; min-width: 16rem; }
-  .pchip { padding: .1rem .5rem; border: 1px dashed var(--border-2); border-radius: 999px; color: var(--text-dim); }
+  .pmail-input { padding: .15rem .35rem; border-radius: var(--r-sm); border: 1px solid var(--border-2); background: var(--card-2); color: var(--text); font-size: .78rem; min-width: 16rem; }
+  .pchip { padding: .1rem .5rem; border: 1px dashed var(--border-2); border-radius: var(--r-full); color: var(--text-dim); }
   .ulist { display: flex; flex-direction: column; gap: .5rem; margin-top: .4rem; }
-  .unit { border: 1px solid var(--border); border-radius: 11px; background: var(--card); padding: .7rem .9rem; display: flex; flex-direction: column; gap: .5rem; }
+  .unit { border: 1px solid var(--border); border-radius: var(--r-md); background: var(--card); padding: .7rem .9rem; display: flex; flex-direction: column; gap: .5rem; }
   .u-head { display: flex; align-items: baseline; gap: .5rem; }
   .u-name { font-weight: 600; color: var(--text); }
   .u-code { font-size: .76rem; color: var(--muted); }
   .u-officers { display: flex; flex-wrap: wrap; gap: .4rem; }
-  .ochip { display: inline-flex; align-items: center; gap: .35rem; padding: .2rem .25rem .2rem .6rem; border: 1px solid var(--border); border-radius: 999px; background: var(--card-2); font-size: .82rem; }
+  .ochip { display: inline-flex; align-items: center; gap: .35rem; padding: .2rem .25rem .2rem .6rem; border: 1px solid var(--border); border-radius: var(--r-full); background: var(--card-2); font-size: .82rem; }
   .ochip a { color: var(--text); text-decoration: none; font-weight: 500; }
   .ochip a:hover { color: var(--accent); }
   .orole { color: var(--warn, var(--accent)); font-size: .72rem; }
@@ -227,8 +227,8 @@
   .x:hover { color: var(--down); filter: none; }
   .none { font-size: .8rem; }
   .u-add { display: flex; flex-wrap: wrap; gap: .4rem; }
-  .u-add select { padding: .35rem .5rem; border-radius: 8px; border: 1px solid var(--border-2); background: var(--card); color: var(--text); font-size: .85rem; }
-  .add { padding: .35rem .7rem; border-radius: 8px; border: 1px solid var(--border-2); background: transparent; color: var(--accent); font: inherit; font-size: .85rem; cursor: pointer; }
+  .u-add select { padding: .35rem .5rem; border-radius: var(--r-sm); border: 1px solid var(--border-2); background: var(--card); color: var(--text); font-size: .85rem; }
+  .add { padding: .35rem .7rem; border-radius: var(--r-sm); border: 1px solid var(--border-2); background: transparent; color: var(--accent); font: inherit; font-size: .85rem; cursor: pointer; }
   .add:disabled { opacity: .5; cursor: not-allowed; }
   .add:hover:not(:disabled) { border-color: var(--accent); }
   .newwg { display: flex; flex-direction: column; gap: .6rem; }

@@ -236,23 +236,23 @@
   .pd-subtitle { margin: 0; font-size: .85rem; color: var(--text-dim); }
   .pd-meta { display: flex; gap: .5rem; align-items: flex-start; }
   .pd-meta-chips { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
-  .pd-chip { display: inline-flex; align-items: center; gap: .3rem; font-size: .76rem; color: var(--text-dim); background: var(--card-2); border: 1px solid var(--border); border-radius: 999px; padding: .15rem .55rem; }
+  .pd-chip { display: inline-flex; align-items: center; gap: .3rem; font-size: .76rem; color: var(--text-dim); background: var(--card-2); border: 1px solid var(--border); border-radius: var(--r-full); padding: .15rem .55rem; }
   .pd-chip.warn { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 35%, transparent); }
   .pd-chip-seat { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 30%, transparent); background: var(--accent-soft); }
   .pd-chip.neg { color: var(--down); border-color: color-mix(in srgb, var(--down) 35%, transparent); }
-  .pd-stats { display: flex; flex-wrap: wrap; gap: .3rem 1.4rem; padding: .7rem .9rem; border: 1px solid var(--border); border-radius: 12px; background: var(--card); }
+  .pd-stats { display: flex; flex-wrap: wrap; gap: .3rem 1.4rem; padding: .7rem .9rem; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--card); }
   .pd-stat { display: flex; flex-direction: column; gap: .1rem; }
   .pd-v { font-weight: 700; font-size: 1rem; color: var(--text); }
   .pd-l { font-size: .68rem; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
   .pd-section { display: flex; flex-direction: column; gap: .45rem; }
   .pd-h { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
-  .pd-btn { align-self: flex-start; display: inline-flex; align-items: center; gap: .3rem; padding: .5rem .9rem; background: var(--accent); color: #fff; border: 1px solid transparent; border-radius: 8px; text-decoration: none; font-weight: 600; }
+  .pd-btn { align-self: flex-start; display: inline-flex; align-items: center; gap: .3rem; padding: .5rem .9rem; background: var(--accent); color: #fff; border: 1px solid transparent; border-radius: var(--r-sm); text-decoration: none; font-weight: 600; }
   .pd-btn.ghost { background: transparent; color: var(--accent); border-color: var(--border); }
-  .pd-pipe { border: 1px solid var(--border); border-radius: 12px; background: var(--card); padding: .8rem .9rem; display: flex; flex-direction: column; gap: .55rem; }
+  .pd-pipe { border: 1px solid var(--border); border-radius: var(--r-md); background: var(--card); padding: .8rem .9rem; display: flex; flex-direction: column; gap: .55rem; }
   .pp-head { display: flex; align-items: baseline; justify-content: space-between; gap: .6rem; flex-wrap: wrap; }
   .pp-payout { font-size: .82rem; color: var(--text-dim); }
   .pp-track { display: flex; gap: .4rem; flex-wrap: wrap; }
-  .pp-step { flex: 1; min-width: 130px; display: flex; gap: .45rem; align-items: flex-start; padding: .4rem .5rem; border-radius: 8px; opacity: .55; }
+  .pp-step { flex: 1; min-width: 130px; display: flex; gap: .45rem; align-items: flex-start; padding: .4rem .5rem; border-radius: var(--r-sm); opacity: .55; }
   .pp-step.on { opacity: 1; background: var(--accent-soft); }
   .pp-step.done { opacity: .85; }
   .pp-dot { flex: none; width: .7rem; height: .7rem; border-radius: 50%; background: var(--border-2); margin-top: .2rem; }
@@ -264,7 +264,7 @@
   .pp-note { margin: 0; font-size: .8rem; }
   .pd-postneed-toggle { align-self: flex-start; background: transparent; border: 0; padding: 0; cursor: pointer; font: inherit; color: var(--accent); font-weight: 600; }
   .pd-postneed-toggle:hover { text-decoration: underline; }
-  .pd-release { padding: .5rem .9rem; border-radius: 8px; border: 1px solid var(--border); background: transparent; color: var(--down); font: inherit; font-weight: 600; cursor: pointer; }
+  .pd-release { padding: .5rem .9rem; border-radius: var(--r-sm); border: 1px solid var(--border); background: transparent; color: var(--down); font: inherit; font-weight: 600; cursor: pointer; }
   .pd-release:hover { border-color: var(--down); }
   .pd-release:disabled { opacity: .55; cursor: not-allowed; }
 </style>

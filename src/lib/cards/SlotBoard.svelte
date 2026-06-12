@@ -196,7 +196,7 @@
   .sb-msg { font-size: .85rem; color: var(--accent); }
   .sb-sec-h { font-size: .74rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0 0 .6rem; }
   .sb-claims { display: flex; flex-direction: column; gap: .4rem; }
-  .claim-row { display: flex; align-items: center; gap: .6rem; padding: .5rem .7rem; border: 1px solid var(--border); border-radius: 9px; background: var(--card); }
+  .claim-row { display: flex; align-items: center; gap: .6rem; padding: .5rem .7rem; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--card); }
   .claim-name { font-weight: 500; color: var(--text); flex: 1; min-width: 0; }
   .claim-row .chip.toggle { flex: none; }
   .sb-projects { display: flex; flex-direction: column; gap: .6rem; }

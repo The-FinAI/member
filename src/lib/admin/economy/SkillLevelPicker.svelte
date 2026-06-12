@@ -69,7 +69,7 @@
   .domain { display: flex; flex-direction: column; gap: .3rem; }
   .dh { font-size: .68rem; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
   .rows { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: .3rem; }
-  .row { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .3rem .5rem; border: 1px solid var(--border); border-radius: 8px; background: var(--card); }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .3rem .5rem; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--card); }
   .row.set { border-color: var(--accent); }
   .sn { font-size: .82rem; color: var(--text); min-width: 0; }
   .ranks { display: inline-flex; gap: .15rem; flex: none; }

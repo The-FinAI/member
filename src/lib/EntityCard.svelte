@@ -64,7 +64,7 @@
   .ecard {
     position: relative;
     display: flex; flex-direction: column; gap: .4rem; text-align: left;
-    background: var(--ec-tint, var(--card)); border: 1px solid var(--border); border-radius: 12px;
+    background: var(--ec-tint, var(--card)); border: 1px solid var(--border); border-radius: var(--r-md);
     padding: .8rem .9rem; cursor: pointer; width: 100%;
     color: var(--text); font: inherit; text-decoration: none;
     transition: border-color .12s, box-shadow .12s, transform .12s;
@@ -78,7 +78,7 @@
     font-size: 1.2rem; font-weight: 700; line-height: 1;
     color: var(--muted); background: var(--card-2);
     border-left: 1px solid var(--border);
-    border-radius: 0 12px 12px 0;
+    border-radius: 0 var(--r-lg) var(--r-lg) 0;
     transition: background .12s, color .12s;
   }
   .ecard:hover .ec-go, .ecard:focus-visible .ec-go { background: var(--accent-soft); color: var(--accent); }
@@ -92,7 +92,7 @@
   }
   .ec-status {
     font-size: .66rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
-    padding: .1rem .4rem; border-radius: 999px;
+    padding: .1rem .4rem; border-radius: var(--r-full);
   }
   .ec-status.dim { color: var(--muted); background: var(--card-2); }
   .ec-status.pos { color: var(--up); background: color-mix(in srgb, var(--up) 14%, transparent); }

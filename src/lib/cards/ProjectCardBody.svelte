@@ -469,7 +469,7 @@
   .pcb-ok { font-size: .82rem; color: var(--accent); margin: 0 0 .5rem; }
   .pcb-done {
     display: inline-flex; align-items: center; gap: .35rem; padding: .4rem .7rem;
-    border-radius: 8px; border: 1px solid var(--up); background: color-mix(in srgb, var(--up) 12%, transparent);
+    border-radius: var(--r-sm); border: 1px solid var(--up); background: color-mix(in srgb, var(--up) 12%, transparent);
     color: var(--up); font: inherit; font-weight: 600; font-size: .82rem; cursor: pointer;
   }
   .pcb-done:disabled { opacity: .55; cursor: not-allowed; }
@@ -481,7 +481,7 @@
   .pcb-steps.dim { opacity: .5; }
   .pcb-step {
     display: inline-flex; align-items: center; gap: .35rem; padding: .3rem .55rem;
-    border: 1px solid var(--border); border-radius: 999px; background: var(--card);
+    border: 1px solid var(--border); border-radius: var(--r-full); background: var(--card);
     color: var(--text-dim); font: inherit; font-size: .8rem; cursor: pointer;
   }
   .pcb-step:disabled { cursor: default; }
@@ -500,7 +500,7 @@
   .pcb-settle {
     display: flex; flex-wrap: wrap; align-items: center; gap: .5rem;
     padding: .6rem .7rem; border: 1px solid color-mix(in srgb, var(--up) 30%, transparent);
-    border-radius: 10px; background: color-mix(in srgb, var(--up) 8%, transparent); margin-top: .3rem;
+    border-radius: var(--r-md); background: color-mix(in srgb, var(--up) 8%, transparent); margin-top: .3rem;
   }
   .pcb-settle-h { font-weight: 600; color: var(--text); }
   .pcb-basic { display: flex; flex-direction: column; gap: .6rem; }
@@ -512,28 +512,28 @@
   .pcb-link:hover { text-decoration: underline; }
   .pcb-muted { font-size: .82rem; color: var(--muted); margin: 0; }
   .pcb-mst { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .35rem; }
-  .pcb-mst li { display: flex; align-items: center; gap: .6rem; padding: .4rem .6rem; border: 1px solid var(--border); border-radius: 8px; background: var(--card); }
+  .pcb-mst li { display: flex; align-items: center; gap: .6rem; padding: .4rem .6rem; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--card); }
   .mst-item { flex: 1; font-size: .86rem; color: var(--text); font-weight: 500; }
   .mst-val { font-size: .76rem; color: var(--muted); font-variant-numeric: tabular-nums; }
   .pcb-mst-claim { display: flex; gap: .4rem; align-items: center; margin-top: .2rem; }
-  .pcb-mst-claim select { flex: 1; padding: .4rem .55rem; border-radius: 8px; border: 1px solid var(--border-2); background: var(--card-2); color: var(--text); font-size: .85rem; }
+  .pcb-mst-claim select { flex: 1; padding: .4rem .55rem; border-radius: var(--r-sm); border: 1px solid var(--border-2); background: var(--card-2); color: var(--text); font-size: .85rem; }
 
   .pcb-form { display: flex; flex-direction: column; gap: .5rem; padding: .2rem 0 .2rem; }
   .pcb-row { display: flex; gap: .5rem; flex-wrap: wrap; }
   .pcb-field { display: flex; flex-direction: column; gap: .25rem; font-size: .76rem; color: var(--muted); }
   .pcb-field input, .pcb-field select {
-    padding: .45rem .55rem; border-radius: 8px; border: 1px solid var(--border-2);
+    padding: .45rem .55rem; border-radius: var(--r-sm); border: 1px solid var(--border-2);
     background: var(--card-2); color: var(--text); font-size: .88rem; font-family: inherit;
   }
   .pcb-go {
-    align-self: flex-start; padding: .45rem .85rem; border-radius: 8px; border: 1px solid transparent;
+    align-self: flex-start; padding: .45rem .85rem; border-radius: var(--r-sm); border: 1px solid transparent;
     background: var(--accent); color: #fff; font: inherit; font-weight: 600; cursor: pointer;
     display: inline-flex; align-items: center; gap: .4rem;
   }
   .pcb-go:disabled { opacity: .55; cursor: not-allowed; }
 
   .pcb-links { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .35rem; }
-  .pcb-link-row { display: flex; align-items: center; gap: .55rem; padding: .4rem .5rem; border: 1px solid var(--border); border-radius: 9px; background: var(--card); }
+  .pcb-link-row { display: flex; align-items: center; gap: .55rem; padding: .4rem .5rem; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--card); }
   .pcb-link-row.past { opacity: .6; }
   .pcb-kind { flex: none; font-size: .95rem; }
   .pcb-link-main { display: flex; flex-direction: column; gap: .05rem; text-decoration: none; color: inherit; min-width: 0; flex: 1; }
@@ -541,14 +541,14 @@
   .pcb-link-title:hover { color: var(--accent); }
   .pcb-recur {
     margin-left: .4rem; font-size: .64rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
-    color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: .05rem .4rem; vertical-align: middle;
+    color: var(--accent); background: var(--accent-soft); border-radius: var(--r-full); padding: .05rem .4rem; vertical-align: middle;
   }
   .pcb-link-host { font-size: .72rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .pcb-x { flex: none; background: transparent; border: 0; color: var(--muted); cursor: pointer; font-size: .85rem; padding: .2rem .35rem; }
   .pcb-x:hover { color: var(--down); }
 
   .pcb-note { display: flex; gap: .4rem; }
-  .pcb-note input { flex: 1; padding: .45rem .55rem; border-radius: 8px; border: 1px solid var(--border-2); background: var(--card-2); color: var(--text); font-size: .86rem; }
+  .pcb-note input { flex: 1; padding: .45rem .55rem; border-radius: var(--r-sm); border: 1px solid var(--border-2); background: var(--card-2); color: var(--text); font-size: .86rem; }
   .pcb-timeline { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .5rem; max-height: 240px; overflow-y: auto; }
   .pcb-ev { display: flex; gap: .55rem; }
   .pcb-dot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); margin-top: .42rem; }

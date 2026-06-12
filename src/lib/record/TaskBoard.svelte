@@ -205,10 +205,10 @@
   .tb-table th { text-align: left; font-weight: 500; color: var(--muted, #999); padding: .25rem .4rem; border-bottom: 1px solid var(--line, #eee); font-size: .78rem; }
   .tb-table td { padding: .15rem .4rem; border-bottom: 1px solid var(--line, #f3f3f3); vertical-align: middle; }
   tr.busy { opacity: .55; }
-  .cell { width: 100%; border: 1px solid transparent; background: transparent; padding: .25rem .35rem; border-radius: 6px; font: inherit; color: inherit; }
+  .cell { width: 100%; border: 1px solid transparent; background: transparent; padding: .25rem .35rem; border-radius: var(--r-sm); font: inherit; color: inherit; }
   .cell:hover { border-color: var(--line, #e6e6e6); }
   .cell:focus { border-color: var(--accent, #6a7cff); outline: none; background: var(--card, #fff); }
-  .pill { font-size: .76rem; padding: .1rem .5rem; border-radius: 999px; border: 1px solid var(--line, #ddd); }
+  .pill { font-size: .76rem; padding: .1rem .5rem; border-radius: var(--r-full); border: 1px solid var(--line, #ddd); }
   .st-done, select.st-done { color: #2e7d4f; }
   .st-doing, select.st-doing { color: #b8860b; }
   .st-confirmed { color: #2e7d4f; }
@@ -216,9 +216,9 @@
   .tb-x { border: none; background: none; cursor: pointer; color: var(--muted, #bbb); }
   .tb-x:hover { color: var(--neg, #c0392b); }
   .tb-add { display: flex; gap: .4rem; margin: .35rem 0; }
-  .tb-addrow { border: 1px dashed var(--line, #ddd); background: none; border-radius: 8px; padding: .35rem .6rem; cursor: pointer; color: var(--muted, #777); font-size: .85rem; margin-top: .35rem; }
+  .tb-addrow { border: 1px dashed var(--line, #ddd); background: none; border-radius: var(--r-sm); padding: .35rem .6rem; cursor: pointer; color: var(--muted, #777); font-size: .85rem; margin-top: .35rem; }
   .tb-addrow:hover { border-color: var(--accent, #6a7cff); color: var(--accent, #6a7cff); }
-  .tb-go { border: none; background: var(--accent, #6a7cff); color: #fff; border-radius: 7px; padding: .35rem .8rem; cursor: pointer; }
+  .tb-go { border: none; background: var(--accent, #6a7cff); color: #fff; border-radius: var(--r-sm); padding: .35rem .8rem; cursor: pointer; }
   .tb-go:disabled { opacity: .5; cursor: default; }
-  .tb-ghost { border: 1px solid var(--line, #ddd); background: none; border-radius: 7px; padding: .35rem .7rem; cursor: pointer; }
+  .tb-ghost { border: 1px solid var(--line, #ddd); background: none; border-radius: var(--r-sm); padding: .35rem .7rem; cursor: pointer; }
 </style>

@@ -123,18 +123,18 @@
   .mt-err { color: var(--neg, #c0392b); font-size: .82rem; }
   .mt-dim { color: var(--muted, #888); }
   .mt-lanes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
-  .lane { background: var(--card-bg, #fafafa); border: 1px solid var(--line, #eee); border-radius: 12px; padding: .6rem; }
+  .lane { background: var(--card-bg, #fafafa); border: 1px solid var(--line, #eee); border-radius: var(--r-md); padding: .6rem; }
   .lane-h { font-weight: 600; font-size: .85rem; color: var(--muted, #666); margin-bottom: .5rem; display: flex; gap: .4rem; align-items: center; }
-  .lane-n { background: var(--line, #e8e8e8); border-radius: 999px; padding: 0 .45rem; font-size: .72rem; }
+  .lane-n { background: var(--line, #e8e8e8); border-radius: var(--r-full); padding: 0 .45rem; font-size: .72rem; }
   .lane-empty { color: var(--muted, #ccc); text-align: center; margin: .5rem 0; }
-  .card { display: flex; gap: .4rem; background: var(--card, #fff); border: 1px solid var(--line, #eee); border-radius: 9px; padding: .45rem .55rem; margin-bottom: .45rem; align-items: flex-start; }
+  .card { display: flex; gap: .4rem; background: var(--card, #fff); border: 1px solid var(--line, #eee); border-radius: var(--r-sm); padding: .45rem .55rem; margin-bottom: .45rem; align-items: flex-start; }
   .card.busy { opacity: .55; }
   .card-main { flex: 1; text-align: left; background: none; border: none; cursor: pointer; padding: 0; display: flex; flex-direction: column; gap: .1rem; color: inherit; }
   .card-proj { font-size: .72rem; color: var(--muted, #999); }
   .card-name { font-size: .9rem; }
   .card-note { font-size: .76rem; color: var(--muted, #aaa); }
   .card-acts { display: flex; gap: .2rem; }
-  .chip { border: 1px solid var(--line, #ddd); background: none; border-radius: 6px; width: 1.5rem; height: 1.5rem; cursor: pointer; font-size: .8rem; line-height: 1; color: var(--muted, #888); }
+  .chip { border: 1px solid var(--line, #ddd); background: none; border-radius: var(--r-sm); width: 1.5rem; height: 1.5rem; cursor: pointer; font-size: .8rem; line-height: 1; color: var(--muted, #888); }
   .chip:hover { border-color: var(--accent, #6a7cff); color: var(--accent, #6a7cff); }
   .mt-week { margin-top: 1.5rem; }
   .mt-week-h { font-weight: 600; font-size: .82rem; color: var(--muted, #777); margin-bottom: .4rem; }

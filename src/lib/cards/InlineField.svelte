@@ -88,7 +88,7 @@
   .if-row { display: flex; flex-direction: column; gap: .2rem; }
   .if-label { font-size: .7rem; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
   .if-val { display: inline-flex; align-items: baseline; gap: .35rem; max-width: 100%; }
-  .if-val.editable { cursor: text; border-radius: 6px; }
+  .if-val.editable { cursor: text; border-radius: var(--r-sm); }
   .if-val.editable:hover .if-pen { opacity: 1; }
   .if-text { font-size: .9rem; color: var(--text); line-height: 1.4; word-break: break-word; }
   .if-text.muted { color: var(--muted); }
@@ -99,7 +99,7 @@
   .if-val.editable:focus-within .if-pen, .if-pen:focus { opacity: 1; }
   .if-edit-wrap { display: flex; align-items: center; gap: .4rem; }
   .if-edit-wrap input, .if-edit-wrap textarea, .if-edit-wrap select {
-    flex: 1; min-width: 0; padding: .4rem .55rem; border-radius: 8px; border: 1px solid var(--accent);
+    flex: 1; min-width: 0; padding: .4rem .55rem; border-radius: var(--r-sm); border: 1px solid var(--accent);
     background: var(--card-2); color: var(--text); font-size: .9rem; font-family: inherit;
   }
   .if-err { font-size: .74rem; color: var(--down); }

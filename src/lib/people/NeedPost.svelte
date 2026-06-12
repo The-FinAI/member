@@ -119,19 +119,19 @@
 {/if}
 
 <style>
-  .np { border: 1px solid var(--line, #eee); border-radius: 9px; padding: .55rem .7rem; margin: .4rem 0; }
-  .np-kind { display: inline-flex; border: 1px solid var(--line, #ddd); border-radius: 7px; overflow: hidden; margin-bottom: .45rem; }
+  .np { border: 1px solid var(--line, #eee); border-radius: var(--r-sm); padding: .55rem .7rem; margin: .4rem 0; }
+  .np-kind { display: inline-flex; border: 1px solid var(--line, #ddd); border-radius: var(--r-sm); overflow: hidden; margin-bottom: .45rem; }
   .kbtn { border: none; background: none; padding: .2rem .7rem; cursor: pointer; font-size: .82rem; color: var(--muted, #888); border-right: 1px solid var(--line, #eee); }
   .kbtn:last-child { border-right: none; }
   .kbtn.on { background: var(--accent, #6a7cff); color: #fff; }
   .np-row { display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; }
-  .np select, .np-n { padding: .3rem .4rem; border: 1px solid var(--line, #ddd); border-radius: 6px; }
+  .np select, .np-n { padding: .3rem .4rem; border: 1px solid var(--line, #ddd); border-radius: var(--r-sm); }
   .np-n { width: 4rem; }
-  .np-go { border: none; background: var(--accent, #6a7cff); color: #fff; border-radius: 7px; padding: .3rem .75rem; cursor: pointer; }
+  .np-go { border: none; background: var(--accent, #6a7cff); color: #fff; border-radius: var(--r-sm); padding: .3rem .75rem; cursor: pointer; }
   .np-go:disabled { opacity: .5; }
-  .np-ghost { border: 1px solid var(--line, #ddd); background: none; border-radius: 7px; padding: .3rem .6rem; cursor: pointer; }
+  .np-ghost { border: 1px solid var(--line, #ddd); background: none; border-radius: var(--r-sm); padding: .3rem .6rem; cursor: pointer; }
   .np-err { color: var(--neg, #c0392b); font-size: .8rem; display: block; margin-top: .35rem; }
   .np-pool { color: #2e7d4f; font-size: .82rem; display: block; margin-top: .35rem; }
-  .np-toggle { border: 1px dashed var(--line, #ddd); background: none; border-radius: 8px; padding: .3rem .6rem; cursor: pointer; color: var(--muted, #777); font-size: .85rem; }
+  .np-toggle { border: 1px dashed var(--line, #ddd); background: none; border-radius: var(--r-sm); padding: .3rem .6rem; cursor: pointer; color: var(--muted, #777); font-size: .85rem; }
   .np-toggle:hover { border-color: var(--accent, #6a7cff); color: var(--accent, #6a7cff); }
 </style>
