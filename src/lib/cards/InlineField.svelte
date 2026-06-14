@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from '$lib/i18n';
+  import Icon from '$lib/Icon.svelte';
 
   // A single click-to-edit field: shows a value (with a ✎ icon + double-click to
   // edit for permitted users) and swaps to an input / textarea / select in place.
@@ -79,7 +80,7 @@
       onkeydown={(e) => { if (canEdit && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); start(); } }}
     >
       <span class="if-text" class:muted={!readText}>{readText || '—'}</span>
-      {#if canEdit}<button type="button" class="if-pen" onclick={start} title={$t('Edit')} aria-label={$t('Edit')}>✎</button>{/if}
+      {#if canEdit}<button type="button" class="if-pen" onclick={start} title={$t("Edit")} aria-label={$t("Edit")}><Icon name="edit" size={13} /></button>{/if}
     </span>
   {/if}
 </div>

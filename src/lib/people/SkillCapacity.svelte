@@ -6,6 +6,7 @@
   // record has earned. No badge tree, no certification queue. Optimistic.
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { t } from '$lib/i18n';
+  import Icon from '$lib/Icon.svelte';
 
   let { memberId, canEdit = false }: { memberId: string; canEdit?: boolean } = $props();
 
@@ -94,7 +95,7 @@
 </script>
 
 <section class="sc">
-  <div class="sc-head"><h3>{$t('Skills & capacity')}</h3>{#if canEdit}<span class="sc-edit" title={$t('You manage this person. Tap a skill level, add a skill, or edit their monthly hours — changes save instantly.')}>✎ {$t('editable')}</span>{/if}{#if err}<span class="sc-err">{err}</span>{/if}</div>
+  <div class="sc-head"><h3>{$t('Skills & capacity')}</h3>{#if canEdit}<span class="sc-edit" title={$t('You manage this person. Tap a skill level, add a skill, or edit their monthly hours — changes save instantly.')}><Icon name="edit" size={11} /> {$t("editable")}</span>{/if}{#if err}<span class="sc-err">{err}</span>{/if}</div>
 
   {#if loading}
     <p class="sc-dim">{$t('Loading…')}</p>

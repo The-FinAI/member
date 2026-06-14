@@ -2,6 +2,7 @@
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { capabilities, officerUnits, member } from '$lib/session';
   import { t } from '$lib/i18n';
+  import Icon from '$lib/Icon.svelte';
   import { get } from 'svelte/store';
   import { type Slot } from './ProjectSlotCard.svelte';
   import ProjectTeam from '$lib/people/ProjectTeam.svelte';

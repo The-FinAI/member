@@ -7,6 +7,7 @@
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { t } from '$lib/i18n';
   import NeedPost from '$lib/people/NeedPost.svelte';
+  import Icon from '$lib/Icon.svelte';
   import MatchBoard from '$lib/people/MatchBoard.svelte';
 
   // canMatch: the viewer can assign people (chapter officer / admin) → the
@@ -122,7 +123,7 @@
               {#if n.quota}<span class="n-q">{n.quota}{n.unit}</span>{/if}
               <span class="n-fill">{n.filled}/{n.headcount}</span>
               {#if canManage && !finished && n.kind !== 'leader' && n.filled === 0}
-                <button class="n-edit" title={$t('Edit this need')} onclick={() => (editing = n)}>✎</button>
+                <button class="n-edit" title={$t('Edit this need')} onclick={() => (editing = n)}><Icon name="edit" size={12} /></button>
               {/if}
             </div>
           {/if}

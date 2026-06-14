@@ -1,6 +1,7 @@
 <script lang="ts">
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { t } from '$lib/i18n';
+  import Icon from '$lib/Icon.svelte';
   import { toast } from '$lib/toast';
   import { get } from 'svelte/store';
   import SettlementForm from './SettlementForm.svelte';
@@ -307,7 +308,7 @@
         </div>
       {:else if isFinishedProj}
         <div class="pcb-settle">
-          <span class="pcb-settle-h">💰 {$t('Settlement')}</span>
+          <span class="pcb-settle-h"><Icon name="str" /> {$t('Settlement')}</span>
           <span class="pcb-hint">{$t('The project is finished — split its pool into liquid STR.')}</span>
           {#if canEdit && !showSettle}
             <button type="button" class="pcb-done" onclick={() => (showSettle = true)}>{$t('Open settlement')} →</button>
