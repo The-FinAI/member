@@ -4,6 +4,7 @@
   import { member, capabilities } from '$lib/session';
   import { t } from '$lib/i18n';
   import Medal from '$lib/Medal.svelte';
+  import Icon from '$lib/Icon.svelte';
   import BadgeTree from '$lib/cards/BadgeTree.svelte';
   import SkillCapacity from '$lib/people/SkillCapacity.svelte';
   import SectionNav from '$lib/SectionNav.svelte';
@@ -369,7 +370,7 @@
         {#if !hasPublicResources}<p class="muted">{$t('No resources offered yet.')}</p>{/if}
         {#if approvedLabor}
           <div class="row" style="justify-content:space-between; align-items:center; border:1px solid var(--border); border-radius:8px; padding:.5rem .75rem;">
-            <strong style="font-size:.9rem;">⏱ {$t('Time')}</strong>
+            <strong style="font-size:.9rem;display:inline-flex;align-items:center;gap:.3rem;"><Icon name="clock" size={14} /> {$t('Time')}</strong>
             <span class="mono">{approvedLabor.monthly_quota != null ? `${approvedLabor.monthly_quota} hrs/mo` : (approvedLabor.capacity ?? '—')}</span>
           </div>
         {/if}

@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { t } from '$lib/i18n';
+  import Icon from '$lib/Icon.svelte';
 
   // The leader requirement: skills a member must hold (at level) to create or
   // claim a project. Enforced server-side via member_meets_requirements.
@@ -70,7 +71,7 @@
           <select value={r.min_level} onchange={(e) => setLevel(r.skill_id, e.currentTarget.value)}>
             {#each LADDER as g}<option value={g}>{$t(LABEL[g])}</option>{/each}
           </select>
-          <button class="x" onclick={() => remove(r.skill_id)} aria-label={$t('Remove')}>✕</button>
+          <button class="x" onclick={() => remove(r.skill_id)} aria-label={$t('Remove')}><Icon name="close" size={12} /></button>
         </div>
       {/each}
     </div>

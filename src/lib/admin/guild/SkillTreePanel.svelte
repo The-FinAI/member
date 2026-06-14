@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { t } from '$lib/i18n';
+  import Icon from '$lib/Icon.svelte';
 
   // The skill tree: top-level domains, each with certifiable leaf crafts. Leaves
   // are what badges certify and what needs filter on.
@@ -65,11 +66,11 @@
         <div class="d-head">
           <span class="d-name">{root.name}</span>
           <span class="d-ct">{childrenOf(root.id).length}</span>
-          <button class="x" onclick={() => remove(root.id)} aria-label={$t('Delete')}>✕</button>
+          <button class="x" onclick={() => remove(root.id)} aria-label={$t('Delete')}><Icon name="close" size={12} /></button>
         </div>
         <div class="leaves">
           {#each childrenOf(root.id) as c (c.id)}
-            <span class="leaf">{c.name}<button class="lx" onclick={() => remove(c.id)} aria-label={$t('Delete')}>✕</button></span>
+            <span class="leaf">{c.name}<button class="lx" onclick={() => remove(c.id)} aria-label={$t('Delete')}><Icon name="close" size={11} /></button></span>
           {/each}
           {#if !childrenOf(root.id).length}<span class="muted none">{$t('No crafts yet')}</span>{/if}
         </div>
