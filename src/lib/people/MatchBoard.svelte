@@ -6,6 +6,7 @@
   // always one search away. Optimistic.
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { t } from '$lib/i18n';
+  import { toast } from '$lib/toast';
 
   // projectId scopes the open needs to one project (so the matcher can be
   // embedded on a project — assign in place, no hop to People). embedded hides
@@ -115,13 +116,15 @@
     const hours = Number(hoursStr) || 0;
     if (hours <= 0) { err = $t('Hours must be greater than 0'); return; }
     busy = memberId; err = '';
+    const who = memberName(memberId) || cands.find((c) => c.member_id === memberId)?.full_name || '';
     const { error } = await supabase.rpc('assign', { p_member: memberId, p_slot: slot.id, p_hours: hours });
     busy = null;
-    if (error) { err = error.message; return; }
-    // explicit confirmation (visibility of system status) — the row vanishing
-    // alone isn't clear feedback
-    const who = memberName(memberId) || cands.find((c) => c.member_id === memberId)?.full_name || '';
-    msg = `✓ ${$t('Assigned')} ${who} · ${hours}${slot.slot_kind === 'work_resource' ? (slot.resource_type?.unit ?? '') : 'h'}`;
+    if (error) { toast.error(error.message); err = error.message; return; }
+    // global confirmation toast — the row vanishing isn't clear feedback, and
+    // the inline msg sat far from the clicked button. (No undo: there's no
+    // precise unassign RPC — release_claim only frees the leader seat.)
+    const unit = slot.slot_kind === 'work_resource' ? (slot.resource_type?.unit ?? '') : 'h';
+    toast.success(`${$t('Assigned')} ${who} · ${hours}${unit}`);
     // optimistic: bump filled; drop the need if now full; refresh candidates
     const n = needs.find((x) => x.id === slot.id);
     if (n) { n.filled += 1; if (n.filled >= n.headcount) { needs = needs.filter((x) => x.id !== slot.id); openNeed = null; } }

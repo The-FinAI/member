@@ -10,6 +10,7 @@
   import { t } from '$lib/i18n';
   import LangSwitcher from '$lib/LangSwitcher.svelte';
   import NotificationInbox from '$lib/shell/NotificationInbox.svelte';
+  import Toaster from '$lib/shell/Toaster.svelte';
   import LaunchBanner from '$lib/LaunchBanner.svelte';
 
   let { children } = $props();
@@ -216,4 +217,5 @@
       {@render children()}
     </main>
   </div>
+  <Toaster />
 </div>
