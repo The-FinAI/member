@@ -71,10 +71,10 @@
 
 <section class="pt">
   <!-- first author shown for context; an OPEN first-author seat appears in
-       Open needs below and is filled by matching on People, like any need -->
+       Open needs below and is filled by the matcher right here on the project -->
   <div class="pt-lead">
     <span class="pt-lead-l">{$t('First author')}</span>
-    {#if leaderName}<span class="pt-lead-n">{leaderName}</span>{:else}<span class="pt-lead-open">{$t('open — match on People')}</span>{/if}
+    {#if leaderName}<span class="pt-lead-n">{leaderName}</span>{:else}<span class="pt-lead-open">{$t('open — fill it in Open needs below')}</span>{/if}
   </div>
 
   <div class="pt-head"><span class="pt-h">{$t('Team')}</span></div>
@@ -128,7 +128,7 @@
           {/if}
         {/each}
       </div>
-      <p class="pt-dim pt-note">{$t('Matching happens on People — a chapter steward places people into these needs.')}</p>
+      <p class="pt-dim pt-note">{$t('A chapter officer assigns people to these needs — from here.')}</p>
     {:else}
       <p class="pt-dim">{$t('No open needs.')}</p>
     {/if}
