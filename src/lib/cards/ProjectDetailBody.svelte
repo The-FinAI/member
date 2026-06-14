@@ -56,6 +56,9 @@
     return 'accruing';
   });
   const STAGES = ['accruing', 'ready', 'settling', 'settled'];
+  const STAGE_LABEL: Record<string, string> = {
+    accruing: 'Accruing', ready: 'Ready to settle', settling: 'Settling', settled: 'Settled'
+  };
   const stageIdx = $derived(STAGES.indexOf(stage));
 
   async function load() {
@@ -190,9 +193,23 @@
       </div>
     </div>
 
-    <!-- The living record leads. STR is quiet on the project page (PRD §4.5) —
-         it surfaces at Finish→Split and on the wallet, not as a header pipeline.
-         When finished, a one-line settle nudge appears (canPostNeed sees it). -->
+    <!-- The credit economy is FIRST-CLASS and operation-linked: committed work
+         mints nominal STR into the project's pool; finishing settles it into
+         spendable (actual) STR. Shown where the work happens. -->
+    <div class="pd-str">
+      <div class="pd-str-top">
+        <span class="pd-str-pool"><b>{g.pool.toLocaleString()}</b> {$t('STR')}</span>
+        <span class="pd-str-label">{$t('in the pool · nominal, accruing from committed work')}</span>
+        {#if g.mult > 1}<span class="pd-str-mult">×{g.mult} {$t('milestones')} → {projectedPayout.toLocaleString()} {$t('projected')}</span>{/if}
+      </div>
+      <div class="pdc-pipe">
+        {#each STAGES as s, i}
+          <span class="pdc-step" class:done={i < stageIdx} class:on={i === stageIdx}>{$t(STAGE_LABEL[s])}</span>
+          {#if i < STAGES.length - 1}<span class="pdc-arr">→</span>{/if}
+        {/each}
+      </div>
+      <p class="pd-str-note">{$t('Nominal STR is locked while the project runs. When it finishes and settles, each contributor is paid their share as settled (spendable) STR.')}</p>
+    </div>
     {#if g.finished && stage === 'ready' && canPostNeed}
       <p class="pd-settle-nudge">{$t('This project is finished — draft the settlement below to split the credit.')}</p>
     {/if}
@@ -227,7 +244,20 @@
 {/if}
 
 <style>
-  .pd-settle-nudge { font-size:.9rem; color:#9a7b12; background:#fff8e6; border:1px solid #f0d98a; border-radius:9px; padding:.5rem .7rem; }
+  /* credit economy panel — gold is STR's alone (design system v2) */
+  .pd-str { border: 1px solid var(--border); border-top: 2px solid var(--gold); border-radius: var(--r-md); padding: .7rem .85rem; background: var(--gold-soft); }
+  .pd-str-top { display: flex; align-items: baseline; gap: .5rem; flex-wrap: wrap; }
+  .pd-str-pool { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 1.25rem; color: var(--gold); }
+  .pd-str-pool b { font-weight: 700; }
+  .pd-str-label { font-size: .8rem; color: var(--text-dim); }
+  .pd-str-mult { font-size: .76rem; color: var(--gold); font-weight: 600; margin-left: auto; }
+  .pdc-pipe { display: flex; flex-direction: row; align-items: center; gap: .4rem; flex-wrap: wrap; margin-top: .5rem; }
+  .pdc-step { font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+  .pdc-step.done { color: var(--text-dim); }
+  .pdc-step.on { color: var(--gold); border-bottom: 2px solid var(--gold); }
+  .pdc-arr { color: var(--border-2); font-size: .8rem; }
+  .pd-str-note { font-size: .76rem; color: var(--muted); margin: .45rem 0 0; }
+  .pd-settle-nudge { font-size:.9rem; color: var(--gold); background: var(--gold-soft); border:1px solid var(--gold); border-radius: var(--r-sm); padding:.5rem .7rem; }
   .pdrawer { display: flex; flex-direction: column; gap: 1rem; }
   .pd-header { display: flex; flex-direction: column; gap: .15rem; }
   .pd-back { font-size: .82rem; color: var(--muted); text-decoration: none; }
@@ -248,20 +278,6 @@
   .pd-h { font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
   .pd-btn { align-self: flex-start; display: inline-flex; align-items: center; gap: .3rem; padding: .5rem .9rem; background: var(--accent); color: #fff; border: 1px solid transparent; border-radius: var(--r-sm); text-decoration: none; font-weight: 600; }
   .pd-btn.ghost { background: transparent; color: var(--accent); border-color: var(--border); }
-  .pd-pipe { border: 1px solid var(--border); border-radius: var(--r-md); background: var(--card); padding: .8rem .9rem; display: flex; flex-direction: column; gap: .55rem; }
-  .pp-head { display: flex; align-items: baseline; justify-content: space-between; gap: .6rem; flex-wrap: wrap; }
-  .pp-payout { font-size: .82rem; color: var(--text-dim); }
-  .pp-track { display: flex; gap: .4rem; flex-wrap: wrap; }
-  .pp-step { flex: 1; min-width: 130px; display: flex; gap: .45rem; align-items: flex-start; padding: .4rem .5rem; border-radius: var(--r-sm); opacity: .55; }
-  .pp-step.on { opacity: 1; background: var(--accent-soft); }
-  .pp-step.done { opacity: .85; }
-  .pp-dot { flex: none; width: .7rem; height: .7rem; border-radius: 50%; background: var(--border-2); margin-top: .2rem; }
-  .pp-step.on .pp-dot { background: var(--accent); }
-  .pp-step.done .pp-dot { background: var(--up); }
-  .pp-tx { display: flex; flex-direction: column; gap: .05rem; min-width: 0; }
-  .pp-tx strong { font-size: .8rem; }
-  .pp-tx .muted { font-size: .72rem; }
-  .pp-note { margin: 0; font-size: .8rem; }
   .pd-postneed-toggle { align-self: flex-start; background: transparent; border: 0; padding: 0; cursor: pointer; font: inherit; color: var(--accent); font-weight: 600; }
   .pd-postneed-toggle:hover { text-decoration: underline; }
   .pd-release { padding: .5rem .9rem; border-radius: var(--r-sm); border: 1px solid var(--border); background: transparent; color: var(--down); font: inherit; font-weight: 600; cursor: pointer; }

@@ -12,7 +12,7 @@
     projectId: string; canManage?: boolean; finished?: boolean;
   } = $props();
 
-  type Member = { id: string; name: string; role: string; amount: number; unit: string };
+  type Member = { id: string; name: string; role: string; amount: number; unit: string; str: number };
   type Need = { id: string; kind: string; skill: string | null; skill_id: string | null; level: string | null; resource: string | null; resource_type_id: string | null; quota: number | null; unit: string; filled: number; headcount: number };
 
   const LEVEL_LABEL: Record<string, string> = { learning: 'Learning', independent: 'Independent', lead: 'Lead' };
@@ -28,7 +28,7 @@
     loading = true;
     const [{ data: wc }, { data: sl }] = await Promise.all([
       supabase.from('work_commitment')
-        .select('member_id, monthly_amount, slot:slot_id(slot_kind), member:member_id(full_name), resource:resource_id(unit)')
+        .select('member_id, monthly_amount, nominal_str, slot:slot_id(slot_kind), member:member_id(full_name), resource:resource_id(unit)')
         .eq('project_id', projectId),
       supabase.from('project_slot')
         .select('id, slot_kind, skill_id, resource_type_id, desired_level, quota, headcount, status, skill:skill_id(name), resource_type:resource_type_id(name, unit)')
@@ -41,8 +41,8 @@
       const role = w.slot?.slot_kind === 'leader' ? 'first author'
                  : w.slot?.slot_kind === 'work_resource' ? 'resource' : 'contributor';
       const ex = byM[id];
-      if (ex) { ex.amount += Number(w.monthly_amount) || 0; if (role === 'first author') ex.role = role; }
-      else byM[id] = { id, name: w.member?.full_name ?? '—', role, amount: Number(w.monthly_amount) || 0, unit: w.resource?.unit ?? 'h' };
+      if (ex) { ex.amount += Number(w.monthly_amount) || 0; ex.str += Number(w.nominal_str) || 0; if (role === 'first author') ex.role = role; }
+      else byM[id] = { id, name: w.member?.full_name ?? '—', role, amount: Number(w.monthly_amount) || 0, unit: w.resource?.unit ?? 'h', str: Number(w.nominal_str) || 0 };
     }
     team = Object.values(byM).sort((a, b) => Number(b.role === 'first author') - Number(a.role === 'first author'));
     leaderName = team.find((m) => m.role === 'first author')?.name ?? null;
@@ -84,6 +84,7 @@
           <a class="tchip" href={`/members/${m.id}`}>
             <span class="tc-name">{m.name}</span>
             <span class="tc-role">{$t(m.role)}{#if m.amount} · {m.amount}{m.unit}{/if}</span>
+            {#if m.str}<span class="tc-str">+{m.str.toLocaleString()} STR</span>{/if}
           </a>
         {/each}
       </div>
@@ -150,6 +151,7 @@
   .tchip:hover { border-color: var(--accent, #6a7cff); }
   .tc-name { font-weight: 500; font-size: .88rem; }
   .tc-role { font-size: .74rem; color: var(--muted, #999); }
+  .tc-str { font-size: .72rem; font-weight: 700; color: var(--gold, #94731b); font-family: var(--font-mono, monospace); }
   .pt-needs { display: flex; flex-direction: column; gap: .35rem; margin-top: .4rem; }
   .nrow { display: flex; align-items: center; gap: .6rem; padding: .35rem .5rem; border: 1px solid var(--line, #f0f0f0); border-radius: var(--r-sm); }
   .n-skill { font-weight: 500; }
