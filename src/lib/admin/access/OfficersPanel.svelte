@@ -4,6 +4,7 @@
   import { member } from '$lib/session';
   import { get } from 'svelte/store';
   import { t } from '$lib/i18n';
+  import Icon from '$lib/Icon.svelte';
 
   // Forge officers (operator member-cards) and place them in chapters / working
   // groups. An officer is the custodian role from the Phase-1 design: chapter
@@ -77,7 +78,7 @@
     if ((data as any)?.error) { error = (data as any).error; return; }
     notice = (data as any)?.email_sent === false
       ? get(t)('Officer added, but the invitation email could not be sent.')
-      : get(t)('Invitation sent to {email} 🎉', { email });
+      : get(t)('Invitation sent to {email}', { email });
     fName = ''; fEmail = ''; fAffil = ''; fPos = '';
     await load();
   }
@@ -137,11 +138,11 @@
         {#if editEmailId === p.id}
           <span class="pchip edit">
             <input class="pmail-input" bind:value={emailDraft} placeholder="email" />
-            <button class="pok" onclick={() => saveEmail(p.id)} title={$t('Save')}>✓</button>
-            <button class="pno" onclick={() => (editEmailId = null)} title={$t('Cancel')}>✕</button>
+            <button class="pok" onclick={() => saveEmail(p.id)} title={$t('Save')}><Icon name="check" size={13} /></button>
+            <button class="pno" onclick={() => (editEmailId = null)} title={$t('Cancel')}><Icon name="close" size={13} /></button>
           </span>
         {:else}
-          <span class="pchip"><span class="pname">{p.full_name}</span><span class="pmail">{p.email}</span><button class="pedit" title={$t('Edit email')} onclick={() => { editEmailId = p.id; emailDraft = p.email; }}>✎</button></span>
+          <span class="pchip"><span class="pname">{p.full_name}</span><span class="pmail">{p.email}</span><button class="pedit" title={$t('Edit email')} onclick={() => { editEmailId = p.id; emailDraft = p.email; }}><Icon name="edit" size={12} /></button></span>
         {/if}
       {/each}
     </div>
@@ -164,7 +165,7 @@
                 <span class="ochip">
                   <a href={`/members/${o.member_id}`}>{o.member?.full_name ?? '—'}</a>
                   <span class="orole">{$t(ROLE_LABEL[o.role] ?? o.role)}</span>
-                  <button class="x" disabled={busy === o.org_unit_id + o.member_id + o.role} onclick={() => removeOfficer(o)} aria-label={$t('Remove')}>✕</button>
+                  <button class="x" disabled={busy === o.org_unit_id + o.member_id + o.role} onclick={() => removeOfficer(o)} aria-label={$t('Remove')}><Icon name="close" size={13} /></button>
                 </span>
               {/each}
               {#if !officersOf(u.id).length}<span class="muted none">{$t('No officers')}</span>{/if}

@@ -7,6 +7,7 @@
   import { member } from '$lib/session';
   import { t } from '$lib/i18n';
   import { goto } from '$app/navigation';
+  import Icon from '$lib/Icon.svelte';
 
   type Row = {
     id: string; project_id: string; name: string; state: string;
@@ -85,13 +86,13 @@
               </button>
               <div class="card-acts">
                 {#if lane.key !== 'done'}
-                  <button class="chip" onclick={() => setState(r, 'done')} title={$t('Mark done')}>✓</button>
+                  <button class="chip" onclick={() => setState(r, 'done')} title={$t('Mark done')}><Icon name="check" size={14} /></button>
                 {/if}
                 {#if lane.key === 'open'}
-                  <button class="chip" onclick={() => setState(r, 'doing')} title={$t('Start')}>▶</button>
+                  <button class="chip" onclick={() => setState(r, 'doing')} title={$t('Start')}><Icon name="play" size={13} /></button>
                 {/if}
                 {#if lane.key === 'done'}
-                  <button class="chip" onclick={() => setState(r, 'open')} title={$t('Reopen')}>↺</button>
+                  <button class="chip" onclick={() => setState(r, 'open')} title={$t('Reopen')}><Icon name="undo" size={13} /></button>
                 {/if}
               </div>
             </div>

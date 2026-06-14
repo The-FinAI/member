@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from '$lib/i18n';
+  import Icon from '$lib/Icon.svelte';
   import type { Snippet } from 'svelte';
 
   // The universal edit surface. Click any EntityCard and its full detail +
@@ -27,7 +28,7 @@
         <div class="dh-title">{title}</div>
         {#if subtitle}<div class="dh-sub">{subtitle}</div>{/if}
       </div>
-      <button class="icon-btn" onclick={onClose} aria-label={$t('Close')}>✕</button>
+      <button class="icon-btn" onclick={onClose} aria-label={$t('Close')}><Icon name="close" size={16} /></button>
     </header>
     <div class="drawer-body">{@render children()}</div>
     {#if actions}

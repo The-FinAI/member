@@ -7,6 +7,7 @@
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { t } from '$lib/i18n';
   import { toast } from '$lib/toast';
+  import Icon from '$lib/Icon.svelte';
 
   // projectId scopes the open needs to one project (so the matcher can be
   // embedded on a project — assign in place, no hop to People). embedded hides
@@ -151,7 +152,7 @@
       {#each needs as n (n.id)}
         <div class="need" class:open={openNeed === n.id}>
           <button class="need-row" aria-expanded={openNeed === n.id} onclick={() => pickNeed(n)}>
-            <span class="need-chev" class:open={openNeed === n.id}>▸</span>
+            <span class="need-chev" class:open={openNeed === n.id}><Icon name="chevron" size={14} /></span>
             {#if n.slot_kind === 'leader'}
               <span class="need-skill">{$t('First author')}</span>
               <span class="need-kind">{$t('leader')}</span>
@@ -193,7 +194,7 @@
                     <div class="capbar" title="{c.free ?? '∞'} {c.unit} {$t('free')}">
                       {#if b.unconstrained}<span class="cap-inf">∞</span>{:else}<div class="capfill" class:over={b.over} style="width:{b.pct}%"></div>{/if}
                     </div>
-                    <span class="cap-txt" class:over={b.over}>{#if b.over}⚠ {/if}{c.free ?? '∞'}{c.unit} {$t('free')}</span>
+                    <span class="cap-txt" class:over={b.over}>{#if b.over}<Icon name="warn" size={12} /> {/if}{c.free ?? '∞'}{c.unit} {$t('free')}</span>
                   </div>
                   <div class="cand-act">
                     <input class="cand-h" class:over={b.over} type="number" min="1" bind:value={hoursFor[c.member_id]} />
@@ -217,7 +218,7 @@
                   <button class="mb-ghost" onclick={() => (directOpen = false)}>{$t('Cancel')}</button>
                 </div>
               {:else}
-                <button class="direct-toggle" onclick={() => { directOpen = true; directQ = ''; directPick = ''; directHours = String(n.quota ?? ''); }}>＋ {$t('Assign someone directly')}</button>
+                <button class="direct-toggle" onclick={() => { directOpen = true; directQ = ''; directPick = ''; directHours = String(n.quota ?? ''); }}><Icon name="plus" size={13} /> {$t('Assign someone directly')}</button>
               {/if}
             </div>
           {/if}

@@ -7,6 +7,7 @@
   import EntityCard from '$lib/EntityCard.svelte';
   import NeedsYou from '$lib/shell/NeedsYou.svelte';
   import ProjectDetailBody from '$lib/cards/ProjectDetailBody.svelte';
+  import Icon from '$lib/Icon.svelte';
   import { type Slot } from '$lib/cards/ProjectSlotCard.svelte';
 
   // the ledger expands a project in place — every operation (tasks, needs +
@@ -598,7 +599,7 @@
       {#each rows as r (r.id)}
         <div class="lrow" class:open={expanded === r.id}>
           <button class="lrow-head" onclick={() => (expanded = expanded === r.id ? null : r.id)} aria-expanded={expanded === r.id}>
-            <span class="lr-chev">{expanded === r.id ? '▾' : '▸'}</span>
+            <span class="lr-chev" class:open={expanded === r.id}><Icon name="chevron" size={14} /></span>
             <span class="lr-main">
               <span class="lr-title">{r.emoji ? r.emoji + ' ' : ''}{r.code || r.name}</span>
               {#if r.wg || r.venue}<span class="lr-sub">{[r.wg, r.venue].filter(Boolean).join(' · ')}</span>{/if}
@@ -635,7 +636,8 @@
   }
   .lrow-head:hover { background: var(--card-2); }
   .lrow.open .lrow-head { background: transparent; border-bottom: 1px solid var(--border); }
-  .lr-chev { color: var(--muted); font-size: .8rem; width: 1rem; flex: none; }
+  .lr-chev { color: var(--muted); width: 1rem; flex: none; display: inline-flex; transition: transform .12s; }
+  .lr-chev.open { transform: rotate(90deg); }
   .lr-main { display: flex; flex-direction: column; min-width: 0; flex: 1; }
   .lr-title { font-weight: 600; font-size: 1rem; }
   .lr-sub { font-size: .76rem; color: var(--muted); }

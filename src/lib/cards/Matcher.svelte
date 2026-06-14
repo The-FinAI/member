@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from '$lib/i18n';
+  import Icon from '$lib/Icon.svelte';
 
   export type MatchSlot = {
     id: string;
@@ -95,7 +96,7 @@
       <div class="m-title">{$t('Invest in project')}</div>
       <div class="m-sub">{$t('Open slots {name} can fill', { name: cardName })}</div>
     </div>
-    <button type="button" class="x" onclick={onClose} aria-label={$t('Close')}>✕</button>
+    <button type="button" class="x" onclick={onClose} aria-label={$t('Close')}><Icon name="close" size={16} /></button>
   </header>
 
   <div class="m-list">

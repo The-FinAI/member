@@ -6,6 +6,7 @@
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { t } from '$lib/i18n';
   import { toast } from '$lib/toast';
+  import Icon from '$lib/Icon.svelte';
 
   let { projectId, canEdit = false, onChanged }: {
     projectId: string;
@@ -162,7 +163,7 @@
                   <input class="cell" value={tk.note ?? ''} placeholder={$t('—')} onchange={(e) => patch(tk, { note: (e.target as HTMLInputElement).value })} />
                 {:else}{tk.note ?? ''}{/if}
               </td>
-              {#if canEdit}<td><button class="tb-x" title={$t('Remove')} onclick={() => remove(tk)}>✕</button></td>{/if}
+              {#if canEdit}<td><button class="tb-x" title={$t('Remove')} onclick={() => remove(tk)}><Icon name="close" size={13} /></button></td>{/if}
             </tr>
           {/each}
         </tbody>

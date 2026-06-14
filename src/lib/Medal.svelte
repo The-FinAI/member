@@ -1,5 +1,6 @@
 <script lang="ts">
   import { t } from '$lib/i18n';
+  import Icon from '$lib/Icon.svelte';
 
   // A certified badge shown as a medal: skill name + guild level.
   let { name = '', level, size = 'md' }: { name?: string; level: string; size?: 'sm' | 'md' } = $props();
@@ -8,14 +9,11 @@
     apprentice: 'Apprentice', journeyman: 'Journeyman',
     craftsman: 'Craftsman', master: 'Master'
   };
-  // ascending rarity — master is the brightest
-  const ICON: Record<string, string> = {
-    apprentice: '🔰', journeyman: '⚒️', craftsman: '🛠️', master: '👑'
-  };
+  // one monoline mark; ascending rarity is carried by the level tint below
 </script>
 
 <span class="medal {level} {size}" title={$t(LEVEL_LABEL[level] ?? level)}>
-  <span class="ic">{ICON[level] ?? '⚒️'}</span>
+  <span class="ic"><Icon name="award" size={size === 'sm' ? 12 : 14} /></span>
   <span class="nm">{name}</span>
   <span class="lv">{$t(LEVEL_LABEL[level] ?? level)}</span>
 </span>

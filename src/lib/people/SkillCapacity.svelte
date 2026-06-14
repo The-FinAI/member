@@ -106,12 +106,12 @@
       {#if canEdit}
         <input class="sc-hours" type="number" min="0" bind:value={hoursDraft}
           onchange={saveHours} disabled={busy === 'hours'} /> <span class="sc-unit">{$t('hours / month total')}</span>
-        {#if freeHours != null}<span class="sc-free" class:sc-over={freeHours < 0} title={$t('Remaining after current commitments this month.')}>· {Math.max(0, freeHours)} {$t('free now')}{#if freeHours < 0} ⚠ {$t('over')}{/if}</span>{/if}
+        {#if freeHours != null}<span class="sc-free" class:sc-over={freeHours < 0} title={$t('Remaining after current commitments this month.')}>· {Math.max(0, freeHours)} {$t('free now')}{#if freeHours < 0} <Icon name="warn" size={12} /> {$t('over')}{/if}</span>{/if}
       {:else if hours == null}
         <span class="sc-dim">{$t('Not set')}</span>
       {:else}
         <span class="sc-capval" class:sc-over={(freeHours ?? hours) < 0}><b>{Math.max(0, freeHours ?? hours)}</b> / {hours}</span>
-        <span class="sc-unit">{$t('hours free / month')}</span>{#if (freeHours ?? 0) < 0}<span class="sc-over"> ⚠ {$t('over')}</span>{/if}
+        <span class="sc-unit">{$t('hours free / month')}</span>{#if (freeHours ?? 0) < 0}<span class="sc-over"> <Icon name="warn" size={12} /> {$t('over')}</span>{/if}
       {/if}
     </div>
 
@@ -145,7 +145,7 @@
             {#if evidence[s.skill_id]}
               <span class="sc-ev">{evidence[s.skill_id].tasks} {$t('tasks')} · {evidence[s.skill_id].shipped} {$t('shipped')}</span>
             {/if}
-            {#if canEdit}<button class="sc-x" title={$t('Remove')} onclick={() => setLevel(s.skill_id, null)}>✕</button>{/if}
+            {#if canEdit}<button class="sc-x" title={$t('Remove')} onclick={() => setLevel(s.skill_id, null)}><Icon name="close" size={12} /></button>{/if}
           </li>
         {/each}
       </ul>

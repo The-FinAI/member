@@ -28,7 +28,22 @@
     link:     '<path d="M9 15l6-6"/><path d="M8 12l-2 2a3.5 3.5 0 0 0 5 5l2-2M16 12l2-2a3.5 3.5 0 0 0-5-5l-2 2"/>',
     calendar: '<rect x="4" y="5" width="16" height="15" rx="1"/><path d="M4 9h16M8 3v4M16 3v4"/>',
     info:     '<circle cx="12" cy="12" r="8"/><path d="M12 11v5M12 8h.01"/>',
-    note:     '<path d="M5 4h14v16l-4-3H5z"/><path d="M9 9h6M9 13h4"/>'
+    note:     '<path d="M5 4h14v16l-4-3H5z"/><path d="M9 9h6M9 13h4"/>',
+    warn:     '<path d="M12 4l9 16H3L12 4z"/><path d="M12 10v4M12 17h.01"/>',
+    play:     '<path d="M8 5l11 7-11 7V5z"/>',
+    pause:    '<path d="M9 5v14M15 5v14"/>',
+    undo:     '<path d="M4 10h9a5 5 0 0 1 0 10h-3"/><path d="M8 6l-4 4 4 4"/>',
+    minus:    '<path d="M5 12h14"/>',
+    trash:    '<path d="M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13"/>',
+    award:    '<circle cx="12" cy="9" r="5"/><path d="M9 13l-1.5 8L12 18l4.5 3L15 13"/>',
+    megaphone:'<path d="M4 10v4h4l8 5V5l-8 5H4z"/><path d="M18 9a4 4 0 0 1 0 6"/>',
+    // file-type marks for project links
+    doc:      '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 13h6M9 17h6"/>',
+    code:     '<path d="M9 8l-4 4 4 4M15 8l4 4-4 4"/>',
+    data:     '<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/>',
+    sheet:    '<rect x="4" y="4" width="16" height="16" rx="1"/><path d="M4 10h16M4 15h16M10 4v16"/>',
+    folder:   '<path d="M4 7h6l2 2h8v10H4z"/>',
+    film:     '<rect x="4" y="5" width="16" height="14" rx="1"/><path d="M4 9h16M4 15h16M8 5v14M16 5v14"/>'
   };
   const inner = $derived(P[name] ?? P.info);
 </script>

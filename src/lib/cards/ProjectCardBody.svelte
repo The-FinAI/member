@@ -39,9 +39,10 @@
   const reviewRank = $derived(statuses.find((s) => s.name === 'Under review')?.rank ?? 999);
 
   const LINK_KINDS = ['proposal', 'overleaf', 'openreview', 'paper', 'repo', 'dataset', 'slides', 'drive', 'media', 'other'];
+  // file-type → Icon name (monoline set, replaces the emoji mishmash)
   const KIND_ICON: Record<string, string> = {
-    proposal: '📄', overleaf: '✍', openreview: '🔎', paper: '📑', repo: '💻',
-    dataset: '🗃', slides: '📊', drive: '📁', media: '🎞', other: '🔗'
+    proposal: 'doc', overleaf: 'edit', openreview: 'search', paper: 'note', repo: 'code',
+    dataset: 'data', slides: 'sheet', drive: 'folder', media: 'film', other: 'link'
   };
 
   let canEdit = $state(false);
@@ -256,15 +257,15 @@
         <span class="pcb-h">{$t('Status')}</span>
         {#if canEdit && holdStatus && !isFinishedProj}
           {#if isHold}
-            <button type="button" class="pcb-link" disabled={busy === 'status'} onclick={resume}>▶ {$t('Resume')}</button>
+            <button type="button" class="pcb-link" disabled={busy === 'status'} onclick={resume}><Icon name="play" size={13} /> {$t('Resume')}</button>
           {:else}
-            <button type="button" class="pcb-link" disabled={busy === 'status'} onclick={hold}>⏸ {$t('Hold')}</button>
+            <button type="button" class="pcb-link" disabled={busy === 'status'} onclick={hold}><Icon name="pause" size={13} /> {$t('Hold')}</button>
           {/if}
         {/if}
       </div>
 
       {#if isHold}
-        <p class="pcb-hold">⏸ {$t('On hold')}{#if pipeline.find((s) => s.id === proj?.held_from_status_id)} · {$t('from')} {$t(pipeline.find((s) => s.id === proj?.held_from_status_id)?.name ?? '')}{/if}</p>
+        <p class="pcb-hold"><Icon name="pause" size={13} /> {$t('On hold')}{#if pipeline.find((s) => s.id === proj?.held_from_status_id)} · {$t('from')} {$t(pipeline.find((s) => s.id === proj?.held_from_status_id)?.name ?? '')}{/if}</p>
       {/if}
 
       <div class="pcb-steps" class:dim={isHold}>
@@ -281,7 +282,7 @@
             title={clickable ? $t('Set to {s}', { s: $t(s.name) }) : ''}
             onclick={() => clickable && setStatus(s.id)}
           >
-            <span class="pcb-dotnum">{done ? '✓' : i + 1}</span>
+            <span class="pcb-dotnum">{#if done}<Icon name="check" size={12} />{:else}{i + 1}{/if}</span>
             <span class="pcb-steplabel">{$t(s.name)}</span>
           </button>
           {#if i < pipeline.length - 1}<span class="pcb-steparrow" class:done={curRank > s.rank}>›</span>{/if}
@@ -292,7 +293,7 @@
       {#if canEdit && isUnderReview}
         <div class="pcb-status-row">
           <button type="button" class="pcb-done" disabled={busy === 'done'} onclick={mintDone}>
-            {#if busy === 'done'}<span class="spin"></span>{/if}✓ {$t('Finish')}
+            {#if busy === 'done'}<span class="spin"></span>{:else}<Icon name="check" size={14} />{/if} {$t('Finish')}
           </button>
           <span class="pcb-hint">{$t('Submits completion to the review queue → settlement.')}</span>
         </div>
@@ -303,7 +304,7 @@
       <!-- settlement opens once the project is Finished -->
       {#if isFinishedProj && isSettled}
         <div class="pcb-settle pcb-settled">
-          <span class="pcb-settle-h">✅ {$t('Settled — pool paid out')}</span>
+          <span class="pcb-settle-h"><Icon name="seal" size={15} /> {$t('Settled — pool paid out')}</span>
           <span class="pcb-hint">{$t('This project is finished and its pool has been split into spendable STR for each contributor. See it on each wallet.')}</span>
         </div>
       {:else if isFinishedProj}
@@ -334,7 +335,7 @@
       <div class="pcb-form">
         <div class="pcb-row">
           <label class="pcb-field" style="flex:0 0 9rem;"><span>{$t('Kind')}</span>
-            <select bind:value={lKind}>{#each LINK_KINDS as k}<option value={k}>{KIND_ICON[k]} {$t(k)}</option>{/each}</select>
+            <select bind:value={lKind}>{#each LINK_KINDS as k}<option value={k}>{$t(k)}</option>{/each}</select>
           </label>
           <label class="pcb-field" style="flex:1;"><span>{$t('Title')}</span><input bind:value={lTitle} placeholder={$t('optional')} /></label>
         </div>
@@ -352,13 +353,13 @@
       <ul class="pcb-links">
         {#each links as l (l.id)}
           <li class="pcb-link-row">
-            <span class="pcb-kind" title={$t(l.kind)}>{KIND_ICON[l.kind] ?? '🔗'}</span>
+            <span class="pcb-kind" title={$t(l.kind)}><Icon name={KIND_ICON[l.kind] ?? 'link'} size={15} /></span>
             <a class="pcb-link-main" href={l.url} target="_blank" rel="noopener noreferrer">
               <span class="pcb-link-title">{l.title || host(l.url)}</span>
               <span class="pcb-link-host">{host(l.url)}{#if l.notes} · {l.notes}{/if}</span>
             </a>
             {#if canEdit}
-              <button type="button" class="pcb-x" disabled={busy === l.id} title={$t('Remove')} aria-label={$t('Remove')} onclick={() => removeLink(l.id)}>✕</button>
+              <button type="button" class="pcb-x" disabled={busy === l.id} title={$t('Remove')} aria-label={$t('Remove')} onclick={() => removeLink(l.id)}><Icon name="close" size={13} /></button>
             {/if}
           </li>
         {/each}
@@ -400,13 +401,13 @@
         {#each meetings as m (m.id)}
           {@const recurring = m.recurrence && m.recurrence !== 'none'}
           <li class="pcb-link-row" class:past={!recurring && isPast(m.scheduled_at)}>
-            <span class="pcb-kind">{recurring ? '↻' : isPast(m.scheduled_at) ? '✓' : '📅'}</span>
+            <span class="pcb-kind"><Icon name={recurring ? 'undo' : isPast(m.scheduled_at) ? 'check' : 'calendar'} size={15} /></span>
             <div class="pcb-link-main">
               <span class="pcb-link-title">{m.title}{#if recurring}<span class="pcb-recur">{$t(RECUR_LABEL[m.recurrence])}</span>{/if}</span>
               <span class="pcb-link-host">{fmtWhen(m.scheduled_at, m.ends_at)}{#if m.location} · {m.location}{/if}{#if m.agenda} · {m.agenda}{/if}</span>
             </div>
             {#if canEdit}
-              <button type="button" class="pcb-x" disabled={busy === m.id} title={$t('Remove')} aria-label={$t('Remove')} onclick={() => removeMeeting(m.id)}>✕</button>
+              <button type="button" class="pcb-x" disabled={busy === m.id} title={$t('Remove')} aria-label={$t('Remove')} onclick={() => removeMeeting(m.id)}><Icon name="close" size={13} /></button>
             {/if}
           </li>
         {/each}

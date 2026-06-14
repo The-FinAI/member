@@ -188,9 +188,9 @@
 
     <div class="pd-meta">
       <div class="pd-meta-chips">
-        {#if g.claimable}<span class="pd-chip pd-chip-seat" title={$t('The first-author seat is an open need — match someone into it like any other role.')}>✍ {$t('1st-author seat: open')}</span>{/if}
+        {#if g.claimable}<span class="pd-chip pd-chip-seat" title={$t('The first-author seat is an open need — match someone into it like any other role.')}><Icon name="edit" size={13} /> {$t('1st-author seat: open')}</span>{/if}
         <span class="pd-chip">{$t(g.type)}</span>
-        {#if g.deadline}<span class="pd-chip {ddlClass(g.deadline)}">⏱ {fmtDate(g.deadline)} · {relDays(g.deadline)}</span>{/if}
+        {#if g.deadline}<span class="pd-chip {ddlClass(g.deadline)}"><Icon name="clock" size={13} /> {fmtDate(g.deadline)} · {relDays(g.deadline)}</span>{/if}
       </div>
     </div>
 

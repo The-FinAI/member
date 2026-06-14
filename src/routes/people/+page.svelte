@@ -8,6 +8,7 @@
   import { t } from '$lib/i18n';
   import { goto } from '$app/navigation';
   import { get } from 'svelte/store';
+  import Icon from '$lib/Icon.svelte';
 
   type Person = {
     id: string; full_name: string; kind: string; affiliation: string | null;
@@ -147,7 +148,7 @@
             {:else}
               {@const cap = capacity[p.id]}
               {@const free = cap?.free ?? cap?.total ?? p.monthly_hours ?? 0}
-              <span class="pc-cap-val" class:pc-over={free < 0}><b>{Math.max(0, free)}</b>/{cap?.total ?? p.monthly_hours} {$t('h/mo')}{#if free < 0} ⚠{/if}</span>
+              <span class="pc-cap-val" class:pc-over={free < 0}><b>{Math.max(0, free)}</b>/{cap?.total ?? p.monthly_hours} {$t('h/mo')}{#if free < 0} <Icon name="warn" size={12} />{/if}</span>
             {/if}
           </div>
           <div class="pc-skills">

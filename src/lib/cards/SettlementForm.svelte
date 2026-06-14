@@ -2,6 +2,7 @@
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { t } from '$lib/i18n';
   import { get } from 'svelte/store';
+  import Icon from '$lib/Icon.svelte';
 
   // The settlement builder: split a finished project's pool into payout weights.
   // Weights default to each contributor's accumulated nominal_str (officer may
@@ -97,7 +98,7 @@
 
 <div class="sf">
   <div class="sf-head">
-    <span class="sf-title">💰 {$t('Settlement')}</span>
+    <span class="sf-title"><Icon name="str" size={16} /> {$t('Settlement')}</span>
     <span class="sf-sub">{$t('Split the pool by payout weight. Submitting is final.')}</span>
   </div>
 
@@ -143,10 +144,10 @@
     <!-- fairness summary: shares total 100%, flag big-contributor / tiny-share -->
     <div class="sf-fair" class:warn={unfair.length}>
       {#if unfair.length}
-        ⚠ {$t('Check the split:')}
+        <Icon name="warn" size={14} /> {$t('Check the split:')}
         {#each unfair as u}<span class="sf-flag">{u.name} — {u.contribPct}% {$t('of work')} → {u.sharePct}% {$t('share')}</span>{/each}
       {:else}
-        ✓ {$t('Shares total 100% and track contribution.')}
+        <Icon name="check" size={14} /> {$t('Shares total 100% and track contribution.')}
       {/if}
     </div>
 
