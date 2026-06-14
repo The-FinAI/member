@@ -5,6 +5,7 @@
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { member, capabilities, officerUnits } from '$lib/session';
   import { t } from '$lib/i18n';
+  import Icon from '$lib/Icon.svelte';
 
   type Item = { icon: string; title: string; sub: string; href: string; tone: 'go' | 'info' | 'warn' };
   let items = $state<Item[]>([]);
@@ -42,19 +43,19 @@
       const inFlight = new Set(((st as any[]) ?? [])
         .filter((s) => ['submitted', 'under_review', 'approved'].includes(s.status)).map((s) => s.project_id));
       for (const pid of ledFinished) if (!inFlight.has(pid))
-        out.push({ icon: '◈', title: $t('Settle {name}', { name: ledName[pid] }), sub: $t('Finished — split the credit'), href: `/projects/${pid}`, tone: 'go' });
+        out.push({ icon: 'str', title: $t('Settle {name}', { name: ledName[pid] }), sub: $t('Finished — split the credit'), href: `/projects/${pid}`, tone: 'go' });
     }
 
     const { data: mt } = await supabase.from('task')
       .select('id, state').eq('owner_member_id', me).in('state', ['open', 'doing', 'checking']);
     const nOpen = ((mt as any[]) ?? []).length;
-    if (nOpen) out.push({ icon: '✓', title: $t('{n} tasks on your plate', { n: nOpen }), sub: $t('Your worklist across all projects'), href: '/my', tone: 'info' });
+    if (nOpen) out.push({ icon: 'check', title: $t('{n} tasks on your plate', { n: nOpen }), sub: $t('Your worklist across all projects'), href: '/my', tone: 'info' });
 
     if (ledIds.size) {
       const { data: tbd } = await supabase.from('task')
         .select('id, project_id').in('project_id', [...ledIds]).is('owner_member_id', null).in('state', ['open', 'doing']);
       const n = ((tbd as any[]) ?? []).length;
-      if (n) out.push({ icon: '◫', title: $t('{n} tasks need an owner', { n }), sub: $t('In projects you lead'), href: ledIds.size === 1 ? `/projects/${[...ledIds][0]}` : '/', tone: 'warn' });
+      if (n) out.push({ icon: 'tasks', title: $t('{n} tasks need an owner', { n }), sub: $t('In projects you lead'), href: ledIds.size === 1 ? `/projects/${[...ledIds][0]}` : '/', tone: 'warn' });
     }
 
     if (myChapters.length) {
@@ -69,7 +70,7 @@
           used[w.member_id] = (used[w.member_id] ?? 0) + (Number(w.monthly_amount) || 0);
       }
       const free = ((roster as any[]) ?? []).filter((r) => r.monthly_hours && (used[r.id] ?? 0) < r.monthly_hours).length;
-      if (free) out.push({ icon: '⇄', title: $t('{n} people have free time', { n: free }), sub: $t('Open a project and assign them to a need'), href: '/projects', tone: 'go' });
+      if (free) out.push({ icon: 'swap', title: $t('{n} people have free time', { n: free }), sub: $t('Open a project and assign them to a need'), href: '/projects', tone: 'go' });
     }
 
     if (myWGs.length) {
@@ -79,18 +80,18 @@
       if (pids.length) {
         const { data: needs } = await supabase.from('project_slot').select('id').in('project_id', pids).eq('status', 'open');
         const n = ((needs as any[]) ?? []).length;
-        if (n) out.push({ icon: '◷', title: $t('{n} open needs on your projects', { n }), sub: $t('Post details or wait for a match'), href: '/', tone: 'info' });
+        if (n) out.push({ icon: 'clock', title: $t('{n} open needs on your projects', { n }), sub: $t('Post details or wait for a match'), href: '/', tone: 'info' });
       }
     }
 
     if (canReview) {
       const { count } = await supabase.from('forge_request').select('id', { count: 'exact', head: true }).eq('status', 'submitted');
-      if (count) out.push({ icon: '⚖', title: $t('{n} waiting for review', { n: count }), sub: $t('Badges, resources, needs & settlements'), href: '/admin/forge-queue', tone: 'warn' });
+      if (count) out.push({ icon: 'scale', title: $t('{n} waiting for review', { n: count }), sub: $t('Badges, resources, needs & settlements'), href: '/admin/forge-queue', tone: 'warn' });
     }
 
     const { count: nUnread } = await supabase.from('notification')
       .select('id', { count: 'exact', head: true }).is('read_at', null);
-    if (nUnread) out.push({ icon: '🔔', title: $t('{n} new notifications', { n: nUnread }), sub: $t('Someone updated work that touches you'), href: '/my', tone: 'info' });
+    if (nUnread) out.push({ icon: 'bell', title: $t('{n} new notifications', { n: nUnread }), sub: $t('Someone updated work that touches you'), href: '/my', tone: 'info' });
 
     items = out;
     loading = false;
@@ -106,7 +107,7 @@
     <div class="ny-list">
       {#each items as it}
         <a class="ny-item tone-{it.tone}" href={it.href}>
-          <span class="ny-ic">{it.icon}</span>
+          <span class="ny-ic"><Icon name={it.icon} size={17} /></span>
           <span class="ny-txt"><b>{it.title}</b><span class="ny-s">{it.sub}</span></span>
           <span class="ny-arr">→</span>
         </a>

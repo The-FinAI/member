@@ -5,6 +5,7 @@
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { member } from '$lib/session';
   import { t } from '$lib/i18n';
+  import Icon from '$lib/Icon.svelte';
   import { goto } from '$app/navigation';
 
   type N = { id: string; kind: string; title: string; body: string | null; link: string | null; read_at: string | null; created_at: string };
@@ -46,7 +47,7 @@
 {#if $member}
   <div class="ni">
     <button class="ni-bell" onclick={() => { open = !open; if (open) load(); }} aria-label={$t('Notifications')} title={$t('Notifications')}>
-      🔔{#if unread}<span class="ni-badge">{unread}</span>{/if}
+      <Icon name="bell" size={16} />{#if unread}<span class="ni-badge">{unread}</span>{/if}
     </button>
     {#if open}
       <button class="ni-backdrop" onclick={() => (open = false)} aria-label="close"></button>

@@ -3,16 +3,17 @@
   // feedback (success/error/info) with an optional Undo.
   import { toasts, dismiss, type Toast } from '$lib/toast';
   import { t } from '$lib/i18n';
+  import Icon from '$lib/Icon.svelte';
   async function doUndo(x: Toast) { dismiss(x.id); await x.undo?.(); }
 </script>
 
 <div class="toaster" aria-live="polite">
   {#each $toasts as x (x.id)}
     <div class="toast {x.kind}" role="status">
-      <span class="tk-mark">{x.kind === 'success' ? '✓' : x.kind === 'error' ? '✕' : '•'}</span>
+      <span class="tk-mark"><Icon name={x.kind === 'success' ? 'check' : x.kind === 'error' ? 'close' : 'info'} size={15} strokeWidth={2} /></span>
       <span class="tk-text">{x.text}</span>
       {#if x.undo}<button class="tk-undo" onclick={() => doUndo(x)}>{$t('Undo')}</button>{/if}
-      <button class="tk-x" aria-label={$t('Dismiss')} onclick={() => dismiss(x.id)}>✕</button>
+      <button class="tk-x" aria-label={$t('Dismiss')} onclick={() => dismiss(x.id)}><Icon name="close" size={13} /></button>
     </div>
   {/each}
 </div>

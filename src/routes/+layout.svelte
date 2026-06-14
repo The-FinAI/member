@@ -12,6 +12,7 @@
   import NotificationInbox from '$lib/shell/NotificationInbox.svelte';
   import Toaster from '$lib/shell/Toaster.svelte';
   import LaunchBanner from '$lib/LaunchBanner.svelte';
+  import Icon from '$lib/Icon.svelte';
 
   let { children } = $props();
 
@@ -146,7 +147,7 @@
           <LangSwitcher />
           {#if $session && $member}<NotificationInbox />{/if}
           <button class="icon-btn" onclick={toggleTheme} title={$t('Toggle theme')} aria-label={$t('Toggle theme')}>
-            {$theme === 'dark' ? '☀' : '☾'}
+            <Icon name={$theme === 'dark' ? 'sun' : 'moon'} size={15} />
           </button>
         </span>
       </div>
@@ -157,7 +158,7 @@
         {#if $session}
           <span class="mast-right">
             <a href="/wallet" class="mast-wallet" title={$t('Open your wallet')}>
-              ◈ {(netValue ?? 0).toLocaleString()} <span class="mw-unit">STR</span>
+              <Icon name="str" size={15} /> {(netValue ?? 0).toLocaleString()} <span class="mw-unit">STR</span>
             </a>
             <div class="usermenu">
               <button class="avatar-btn" onclick={() => (menuOpen = !menuOpen)} title={$t('Account')} aria-haspopup="true" aria-expanded={menuOpen}>
@@ -171,10 +172,10 @@
                     <div class="mh-mail">{$session.user.email}</div>
                   </div>
                   <div class="menu-sep"></div>
-                  <button class="menu-item" onclick={() => go($member ? `/members/${$member.id}` : '/profile')}><span class="mi-ico">✎</span> {$t('My profile')}</button>
-                  <button class="menu-item" onclick={() => go('/wallet')}><span class="mi-ico">◈</span> {$t('Wallet')}</button>
+                  <button class="menu-item" onclick={() => go($member ? `/members/${$member.id}` : '/profile')}><span class="mi-ico"><Icon name="user" /></span> {$t('My profile')}</button>
+                  <button class="menu-item" onclick={() => go('/wallet')}><span class="mi-ico"><Icon name="str" /></span> {$t('Wallet')}</button>
                   <div class="menu-sep"></div>
-                  <button class="menu-item" onclick={signOut}><span class="mi-ico">⏻</span> {$t('Sign out')}</button>
+                  <button class="menu-item" onclick={signOut}><span class="mi-ico"><Icon name="power" /></span> {$t('Sign out')}</button>
                 </div>
               {/if}
             </div>
