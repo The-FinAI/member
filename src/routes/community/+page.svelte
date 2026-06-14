@@ -10,7 +10,6 @@
   import CountUp from '$lib/CountUp.svelte';
   import MemberDetail from '$lib/MemberDetail.svelte';
   import UnitDrawerBody from '$lib/cards/UnitDrawerBody.svelte';
-  import Medal from '$lib/Medal.svelte';
   import { t } from '$lib/i18n';
   import Icon from '$lib/Icon.svelte';
 
@@ -59,9 +58,10 @@
   type Holder = { member_id: string; full_name: string; level: string };
   let skills = $state<Skill[]>([]);
   let holdersOf = $state<Record<string, Holder[]>>({});
-  const RANK: Record<string, number> = { apprentice: 0, journeyman: 1, craftsman: 2, master: 3 };
+  // skill proficiency is the one authoritative scale (legacy guild badges retired, #21)
+  const RANK: Record<string, number> = { learning: 1, independent: 2, lead: 3 };
   const LEVEL_LABEL: Record<string, string> = {
-    apprentice: 'Apprentice', journeyman: 'Journeyman', craftsman: 'Craftsman', master: 'Master'
+    learning: 'Learning', independent: 'Independent', lead: 'Lead'
   };
 
   const netWorthOf = (id: string) => (balanceOf[id] ?? 0) + (nominalOf[id] ?? 0);
@@ -114,14 +114,15 @@
     projectUnitOf = pumap;
     loading = false;
 
-    // badge catalog data (skill tree + badge holders — new `badge` table)
-    const [{ data: sk }, { data: bg }] = await Promise.all([
+    // skill catalog data (skill tree + who holds each skill, from person_skill —
+    // the Learning/Independent/Lead scale; legacy badges retired, #21)
+    const [{ data: sk }, { data: ps }] = await Promise.all([
       supabase.from('skill').select('id, name, parent_id').order('name'),
-      supabase.from('badge').select('skill_id, member_id, level, member:member_id(full_name)')
+      supabase.from('person_skill').select('skill_id, member_id, level, member:member_id(full_name)')
     ]);
     skills = (sk as Skill[]) ?? [];
     const hmap: Record<string, Holder[]> = {};
-    for (const r of (bg as { skill_id: string; member_id: string; level: string; member: { full_name: string } | null }[]) ?? []) {
+    for (const r of (ps as { skill_id: string; member_id: string; level: string; member: { full_name: string } | null }[]) ?? []) {
       (hmap[r.skill_id] ??= []).push({ member_id: r.member_id, full_name: r.member?.full_name ?? '—', level: r.level });
     }
     holdersOf = hmap;
@@ -243,53 +244,8 @@
     await loadMyUnits();
   }
 
-  // ---- badge award (forge_badge → review queue) ----
-  const canAward = $derived(
-    $capabilities.has('manage_members') || $capabilities.has('mint_skillcard') || $officerUnits.length > 0
-  );
-  const isBadgeAdmin = $derived($capabilities.has('manage_members') || $capabilities.has('mint_skillcard'));
-  type AwardCard = { id: string; full_name: string };
-  let awardCards = $state<AwardCard[]>([]);
-  let awardOpen = $state(false);
-  let awardQ = $state(''); let awardSel = $state<Set<string>>(new Set()); let awardLevel = $state<string>('apprentice');
-  let awardBusy = $state(false);
-  const LEVELS = ['apprentice', 'journeyman', 'craftsman', 'master'];
-
-  async function openAward() {
-    awardOpen = true; awardSel = new Set(); awardQ = ''; awardLevel = 'apprentice';
-    drawerErr = ''; drawerMsg = '';
-    let q = supabase.from('member').select('id, full_name').eq('kind', 'card').order('full_name');
-    if (!isBadgeAdmin) {
-      const ids = $officerUnits.map((u) => u.unit_id);
-      if (!ids.length) { awardCards = []; return; }
-      q = q.in('home_unit_id', ids);
-    }
-    const { data } = await q;
-    awardCards = (data as AwardCard[]) ?? [];
-  }
-  function toggleAward(id: string) {
-    const s = new Set(awardSel);
-    s.has(id) ? s.delete(id) : s.add(id);
-    awardSel = s;
-  }
-  const awardChoices = $derived(
-    awardCards.filter((c) => !awardQ.trim() || c.full_name.toLowerCase().includes(awardQ.trim().toLowerCase()))
-  );
-  // skill-centric batch: award THIS skill to every selected member at one level
-  async function doAward(skillId: string) {
-    if (!awardSel.size) { drawerErr = get(t)('Pick at least one member.'); return; }
-    awardBusy = true; drawerErr = ''; drawerMsg = '';
-    let failed = 0;
-    for (const mid of awardSel) {
-      const { error: err } = await supabase.rpc('forge_badge', { p_member: mid, p_skill: skillId, p_level: awardLevel, p_as: mid });
-      if (err) failed++;
-    }
-    awardBusy = false;
-    const ok = awardSel.size - failed;
-    drawerMsg = get(t)('{n} badge(s) submitted for review.', { n: ok });
-    if (failed) drawerErr = get(t)('{n} could not be submitted.', { n: failed });
-    awardOpen = false; awardSel = new Set();
-  }
+  // Legacy guild-badge awarding was retired (#21). Skill proficiency is set per
+  // person on their profile (Learning/Independent/Lead), not awarded here.
 </script>
 
 <div class="stack">
@@ -349,18 +305,18 @@
   <!-- ============ BADGE CATALOG ============ -->
   {:else if tab === 'badges'}
     {#if badgesFiltered.length === 0}
-      <div class="card"><p class="muted">{$t('No badges yet.')}</p></div>
+      <div class="card"><p class="muted">{$t('No skills yet.')}</p></div>
     {:else}
       <div class="card-grid">
         {#each badgesFiltered as c (c.id)}
           <EntityCard
-            type="Badge"
+            type="Skill"
             title={c.name}
             subtitle={c.domain || '—'}
             status={c.holders.length ? $t('{n} holders', { n: c.holders.length }) : $t('No holders yet')}
             statusKind={c.holders.length ? 'pos' : 'dim'}
             stats={[
-              { label: 'Holders', value: String(c.holders.length) },
+              { label: 'People', value: String(c.holders.length) },
               { label: 'Top level', value: c.top ? $t(LEVEL_LABEL[c.top]) : '—' }
             ]}
             onclick={() => openBadge(c)}
@@ -454,56 +410,25 @@
     {@const c = sel.badge}
     <CardDrawer
       open={drawerOpen}
-      type="Badge"
+      type="Skill"
       title={c.name}
       subtitle={c.domain || '—'}
       onClose={closeDrawer}
     >
       <div class="stack">
-        {#if drawerErr}<p class="neg" style="font-size:.82rem; margin:0;">{drawerErr}</p>{/if}
-        {#if drawerMsg}<p style="font-size:.82rem; margin:0; color:var(--accent);">{drawerMsg}</p>{/if}
         <p class="muted" style="font-size:.85rem; margin:0;">
-          {$t('A certified skill, ranked Apprentice → Journeyman → Craftsman → Master. In Phase 1, officers award badges to their members for review.')}
+          {$t('A skill in the catalog. Proficiency is Learning · Independent · Lead, set on each person’s profile by their chapter officer.')}
         </p>
 
-        {#if canAward}
-          {#if !awardOpen}
-            <button class="btn" style="align-self:flex-start;" onclick={openAward}>✦ {$t('Award this badge')}</button>
-          {:else}
-            <div class="award card stack" style="gap:.6rem; padding:.8rem;">
-              <span class="muted" style="font-size:.78rem;">{isBadgeAdmin ? $t('Select members to award this badge to.') : $t('Select cards from a chapter you officer.')}</span>
-              <div class="search"><input placeholder={$t('Search by name…')} bind:value={awardQ} /></div>
-              <div class="award-cards">
-                {#each awardChoices.slice(0, 60) as ac (ac.id)}
-                  <button type="button" class="award-card" class:on={awardSel.has(ac.id)} onclick={() => toggleAward(ac.id)}>
-                    {#if awardSel.has(ac.id)}<Icon name="check" size={13} /> {/if}{ac.full_name}
-                  </button>
-                {/each}
-                {#if !awardChoices.length}<p class="muted" style="margin:0; font-size:.82rem;">{$t('No matching cards.')}</p>{/if}
-              </div>
-              <label class="row" style="gap:.5rem; align-items:center;">
-                <span class="muted" style="font-size:.78rem;">{$t('Level')}</span>
-                <select bind:value={awardLevel}>{#each LEVELS as lv}<option value={lv}>{$t(LEVEL_LABEL[lv])}</option>{/each}</select>
-              </label>
-              <div class="row" style="gap:.5rem;">
-                <button class="btn" disabled={awardBusy || !awardSel.size} onclick={() => doAward(c.id)}>
-                  {awardBusy ? $t('Submitting…') : awardSel.size ? $t('Submit {n} for review', { n: awardSel.size }) : $t('Submit for review')}
-                </button>
-                <button class="btn ghost" onclick={() => (awardOpen = false)}>{$t('Cancel')}</button>
-              </div>
-            </div>
-          {/if}
-        {/if}
-
-        <h3 style="margin:.3rem 0 0;">{$t('Holders')}{#if c.holders.length}<span class="muted" style="font-weight:400;"> · {c.holders.length}</span>{/if}</h3>
+        <h3 style="margin:.3rem 0 0;">{$t('Who has this skill')}{#if c.holders.length}<span class="muted" style="font-weight:400;"> · {c.holders.length}</span>{/if}</h3>
         {#if c.holders.length === 0}
-          <p class="muted" style="margin:0;">{$t('No holders yet.')}</p>
+          <p class="muted" style="margin:0;">{$t('No one has listed this skill yet.')}</p>
         {:else}
           <ul style="margin:0; padding:0; list-style:none;">
             {#each c.holders as h}
               <li class="row" style="justify-content:space-between; align-items:center; gap:.5rem; border-top:1px solid var(--border); padding:.45rem 0;">
                 <a href={`/members/${h.member_id}`} class="p-name">{h.full_name}</a>
-                <Medal level={h.level} size="sm" />
+                <span class="lvl-tag lv-{h.level}">{$t(LEVEL_LABEL[h.level] ?? h.level)}</span>
               </li>
             {/each}
           </ul>
@@ -514,6 +439,10 @@
 {/if}
 
 <style>
+  .lvl-tag { font-size: .72rem; font-weight: 600; padding: .05rem .5rem; border-radius: var(--r-full);
+    border: 1px solid var(--border-2); color: var(--muted); white-space: nowrap; }
+  .lvl-tag.lv-independent { color: var(--info); border-color: var(--info); }
+  .lvl-tag.lv-lead { color: var(--gold); border-color: var(--gold); }
   .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: .8rem; }
   .btn {
     display: inline-flex; align-items: center; gap: .3rem; padding: .5rem .9rem;

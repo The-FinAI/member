@@ -3,9 +3,7 @@
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { member, capabilities } from '$lib/session';
   import { t } from '$lib/i18n';
-  import Medal from '$lib/Medal.svelte';
   import Icon from '$lib/Icon.svelte';
-  import BadgeTree from '$lib/cards/BadgeTree.svelte';
   import SkillCapacity from '$lib/people/SkillCapacity.svelte';
   import SectionNav from '$lib/SectionNav.svelte';
   import Breadcrumbs from '$lib/Breadcrumbs.svelte';
@@ -25,20 +23,11 @@
     links: Record<string, string> | null;
     member_position: { position: { name: string } | null }[];
   };
-  type Badge = {
-    skill_id: string; level: string;
-    skill: { name: string } | null;
-  };
   type Proj = {
     id: string; name: string; status: string; role: string; nominal: number;
   };
 
   let mem = $state<Mem | null>(null);
-  let badges = $state<Badge[]>([]);
-  // managers (manages_card / manage_members / mint_skillcard) can award badges
-  // via the talent-tree editor below.
-  // owners may claim their own badges (staged → review); officers/admins award others'
-  const canAward = $derived(isMe || canEdit || $capabilities.has('manage_members') || $capabilities.has('mint_skillcard'));
   let projects = $state<Proj[]>([]);
   let totalNominal = $state(0);
   let loading = $state(true);
@@ -213,17 +202,12 @@
     // (what this card can bring); editors get the full editor below.
     await loadCatalog(memberId);
 
-    // new model: badges live in `badge`; contribution & project roster come from
-    // work_commitment (nominal_str + the slot kind → role).
-    const [{ data: bg }, { data: wc }] = await Promise.all([
-      supabase.from('badge').select('skill_id, level, skill:skill_id(name)').eq('member_id', memberId),
-      supabase.from('work_commitment')
-        .select('project_id, nominal_str, slot:slot_id(slot_kind), project:project_id(id, name, project_status!project_status_id_fkey(name))')
-        .eq('member_id', memberId)
-    ]);
-
-    badges = ((bg as any[]) ?? []).map((b) => ({ skill_id: b.skill_id, level: b.level, skill: b.skill }))
-      .sort((a, b) => (RANK[b.level] ?? 0) - (RANK[a.level] ?? 0) || (a.skill?.name ?? '').localeCompare(b.skill?.name ?? ''));
+    // contribution & project roster come from work_commitment (nominal_str + the
+    // slot kind → role). Skill proficiency is the Learning/Independent/Lead scale
+    // shown in the Skills card; the legacy guild-badge system was retired (#21).
+    const { data: wc } = await supabase.from('work_commitment')
+      .select('project_id, nominal_str, slot:slot_id(slot_kind), project:project_id(id, name, project_status!project_status_id_fkey(name))')
+      .eq('member_id', memberId);
 
     // aggregate per project: Σ nominal_str, and the strongest role (leader > resource > contributor)
     const byP: Record<string, Proj> = {};
@@ -252,8 +236,6 @@
   $effect(() => {
     if (id && id !== lastId) { lastId = id; load(id); }
   });
-
-  const RANK: Record<string, number> = { apprentice: 0, journeyman: 1, craftsman: 2, master: 3 };
 
   // in-page section nav (only the sections actually rendered, in DOM order)
   const sections = $derived([
@@ -421,11 +403,6 @@
         <span class="k-sub">{$t('STR accruing from work')}</span>
       </div>
       <div class="kpi">
-        <span class="k-label">{$t('Badges')}</span>
-        <span class="k-value">{badges.length}</span>
-        <span class="k-sub">{$t('certified skills')}</span>
-      </div>
-      <div class="kpi">
         <span class="k-label">{$t('Projects')}</span>
         <span class="k-value">{projects.length}</span>
         <span class="k-sub">{$t('collaborations on record')}</span>
@@ -437,30 +414,10 @@
       </div>
     </div>
 
-    <!-- badges: a certified skill IS a badge (medal); uncertified skills
-         are listed as awaiting a badge. One section, no duplicate skills table. -->
+    <!-- skills: the Learning/Independent/Lead proficiency scale + evidence -->
     <div class="card stack" id="skills">
       <SkillCapacity memberId={id} canEdit={canEditCatalog} />
     </div>
-
-    <!-- Skills now live in the card above (SkillCapacity). The old badge tree is
-         demoted to a collapsed, secondary block — kept (not deleted) so badge
-         granting still works until person_skill is confirmed authoritative. -->
-    <!-- only shown when there ARE old badges to display — no empty "older
-         system" block leaking migration state to a normal user -->
-    {#if badges.length > 0}
-      <details class="card stack legacy" id="badges">
-        <summary class="legacy-sum">{$t('Certified badges')} <span class="muted">· {$t('older system')}</span></summary>
-        {#if canAward}
-          <p class="muted" style="font-size:.8rem; margin:.3rem 0 0;">{$t('Click ranks to stage raises across skills, then submit the batch for review.')}</p>
-          <BadgeTree memberId={id} canEdit={true} onSubmitted={() => load(id)} />
-        {:else}
-          <div class="row" style="gap:.5rem; flex-wrap:wrap; margin-top:.4rem;">
-            {#each badges as b}<Medal name={b.skill?.name ?? b.skill_id} level={b.level} />{/each}
-          </div>
-        {/if}
-      </details>
-    {/if}
 
     <!-- projects -->
     <div class="card stack" id="projects">
