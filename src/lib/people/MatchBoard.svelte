@@ -64,6 +64,9 @@
                 .filter((r) => r.filled < (r.headcount ?? 1));
     members = (mem.data as Member[]) ?? [];
     loading = false;
+    // open the first need so ranked candidates are visible immediately — the
+    // matcher is the core operation; it shouldn't hide behind a chevron.
+    if (needs.length && !openNeed) pickNeed(needs[0]);
   }
   $effect(() => { load(); });
 
