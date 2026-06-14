@@ -5,6 +5,7 @@
   // on failure it reverts and shows the reason inline (no reload-everything).
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { t } from '$lib/i18n';
+  import { toast } from '$lib/toast';
 
   let { projectId, canEdit = false, onChanged }: {
     projectId: string;
@@ -78,7 +79,7 @@
     busy = tk.id; err = '';
     const { data, error } = await supabase.rpc('task_update', { p_task: tk.id, p_patch: p });
     busy = null;
-    if (error) { Object.assign(tk, before); tasks = tasks; err = error.message; return; }
+    if (error) { Object.assign(tk, before); tasks = tasks; toast.error(error.message); err = error.message; return; }
     if (data) { const i = tasks.findIndex(x => x.id === tk.id); if (i >= 0) tasks[i] = data as Task; tasks = tasks; }
     onChanged?.();
   }
@@ -91,7 +92,7 @@
       p_project: projectId, p_name: name, p_grp: grp || null
     });
     busy = null;
-    if (error) { err = error.message; return; }
+    if (error) { toast.error(error.message); err = error.message; return; }
     if (data) tasks = [...tasks, data as Task];
     newName = ''; adding = null;
     onChanged?.();
@@ -103,7 +104,7 @@
     busy = tk.id; err = '';
     const { error } = await supabase.rpc('task_remove', { p_task: tk.id });
     busy = null;
-    if (error) { tasks = keep; err = error.message; return; }
+    if (error) { tasks = keep; toast.error(error.message); err = error.message; return; }
     onChanged?.();
   }
 </script>

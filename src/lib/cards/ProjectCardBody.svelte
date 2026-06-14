@@ -1,6 +1,7 @@
 <script lang="ts">
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { t } from '$lib/i18n';
+  import { toast } from '$lib/toast';
   import { get } from 'svelte/store';
   import SettlementForm from './SettlementForm.svelte';
   import InlineField from './InlineField.svelte';
@@ -117,9 +118,11 @@
   async function setStatus(statusId: string) {
     if (!statusId || statusId === proj?.status_id) return;
     busy = 'status'; err = ''; msg = '';
+    const sn = statuses.find((s) => s.id === statusId)?.name ?? '';
     const { error: e } = await supabase.rpc('project_set_status', { p_project: projectId, p_status: statusId });
     busy = '';
-    if (e) { err = e.message; return; }
+    if (e) { toast.error(e.message); err = e.message; return; }
+    toast.success(get(t)('Status') + ' → ' + get(t)(sn));
     await load(); onChanged?.();
   }
 
@@ -137,8 +140,8 @@
     busy = 'done'; err = ''; msg = '';
     const { error: e } = await supabase.rpc('forge_project_done', { p_project: projectId });
     busy = '';
-    if (e) { err = e.message; return; }
-    msg = get(t)('Project finished — open settlement to split the pool.');
+    if (e) { toast.error(e.message); err = e.message; return; }
+    toast.success(get(t)('Project finished — open settlement to split the pool.'));
     await load(); onChanged?.();   // re-render to the Finished state (no reload needed)
   }
 

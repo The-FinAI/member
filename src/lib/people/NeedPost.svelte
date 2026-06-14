@@ -4,6 +4,7 @@
   // After posting it shows the candidate-pool size so demand isn't posted blind.
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { t } from '$lib/i18n';
+  import { toast } from '$lib/toast';
 
   // edit: when set, the form opens pre-filled and saves via need_update (issue #9).
   type NeedEdit = { id: string; kind: string; skill_id: string | null; level: string | null; resource_type_id: string | null; quota: number | null; headcount: number };
@@ -71,8 +72,8 @@
     const { data, error } = edit
       ? await supabase.rpc('need_update', { p_slot: edit.id, ...args })
       : await supabase.rpc('need_post', { p_project: projectId, ...args });
-    if (error) { busy = false; err = error.message; return; }
-    if (edit) { busy = false; onSaved?.(); return; }
+    if (error) { busy = false; toast.error(error.message); err = error.message; return; }
+    if (edit) { busy = false; toast.success($t('Need updated')); onSaved?.(); return; }
     // show the candidate pool so demand isn't blind
     const slotId = (data as any)?.id;
     if (slotId) {
@@ -80,6 +81,7 @@
       pool = (c as any[])?.length ?? 0;
     }
     busy = false; fSkill = ''; fHours = '';
+    toast.success($t('Role posted') + (pool != null ? ` · ${pool} ${$t('qualify')}` : ''));
     onPosted?.();
   }
 </script>
