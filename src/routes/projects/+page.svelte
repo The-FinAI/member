@@ -279,7 +279,7 @@
     switch (name) {
       case 'Proposal': return '#6b7280';
       case 'Data Collecting': return '#3fb6c6';
-      case 'Work in progress': return '#f0a35e';
+      case 'Work in progress': return 'var(--warn)';
       case 'Under review': return '#a371f7';
       case 'Hold': return '#9ca3af';
       case 'Finished': return '#3fb950';

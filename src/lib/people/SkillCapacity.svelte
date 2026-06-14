@@ -176,14 +176,14 @@
   .sc-capval { font-family: var(--font-mono); }
   .sc-capval b { font-size: 1.05em; }
   .sc-free { font-size: .82rem; color: var(--up, #2e9e5b); font-weight: 600; }
-  .sc-over { color: var(--down, #c0392b); }
-  .sc-err { color: var(--neg, #c0392b); font-size: .82rem; }
+  .sc-over { color: var(--down, var(--down)); }
+  .sc-err { color: var(--neg, var(--down)); font-size: .82rem; }
   .sc-dim { color: var(--muted, #999); font-size: .9rem; }
   .sc-cap { display: flex; align-items: center; gap: .5rem; margin-bottom: .6rem; }
   .sc-label { font-weight: 600; font-size: .85rem; color: var(--muted, #666); }
   .sc-hours { width: 5rem; padding: .25rem .4rem; border: 1px solid var(--line, #ddd); border-radius: var(--r-sm); }
   .sc-unit { color: var(--muted, #999); font-size: .85rem; }
-  .sc-sug { display: flex; align-items: center; justify-content: space-between; gap: .6rem; background: #fff8e6; border: 1px solid #f0d98a; border-radius: var(--r-sm); padding: .35rem .6rem; margin-bottom: .4rem; font-size: .85rem; }
+  .sc-sug { display: flex; align-items: center; justify-content: space-between; gap: .6rem; background: var(--gold-soft); border: 1px solid var(--gold); border-radius: var(--r-sm); padding: .35rem .6rem; margin-bottom: .4rem; font-size: .85rem; }
   .sc-list { list-style: none; padding: 0; margin: .3rem 0; }
   .sc-list li { display: flex; align-items: center; gap: .55rem; padding: .3rem 0; border-bottom: 1px solid var(--line, #f3f3f3); }
   .sc-list li.busy { opacity: .55; }
@@ -191,16 +191,16 @@
   .sc-seg { display: inline-flex; border: 1px solid var(--line, #ddd); border-radius: var(--r-sm); overflow: hidden; }
   .seg { border: none; background: none; padding: .2rem .55rem; cursor: pointer; font-size: .8rem; color: var(--muted, #888); border-right: 1px solid var(--line, #eee); }
   .seg:last-child { border-right: none; }
-  .seg.on { background: var(--accent, #6a7cff); color: #fff; }
+  .seg.on { background: var(--accent, var(--accent)); color: #fff; }
   .sc-lvl { font-size: .82rem; }
   .sc-ev { font-size: .76rem; color: var(--muted, #aaa); margin-left: auto; }
   .sc-x { border: none; background: none; cursor: pointer; color: var(--muted, #bbb); }
-  .sc-x:hover { color: var(--neg, #c0392b); }
+  .sc-x:hover { color: var(--neg, var(--down)); }
   .sc-add { display: flex; gap: .4rem; margin-top: .4rem; }
   .sc-add select { padding: .3rem .4rem; border: 1px solid var(--line, #ddd); border-radius: var(--r-sm); }
   .sc-addrow { border: 1px dashed var(--line, #ddd); background: none; border-radius: var(--r-sm); padding: .3rem .6rem; cursor: pointer; color: var(--muted, #777); font-size: .85rem; margin-top: .4rem; }
-  .sc-addrow:hover { border-color: var(--accent, #6a7cff); color: var(--accent, #6a7cff); }
-  .sc-go { border: none; background: var(--accent, #6a7cff); color: #fff; border-radius: var(--r-sm); padding: .3rem .75rem; cursor: pointer; }
+  .sc-addrow:hover { border-color: var(--accent, var(--accent)); color: var(--accent, var(--accent)); }
+  .sc-go { border: none; background: var(--accent, var(--accent)); color: #fff; border-radius: var(--r-sm); padding: .3rem .75rem; cursor: pointer; }
   .sc-go:disabled { opacity: .5; cursor: default; }
   .sc-ghost { border: 1px solid var(--line, #ddd); background: none; border-radius: var(--r-sm); padding: .3rem .65rem; cursor: pointer; }
 </style>

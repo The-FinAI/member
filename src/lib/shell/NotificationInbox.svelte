@@ -74,15 +74,15 @@
 <style>
   .ni { position: relative; margin: 0 .25rem; }
   .ni-bell { border: none; background: none; cursor: pointer; font-size: 1.05rem; position: relative; padding: .2rem; }
-  .ni-badge { position: absolute; top: -.2rem; right: -.3rem; background: #d9534f; color: #fff; font-size: .62rem; border-radius: var(--r-full); padding: 0 .3rem; min-width: 1rem; }
+  .ni-badge { position: absolute; top: -.2rem; right: -.3rem; background: var(--down); color: #fff; font-size: .62rem; border-radius: var(--r-full); padding: 0 .3rem; min-width: 1rem; }
   .ni-backdrop { position: fixed; inset: 0; background: none; border: none; z-index: 40; }
   .ni-pop { position: absolute; right: 0; top: 2rem; width: 22rem; max-width: 90vw; background: var(--card, #fff); border: 1px solid var(--line, #e2e2e2); border-radius: var(--r-md); box-shadow: 0 8px 28px rgba(0,0,0,.12); z-index: 41; max-height: 70vh; overflow: auto; }
   .ni-head { display: flex; justify-content: space-between; align-items: center; padding: .55rem .7rem; border-bottom: 1px solid var(--line, #f0f0f0); font-weight: 600; font-size: .85rem; }
-  .ni-readall { border: none; background: none; color: var(--accent, #6a7cff); cursor: pointer; font-size: .78rem; }
+  .ni-readall { border: none; background: none; color: var(--accent, var(--accent)); cursor: pointer; font-size: .78rem; }
   .ni-empty { padding: 1rem .7rem; color: var(--muted, #999); font-size: .85rem; }
   .ni-item { display: flex; flex-direction: column; gap: .12rem; width: 100%; text-align: left; background: none; border: none; border-bottom: 1px solid var(--line, #f5f5f5); padding: .5rem .7rem; cursor: pointer; }
   .ni-item:hover { background: var(--card-bg, #fafafa); }
-  .ni-item.unread { background: color-mix(in srgb, var(--accent, #6a7cff) 7%, transparent); }
+  .ni-item.unread { background: color-mix(in srgb, var(--accent, var(--accent)) 7%, transparent); }
   .ni-title { font-size: .86rem; font-weight: 500; }
   .ni-body { font-size: .78rem; color: var(--text, #555); }
   .ni-time { font-size: .72rem; color: var(--muted, #aaa); }

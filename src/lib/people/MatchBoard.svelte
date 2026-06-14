@@ -228,16 +228,16 @@
   .mb { margin-bottom: 1.5rem; }
   .mb-head { display: flex; align-items: baseline; gap: .7rem; }
   .mb-head h2 { margin: 0 0 .6rem; font-size: 1.1rem; }
-  .mb-err { color: var(--neg, #c0392b); font-size: .82rem; }
-  .mb-ok { color: #2e7d4f; font-size: .82rem; }
+  .mb-err { color: var(--neg, var(--down)); font-size: .82rem; }
+  .mb-ok { color: var(--up); font-size: .82rem; }
   .mb-dim { color: var(--muted, #999); font-size: .9rem; }
   .need { border: 1px solid var(--line, #eee); border-radius: var(--r-md); margin-bottom: .5rem; overflow: hidden; }
-  .need.open { border-color: var(--accent, #6a7cff); }
+  .need.open { border-color: var(--accent, var(--accent)); }
   .need-row { width: 100%; display: flex; align-items: center; gap: .6rem; background: none; border: none; cursor: pointer; padding: .55rem .7rem; text-align: left; color: inherit; }
   .need-chev { color: var(--muted, #aaa); transition: transform .12s; display: inline-block; }
   .need-chev.open { transform: rotate(90deg); }
   .need-skill { font-weight: 600; }
-  .need-lvl { font-size: .73rem; border: 1px solid #8aa0ff; color: #5566cc; border-radius: var(--r-full); padding: 0 .45rem; }
+  .need-lvl { font-size: .73rem; border: 1px solid var(--info); color: var(--info); border-radius: var(--r-full); padding: 0 .45rem; }
   .need-proj { font-size: .8rem; color: var(--muted, #999); }
   .need-fill { margin-left: auto; font-size: .8rem; color: var(--muted, #888); }
   .need-q { font-size: .8rem; color: var(--muted, #aaa); }
@@ -248,29 +248,29 @@
   .cand-info { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; flex: 1 1 14rem; }
   .cand-grade { font-size: .72rem; display: inline-flex; align-items: center; gap: .25rem; }
   .gr-label { font-size: .68rem; color: var(--muted, #999); }
-  .gr-strong { color: #2e7d4f; } .gr-ok { color: #6a7cff; } .gr-stretch { color: #cbb24a; }
+  .gr-strong { color: var(--up); } .gr-ok { color: var(--accent); } .gr-stretch { color: var(--warn); }
   .cand-name { font-weight: 500; }
   .cand-lvl { font-size: .73rem; color: var(--muted, #888); }
-  .cand-lvl.lv-lead { color: #9a7b12; } .cand-lvl.lv-independent { color: #5566cc; }
+  .cand-lvl.lv-lead { color: var(--gold); } .cand-lvl.lv-independent { color: var(--info); }
   .cand-ev { font-size: .74rem; color: var(--muted, #aaa); }
-  .cand-reason { font-size: .73rem; color: #b8860b; }
+  .cand-reason { font-size: .73rem; color: var(--warn); }
   .cand-cap { display: flex; flex-direction: column; gap: .15rem; min-width: 6.5rem; }
   .capbar { height: 6px; background: var(--line, #ececec); border-radius: var(--r-full); overflow: hidden; position: relative; }
-  .capfill { height: 100%; background: #4caf72; border-radius: var(--r-full); transition: width .12s; }
-  .capfill.over { background: #d9534f; }
+  .capfill { height: 100%; background: var(--up); border-radius: var(--r-full); transition: width .12s; }
+  .capfill.over { background: var(--down); }
   .cap-inf { font-size: .7rem; color: var(--muted, #bbb); }
-  .cap-txt { font-size: .72rem; color: #2e7d4f; }
-  .cap-txt.over { color: #d9534f; }
+  .cap-txt { font-size: .72rem; color: var(--up); }
+  .cap-txt.over { color: var(--down); }
   .cand-unit { font-size: .72rem; color: var(--muted, #aaa); }
   .cand-act { display: flex; gap: .3rem; align-items: center; }
-  .cand-h.over { border-color: #d9534f; color: #d9534f; }
+  .cand-h.over { border-color: var(--down); color: var(--down); }
   .cand-h { width: 3.4rem; padding: .2rem .3rem; border: 1px solid var(--line, #ddd); border-radius: var(--r-sm); }
-  .assign { border: none; background: var(--accent, #6a7cff); color: #fff; border-radius: var(--r-sm); padding: .25rem .7rem; cursor: pointer; }
+  .assign { border: none; background: var(--accent, var(--accent)); color: #fff; border-radius: var(--r-sm); padding: .25rem .7rem; cursor: pointer; }
   .assign:disabled { opacity: .5; cursor: default; }
   .direct { display: flex; gap: .35rem; align-items: center; margin-top: .45rem; flex-wrap: wrap; }
   .direct-q { padding: .25rem .4rem; border: 1px solid var(--line, #ddd); border-radius: var(--r-sm); }
   .direct select { padding: .25rem .4rem; border: 1px solid var(--line, #ddd); border-radius: var(--r-sm); }
   .direct-toggle { margin-top: .45rem; border: 1px dashed var(--line, #ddd); background: none; border-radius: var(--r-sm); padding: .3rem .6rem; cursor: pointer; color: var(--muted, #777); font-size: .84rem; }
-  .direct-toggle:hover { border-color: var(--accent, #6a7cff); color: var(--accent, #6a7cff); }
+  .direct-toggle:hover { border-color: var(--accent, var(--accent)); color: var(--accent, var(--accent)); }
   .mb-ghost { border: 1px solid var(--line, #ddd); background: none; border-radius: var(--r-sm); padding: .25rem .6rem; cursor: pointer; }
 </style>

@@ -51,10 +51,10 @@
   .wal-row { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
   .wal-fig { display: flex; flex-direction: column; }
   .wal-n { font-size: 1.4rem; font-weight: 700; line-height: 1; }
-  .wal-n.accr { color: #b8860b; } .wal-n.setl { color: #2e7d4f; }
+  .wal-n.accr { color: var(--warn); } .wal-n.setl { color: var(--up); }
   .wal-l { font-size: .78rem; color: var(--muted, #777); margin-top: .15rem; }
   .wal-dim { color: var(--muted, #aaa); }
   .wal-arrow { color: var(--muted, #ccc); font-size: 1.2rem; }
-  .wal-how { margin-left: auto; border: none; background: none; color: var(--accent, #6a7cff); cursor: pointer; font-size: .82rem; }
+  .wal-how { margin-left: auto; border: none; background: none; color: var(--accent, var(--accent)); cursor: pointer; font-size: .82rem; }
   .wal-help { font-size: .82rem; color: var(--muted, #777); margin: .5rem 0 0; max-width: 46rem; }
 </style>

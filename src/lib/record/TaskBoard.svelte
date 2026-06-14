@@ -198,7 +198,7 @@
   .tb { margin: 1rem 0; }
   .tb-head { display: flex; align-items: baseline; gap: .75rem; margin-bottom: .5rem; }
   .tb-head h3 { margin: 0; font-size: 1rem; }
-  .tb-err { color: var(--neg, #c0392b); font-size: .82rem; }
+  .tb-err { color: var(--neg, var(--down)); font-size: .82rem; }
   .tb-dim { color: var(--muted, #888); font-size: .9rem; }
   .tb-grp { font-weight: 600; font-size: .85rem; margin: .75rem 0 .25rem; color: var(--muted, #777); }
   .tb-table { width: 100%; border-collapse: collapse; font-size: .88rem; }
@@ -207,18 +207,18 @@
   tr.busy { opacity: .55; }
   .cell { width: 100%; border: 1px solid transparent; background: transparent; padding: .25rem .35rem; border-radius: var(--r-sm); font: inherit; color: inherit; }
   .cell:hover { border-color: var(--line, #e6e6e6); }
-  .cell:focus { border-color: var(--accent, #6a7cff); outline: none; background: var(--card, #fff); }
+  .cell:focus { border-color: var(--accent, var(--accent)); outline: none; background: var(--card, #fff); }
   .pill { font-size: .76rem; padding: .1rem .5rem; border-radius: var(--r-full); border: 1px solid var(--line, #ddd); }
-  .st-done, select.st-done { color: #2e7d4f; }
-  .st-doing, select.st-doing { color: #b8860b; }
-  .st-confirmed { color: #2e7d4f; }
+  .st-done, select.st-done { color: var(--up); }
+  .st-doing, select.st-doing { color: var(--warn); }
+  .st-confirmed { color: var(--up); }
   .tb-tbd { color: var(--muted, #aaa); font-style: italic; }
   .tb-x { border: none; background: none; cursor: pointer; color: var(--muted, #bbb); }
-  .tb-x:hover { color: var(--neg, #c0392b); }
+  .tb-x:hover { color: var(--neg, var(--down)); }
   .tb-add { display: flex; gap: .4rem; margin: .35rem 0; }
   .tb-addrow { border: 1px dashed var(--line, #ddd); background: none; border-radius: var(--r-sm); padding: .35rem .6rem; cursor: pointer; color: var(--muted, #777); font-size: .85rem; margin-top: .35rem; }
-  .tb-addrow:hover { border-color: var(--accent, #6a7cff); color: var(--accent, #6a7cff); }
-  .tb-go { border: none; background: var(--accent, #6a7cff); color: #fff; border-radius: var(--r-sm); padding: .35rem .8rem; cursor: pointer; }
+  .tb-addrow:hover { border-color: var(--accent, var(--accent)); color: var(--accent, var(--accent)); }
+  .tb-go { border: none; background: var(--accent, var(--accent)); color: #fff; border-radius: var(--r-sm); padding: .35rem .8rem; cursor: pointer; }
   .tb-go:disabled { opacity: .5; cursor: default; }
   .tb-ghost { border: 1px solid var(--line, #ddd); background: none; border-radius: var(--r-sm); padding: .35rem .7rem; cursor: pointer; }
 </style>

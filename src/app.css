@@ -58,6 +58,15 @@
   --ctl-h:    36px;
   --ctl-h-sm: 28px;
 
+  /* ---- back-compat aliases ---- many component-local styles predate the v2
+     token names and reference --line / --neg / --card-bg with a hardcoded hex
+     fallback. Those tokens were never defined, so they leaked the fallback
+     (off-theme greys/reds, broken in dark). Alias them to the themed tokens so
+     every component follows the edition automatically. */
+  --line:    var(--border);
+  --neg:     var(--down);
+  --card-bg: var(--card);
+
   color-scheme: light;
   font-family: var(--font-sans);
 }

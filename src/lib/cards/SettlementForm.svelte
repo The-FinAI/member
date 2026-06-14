@@ -165,9 +165,9 @@
 
 <style>
   .sf { display: flex; flex-direction: column; gap: .7rem; padding: .8rem; border: 1px solid color-mix(in srgb, var(--up) 30%, transparent); border-radius: var(--r-md); background: color-mix(in srgb, var(--up) 6%, transparent); }
-  .sf-fair { font-size: .82rem; color: #2e7d4f; display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; }
-  .sf-fair.warn { color: #b8860b; }
-  .sf-flag { background: #fff8e6; border: 1px solid #f0d98a; border-radius: var(--r-full); padding: 0 .5rem; }
+  .sf-fair { font-size: .82rem; color: var(--up); display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; }
+  .sf-fair.warn { color: var(--warn); }
+  .sf-flag { background: var(--gold-soft); border: 1px solid var(--gold); border-radius: var(--r-full); padding: 0 .5rem; }
   .sf-head { display: flex; flex-direction: column; gap: .15rem; }
   .sf-title { font-weight: 600; color: var(--text); }
   .sf-sub { font-size: .78rem; color: var(--muted); }

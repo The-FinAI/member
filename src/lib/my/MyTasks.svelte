@@ -120,7 +120,7 @@
   .mt { max-width: 1000px; }
   .mt-head { display: flex; align-items: baseline; gap: .75rem; }
   .mt-head h2 { margin: 0 0 .75rem; }
-  .mt-err { color: var(--neg, #c0392b); font-size: .82rem; }
+  .mt-err { color: var(--neg, var(--down)); font-size: .82rem; }
   .mt-dim { color: var(--muted, #888); }
   .mt-lanes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; }
   .lane { background: var(--card-bg, #fafafa); border: 1px solid var(--line, #eee); border-radius: var(--r-md); padding: .6rem; }
@@ -135,13 +135,13 @@
   .card-note { font-size: .76rem; color: var(--muted, #aaa); }
   .card-acts { display: flex; gap: .2rem; }
   .chip { border: 1px solid var(--line, #ddd); background: none; border-radius: var(--r-sm); width: 1.5rem; height: 1.5rem; cursor: pointer; font-size: .8rem; line-height: 1; color: var(--muted, #888); }
-  .chip:hover { border-color: var(--accent, #6a7cff); color: var(--accent, #6a7cff); }
+  .chip:hover { border-color: var(--accent, var(--accent)); color: var(--accent, var(--accent)); }
   .mt-week { margin-top: 1.5rem; }
   .mt-week-h { font-weight: 600; font-size: .82rem; color: var(--muted, #777); margin-bottom: .4rem; }
   .week-row { display: flex; gap: .6rem; align-items: baseline; padding: .3rem .2rem; border-bottom: 1px solid var(--line, #f3f3f3); text-decoration: none; color: inherit; font-size: .85rem; }
   .wk-proj { color: var(--muted, #999); font-size: .76rem; min-width: 6rem; }
   .wk-name { flex: 1; }
   .wk-state { font-size: .74rem; color: var(--muted, #999); }
-  .st-done, .st-confirmed { color: #2e7d4f; }
-  .st-doing, .st-checking { color: #b8860b; }
+  .st-done, .st-confirmed { color: var(--up); }
+  .st-doing, .st-checking { color: var(--warn); }
 </style>
