@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { get } from 'svelte/store';
   import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { member, capabilities, officerUnits } from '$lib/session';
   import EntityCard from '$lib/EntityCard.svelte';
@@ -36,14 +37,15 @@
   let myUnitStatus = $state<Record<string, string>>({});
 
   // top-level tab over the card families in the community
-  type Tab = 'people' | 'chapters' | 'wgroups' | 'badges';
-  let tab = $state<Tab>('people');
+  // People moved out — the roster + matching live on /people (one people
+  // surface, not two). Directory is now the ORG & SKILLS reference.
+  type Tab = 'chapters' | 'wgroups' | 'badges';
+  let tab = $state<Tab>('chapters');
 
   const TABS: { key: Tab; label: string }[] = [
-    { key: 'people', label: 'People' },
     { key: 'chapters', label: 'Chapters' },
     { key: 'wgroups', label: 'Working Groups' },
-    { key: 'badges', label: 'Badges' }
+    { key: 'badges', label: 'Skills' }
   ];
 
   // Directory is browse-only (reference). The old competitive "Standing"
@@ -80,7 +82,8 @@
 
   onMount(async () => {
     const initial = $page.url.searchParams.get('tab');
-    if (initial === 'chapters' || initial === 'wgroups' || initial === 'people' || initial === 'badges') tab = initial;
+    if (initial === 'people') { goto('/people'); return; }   // people live on /people now
+    if (initial === 'chapters' || initial === 'wgroups' || initial === 'badges') tab = initial;
     if (!supabaseConfigured) { loading = false; return; }
     const [{ data }, { data: bals }, { data: nom }, { data: ou }, { data: prj }] = await Promise.all([
       supabase.from('member')
