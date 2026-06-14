@@ -16,6 +16,7 @@
     youH: string; youLead: string; youItems: string[]; youFoot: string;
     chapH: string; chapActs: string[]; chapCta: Cta;
     wgH: string; wgActs: string[]; wgCta: Cta;
+    faH?: string; faActs?: string[]; faCta?: Cta;
     strH: string; strLead: string; flow: string[]; strBody: string; strCta: Cta;
     pagesH: string; pages: PageRow[];
     glossH: string; terms: Term[];
@@ -33,6 +34,7 @@
       toc: [
         { id: 'what', label: 'What this is' }, { id: 'you', label: 'What you do' },
         { id: 'chapter', label: 'If you run a chapter' }, { id: 'wg', label: 'If you run a working group' },
+        { id: 'fa', label: 'If you lead a project' },
         { id: 'str', label: 'How STR works' }, { id: 'pages', label: 'Your pages' }, { id: 'glossary', label: 'Glossary' }
       ],
       whatH: 'What this is', whatLead: 'Six things, and only six:',
@@ -49,22 +51,30 @@
         '<strong>A chapter</strong> holds <strong>people</strong> — you register them, keep their skills &amp; capacity current, and place them onto open work.',
         "<strong>A working group</strong> holds <strong>projects</strong> — you run each project's record, post what it needs, and split the credit when it ships."
       ],
-      youFoot: 'Start from <strong>Home</strong>: it shows a short "what needs you" list and drops you into the right page.',
+      youFoot: 'Start from <strong>Projects</strong> — it is the home page, and a short "what needs you" strip at the top points you at anything waiting.',
       chapH: 'If you run a chapter — you steward people',
       chapActs: [
-        '<strong>Add your people.</strong> On <strong>People</strong>, "Add a person" (name + email). Then on their card, set their skills (one tap: Learning / Independent / Lead) and their monthly hours.',
-        '<strong>Match them to open work.</strong> On People, "Match people to needs": pick a need, see ranked candidates with their <strong>spare capacity</strong> and why they fit, and <strong>Assign</strong> in place. The capacity bar turns red before it lets you over-commit anyone.',
+        '<strong>Add &amp; edit people.</strong> On <strong>People</strong>, "Add a person" (name + email). On their profile set skills (one tap: Learning / Independent / Lead) and monthly hours — hours commit with an explicit <strong>Save</strong>, and you get a confirmation. Skills use one scale now; the old Apprentice→Master badges are retired.',
+        '<strong>Place them on open work.</strong> Open a project, pick an open need, and you see ranked candidates with their <strong>spare capacity</strong> and why they fit. <strong>Assign</strong> in place; the capacity bar turns red before you over-commit anyone, and if someone doesn\'t meet the need the error names the missing skill + level.',
+        '<strong>Undo or change a placement.</strong> Every seated person has a <strong>Remove</strong> on the project team — it frees their seat and reopens the need. Assigning <strong>First Author</strong> asks you to confirm first.',
         '<strong>Keep skills honest.</strong> As someone owns more tasks and ships projects, the system suggests a level raise — earned from the record, not self-rated.'
       ],
       chapCta: { href: '/people', label: 'Open People →' },
       wgH: 'If you run a working group — you steward projects',
       wgActs: [
-        '<strong>Create or claim a project</strong> (free, no bond). Its first-author seat starts open.',
-        '<strong>Run its record.</strong> On the project, the <strong>task board</strong> leads — add tasks, set owners and status, keep coverage checklists. Link your draft (Overleaf), repo and dataset under <strong>Draft &amp; links</strong>, and keep notes under <strong>Meetings</strong>. This takes over the coordination your Google Doc did — the writing stays where you write it.',
-        '<strong>Post what it needs.</strong> "Post a role" — a skill at a level, or a resource — and you\'ll see how many people qualify. Chapter officers match their people into it.',
-        '<strong>Finish &amp; split.</strong> When the paper lands, mark it finished and split the credit; weights default to logged hours with a fairness check.'
+        '<strong>Create or claim a project</strong> (free, no bond). Its first-author seat starts open, filled like any other need.',
+        '<strong>Run its record.</strong> The <strong>task board</strong> leads — add, edit, and <strong>delete</strong> tasks; set owners and status. Link your draft (Overleaf), repo and dataset under <strong>Draft &amp; links</strong>, keep notes under <strong>Meetings</strong>. This takes over the coordination your Google Doc did — the writing stays where you write it.',
+        '<strong>Post what it needs.</strong> "Post a role" — a skill at a level, or a resource — and you\'ll see how many qualify. You can edit a need while it is still unfilled. Chapter officers fill it from inside the project.',
+        '<strong>Move it forward, with a gate.</strong> Changing status asks you to confirm; <strong>Hold / Resume</strong> stay one-click. <strong>Finish</strong> is irreversible — it asks twice, then goes to review and on to settlement, where the pool is split by logged contribution with a fairness check.'
       ],
       wgCta: { href: '/projects', label: 'Open Projects →' },
+      faH: 'If you lead a project — you are its First Author',
+      faActs: [
+        '<strong>You are matched into the lead seat</strong> like any other need — no separate hand-pick. A chapter officer can reassign or remove it later, and it reopens as a need.',
+        '<strong>You run the project\'s record</strong> with the same powers as the group lead: the task board, draft links, meetings, and posting needs — everything on a project you can edit.',
+        '<strong>You don\'t own the credit alone.</strong> At settlement the pool is split by logged contribution with a fairness check — First Author is a role, not an automatic larger share.'
+      ],
+      faCta: { href: '/projects', label: 'Open Projects →' },
       strH: "How STR works (quiet until it's real)",
       strLead: '<strong>STR</strong> is the unit of credit. It stays out of the way of the daily record and shows up only where it matters:',
       flow: ['Contribute (hours / resources)', 'Accruing (locked)', 'Finish', 'Split', 'Settled (spendable)'],
@@ -72,10 +82,10 @@
       strCta: { href: '/wallet', label: 'See your wallet →' },
       pagesH: 'Your pages',
       pages: [
-        { href: '/', label: 'Home', desc: 'what needs you right now.' },
-        { href: '/projects', label: 'Projects', desc: "your group's projects & their living record." },
-        { href: '/people', label: 'People', desc: 'the roster, skills & capacity, and the matching board.' },
+        { href: '/projects', label: 'Projects', desc: "the home page — your group's projects & their living record, with a 'what needs you' strip on top. Start operations here." },
+        { href: '/people', label: 'People', desc: 'the roster, skills & capacity. (Assigning people happens inside a project.)' },
         { href: '/my', label: 'My tasks', desc: 'every task you own, across all projects, plus your wallet.' },
+        { href: '/wallet', label: 'Wallet', desc: 'your STR balance and history.' },
         { href: '/community', label: 'Directory', desc: 'browse people, chapters, working groups & the skill catalog.' }
       ],
       glossH: 'Glossary',
@@ -104,6 +114,7 @@
       toc: [
         { id: 'what', label: '这是什么' }, { id: 'you', label: '你要做什么' },
         { id: 'chapter', label: '如果你管一个分会' }, { id: 'wg', label: '如果你管一个工作组' },
+        { id: 'fa', label: '如果你领一个项目' },
         { id: 'str', label: 'STR 怎么运作' }, { id: 'pages', label: '你的页面' }, { id: 'glossary', label: '术语表' }
       ],
       whatH: '这是什么', whatLead: '只有六样东西:',
@@ -120,22 +131,30 @@
         '<strong>分会</strong>管<strong>人</strong>——你登记他们,保持他们的技能和产能为最新,并把他们安排到开放的工作上。',
         '<strong>工作组</strong>管<strong>项目</strong>——你维护每个项目的记录,发布它的需求,论文发表后拆分积分。'
       ],
-      youFoot: '从<strong>主页</strong>开始:它会给出一份简短的"需要你处理"清单,并把你带到对应页面。',
+      youFoot: '从<strong>项目</strong>开始——它就是主页,顶部有一条简短的"需要你处理"提示,把你带到任何待办。',
       chapH: '如果你管一个分会——你看管人',
       chapActs: [
-        '<strong>添加你的人。</strong>在<strong>成员</strong>页"添加成员"(姓名 + 邮箱)。然后在他们的卡片上设置技能(一键:Learning / Independent / Lead)和每月小时数。',
-        '<strong>把他们匹配到开放工作。</strong>在成员页"把人匹配到需求":选一个需求,看到带<strong>剩余产能</strong>和匹配理由的候选人排序,就地<strong>指派</strong>。产能条会在你把人安排超额之前先变红。',
+        '<strong>添加并编辑人。</strong>在<strong>成员</strong>页"添加成员"(姓名 + 邮箱)。在其资料页设置技能(一键:Learning / Independent / Lead)和每月小时——小时通过显式<strong>保存</strong>提交,并有确认提示。技能现在只有一套尺度,旧的 Apprentice→Master 徽章已退役。',
+        '<strong>把他们安排到开放工作。</strong>打开一个项目,选一个开放需求,看到带<strong>剩余产能</strong>和匹配理由的候选人排序,就地<strong>指派</strong>。产能条会在你安排超额之前先变红;若某人不满足该需求,报错会点名缺哪个技能 + 等级。',
+        '<strong>撤销或更换安排。</strong>每个在队成员在项目团队里都有一个<strong>移除</strong>——释放席位并重开需求。指派<strong>第一作者</strong>会先让你确认。',
         '<strong>让技能名副其实。</strong>当一个人承担更多任务、发表更多项目,系统会建议升级——由记录赚得,而非自评。'
       ],
       chapCta: { href: '/people', label: '打开成员 →' },
       wgH: '如果你管一个工作组——你看管项目',
       wgActs: [
-        '<strong>创建或认领一个项目</strong>(免费,无押金)。它的第一作者席位一开始是空的。',
-        '<strong>维护它的记录。</strong>在项目里,<strong>任务板</strong>是主角——加任务、设负责人和状态、维护覆盖清单。把你的草稿(Overleaf)、代码库、数据集链接到<strong>Draft &amp; links</strong>下,会议记录放在<strong>Meetings</strong>下。这接管了你 Google Doc 承担的协同——写作仍然留在你写作的地方。',
-        '<strong>发布它的需求。</strong>"发布岗位"——某等级的技能,或一种资源——你会看到有多少人符合。分会 officer 会把人匹配进来。',
-        '<strong>完成并拆分。</strong>论文落地后,标记为完成并拆分积分;权重默认按记录的小时数,并带公平性检查。'
+        '<strong>创建或认领一个项目</strong>(免费,无押金)。它的第一作者席位一开始是空的,像其他需求一样填补。',
+        '<strong>维护它的记录。</strong><strong>任务板</strong>是主角——加任务、改任务、<strong>删除</strong>任务,设负责人和状态。把草稿(Overleaf)、代码库、数据集链接到<strong>Draft &amp; links</strong>下,会议记录放在<strong>Meetings</strong>下。这接管了你 Google Doc 承担的协同——写作仍然留在你写作的地方。',
+        '<strong>发布它的需求。</strong>"发布岗位"——某等级的技能,或一种资源——你会看到有多少人符合。需求未被填补前可以编辑。分会 officer 在项目内部把人填进来。',
+        '<strong>向前推进,但有闸门。</strong>改状态会先让你确认;<strong>暂停 / 恢复</strong>保持一键。<strong>完成</strong>不可逆——会问两次,然后进入审核、再到结算,池子按记录的贡献并带公平性检查拆分。'
       ],
       wgCta: { href: '/projects', label: '打开项目 →' },
+      faH: '如果你领一个项目——你是它的第一作者',
+      faActs: [
+        '<strong>你是被匹配进领衔席位的</strong>,像其他需求一样——没有单独的钦点。分会 officer 之后可以更换或移除,席位会重开为需求。',
+        '<strong>你维护项目的记录</strong>,权限与工作组负责人相同:任务板、草稿链接、会议、发布需求——凡是你能编辑这个项目的地方都能做。',
+        '<strong>积分不归你一人。</strong>结算时池子按记录的贡献并带公平性检查拆分——第一作者是一个角色,而非自动拿更大份额。'
+      ],
+      faCta: { href: '/projects', label: '打开项目 →' },
       strH: 'STR 怎么运作(在变真之前,保持安静)',
       strLead: '<strong>STR</strong> 是积分单位。它不打扰日常记录,只在关键处出现:',
       flow: ['贡献(小时 / 资源)', '累积中(锁定)', '完成', '拆分', '已结算(可用)'],
@@ -143,10 +162,10 @@
       strCta: { href: '/wallet', label: '查看你的钱包 →' },
       pagesH: '你的页面',
       pages: [
-        { href: '/', label: '主页', desc: '现在需要你处理什么。' },
-        { href: '/projects', label: '项目', desc: '你这组的项目及其活的记录。' },
-        { href: '/people', label: '成员', desc: '名册、技能与产能,以及匹配板。' },
+        { href: '/projects', label: '项目', desc: '主页——你这组的项目及其活的记录,顶部有"需要你处理"提示。从这里发起所有操作。' },
+        { href: '/people', label: '成员', desc: '名册、技能与产能。(派人在项目内部进行。)' },
         { href: '/my', label: '我的任务', desc: '你负责的每一项任务(跨所有项目),外加你的钱包。' },
+        { href: '/wallet', label: '钱包', desc: '你的 STR 余额与历史。' },
         { href: '/community', label: '目录', desc: '浏览成员、分会、工作组与技能目录。' }
       ],
       glossH: '术语表',
@@ -175,6 +194,7 @@
       toc: [
         { id: 'what', label: 'これは何か' }, { id: 'you', label: 'あなたがすること' },
         { id: 'chapter', label: 'チャプターを運営するなら' }, { id: 'wg', label: 'ワーキンググループを運営するなら' },
+        { id: 'fa', label: 'プロジェクトを率いるなら' },
         { id: 'str', label: 'STR の仕組み' }, { id: 'pages', label: 'あなたのページ' }, { id: 'glossary', label: '用語集' }
       ],
       whatH: 'これは何か', whatLead: '6つだけ、それ以上はありません:',
@@ -207,6 +227,13 @@
         '<strong>完了して分割。</strong>論文が決まったら完了にしてクレジットを分割。重みは記録時間を既定とし、公平性チェック付きです。'
       ],
       wgCta: { href: '/projects', label: 'プロジェクトを開く →' },
+      faH: 'プロジェクトを率いるなら——あなたは第一著者です',
+      faActs: [
+        '<strong>あなたはリード枠にマッチで就きます</strong>。他のニーズと同じで、別途の指名はありません。チャプター officer が後で再割当・解除でき、枠はニーズとして再び開きます。',
+        '<strong>プロジェクトの記録を回します</strong>。権限はグループリードと同じ:タスクボード、原稿リンク、ミーティング、ニーズ掲示——編集できるプロジェクトのすべて。',
+        '<strong>クレジットを独り占めしません。</strong>精算時、プールは記録された貢献に応じて公平性チェック付きで分割されます——第一著者は役割であって、自動的に大きな取り分ではありません。'
+      ],
+      faCta: { href: '/projects', label: 'プロジェクトを開く →' },
       strH: 'STR の仕組み(現実になるまでは静かに)',
       strLead: '<strong>STR</strong> はクレジットの単位です。日々の記録の邪魔をせず、重要な場所にだけ現れます:',
       flow: ['貢献(時間 / リソース)', '累積中(ロック)', '完了', '分割', '精算済み(利用可)'],
@@ -247,6 +274,7 @@
       toc: [
         { id: 'what', label: "Ce que c'est" }, { id: 'you', label: 'Ce que vous faites' },
         { id: 'chapter', label: 'Si vous dirigez un chapitre' }, { id: 'wg', label: 'Si vous dirigez un groupe de travail' },
+        { id: 'fa', label: 'Si vous dirigez un projet' },
         { id: 'str', label: 'Comment marche STR' }, { id: 'pages', label: 'Vos pages' }, { id: 'glossary', label: 'Glossaire' }
       ],
       whatH: "Ce que c'est", whatLead: 'Six choses, et seulement six :',
@@ -279,6 +307,13 @@
         '<strong>Terminez et partagez.</strong> À la parution, marquez le projet terminé et partagez le crédit ; les poids par défaut suivent les heures enregistrées avec un contrôle d\'équité.'
       ],
       wgCta: { href: '/projects', label: 'Ouvrir Projets →' },
+      faH: 'Si vous dirigez un projet — vous en êtes le Premier auteur',
+      faActs: [
+        '<strong>Vous êtes associé au siège de lead</strong> comme tout autre besoin — pas de désignation à part. Un officer de chapitre peut le réaffecter ou le retirer ensuite, et il rouvre comme un besoin.',
+        '<strong>Vous tenez le registre du projet</strong> avec les mêmes pouvoirs que le lead du groupe : tableau de tâches, liens de brouillon, réunions et publication de besoins — tout ce que vous pouvez éditer sur un projet.',
+        "<strong>Le crédit n'est pas à vous seul.</strong> Au règlement, la cagnotte est partagée selon la contribution enregistrée avec un contrôle d'équité — Premier auteur est un rôle, pas une part automatiquement plus grande."
+      ],
+      faCta: { href: '/projects', label: 'Ouvrir Projets →' },
       strH: "Comment marche STR (discret jusqu'à ce que ce soit réel)",
       strLead: "<strong>STR</strong> est l'unité de crédit. Il reste à l'écart du registre quotidien et n'apparaît que là où ça compte :",
       flow: ['Contribuer (heures / ressources)', 'En accumulation (bloqué)', 'Terminer', 'Partager', 'Réglé (disponible)'],
@@ -351,6 +386,14 @@
     <ol class="acts">{#each g.wgActs as a}<li>{@html a}</li>{/each}</ol>
     <a class="cbtn" href={g.wgCta.href}>{g.wgCta.label}</a>
   </section>
+
+  {#if g.faH && g.faActs}
+    <section class="card" id="fa">
+      <h2>{g.faH}</h2>
+      <ol class="acts">{#each g.faActs as a}<li>{@html a}</li>{/each}</ol>
+      {#if g.faCta}<a class="cbtn" href={g.faCta.href}>{g.faCta.label}</a>{/if}
+    </section>
+  {/if}
 
   <section class="card" id="str">
     <h2>{g.strH}</h2>
