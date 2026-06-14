@@ -6,7 +6,12 @@
   import { get } from 'svelte/store';
   import EntityCard from '$lib/EntityCard.svelte';
   import NeedsYou from '$lib/shell/NeedsYou.svelte';
+  import ProjectDetailBody from '$lib/cards/ProjectDetailBody.svelte';
   import { type Slot } from '$lib/cards/ProjectSlotCard.svelte';
+
+  // the ledger expands a project in place — every operation (tasks, needs +
+  // matching, status, settle, credit) happens here, no navigation.
+  let expanded = $state<string | null>(null);
 
   // Projects = the community portfolio. Each project belongs to a working group
   // and exposes a slot map (1 leader/first-author + N need slots). Members are
@@ -589,35 +594,58 @@
   {:else if rows.length === 0}
     <div class="card"><p class="muted" style="padding:1rem;">{$t('No projects match.')}</p></div>
   {:else}
-    <div class="card-grid">
-      {#each rows as r}
-        <EntityCard
-          type={r.type}
-          title={`${r.emoji ? r.emoji + ' ' : ''}${r.code || r.name}`}
-          subtitle={[r.code && r.name !== r.code ? r.name : '', r.venue].filter(Boolean).join(' · ')}
-          status={r.claimable ? $t('first author open') : r.status}
-          statusKind={r.claimable ? 'warn' : projKind(r.status)}
-          accentColor={r.claimable ? '#f0a35e' : statusColor(r.status)}
-          tag={r.wg ? { label: r.wg, color: wgColor(r.wg) } : undefined}
-          stats={[
-            { label: 'Open tasks', value: String(r.openTasks) },
-            { label: 'Open needs', value: String(r.openNeeds) },
-            { label: 'Team', value: String(r.seatsFilled) },
-            ...(r.deadline ? [{ label: relDays(r.deadline), value: fmtDate(r.deadline) }] : [])
-          ]}
-          href={`/projects/${r.id}`}
-        />
+    <div class="ledger">
+      {#each rows as r (r.id)}
+        <div class="lrow" class:open={expanded === r.id}>
+          <button class="lrow-head" onclick={() => (expanded = expanded === r.id ? null : r.id)} aria-expanded={expanded === r.id}>
+            <span class="lr-chev">{expanded === r.id ? '▾' : '▸'}</span>
+            <span class="lr-main">
+              <span class="lr-title">{r.emoji ? r.emoji + ' ' : ''}{r.code || r.name}</span>
+              {#if r.wg || r.venue}<span class="lr-sub">{[r.wg, r.venue].filter(Boolean).join(' · ')}</span>{/if}
+            </span>
+            {#if r.claimable}<span class="badge warn">{$t('1st-author open')}</span>{:else}<span class="status st-{projKind(r.status) === 'pos' ? 'finished' : projKind(r.status) === 'warn' ? 'review' : 'proposal'}"><span class="sdot"></span>{$t(r.status)}</span>{/if}
+            <span class="lr-facts">
+              <span class="lf"><b>{r.openTasks}</b> {$t('tasks')}</span>
+              <span class="lf"><b>{r.openNeeds}</b> {$t('needs')}</span>
+              <span class="lf"><b>{r.seatsFilled}</b> {$t('team')}</span>
+              {#if r.deadline}<span class="lf lf-ddl">{fmtDate(r.deadline)} · {relDays(r.deadline)}</span>{/if}
+            </span>
+          </button>
+          {#if expanded === r.id}
+            <div class="lrow-body">
+              <a class="lr-open" href={`/projects/${r.id}`}>{$t('Open full page')} →</a>
+              <ProjectDetailBody projectId={r.id} showHeader={false} onChanged={loadGrid} />
+            </div>
+          {/if}
+        </div>
       {/each}
     </div>
   {/if}
 </div>
 
-<!-- Project cards now link straight to /projects/[id] (the full page). The old
-     quick-view drawer was removed: testers expected a real page, and a stray
-     backdrop click kept dismissing the peek. -->
-
 <style>
   .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: .8rem; }
+  /* the ledger: one full-width row per project, expands in place */
+  .ledger { display: flex; flex-direction: column; }
+  .lrow { border-bottom: 1px solid var(--border); }
+  .lrow.open { border: 1px solid var(--rule-ink); border-radius: var(--r-md); margin: .3rem 0; background: var(--card); }
+  .lrow-head {
+    display: flex; align-items: center; gap: .75rem; width: 100%; text-align: left;
+    background: transparent; border: 0; border-radius: 0; padding: .7rem .5rem; cursor: pointer; color: var(--text);
+  }
+  .lrow-head:hover { background: var(--card-2); }
+  .lrow.open .lrow-head { background: transparent; border-bottom: 1px solid var(--border); }
+  .lr-chev { color: var(--muted); font-size: .8rem; width: 1rem; flex: none; }
+  .lr-main { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+  .lr-title { font-weight: 600; font-size: 1rem; }
+  .lr-sub { font-size: .76rem; color: var(--muted); }
+  .lr-facts { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+  .lr-facts .lf { font-size: .8rem; color: var(--text-dim); white-space: nowrap; }
+  .lr-facts .lf b { font-family: var(--font-mono); font-weight: 700; color: var(--text); }
+  .lr-facts .lf-ddl { font-family: var(--font-mono); color: var(--muted); }
+  .lrow-body { padding: .9rem 1.1rem 1.1rem; }
+  .lr-open { display: inline-block; font-size: .8rem; margin-bottom: .6rem; }
+  @media (max-width: 720px) { .lr-facts { gap: .5rem; } .lr-sub { display: none; } }
   .btn {
     display: inline-flex; align-items: center; gap: .3rem; padding: .5rem .9rem;
     background: var(--accent); color: #fff; border: 1px solid transparent; border-radius: var(--r-sm);
