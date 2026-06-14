@@ -58,6 +58,16 @@
   --ctl-h:    36px;
   --ctl-h-sm: 28px;
 
+  /* ---- z-index scale (the ONLY layering values in the app) ----
+     page content sits at auto/0; everything that floats uses one of these,
+     so dropdowns/drawers/tooltips/toasts never fight or hide behind the
+     sticky masthead. */
+  --z-sticky:   100;   /* sticky masthead sections bar */
+  --z-backdrop: 900;   /* click-catcher behind any popover/drawer */
+  --z-popover: 1000;   /* dropdowns, menus, drawers (one open at a time) */
+  --z-tooltip: 1100;   /* hover hints */
+  --z-toast:   1200;   /* write-feedback toasts — always on top */
+
   /* ---- back-compat aliases ---- many component-local styles predate the v2
      token names and reference --line / --neg / --card-bg with a hardcoded hex
      fallback. Those tokens were never defined, so they leaked the fallback
@@ -424,9 +434,9 @@ thead.sticky th { position: sticky; top: 0; background: var(--card); z-index: 2;
 }
 .avatar-btn:hover { background: var(--card-2); }
 .avatar-btn:focus-visible { outline: none; box-shadow: var(--ring); }
-.menu-backdrop { position: fixed; inset: 0; z-index: 50; }
+.menu-backdrop { position: fixed; inset: 0; z-index: var(--z-backdrop); }
 .menu {
-  position: absolute; right: 0; top: calc(100% + .5rem); z-index: 60;
+  position: absolute; right: 0; top: calc(100% + .5rem); z-index: var(--z-popover);
   min-width: 220px; background: var(--elevate); border: 1px solid var(--text);
   border-radius: var(--r-md); box-shadow: var(--shadow-pop); padding: .4rem; overflow: hidden;
 }
@@ -728,7 +738,7 @@ button.stake { background: var(--accent); }
 
 /* row 3 — sections, ruled thick over thin */
 .sections {
-  position: sticky; top: 0; z-index: 40;
+  position: sticky; top: 0; z-index: var(--z-sticky);
   background: color-mix(in srgb, var(--bg) 92%, transparent);
   backdrop-filter: saturate(140%) blur(8px);
   border-top: 2.5px solid var(--rule-ink);

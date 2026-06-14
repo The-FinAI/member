@@ -39,10 +39,10 @@
 <style>
   .drawer-backdrop {
     position: fixed; inset: 0; background: rgba(0, 0, 0, .45);
-    z-index: 60; animation: fade .15s ease;
+    z-index: var(--z-backdrop); animation: fade .15s ease;
   }
   .drawer {
-    position: fixed; top: 0; right: 0; bottom: 0; z-index: 61;
+    position: fixed; top: 0; right: 0; bottom: 0; z-index: var(--z-popover);
     width: min(440px, 92vw); display: flex; flex-direction: column;
     background: var(--bg); border-left: 1px solid var(--border);
     box-shadow: -12px 0 40px -16px rgba(0, 0, 0, .5);

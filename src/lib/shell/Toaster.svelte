@@ -20,7 +20,7 @@
 <style>
   .toaster {
     position: fixed; left: 50%; transform: translateX(-50%);
-    bottom: 1.2rem; z-index: 200;
+    bottom: 1.2rem; z-index: var(--z-toast);
     display: flex; flex-direction: column-reverse; gap: .5rem; width: max-content; max-width: 92vw;
     pointer-events: none;
   }

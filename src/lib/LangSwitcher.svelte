@@ -25,9 +25,9 @@
 <style>
   .lang { position: relative; display: inline-flex; }
   .lang-btn { font-size: .8rem; font-weight: 700; min-width: 34px; }
-  .lang-backdrop { position: fixed; inset: 0; z-index: 30; }
+  .lang-backdrop { position: fixed; inset: 0; z-index: var(--z-backdrop); }
   .lang-menu {
-    position: absolute; top: calc(100% + 8px); right: 0; z-index: 40;
+    position: absolute; top: calc(100% + 8px); right: 0; z-index: var(--z-popover);
     background: var(--elevate); border: 1px solid var(--border); border-radius: var(--r-md);
     box-shadow: var(--shadow); padding: .3rem; min-width: 150px;
   }
