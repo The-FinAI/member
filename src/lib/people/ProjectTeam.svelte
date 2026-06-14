@@ -9,6 +9,8 @@
   import NeedPost from '$lib/people/NeedPost.svelte';
   import Icon from '$lib/Icon.svelte';
   import MatchBoard from '$lib/people/MatchBoard.svelte';
+  import { toast } from '$lib/toast';
+  import { confirm } from '$lib/confirm';
 
   // canMatch: the viewer can assign people (chapter officer / admin) → the
   // matcher is embedded here so seating happens in place, not on People.
@@ -16,7 +18,7 @@
     projectId: string; canManage?: boolean; canMatch?: boolean; finished?: boolean;
   } = $props();
 
-  type Member = { id: string; name: string; role: string; amount: number; unit: string; str: number };
+  type Member = { id: string; name: string; role: string; amount: number; unit: string; str: number; slotIds: string[] };
   type Need = { id: string; kind: string; skill: string | null; skill_id: string | null; level: string | null; resource: string | null; resource_type_id: string | null; quota: number | null; unit: string; filled: number; headcount: number };
 
   const LEVEL_LABEL: Record<string, string> = { learning: 'Learning', independent: 'Independent', lead: 'Lead' };
@@ -32,7 +34,7 @@
     loading = true;
     const [{ data: wc }, { data: sl }] = await Promise.all([
       supabase.from('work_commitment')
-        .select('member_id, monthly_amount, nominal_str, slot:slot_id(slot_kind), member:member_id(full_name), resource:resource_id(unit)')
+        .select('member_id, slot_id, monthly_amount, nominal_str, slot:slot_id(slot_kind), member:member_id(full_name), resource:resource_id(unit)')
         .eq('project_id', projectId),
       supabase.from('project_slot')
         .select('id, slot_kind, skill_id, resource_type_id, desired_level, quota, headcount, status, skill:skill_id(name), resource_type:resource_type_id(name, unit)')
@@ -45,8 +47,8 @@
       const role = w.slot?.slot_kind === 'leader' ? 'first author'
                  : w.slot?.slot_kind === 'work_resource' ? 'resource' : 'contributor';
       const ex = byM[id];
-      if (ex) { ex.amount += Number(w.monthly_amount) || 0; ex.str += Number(w.nominal_str) || 0; if (role === 'first author') ex.role = role; }
-      else byM[id] = { id, name: w.member?.full_name ?? '—', role, amount: Number(w.monthly_amount) || 0, unit: w.resource?.unit ?? 'h', str: Number(w.nominal_str) || 0 };
+      if (ex) { ex.amount += Number(w.monthly_amount) || 0; ex.str += Number(w.nominal_str) || 0; if (role === 'first author') ex.role = role; if (w.slot_id) ex.slotIds.push(w.slot_id); }
+      else byM[id] = { id, name: w.member?.full_name ?? '—', role, amount: Number(w.monthly_amount) || 0, unit: w.resource?.unit ?? 'h', str: Number(w.nominal_str) || 0, slotIds: w.slot_id ? [w.slot_id] : [] };
     }
     team = Object.values(byM).sort((a, b) => Number(b.role === 'first author') - Number(a.role === 'first author'));
     leaderName = team.find((m) => m.role === 'first author')?.name ?? null;
@@ -68,6 +70,29 @@
     loading = false;
   }
   $effect(() => { projectId; load(); });
+
+  let removing = $state<string | null>(null);
+  // #33/#34: an assignment must be removable. Confirms, then unassigns the
+  // member from every need they hold on this project, re-opening those needs.
+  async function removeMember(m: Member) {
+    const ok = await confirm({
+      title: $t('Remove {who} from the team?', { who: m.name }),
+      body: m.role === 'first author'
+        ? $t('This frees the first-author seat — it reopens as a need you can fill again.')
+        : $t('This frees their role — it reopens as a need.'),
+      confirmLabel: $t('Remove'),
+      tone: 'danger'
+    });
+    if (!ok) return;
+    removing = m.id;
+    for (const slotId of m.slotIds) {
+      const { error } = await supabase.rpc('unassign', { p_slot: slotId, p_member: m.id });
+      if (error) { toast.error(error.message); removing = null; return; }
+    }
+    removing = null;
+    toast.success($t('Removed {who}', { who: m.name }));
+    await load();
+  }
 </script>
 
 <section class="pt">
@@ -85,11 +110,17 @@
     {#if team.length}
       <div class="pt-team">
         {#each team as m (m.id)}
-          <a class="tchip" href={`/members/${m.id}`}>
-            <span class="tc-name">{m.name}</span>
-            <span class="tc-role">{$t(m.role)}{#if m.amount} · {m.amount}{m.unit}{/if}</span>
-            {#if m.str}<span class="tc-str">+{m.str.toLocaleString()} STR</span>{/if}
-          </a>
+          <div class="tchip" class:busy={removing === m.id}>
+            <a class="tc-link" href={`/members/${m.id}`}>
+              <span class="tc-name">{m.name}</span>
+              <span class="tc-role">{$t(m.role)}{#if m.amount} · {m.amount}{m.unit}{/if}</span>
+              {#if m.str}<span class="tc-str">+{m.str.toLocaleString()} STR</span>{/if}
+            </a>
+            {#if canMatch && !finished && m.slotIds.length}
+              <button class="tc-x" title={$t('Remove from team')} aria-label={$t('Remove from team')}
+                disabled={removing === m.id} onclick={() => removeMember(m)}><Icon name="close" size={12} /></button>
+            {/if}
+          </div>
         {/each}
       </div>
     {:else}
@@ -155,8 +186,14 @@
   .pt-dim { color: var(--muted, #999); font-size: .88rem; }
   .pt-note { margin-top: .4rem; }
   .pt-team { display: flex; flex-wrap: wrap; gap: .45rem; }
-  .tchip { display: flex; flex-direction: column; text-decoration: none; color: inherit; border: 1px solid var(--line, #eee); border-radius: var(--r-sm); padding: .35rem .6rem; }
+  .tchip { display: flex; align-items: stretch; gap: .25rem; border: 1px solid var(--line, #eee); border-radius: var(--r-sm); }
   .tchip:hover { border-color: var(--accent, var(--accent)); }
+  .tchip.busy { opacity: .5; }
+  .tc-link { display: flex; flex-direction: column; text-decoration: none; color: inherit; padding: .35rem .6rem; flex: 1; }
+  .tc-x { border: none; background: none; color: var(--muted, #999); cursor: pointer; padding: 0 .35rem;
+    border-left: 1px solid var(--line, #eee); display: flex; align-items: center; }
+  .tc-x:hover { color: var(--down); }
+  .tc-x:disabled { opacity: .5; cursor: default; }
   .tc-name { font-weight: 500; font-size: .88rem; }
   .tc-role { font-size: .74rem; color: var(--muted, #999); }
   .tc-str { font-size: .72rem; font-weight: 700; color: var(--gold, #94731b); font-family: var(--font-mono, monospace); }

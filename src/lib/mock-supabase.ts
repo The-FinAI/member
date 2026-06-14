@@ -343,6 +343,16 @@ function rpc(name: string, a: any) {
       title: 'You were assigned to a project', body: 'ml-Tagging', link: '/projects/p-ml', read_at: null, created_at: '2026-06-06T12:00:00Z' }); persist();
     return Promise.resolve({ data: nid('wc'), error: null });
   }
+  if (name === 'unassign') {
+    const s = seed.project_slot.find((x) => x.id === a.p_slot);
+    seed.work_commitment = seed.work_commitment.filter((w) => !(w.slot_id === a.p_slot && w.member_id === a.p_member));
+    if (s) {
+      const remaining = new Set(seed.work_commitment.filter((w) => w.slot_id === a.p_slot).map((w) => w.member_id)).size;
+      if (remaining < (s.headcount ?? 1) && s.status === 'filled') s.status = 'open';
+    }
+    persist();
+    return Promise.resolve({ data: null, error: null });
+  }
   if (name === 'notification_read') { const n = seed.notification.find((x) => x.id === a.p_id); if (n) n.read_at = '2026-06-06T12:00:00Z'; return Promise.resolve({ data: null, error: null }); } persist();
   if (name === 'notification_read_all') { seed.notification.forEach((n) => (n.read_at = '2026-06-06T12:00:00Z')); return Promise.resolve({ data: null, error: null }); } persist();
 

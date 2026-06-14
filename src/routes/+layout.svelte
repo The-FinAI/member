@@ -11,6 +11,7 @@
   import LangSwitcher from '$lib/LangSwitcher.svelte';
   import NotificationInbox from '$lib/shell/NotificationInbox.svelte';
   import Toaster from '$lib/shell/Toaster.svelte';
+  import ConfirmDialog from '$lib/shell/ConfirmDialog.svelte';
   import LaunchBanner from '$lib/LaunchBanner.svelte';
   import Icon from '$lib/Icon.svelte';
 
@@ -107,7 +108,7 @@
     const isPublic = PUBLIC_ROUTES.some((p) => path.startsWith(p));
     const isOpen = OPEN_ROUTES.some((p) => path.startsWith(p));
     if (!$session && !isPublic && !isOpen) goto('/login');
-    if ($session && isPublic) goto('/');
+    if ($session && isPublic) goto('/projects');
   });
 
   async function signOut() {
@@ -219,4 +220,5 @@
     </main>
   </div>
   <Toaster />
+  <ConfirmDialog />
 </div>

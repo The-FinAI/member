@@ -7,6 +7,7 @@
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { t } from '$lib/i18n';
   import Icon from '$lib/Icon.svelte';
+  import { toast } from '$lib/toast';
 
   let { memberId, canEdit = false }: { memberId: string; canEdit?: boolean } = $props();
 
@@ -82,20 +83,27 @@
     addSkill = ''; addOpen = false;
   }
 
+  // #26: hours are NOT saved silently on blur — the officer hits an explicit
+  // Save (shown only when the field differs from the stored value), and gets a
+  // toast confirming it. The Save button appears whenever the draft is dirty.
+  const hoursDirty = $derived(hoursDraft.trim() !== (hours == null ? '' : String(hours)));
+
   async function saveHours() {
     const v = hoursDraft.trim() === '' ? 0 : Math.max(0, Math.floor(Number(hoursDraft) || 0));
     const before = hours;
     hours = v; busy = 'hours'; err = '';
     const { error } = await supabase.rpc('person_set_capacity', { p_hours: v, p_member: memberId });
     busy = null;
-    if (error) { hours = before; hoursDraft = before == null ? '' : String(before); err = error.message; return; }
+    if (error) { hours = before; hoursDraft = before == null ? '' : String(before); err = error.message; toast.error(error.message); return; }
     // keep "free now" in step with the new total (committed hours unchanged)
     if (freeHours != null) freeHours = Math.max(0, freeHours + (v - (before ?? 0)));
+    hoursDraft = String(v);
+    toast.success($t('Saved — {n} h/month', { n: v }));
   }
 </script>
 
 <section class="sc">
-  <div class="sc-head"><h3>{$t('Skills & capacity')}</h3>{#if canEdit}<span class="sc-edit" title={$t('You manage this person. Tap a skill level, add a skill, or edit their monthly hours — changes save instantly.')}><Icon name="edit" size={11} /> {$t("editable")}</span>{/if}{#if err}<span class="sc-err">{err}</span>{/if}</div>
+  <div class="sc-head"><h3>{$t('Skills & capacity')}</h3>{#if canEdit}<span class="sc-edit" title={$t('You manage this person. Tap a skill level to set it; edit their monthly hours and hit Save.')}><Icon name="edit" size={11} /> {$t("editable")}</span>{/if}{#if err}<span class="sc-err">{err}</span>{/if}</div>
 
   {#if loading}
     <p class="sc-dim">{$t('Loading…')}</p>
@@ -105,7 +113,9 @@
       <span class="sc-label" title={$t('Time available now / total monthly hours.')}>{$t('Available time')}</span>
       {#if canEdit}
         <input class="sc-hours" type="number" min="0" bind:value={hoursDraft}
-          onchange={saveHours} disabled={busy === 'hours'} /> <span class="sc-unit">{$t('hours / month total')}</span>
+          onkeydown={(e) => { if (e.key === 'Enter' && hoursDirty) saveHours(); }}
+          disabled={busy === 'hours'} /> <span class="sc-unit">{$t('hours / month total')}</span>
+        {#if hoursDirty}<button class="sc-save" disabled={busy === 'hours'} onclick={saveHours}>{busy === 'hours' ? $t('Saving…') : $t('Save')}</button>{/if}
         {#if freeHours != null}<span class="sc-free" class:sc-over={freeHours < 0} title={$t('Remaining after current commitments this month.')}>· {Math.max(0, freeHours)} {$t('free now')}{#if freeHours < 0} <Icon name="warn" size={12} /> {$t('over')}{/if}</span>{/if}
       {:else if hours == null}
         <span class="sc-dim">{$t('Not set')}</span>
@@ -183,6 +193,9 @@
   .sc-cap { display: flex; align-items: center; gap: .5rem; margin-bottom: .6rem; }
   .sc-label { font-weight: 600; font-size: .85rem; color: var(--muted, #666); }
   .sc-hours { width: 5rem; padding: .25rem .4rem; border: 1px solid var(--line, #ddd); border-radius: var(--r-sm); }
+  .sc-save { margin-left: .4rem; border: none; background: var(--accent); color: #fff; border-radius: var(--r-sm);
+    padding: .25rem .7rem; font: inherit; font-weight: 600; cursor: pointer; }
+  .sc-save:disabled { opacity: .6; cursor: default; }
   .sc-unit { color: var(--muted, #999); font-size: .85rem; }
   .sc-sug { display: flex; align-items: center; justify-content: space-between; gap: .6rem; background: var(--gold-soft); border: 1px solid var(--gold); border-radius: var(--r-sm); padding: .35rem .6rem; margin-bottom: .4rem; font-size: .85rem; }
   .sc-list { list-style: none; padding: 0; margin: .3rem 0; }

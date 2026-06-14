@@ -55,7 +55,7 @@
       const { data: tbd } = await supabase.from('task')
         .select('id, project_id').in('project_id', [...ledIds]).is('owner_member_id', null).in('state', ['open', 'doing']);
       const n = ((tbd as any[]) ?? []).length;
-      if (n) out.push({ icon: 'tasks', title: $t('{n} tasks need an owner', { n }), sub: $t('In projects you lead'), href: ledIds.size === 1 ? `/projects/${[...ledIds][0]}` : '/', tone: 'warn' });
+      if (n) out.push({ icon: 'tasks', title: $t('{n} tasks need an owner', { n }), sub: $t('In projects you lead'), href: ledIds.size === 1 ? `/projects/${[...ledIds][0]}` : '/projects', tone: 'warn' });
     }
 
     if (myChapters.length) {
@@ -80,7 +80,7 @@
       if (pids.length) {
         const { data: needs } = await supabase.from('project_slot').select('id').in('project_id', pids).eq('status', 'open');
         const n = ((needs as any[]) ?? []).length;
-        if (n) out.push({ icon: 'clock', title: $t('{n} open needs on your projects', { n }), sub: $t('Post details or wait for a match'), href: '/', tone: 'info' });
+        if (n) out.push({ icon: 'clock', title: $t('{n} open needs on your projects', { n }), sub: $t('Post details or wait for a match'), href: '/projects?tab=needs', tone: 'info' });
       }
     }
 

@@ -3,6 +3,7 @@
   import { t } from '$lib/i18n';
   import Icon from '$lib/Icon.svelte';
   import { toast } from '$lib/toast';
+  import { confirm } from '$lib/confirm';
   import { get } from 'svelte/store';
   import SettlementForm from './SettlementForm.svelte';
   import InlineField from './InlineField.svelte';
@@ -117,10 +118,21 @@
     await load(); onChanged?.();
   }
 
-  async function setStatus(statusId: string) {
+  async function setStatus(statusId: string, opts?: { skipConfirm?: boolean }) {
     if (!statusId || statusId === proj?.status_id) return;
-    busy = 'status'; err = ''; msg = '';
     const sn = statuses.find((s) => s.id === statusId)?.name ?? '';
+    // #35: state-changing action — confirm before committing (it has no undo)
+    if (!opts?.skipConfirm) {
+      const terminal = sn === 'Finished';
+      const ok = await confirm({
+        title: get(t)('Change {name} status to {status}?', { name: proj?.name ?? get(t)('this project'), status: get(t)(sn) }),
+        body: terminal ? get(t)('This marks the project finished and opens settlement. It cannot be undone.') : undefined,
+        confirmLabel: get(t)('Change status'),
+        tone: terminal ? 'danger' : 'default'
+      });
+      if (!ok) return;
+    }
+    busy = 'status'; err = ''; msg = '';
     const { error: e } = await supabase.rpc('project_set_status', { p_project: projectId, p_status: statusId });
     busy = '';
     if (e) { toast.error(e.message); err = e.message; return; }
@@ -129,16 +141,25 @@
   }
 
   async function hold() {
-    if (holdStatus) await setStatus(holdStatus.id);
+    // reversible toggle (Resume undoes it) — stays frictionless, no confirm
+    if (holdStatus) await setStatus(holdStatus.id, { skipConfirm: true });
   }
   async function resume() {
     // back to where it was held from, else the first pipeline step
     const target = proj?.held_from_status_id ?? pipeline[0]?.id;
-    if (target) await setStatus(target);
+    if (target) await setStatus(target, { skipConfirm: true });
   }
 
   // completion is the reviewed path: submit a forge_request → review queue → settlement
   async function mintDone() {
+    // #35/#33: irreversible — submits completion to review → settlement. Confirm.
+    const ok = await confirm({
+      title: get(t)('Submit {name} as finished?', { name: proj?.name ?? get(t)('this project') }),
+      body: get(t)('This sends the project to the review queue and then to settlement, where the pool is split. It cannot be undone.'),
+      confirmLabel: get(t)('Submit as finished'),
+      tone: 'danger'
+    });
+    if (!ok) return;
     busy = 'done'; err = ''; msg = '';
     const { error: e } = await supabase.rpc('forge_project_done', { p_project: projectId });
     busy = '';

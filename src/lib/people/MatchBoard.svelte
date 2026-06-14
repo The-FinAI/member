@@ -7,6 +7,7 @@
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { t } from '$lib/i18n';
   import { toast } from '$lib/toast';
+  import { confirm } from '$lib/confirm';
   import Icon from '$lib/Icon.svelte';
 
   // projectId scopes the open needs to one project (so the matcher can be
@@ -116,8 +117,20 @@
   async function doAssign(memberId: string, slot: Need, hoursStr: string) {
     const hours = Number(hoursStr) || 0;
     if (hours <= 0) { err = $t('Hours must be greater than 0'); return; }
-    busy = memberId; err = '';
     const who = memberName(memberId) || cands.find((c) => c.member_id === memberId)?.full_name || '';
+    // #33: confirm before committing a role — First Author is highlighted as
+    // high-impact. (Removable afterwards from the project team.)
+    const isLeader = slot.slot_kind === 'leader';
+    const ok = await confirm({
+      title: isLeader
+        ? $t('Assign {who} as First Author?', { who })
+        : $t('Assign {who} to this role?', { who }),
+      body: isLeader ? $t('First author is the project lead. You can remove or replace them later from the team.') : undefined,
+      confirmLabel: $t('Assign'),
+      tone: isLeader ? 'danger' : 'default'
+    });
+    if (!ok) return;
+    busy = memberId; err = '';
     const { error } = await supabase.rpc('assign', { p_member: memberId, p_slot: slot.id, p_hours: hours });
     busy = null;
     if (error) { toast.error(error.message); err = error.message; return; }
