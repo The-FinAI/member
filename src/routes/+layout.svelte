@@ -152,7 +152,7 @@
 
       <div class="mast-title">
         <img src="/logo.png" alt="" class="brand-logo" />
-        <a href="/" class="mast-brand">The Fin AI <span class="mb-sub">{$t('Community')} · {$t('The Living Record')}</span></a>
+        <a href="/projects" class="mast-brand">The Fin AI <span class="mb-sub">{$t('Community')} · {$t('The Living Record')}</span></a>
         {#if $session}
           <span class="mast-right">
             <a href="/wallet" class="mast-wallet" title={$t('Open your wallet')}>
@@ -185,12 +185,10 @@
     {#if $session}
       <nav class="sections">
         <div class="sections-inner">
-          <a href="/" class="sec-link" class:active={$page.url.pathname === '/'}>{$t('Front page')}</a>
-          <a href="/my" class="sec-link" class:active={isActive('/my', $page.url.pathname)}>{$t('My tasks')}</a>
-          <a href="/projects" class="sec-link" class:active={isActive('/projects', $page.url.pathname)}>{$t('Projects')}</a>
+          <a href="/projects" class="sec-link" class:active={$page.url.pathname === '/' || isActive('/projects', $page.url.pathname)}>{$t('Projects')}</a>
           <a href="/people" class="sec-link" class:active={isActive('/people', $page.url.pathname)}>{$t('People')}</a>
-          <a href="/community" class="sec-link" class:active={isActive('/community', $page.url.pathname)}>{$t('Directory')}</a>
           <span class="sec-spacer"></span>
+          <a href="/community" class="sec-link" class:active={isActive('/community', $page.url.pathname)}>{$t('Directory')}</a>
           <a href="/guide" class="sec-link" class:active={isActive('/guide', $page.url.pathname)}>{$t('Guide')}</a>
           {#if canAdmin || canApprove}
             <a href="/admin" class="sec-link" class:active={isActive('/admin', $page.url.pathname)}>{$t('Settings')}</a>

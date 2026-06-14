@@ -5,6 +5,7 @@
   import { t } from '$lib/i18n';
   import { get } from 'svelte/store';
   import EntityCard from '$lib/EntityCard.svelte';
+  import NeedsYou from '$lib/shell/NeedsYou.svelte';
   import { type Slot } from '$lib/cards/ProjectSlotCard.svelte';
 
   // Projects = the community portfolio. Each project belongs to a working group
@@ -426,6 +427,8 @@
 </script>
 
 <div class="stack">
+  {#if $member}<NeedsYou />{/if}
+
   <div class="row" style="justify-content:space-between; align-items:flex-end;">
     <div class="stack" style="gap:.15rem;">
       <h1 style="margin:0;">{$t('Projects')}</h1>
