@@ -37,6 +37,7 @@
     trash:    '<path d="M5 7h14M9 7V4h6v3M7 7l1 13h8l1-13"/>',
     award:    '<circle cx="12" cy="9" r="5"/><path d="M9 13l-1.5 8L12 18l4.5 3L15 13"/>',
     megaphone:'<path d="M4 10v4h4l8 5V5l-8 5H4z"/><path d="M18 9a4 4 0 0 1 0 6"/>',
+    gift:     '<rect x="4" y="9" width="16" height="11" rx="1"/><path d="M3 9h18M12 9v11M12 9c-2-4-6-4-6-1 0 2 3 1 6 1zM12 9c2-4 6-4 6-1 0 2-3 1-6 1z"/>',
     // file-type marks for project links
     doc:      '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 13h6M9 17h6"/>',
     code:     '<path d="M9 8l-4 4 4 4M15 8l4 4-4 4"/>',

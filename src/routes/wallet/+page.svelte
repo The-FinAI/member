@@ -4,6 +4,7 @@
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import CountUp from '$lib/CountUp.svelte';
   import Hint from '$lib/Hint.svelte';
+  import Icon from '$lib/Icon.svelte';
   import { t } from '$lib/i18n';
 
   type LedgerRow = {
@@ -37,11 +38,12 @@
   const settledPct = $derived(total > 0 ? (balance / total) * 100 : 100);
   const accruingPct = $derived(total > 0 ? (accruing / total) * 100 : 0);
 
-  function txnIcon(e: LedgerRow, incoming: boolean) {
+  // returns an Icon name for credit-type rows, else '' (arrow rendered inline)
+  function txnIcon(e: LedgerRow) {
     const r = (e.reason || '').toLowerCase();
-    if (r.includes('grant') || r.includes('welcome')) return '🎁';
-    if (r.includes('payout') || r.includes('settle') || r.includes('bonus')) return '🏆';
-    return incoming ? '↓' : '↑';
+    if (r.includes('grant') || r.includes('welcome')) return 'gift';
+    if (r.includes('payout') || r.includes('settle') || r.includes('bonus')) return 'str';
+    return '';
   }
   function fmtWhen(ts: string) {
     return new Date(ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -158,8 +160,9 @@
         <div class="rise-stagger">
           {#each ledger as e}
             {@const incoming = e.to_account === accountId}
+            {@const ti = txnIcon(e)}
             <div class="txn">
-              <span class="t-ico {incoming ? 'in' : 'out'}">{txnIcon(e, incoming)}</span>
+              <span class="t-ico {incoming ? 'in' : 'out'}">{#if ti}<Icon name={ti} size={15} />{:else}{incoming ? '↓' : '↑'}{/if}</span>
               <span class="t-main">
                 <span class="t-reason">{e.reason}</span>
                 <span class="t-meta"><span class="badge dim">{e.entry_type}</span> {fmtWhen(e.created_at)}</span>

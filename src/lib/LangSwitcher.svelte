@@ -1,5 +1,6 @@
 <script lang="ts">
   import { locale, setLocale, LOCALES, t } from '$lib/i18n';
+  import Icon from '$lib/Icon.svelte';
   let open = $state(false);
   const current = $derived(LOCALES.find((l) => l.code === $locale) ?? LOCALES[0]);
   function choose(code: typeof LOCALES[number]['code']) { setLocale(code); open = false; }
@@ -15,7 +16,7 @@
       {#each LOCALES as l}
         <button class="lang-item" class:on={l.code === $locale} onclick={() => choose(l.code)}>
           <span class="ls">{l.short}</span> {l.label}
-          {#if l.code === $locale}<span class="tick">✓</span>{/if}
+          {#if l.code === $locale}<span class="tick"><Icon name="check" size={14} /></span>{/if}
         </button>
       {/each}
     </div>

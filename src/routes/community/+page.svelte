@@ -12,6 +12,7 @@
   import UnitDrawerBody from '$lib/cards/UnitDrawerBody.svelte';
   import Medal from '$lib/Medal.svelte';
   import { t } from '$lib/i18n';
+  import Icon from '$lib/Icon.svelte';
 
   type Row = {
     id: string;
@@ -475,7 +476,7 @@
               <div class="award-cards">
                 {#each awardChoices.slice(0, 60) as ac (ac.id)}
                   <button type="button" class="award-card" class:on={awardSel.has(ac.id)} onclick={() => toggleAward(ac.id)}>
-                    {awardSel.has(ac.id) ? '✓ ' : ''}{ac.full_name}
+                    {#if awardSel.has(ac.id)}<Icon name="check" size={13} /> {/if}{ac.full_name}
                   </button>
                 {/each}
                 {#if !awardChoices.length}<p class="muted" style="margin:0; font-size:.82rem;">{$t('No matching cards.')}</p>{/if}
