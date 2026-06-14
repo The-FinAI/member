@@ -222,7 +222,7 @@
     </div>
 
     <div class="pd-section">
-      <ProjectTeam projectId={g.id} canManage={canPostNeed} finished={g.finished} />
+      <ProjectTeam projectId={g.id} canManage={canPostNeed} canMatch={canSeat} finished={g.finished} />
     </div>
 
     <ProjectCardBody projectId={g.id} {venues} {workingGroups} {statuses} onChanged={reload} />

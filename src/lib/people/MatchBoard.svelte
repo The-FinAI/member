@@ -7,6 +7,12 @@
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { t } from '$lib/i18n';
 
+  // projectId scopes the open needs to one project (so the matcher can be
+  // embedded on a project — assign in place, no hop to People). embedded hides
+  // its own heading. onAssigned lets the host refresh after a seat is filled.
+  let { projectId = null, embedded = false, onAssigned }:
+    { projectId?: string | null; embedded?: boolean; onAssigned?: () => void } = $props();
+
   type Need = {
     id: string; project_id: string; slot_kind: string; skill_id: string | null;
     resource_type_id: string | null; desired_level: string | null;
@@ -47,10 +53,12 @@
   async function load() {
     if (!supabaseConfigured) { loading = false; return; }
     loading = true; err = '';
-    const [nd, mem] = await Promise.all([
-      supabase.from('project_slot')
+    let slotQ = supabase.from('project_slot')
         .select('id,project_id,slot_kind,skill_id,resource_type_id,desired_level,quota,headcount,status,skill:skill_id(name),resource_type:resource_type_id(name,unit),project:project_id(name,emoji,code)')
-        .in('slot_kind', ['work_labor', 'work_resource', 'leader']).eq('status', 'open'),
+        .in('slot_kind', ['work_labor', 'work_resource', 'leader']).eq('status', 'open');
+    if (projectId) slotQ = slotQ.eq('project_id', projectId);
+    const [nd, mem] = await Promise.all([
+      slotQ,
       supabase.from('member').select('id,full_name').order('full_name')
     ]);
     const rows = (nd.data as any[]) ?? [];
@@ -120,12 +128,13 @@
     needs = needs;
     cands = cands.filter((c) => c.member_id !== memberId);
     directOpen = false; directPick = ''; directQ = ''; directHours = '';
+    onAssigned?.();   // let the host (project ledger / team) refresh
   }
 </script>
 
 <section class="mb">
   <div class="mb-head">
-    <h2>{$t('Match people to needs')}</h2>
+    {#if !embedded}<h2>{$t('Match people to needs')}</h2>{/if}
     {#if err}<span class="mb-err">{err}</span>{/if}
     {#if msg}<span class="mb-ok">{msg}</span>{/if}
   </div>

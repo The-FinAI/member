@@ -7,9 +7,12 @@
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { t } from '$lib/i18n';
   import NeedPost from '$lib/people/NeedPost.svelte';
+  import MatchBoard from '$lib/people/MatchBoard.svelte';
 
-  let { projectId, canManage = false, finished = false }: {
-    projectId: string; canManage?: boolean; finished?: boolean;
+  // canMatch: the viewer can assign people (chapter officer / admin) → the
+  // matcher is embedded here so seating happens in place, not on People.
+  let { projectId, canManage = false, canMatch = false, finished = false }: {
+    projectId: string; canManage?: boolean; canMatch?: boolean; finished?: boolean;
   } = $props();
 
   type Member = { id: string; name: string; role: string; amount: number; unit: string; str: number };
@@ -96,7 +99,11 @@
     {#if canManage && !finished}
       <NeedPost projectId={projectId} onPosted={load} />
     {/if}
-    {#if needs.length}
+
+    {#if canMatch && !finished}
+      <!-- assign in place: the matcher, scoped to this project's needs -->
+      <MatchBoard projectId={projectId} embedded onAssigned={load} />
+    {:else if needs.length}
       <div class="pt-needs">
         {#each needs as n (n.id)}
           {#if editing?.id === n.id}
