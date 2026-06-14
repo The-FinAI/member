@@ -8,7 +8,6 @@
   import { t } from '$lib/i18n';
   import { goto } from '$app/navigation';
   import { get } from 'svelte/store';
-  import MatchBoard from '$lib/people/MatchBoard.svelte';
 
   type Person = {
     id: string; full_name: string; kind: string; affiliation: string | null;
@@ -117,9 +116,9 @@
     </div>
   {/if}
 
-  {#if isOfficer}
-    <MatchBoard />
-  {/if}
+  <!-- Matching moved INTO the project ledger (assign in place from a project's
+       open needs). People is now the pure roster — see people, manage their
+       skills & capacity. -->
 
   <div class="pp-tools">
     <input class="pp-search" placeholder={$t('Search by name…')} bind:value={q} />

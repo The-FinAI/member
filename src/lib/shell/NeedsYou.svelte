@@ -69,7 +69,7 @@
           used[w.member_id] = (used[w.member_id] ?? 0) + (Number(w.monthly_amount) || 0);
       }
       const free = ((roster as any[]) ?? []).filter((r) => r.monthly_hours && (used[r.id] ?? 0) < r.monthly_hours).length;
-      if (free) out.push({ icon: '⇄', title: $t('{n} people have free time', { n: free }), sub: $t('Match them to open needs'), href: '/people', tone: 'go' });
+      if (free) out.push({ icon: '⇄', title: $t('{n} people have free time', { n: free }), sub: $t('Open a project and assign them to a need'), href: '/projects', tone: 'go' });
     }
 
     if (myWGs.length) {
