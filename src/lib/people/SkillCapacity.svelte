@@ -9,7 +9,13 @@
   import Icon from '$lib/Icon.svelte';
   import { toast } from '$lib/toast';
 
-  let { memberId, canEdit = false }: { memberId: string; canEdit?: boolean } = $props();
+  // reviewMode: the viewer is the member editing their OWN card (not an officer),
+  // so edits are submitted for their chapter officer to review (#40 B, model A).
+  let { memberId, canEdit = false, reviewMode = false }:
+    { memberId: string; canEdit?: boolean; reviewMode?: boolean } = $props();
+
+  // skill_ids / 'hours' with a pending review request → shown as awaiting review
+  let pending = $state<Set<string>>(new Set());
 
   type PSkill = { skill_id: string; level: string };
   type Ev = { skill_id: string; tasks: number; shipped: number };
@@ -59,11 +65,28 @@
     hoursDraft = hours == null ? '' : String(hours);
     freeHours = free.error ? null : (free.data == null ? null : Number(free.data));
     suggestions = (sug.data as Sug[]) ?? [];
+    // pending self-submitted changes awaiting officer review (#40 B)
+    const { data: mcr } = await supabase.from('member_change_request')
+      .select('kind,payload').eq('member_id', memberId).eq('status', 'pending');
+    const p = new Set<string>();
+    for (const r of (mcr as any[]) ?? []) p.add(r.kind === 'hours' ? 'hours' : (r.payload?.skill_id ?? ''));
+    pending = p;
     loading = false;
   }
   $effect(() => { memberId; load(); });
 
   async function setLevel(skill_id: string, level: string | null) {
+    // #40 B: a member editing their own card submits the change for review;
+    // an officer applies directly.
+    if (reviewMode) {
+      busy = skill_id; err = '';
+      const { error } = await supabase.rpc('member_change_submit', { p_member: memberId, p_kind: 'skill', p_payload: { skill_id, level } });
+      busy = null;
+      if (error) { toast.error(error.message); err = error.message; return; }
+      pending = new Set(pending).add(skill_id);
+      toast.success($t('Submitted for review'));
+      return;
+    }
     const before = skills.map((s) => ({ ...s }));
     if (level == null) skills = skills.filter((s) => s.skill_id !== skill_id);
     else {
@@ -91,6 +114,17 @@
   async function saveHours() {
     const v = hoursDraft.trim() === '' ? 0 : Math.max(0, Math.floor(Number(hoursDraft) || 0));
     const before = hours;
+    // #40 B: self-edit → submit the new hours for officer review (don't apply)
+    if (reviewMode) {
+      busy = 'hours'; err = '';
+      const { error } = await supabase.rpc('member_change_submit', { p_member: memberId, p_kind: 'hours', p_payload: { hours: v } });
+      busy = null;
+      if (error) { toast.error(error.message); err = error.message; return; }
+      hoursDraft = before == null ? '' : String(before);
+      pending = new Set(pending).add('hours');
+      toast.success($t('Submitted for review'));
+      return;
+    }
     hours = v; busy = 'hours'; err = '';
     const { error } = await supabase.rpc('person_set_capacity', { p_hours: v, p_member: memberId });
     busy = null;
@@ -103,7 +137,7 @@
 </script>
 
 <section class="sc">
-  <div class="sc-head"><h3>{$t('Skills & capacity')}</h3>{#if canEdit}<span class="sc-edit" title={$t('You manage this person. Tap a skill level to set it; edit their monthly hours and hit Save.')}><Icon name="edit" size={11} /> {$t("editable")}</span>{/if}{#if err}<span class="sc-err">{err}</span>{/if}</div>
+  <div class="sc-head"><h3>{$t('Skills & capacity')}</h3>{#if canEdit && !reviewMode}<span class="sc-edit" title={$t('You manage this person. Tap a skill level to set it; edit their monthly hours and hit Save.')}><Icon name="edit" size={11} /> {$t("editable")}</span>{:else if reviewMode}<span class="sc-edit" title={$t('Changes you make here are submitted to your chapter officer for review before they take effect.')}><Icon name="clock" size={11} /> {$t('changes go to review')}</span>{/if}{#if err}<span class="sc-err">{err}</span>{/if}</div>
 
   {#if loading}
     <p class="sc-dim">{$t('Loading…')}</p>
@@ -117,6 +151,7 @@
           disabled={busy === 'hours'} /> <span class="sc-unit">{$t('hours / month total')}</span>
         {#if hoursDirty}<button class="sc-save" disabled={busy === 'hours'} onclick={saveHours}>{busy === 'hours' ? $t('Saving…') : $t('Save')}</button>{/if}
         {#if freeHours != null}<span class="sc-free" class:sc-over={freeHours < 0} title={$t('Remaining after current commitments this month.')}>· {Math.max(0, freeHours)} {$t('free now')}{#if freeHours < 0} <Icon name="warn" size={12} /> {$t('over')}{/if}</span>{/if}
+        {#if pending.has('hours')}<span class="sc-pend"><Icon name="clock" size={11} /> {$t('pending review')}</span>{/if}
       {:else if hours == null}
         <span class="sc-dim">{$t('Not set')}</span>
       {:else}
@@ -142,7 +177,7 @@
       <ul class="sc-list">
         {#each skills as s (s.skill_id)}
           <li class:busy={busy === s.skill_id}>
-            <span class="sc-skill">{skillName(s.skill_id)}</span>
+            <span class="sc-skill">{skillName(s.skill_id)}{#if pending.has(s.skill_id)}<span class="sc-pend"><Icon name="clock" size={10} /> {$t('pending')}</span>{/if}</span>
             {#if canEdit}
               <span class="sc-seg">
                 {#each LEVELS as lv}
@@ -187,6 +222,8 @@
   .sc-capval { font-family: var(--font-mono); }
   .sc-capval b { font-size: 1.05em; }
   .sc-free { font-size: .82rem; color: var(--up, #2e9e5b); font-weight: 600; }
+  .sc-pend { display: inline-flex; align-items: center; gap: .2rem; margin-left: .4rem; font-size: .72rem; font-weight: 600;
+    color: var(--warn); border: 1px solid var(--warn); border-radius: var(--r-full); padding: 0 .4rem; white-space: nowrap; }
   .sc-over { color: var(--down, var(--down)); }
   .sc-err { color: var(--neg, var(--down)); font-size: .82rem; }
   .sc-dim { color: var(--muted, #999); font-size: .9rem; }

@@ -353,6 +353,23 @@ function rpc(name: string, a: any) {
     persist();
     return Promise.resolve({ data: null, error: null });
   }
+  if (name === 'member_change_submit') {
+    // mock: simulate "the viewer is the member, not an officer" → queue pending,
+    // unless acting as admin (uid-admin) → apply directly.
+    const asAdmin = (typeof localStorage !== 'undefined' && localStorage.getItem('mockAs') === 'uid-admin');
+    if (asAdmin) {
+      if (a.p_kind === 'skill') rpc('person_skill_set', { p_skill: a.p_payload.skill_id, p_level: a.p_payload.level, p_member: a.p_member });
+      return Promise.resolve({ data: { applied: true }, error: null });
+    }
+    (seed.member_change_request ??= []).push({ id: nid('mcr'), member_id: a.p_member, kind: a.p_kind, payload: a.p_payload, status: 'pending', created_at: '2026-06-15T00:00:00Z' });
+    persist();
+    return Promise.resolve({ data: { applied: false, pending: true }, error: null });
+  }
+  if (name === 'member_change_decide') {
+    const r = (seed.member_change_request ?? []).find((x: any) => x.id === a.p_request);
+    if (r) { r.status = a.p_approve ? 'approved' : 'rejected'; persist(); }
+    return Promise.resolve({ data: null, error: null });
+  }
   if (name === 'member_archive') {
     const m = seed.member.find((x: any) => x.id === a.p_member);
     if (m) m.archived_at = (a.p_archived ?? true) ? '2026-06-15T00:00:00Z' : null;

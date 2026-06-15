@@ -1,7 +1,7 @@
 <script lang="ts">
   import { get } from 'svelte/store';
   import { supabase, supabaseConfigured } from '$lib/supabase';
-  import { member, capabilities } from '$lib/session';
+  import { member, capabilities, officerUnits } from '$lib/session';
   import { t } from '$lib/i18n';
   import Icon from '$lib/Icon.svelte';
   import { toast } from '$lib/toast';
@@ -23,6 +23,7 @@
   type Mem = {
     id: string; full_name: string; affiliation: string | null;
     avatar_url: string | null; bio: string | null; status: string; kind: string;
+    home_unit_id: string | null;
     links: Record<string, string> | null;
     member_position: { position: { name: string } | null }[];
   };
@@ -181,7 +182,7 @@
     loading = true; notFound = false; canEdit = false; canEditCatalog = false; cardResources = []; catError = '';
     profileSaved = false; profileErr = '';
     const { data: m } = await supabase.from('member')
-      .select('id, full_name, affiliation, avatar_url, bio, status, kind, links, member_position(position(name))')
+      .select('id, full_name, affiliation, avatar_url, bio, status, kind, home_unit_id, links, member_position(position(name))')
       .eq('id', memberId).maybeSingle();
     if (!m) { mem = null; notFound = true; loading = false; return; }
     mem = m as Mem;
@@ -232,6 +233,7 @@
     totalNominal = tot;
     projects = Object.values(byP).filter((p) => p.id).sort((a, b) => b.nominal - a.nominal);
     loading = false;
+    loadPending(memberId);
   }
 
   // #34: a person card added in error must be removable. Archive hides it from
@@ -252,6 +254,46 @@
     if (e) { toast.error(e.message); return; }
     toast.success(get(t)('Card archived'));
     goto('/people');
+  }
+
+  // #40 B: self-submitted changes this officer can approve/reject for the card
+  let pendingChanges = $state<{ id: string; kind: string; payload: any }[]>([]);
+  let skillNameMap = $state<Record<string, string>>({});
+  let decideBusy = $state<string | null>(null);
+  const LVL_LABEL: Record<string, string> = { learning: 'Learning', independent: 'Independent', lead: 'Lead' };
+  // who may approve this card's self-submitted changes: not the member; an
+  // officer of their chapter, a card-manager, or an admin.
+  const canReviewChanges = $derived(
+    !isMe && (canEdit || $capabilities.has('manage_members')
+      || (!!mem?.home_unit_id && $officerUnits.some((u: any) => u.unit_id === mem!.home_unit_id)))
+  );
+
+  async function loadPending(memberId: string) {
+    if (!supabaseConfigured) return;
+    const { data } = await supabase.from('member_change_request')
+      .select('id,kind,payload').eq('member_id', memberId).eq('status', 'pending').order('created_at');
+    pendingChanges = (data as any[]) ?? [];
+    const needIds = pendingChanges.filter((c) => c.kind === 'skill').map((c) => c.payload?.skill_id).filter(Boolean);
+    if (needIds.length) {
+      const { data: sk } = await supabase.from('skill').select('id,name').in('id', needIds);
+      const m: Record<string, string> = {};
+      for (const s of (sk as any[]) ?? []) m[s.id] = s.name;
+      skillNameMap = m;
+    }
+  }
+  function changeLabel(c: { kind: string; payload: any }) {
+    if (c.kind === 'hours') return get(t)('Available time → {n} h/mo', { n: c.payload?.hours ?? 0 });
+    const nm = skillNameMap[c.payload?.skill_id] ?? get(t)('a skill');
+    const lv = c.payload?.level ? get(t)(LVL_LABEL[c.payload.level] ?? c.payload.level) : get(t)('removed');
+    return `${nm} → ${lv}`;
+  }
+  async function decideChange(id: string, approve: boolean) {
+    decideBusy = id;
+    const { error: e } = await supabase.rpc('member_change_decide', { p_request: id, p_approve: approve });
+    decideBusy = null;
+    if (e) { toast.error(e.message); return; }
+    toast.success(approve ? get(t)('Change approved') : get(t)('Change rejected'));
+    await loadPending(mem?.id ?? '');
   }
 
   // re-load whenever the id prop changes (route nav or drawer subject swap)
@@ -433,8 +475,26 @@
 
     <!-- skills: the Learning/Independent/Lead proficiency scale + evidence -->
     <div class="card stack" id="skills">
-      <SkillCapacity memberId={id} canEdit={canEditCatalog} />
+      <SkillCapacity memberId={id} canEdit={canEditCatalog || isMe} reviewMode={isMe && !canEdit} />
     </div>
+
+    <!-- #40 B: officer reviews self-submitted changes for this card -->
+    {#if canReviewChanges && pendingChanges.length}
+      <div class="card stack">
+        <h2 style="margin:0;">{$t('Changes awaiting your review')} <span class="muted" style="font-weight:400;">· {pendingChanges.length}</span></h2>
+        {#each pendingChanges as c (c.id)}
+          <div class="row" style="justify-content:space-between; align-items:center; gap:.6rem; border:1px solid var(--border); border-radius:8px; padding:.5rem .75rem;">
+            <span style="font-size:.9rem;">{changeLabel(c)}</span>
+            <span class="row" style="gap:.4rem;">
+              <button disabled={decideBusy === c.id} onclick={() => decideChange(c.id, true)}
+                style="background:var(--up); color:#fff; border:none; border-radius:var(--r-sm); padding:.3rem .7rem; font:inherit; font-weight:600; cursor:pointer;">{$t('Approve')}</button>
+              <button disabled={decideBusy === c.id} onclick={() => decideChange(c.id, false)}
+                style="background:none; color:var(--down); border:1px solid var(--border-2); border-radius:var(--r-sm); padding:.3rem .7rem; font:inherit; cursor:pointer;">{$t('Reject')}</button>
+            </span>
+          </div>
+        {/each}
+      </div>
+    {/if}
 
     <!-- #34: archive a card added in error (officers only, unclaimed cards) -->
     {#if canEdit && mem.kind === 'card'}
