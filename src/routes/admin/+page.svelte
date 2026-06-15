@@ -25,7 +25,8 @@
     { title: 'Projects', desc: 'Project types, statuses, roles & target venues', href: '/admin/projects', caps: ['manage_taxonomy', 'edit_any_project'] },
     { title: 'Skills', desc: 'The shared skill list used across people, roles & matching', href: '/admin/guild', caps: ['manage_taxonomy', 'manage_guild'] },
     { title: 'Resources & economy', desc: 'STR supply & policy, community resources & resource types', href: '/admin/economy', caps: ['manage_resources', 'manage_stater'] },
-    { title: 'Announcements', desc: 'Post, pin & retire the site-wide notice board', href: '/admin/announcements', caps: ['manage_members'] }
+    { title: 'Announcements', desc: 'Post, pin & retire the site-wide notice board', href: '/admin/announcements', caps: ['manage_members'] },
+    { title: 'Release notes', desc: 'Email a release to reviewers first, then to everyone — the staged rollout flow', href: '/admin/release', caps: ['manage_members'] }
   ];
   const visibleConsoles = $derived(CONSOLES.filter((c) => c.caps.some((k) => can(k))));
 

@@ -27,8 +27,8 @@ const seed: Record<string, any[]> = {
   ],
   member: [
     { id: M_ME, full_name: 'Chen Wei', email: 'chen@test', affiliation: 'The Fin AI', kind: 'member', status: 'active', home_unit_id: U_CHAP, auth_user_id: 'mock-uid', monthly_hours: 20, bio: 'Chapter & WG officer.', links: {}, member_position: [{ position: { name: 'President' } }] },
-    { id: M_LI, full_name: 'Li Hua', email: 'li@test', affiliation: 'PKU', kind: 'member', status: 'active', home_unit_id: U_CHAP, auth_user_id: 'uid-member', monthly_hours: 10, bio: 'Researcher — no officer role.', links: {}, member_position: [] },
-    { id: M_WANG, full_name: 'Wang Fang', email: 'wang@test', affiliation: 'THU', kind: 'card', status: 'active', home_unit_id: U_CHAP, auth_user_id: null, monthly_hours: 30, member_position: [] },
+    { id: M_LI, full_name: 'Li Hua', email: 'li@test', affiliation: 'PKU', kind: 'member', status: 'active', home_unit_id: U_CHAP, auth_user_id: 'uid-member', monthly_hours: 10, bio: 'Researcher — no officer role.', links: {}, member_position: [], is_release_reviewer: true },
+    { id: M_WANG, full_name: 'Wang Fang', email: 'wang@test', affiliation: 'THU', kind: 'card', status: 'active', home_unit_id: U_CHAP, auth_user_id: null, monthly_hours: 30, member_position: [], is_release_reviewer: true },
     { id: M_ZHAO, full_name: 'Zhao Lei', email: 'zhao@test', affiliation: 'SJTU', kind: 'card', status: 'active', home_unit_id: U_CHAP, auth_user_id: null, monthly_hours: 8, member_position: [] },
     { id: 'm-wg', full_name: 'Wu Jing', email: 'wu@test', affiliation: 'The Fin AI', kind: 'member', status: 'active', home_unit_id: U_WG, auth_user_id: 'uid-wg', monthly_hours: 20, bio: 'Working-group officer.', links: {}, member_position: [] },
     { id: 'm-chap', full_name: 'Chan Min', email: 'chan@test', affiliation: 'The Fin AI', kind: 'member', status: 'active', home_unit_id: U_CHAP, auth_user_id: 'uid-chap', monthly_hours: 20, bio: 'Chapter officer.', links: {}, member_position: [] },
@@ -373,6 +373,11 @@ function rpc(name: string, a: any) {
     persist();
     return Promise.resolve({ data: null, error: null });
   }
+  if (name === 'release_recipients') {
+    const all = (seed.member ?? []).filter((m: any) => m.email && !m.archived_at);
+    const rows = a.p_audience === 'preview' ? all.filter((m: any) => m.is_release_reviewer) : all;
+    return Promise.resolve({ data: rows.map((m: any) => ({ member_id: m.id, full_name: m.full_name, email: m.email })), error: null });
+  }
   if (name === 'notification_read') { const n = seed.notification.find((x) => x.id === a.p_id); if (n) n.read_at = '2026-06-06T12:00:00Z'; return Promise.resolve({ data: null, error: null }); } persist();
   if (name === 'notification_read_all') { seed.notification.forEach((n) => (n.read_at = '2026-06-06T12:00:00Z')); return Promise.resolve({ data: null, error: null }); } persist();
 
@@ -606,6 +611,12 @@ export const mockSupabase: any = {
         (seed.member ??= []).push({ id, full_name: b.full_name ?? b.email ?? 'Invited', email: b.email ?? '', affiliation: b.affiliation ?? null, kind: b.kind ?? 'operator', status: 'invited', home_unit_id: b.unit_id ?? null, auth_user_id: null, monthly_hours: null, member_position: [] });
         persist();
         return Promise.resolve({ data: { id }, error: null });
+      }
+      if (name === 'announce-release') {
+        const b = opts?.body ?? {};
+        const all = (seed.member ?? []).filter((m: any) => m.email && !m.archived_at);
+        const rows = b.audience === 'preview' ? all.filter((m: any) => m.is_release_reviewer) : all;
+        return Promise.resolve({ data: { sent: rows.length, total: rows.length, audience: b.audience, results: rows.map((m: any) => ({ email: m.email, ok: true })) }, error: null });
       }
       return Promise.resolve({ data: null, error: null });
     }
