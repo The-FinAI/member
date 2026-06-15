@@ -109,10 +109,10 @@
   // #26: hours are NOT saved silently on blur — the officer hits an explicit
   // Save (shown only when the field differs from the stored value), and gets a
   // toast confirming it. The Save button appears whenever the draft is dirty.
-  const hoursDirty = $derived(hoursDraft.trim() !== (hours == null ? '' : String(hours)));
+  const hoursDirty = $derived(String(hoursDraft ?? '').trim() !== (hours == null ? '' : String(hours)));
 
   async function saveHours() {
-    const v = hoursDraft.trim() === '' ? 0 : Math.max(0, Math.floor(Number(hoursDraft) || 0));
+    const v = String(hoursDraft ?? '').trim() === '' ? 0 : Math.max(0, Math.floor(Number(hoursDraft) || 0));
     const before = hours;
     // #40 B: self-edit → submit the new hours for officer review (don't apply)
     if (reviewMode) {
@@ -146,7 +146,7 @@
     <div class="sc-cap">
       <span class="sc-label" title={$t('Time available now / total monthly hours.')}>{$t('Available time')}</span>
       {#if canEdit}
-        <input class="sc-hours" type="number" min="0" bind:value={hoursDraft}
+        <input class="sc-hours" type="text" inputmode="numeric" pattern="[0-9]*" bind:value={hoursDraft}
           onkeydown={(e) => { if (e.key === 'Enter' && hoursDirty) saveHours(); }}
           disabled={busy === 'hours'} /> <span class="sc-unit">{$t('hours / month total')}</span>
         {#if hoursDirty}<button class="sc-save" disabled={busy === 'hours'} onclick={saveHours}>{busy === 'hours' ? $t('Saving…') : $t('Save')}</button>{/if}
@@ -253,5 +253,7 @@
   .sc-addrow:hover { border-color: var(--accent, var(--accent)); color: var(--accent, var(--accent)); }
   .sc-go { border: none; background: var(--accent, var(--accent)); color: #fff; border-radius: var(--r-sm); padding: .3rem .75rem; cursor: pointer; }
   .sc-go:disabled { opacity: .5; cursor: default; }
-  .sc-ghost { border: 1px solid var(--line, #ddd); background: none; border-radius: var(--r-sm); padding: .3rem .65rem; cursor: pointer; }
+  /* #42: the Cancel button was near-invisible (faint border, no text colour) */
+  .sc-ghost { border: 1px solid var(--border-2); color: var(--text); background: var(--card); border-radius: var(--r-sm); padding: .3rem .7rem; font: inherit; cursor: pointer; }
+  .sc-ghost:hover { background: var(--card-2); border-color: var(--text-dim); }
 </style>
