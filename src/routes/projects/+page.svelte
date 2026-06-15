@@ -648,7 +648,17 @@
   .lr-facts .lf-ddl { font-family: var(--font-mono); color: var(--muted); }
   .lrow-body { padding: .9rem 1.1rem 1.1rem; }
   .lr-open { display: inline-block; font-size: .8rem; margin-bottom: .6rem; }
-  @media (max-width: 720px) { .lr-facts { gap: .5rem; } .lr-sub { display: none; } }
+  @media (max-width: 720px) { .lr-facts { gap: .5rem; } }
+  /* mobile: the row stacks so the status badge never overlaps the title and the
+     facts get their own line under it (issue #36) */
+  @media (max-width: 600px) {
+    .lrow-head { flex-wrap: wrap; align-items: flex-start; row-gap: .35rem; padding: .65rem .4rem; }
+    .lr-chev { margin-top: .15rem; }
+    .lr-main { flex: 1 1 8rem; }
+    .lr-title { font-size: .95rem; line-height: 1.25; }
+    .lrow-head > .badge, .lrow-head > .status { flex: 0 0 auto; align-self: flex-start; white-space: nowrap; }
+    .lr-facts { flex: 1 1 100%; padding-left: 1.75rem; gap: .35rem .9rem; }
+  }
   .btn {
     display: inline-flex; align-items: center; gap: .3rem; padding: .5rem .9rem;
     background: var(--accent); color: #fff; border: 1px solid transparent; border-radius: var(--r-sm);

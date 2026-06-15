@@ -781,6 +781,13 @@ button.stake { background: var(--accent); }
   .mast-brand { font-size: 1.35rem; }
   .dateline .dl-hats { display: none; }
 }
+@media (max-width: 560px) {
+  /* keep the brand on one line — the tagline crowds it on phones (issue #36) */
+  .mast-brand { font-size: 1.3rem; white-space: nowrap; }
+  .mast-brand .mb-sub { display: none; }
+  .mast-title { gap: .5rem; padding: .7rem 0 .6rem; flex-wrap: wrap; }
+  .mast-right { gap: .6rem; }
+}
 
 /* ============================================================
    Detail-page section nav — ruled tab strip
