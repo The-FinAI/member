@@ -615,8 +615,10 @@ export const mockSupabase: any = {
       if (name === 'announce-release') {
         const b = opts?.body ?? {};
         const all = (seed.member ?? []).filter((m: any) => m.email && !m.archived_at);
-        const rows = b.audience === 'preview' ? all.filter((m: any) => m.is_release_reviewer) : all;
-        return Promise.resolve({ data: { sent: rows.length, total: rows.length, audience: b.audience, results: rows.map((m: any) => ({ email: m.email, ok: true })) }, error: null });
+        const ids = Array.isArray(b.recipient_ids) ? new Set(b.recipient_ids) : null;
+        const rows = ids ? all.filter((m: any) => ids.has(m.id)) : all;
+        const stage = ids ? 'preview' : 'all';
+        return Promise.resolve({ data: { sent: rows.length, total: rows.length, audience: stage, results: rows.map((m: any) => ({ email: m.email, ok: true })) }, error: null });
       }
       return Promise.resolve({ data: null, error: null });
     }

@@ -8,7 +8,11 @@
 // a caller without that capability gets an empty list and no mail goes out. The
 // list is fetched with the *caller's* JWT, so this can't be used to spam.
 //
-// Request body: { audience: 'preview' | 'all', subject: string, body_html: string }
+// Request body: { audience?: 'all', recipient_ids?: string[], subject, body_html }
+//   - recipient_ids: send only to these members (the preview stage's picked
+//     reviewers). They're intersected with the gated 'all' list, so a caller
+//     can never send to an id that isn't an authorised community member.
+//   - audience: 'all' sends to everyone (the release stage).
 //   body_html is the inner release-notes HTML (the admin writes it); the
 //   function wraps it in the branded shell with a CTA to the site.
 //
@@ -45,23 +49,32 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get('Authorization') ?? '';
     if (!authHeader) return json({ error: 'Not authenticated.' }, 401);
 
-    const { audience, subject, body_html } = await req.json().catch(() => ({}));
-    if (audience !== 'preview' && audience !== 'all')
-      return json({ error: "audience must be 'preview' or 'all'." }, 400);
+    const { audience, recipient_ids, subject, body_html } = await req.json().catch(() => ({}));
+    const ids = Array.isArray(recipient_ids) ? (recipient_ids as string[]) : null;
+    if (!ids?.length && audience !== 'all')
+      return json({ error: "Provide recipient_ids (preview) or audience:'all'." }, 400);
     if (!subject || !body_html)
       return json({ error: 'subject and body_html are required.' }, 400);
 
-    // Caller-scoped client — release_recipients() enforces manage_members.
+    // Caller-scoped client — release_recipients() enforces manage_members, so an
+    // unauthorised caller gets [] and nothing is sent.
     const userClient = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
       { global: { headers: { Authorization: authHeader } }, auth: { persistSession: false } }
     );
 
-    const { data, error: rpcErr } = await userClient.rpc('release_recipients', { p_audience: audience });
+    const { data, error: rpcErr } = await userClient.rpc('release_recipients', { p_audience: 'all' });
     if (rpcErr) return json({ error: rpcErr.message }, 403);
 
-    const recipients = (data as Recipient[]) ?? [];
+    let recipients = (data as Recipient[]) ?? [];
+    // preview: narrow the authorised list to the picked ids (can't reach a
+    // non-member id this way). release: keep the whole authorised list.
+    const stage = ids?.length ? 'preview' : 'all';
+    if (ids?.length) {
+      const want = new Set(ids);
+      recipients = recipients.filter((r) => want.has(r.member_id));
+    }
     if (!recipients.length) return json({ sent: 0, total: 0, results: [], note: 'No recipients (or not authorised).' });
 
     if (!RESEND_API_KEY)
@@ -71,7 +84,7 @@ Deno.serve(async (req) => {
     let sent = 0;
 
     for (const r of recipients) {
-      const html = renderRelease({ name: r.full_name, subject, inner: body_html, audience });
+      const html = renderRelease({ name: r.full_name, subject, inner: body_html, audience: stage });
       const res = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
@@ -81,7 +94,7 @@ Deno.serve(async (req) => {
       else { results.push({ email: r.email, ok: false, detail: await res.text() }); }
     }
 
-    return json({ sent, total: recipients.length, audience, results });
+    return json({ sent, total: recipients.length, audience: stage, results });
   } catch (e) {
     return json({ error: String((e as Error)?.message ?? e) }, 500);
   }
