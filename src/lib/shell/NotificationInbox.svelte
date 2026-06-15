@@ -73,9 +73,14 @@
 {/if}
 
 <style>
-  .ni { position: relative; margin: 0 .25rem; }
-  .ni-bell { border: none; background: none; cursor: pointer; font-size: 1.05rem; position: relative; padding: .2rem; }
-  .ni-badge { position: absolute; top: -.2rem; right: -.3rem; background: var(--down); color: #fff; font-size: .62rem; border-radius: var(--r-full); padding: 0 .3rem; min-width: 1rem; }
+  .ni { position: relative; display: inline-flex; }
+  /* match the bordered language / theme buttons beside it so it reads as a
+     button and the bell isn't a faint borderless glyph (issue #39) */
+  .ni-bell { background: transparent; border: 1px solid var(--border-2); color: var(--text);
+    width: 30px; height: 30px; padding: 0; border-radius: var(--r-sm);
+    display: inline-flex; align-items: center; justify-content: center; cursor: pointer; position: relative; }
+  .ni-bell:hover { background: var(--card-2); }
+  .ni-badge { position: absolute; top: -.35rem; right: -.35rem; background: var(--down); color: #fff; font-size: .62rem; border-radius: var(--r-full); padding: 0 .3rem; min-width: 1rem; line-height: 1.25; }
   .ni-backdrop { position: fixed; inset: 0; background: none; border: none; z-index: var(--z-backdrop); }
   .ni-pop { position: absolute; right: 0; top: 2rem; width: 22rem; max-width: 90vw; background: var(--card, #fff); border: 1px solid var(--line, #e2e2e2); border-radius: var(--r-md); box-shadow: 0 8px 28px rgba(0,0,0,.12); z-index: var(--z-popover); max-height: 70vh; overflow: auto; }
   .ni-head { display: flex; justify-content: space-between; align-items: center; padding: .55rem .7rem; border-bottom: 1px solid var(--line, #f0f0f0); font-weight: 600; font-size: .85rem; }
