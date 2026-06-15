@@ -87,6 +87,9 @@
         <InlineField label={$t('Description')} type="textarea" {canEdit}
           value={unit?.description ?? ''} placeholder={$t('What this unit is about…')} onSave={saveDesc} />
       </div>
+    {:else}
+      <!-- #47: visitors (prospective applicants) need the context too -->
+      <p class="ud-desc">{unit?.description?.trim() || $t('No description yet — ask an officer what this group focuses on.')}</p>
     {/if}
 
     <!-- officers -->
@@ -158,12 +161,23 @@
       </div>
     {/if}
 
+    {#if !canEdit}
+      <!-- #47: tell applicants what joining means and what happens on Apply -->
+      <p class="ud-note">
+        {kind === 'chapter'
+          ? $t('A chapter is your home base — it holds your member record, skills and available time. Apply to join, and the chapter’s officers review your request; once accepted, an officer keeps your record and can place you on project work.')
+          : $t('A working group runs research projects. Apply to join, and its officers review your request; members get matched onto the group’s open project needs.')}
+      </p>
+    {/if}
+
   </div>
 {/if}
 
 <style>
   .ud { display: flex; flex-direction: column; gap: 1rem; }
   .ud-edit { display: flex; flex-direction: column; gap: .6rem; padding-bottom: .2rem; border-bottom: 1px solid var(--border); }
+  .ud-desc { font-size: .9rem; line-height: 1.55; color: var(--text); margin: 0; }
+  .ud-note { font-size: .82rem; line-height: 1.55; color: var(--muted); margin: 0; padding: .6rem .7rem; border: 1px solid var(--border); border-radius: var(--r-md); background: var(--card-2); }
   .ud-h-row { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
   .ud-link { background: transparent; border: 0; color: var(--accent); font: inherit; font-size: .8rem; cursor: pointer; padding: 0; }
   .ud-link:hover { text-decoration: underline; }
