@@ -65,9 +65,10 @@
       supabase.from('api_model').select('id, provider, name, usd_per_million').eq('is_active', true).order('rank'),
       me ? supabase.from('badge').select('skill_id, level').eq('member_id', me) : Promise.resolve({ data: [] as any[] })
     ]);
-    // Labor (a person's time/hours) IS a resource — part of the unified resource
-    // model alongside GPU/API/data/funding. Keep it declarable here.
-    types = (rt as ResType[]) ?? []; gpus = (gp as Gpu[]) ?? []; apis = (ap as Api[]) ?? [];
+    // #40 A/C: a person's own hours are "Available time" (member.monthly_hours),
+    // NOT a declarable resource — so Labor is excluded here. This catalog is for
+    // true resources: compute, data, funding, extra people.
+    types = ((rt as ResType[]) ?? []).filter((ty) => ty.name !== 'Labor'); gpus = (gp as Gpu[]) ?? []; apis = (ap as Api[]) ?? [];
     const bmap: Record<string, string> = {};
     for (const b of (bg as { skill_id: string; level: string }[]) ?? []) bmap[b.skill_id] = b.level;
     myBadges = bmap;

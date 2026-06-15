@@ -89,20 +89,20 @@
   // the editor only governs this card's OWN (member-scope) catalog…
   const ownResources = $derived(cardResources.filter((r) => r.scope === 'member'));
   const myLabor = $derived(ownResources.find((r) => r.resource_type?.name === 'Labor') ?? null);
-  // Labor ("My time") IS a resource in the unified model — show it in the catalog
-  // alongside GPU/data/funding. (The Skills tab's capacity bar mirrors the same
-  // hours for convenience.)
-  const catalogResources = $derived(ownResources);
+  // #40 A/C: a person's own monthly hours are ONE thing — "Available time"
+  // (member.monthly_hours, shown in the Skills & capacity card). They are NOT
+  // also listed here as a "Labor" resource, which used to show a second, often
+  // different number (e.g. 30 hrs/mo vs the 20 in the capacity card). The
+  // Resources catalog now holds only true resources — compute, data, funding,
+  // or extra people — categorically distinct from Available time.
+  const catalogResources = $derived(ownResources.filter((r) => r.resource_type?.name !== 'Labor'));
   // …while community resources this person STEWARDS (holds for the community)
   // are shown read-only on their page too.
   const stewarded = $derived(cardResources.filter((r) => r.scope === 'community'));
   // read-only view (for visitors who can't edit): only show approved offerings
-  const approvedLabor = $derived(myLabor && myLabor.approval_status === 'approved' ? myLabor : null);
-  const approvedResources = $derived(catalogResources.filter((r) => r.resource_type?.name !== 'Labor' && r.approval_status === 'approved'));
-  const hasPublicResources = $derived(!!approvedLabor || approvedResources.length > 0 || stewarded.length > 0);
-  const resourceCount = $derived(
-    (approvedLabor ? 1 : 0) + approvedResources.length + stewarded.length
-  );
+  const approvedResources = $derived(catalogResources.filter((r) => r.approval_status === 'approved'));
+  const hasPublicResources = $derived(approvedResources.length > 0 || stewarded.length > 0);
+  const resourceCount = $derived(approvedResources.length + stewarded.length);
   const rSelType = $derived(resTypes.find((rt) => rt.id === rType) ?? null);
   const rSelMethod = $derived(rSelType?.valuation_method ?? 'flat');
 
@@ -335,13 +335,13 @@
     <div class="stack" id="resources">
     {#if canEditCatalog}
       <div class="card stack">
-        <h2 style="margin:0;">{isMe ? $t('What I can bring') : $t('What this card can bring')}</h2>
-        <p class="muted" style="font-size:.82rem; margin-top:-.5rem;">{isMe ? $t('Your offerable catalog — your monthly time and resources. New entries go to a steward for review.') : $t("This card’s offerable catalog — its monthly time and resources. You’re editing it as an officer; new entries go to a steward for review.")}</p>
+        <h2 style="margin:0;">{isMe ? $t('Resources I can bring') : $t('Resources this card can bring')}</h2>
+        <p class="muted" style="font-size:.82rem; margin-top:-.5rem;">{isMe ? $t('Compute, data, funding, or extra people you can offer — separate from your own Available time above. New entries go to a steward for review.') : $t("Compute, data, funding, or extra people this card can offer — separate from its Available time above. You’re editing it as an officer; new entries go to a steward for review.")}</p>
         {#if catError}<p class="neg" style="font-size:.85rem;">{catError}</p>{/if}
 
-        <!-- unified resource-forge form (same as the community console);
-             labour = your "My time" hours, declared as a Labor resource.
-             editResId set → the form edits that resource (re-enters review). -->
+        <!-- resource-forge form (same as the community console). A person's own
+             monthly hours are NOT a resource here — they're Available time, in
+             the Skills & capacity card. editResId → edits that resource. -->
         <ResourceForgeForm holder={id} scope="member" editId={editResId}
           onForged={() => { editResId = ''; loadCatalog(id); }} />
         {#if editResId}<button class="link" style="align-self:flex-start;" onclick={() => (editResId = '')}>{$t('Cancel edit')}</button>{/if}
@@ -370,15 +370,9 @@
     {:else}
       <!-- read-only catalog for visitors: what this card can bring -->
       <div class="card stack">
-        <h2 style="margin:0;">{$t('What this card can bring')}</h2>
-        <p class="muted" style="font-size:.82rem; margin-top:-.5rem;">{$t('Approved offerings — the monthly time and resources this card can commit to projects.')}</p>
+        <h2 style="margin:0;">{$t('Resources this card can bring')}</h2>
+        <p class="muted" style="font-size:.82rem; margin-top:-.5rem;">{$t('Approved resources this card can commit to projects — compute, data, funding, or extra people. (Its monthly hours are shown as Available time above.)')}</p>
         {#if !hasPublicResources}<p class="muted">{$t('No resources offered yet.')}</p>{/if}
-        {#if approvedLabor}
-          <div class="row" style="justify-content:space-between; align-items:center; border:1px solid var(--border); border-radius:8px; padding:.5rem .75rem;">
-            <strong style="font-size:.9rem;display:inline-flex;align-items:center;gap:.3rem;"><Icon name="clock" size={14} /> {$t('Time')}</strong>
-            <span class="mono">{approvedLabor.monthly_quota != null ? `${approvedLabor.monthly_quota} hrs/mo` : (approvedLabor.capacity ?? '—')}</span>
-          </div>
-        {/if}
         {#if approvedResources.length}
           <table>
             <thead><tr><th>{$t('Name')}</th><th>{$t('Type')}</th><th>{$t('Capacity')}</th><th>{$t('Availability')}</th></tr></thead>
