@@ -7,9 +7,11 @@
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
-    "sync": "svelte-kit sync"
+    "sync": "svelte-kit sync",
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.0",
     "@sveltejs/adapter-static": "^3.0.6",
     "@sveltejs/kit": "^2.8.0",
     "@sveltejs/vite-plugin-svelte": "^4.0.0",

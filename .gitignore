@@ -8,3 +8,6 @@ node_modules/
 .DS_Store
 supabase/.temp/
 .env.mock
+test-results/
+playwright-report/
+.playwright/
