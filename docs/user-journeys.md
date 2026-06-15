@@ -70,3 +70,29 @@ nothing silent or one-click-irreversible."**
 
 The point Jimin made: don't store one bug as one script — distill the *operation behind the
 issue* so the simulation is realistic **and** productive (it proposes the next test).
+
+---
+
+## Automated coverage (`npm run test:e2e` — Playwright on mock)
+
+11 real-user tests, all green; proven to catch the #43 regression (red on the bug,
+green on the fix). Each is a real-role / real-surface round-trip to the Definition of Done.
+
+| Test | Journey | Issues |
+|------|---------|--------|
+| `roster J1.1` officer edits available time → Save → reload persisted | J1 | #10 #14 #26 **#43** |
+| `roster J1.2` edited time matches on the People roster | J1 | #40A #41 |
+| `roster J1.3` skill level (one-tap) persists on reload | J1 | #21 (scale) |
+| `roster J3.1` member self-edit is told it went to review | J3 | #40B |
+| `review J3.2` member submits → officer approves → value actually changes | J3 | **#40B** #44 |
+| `project J2.1` status change asks to confirm (cancel = no-op) | J2 | **#35** |
+| `project J2.2` Finish is gated by a danger confirm | J2 | #35 |
+| `project J2.3` seated person has a Remove (undo) + confirm | J2 | **#33** #34 |
+| `nav J4.1` root→/projects and Back doesn't bounce | J4 | **#24** |
+| `nav J4.2` non-officer sees chapter context + "joining is reviewed" | J4 | **#47** |
+| `nav J4.3` People is the roster, no bolted-on matcher | J4 | **#22** |
+
+**Still to automate (◻ → green next):** J1 skill-gap error (#32) · officer↔claimed-member
+permission matrix (#44/#41) · J4 cold-label / unlabeled-affordance pass (#19/#42/#46) ·
+J5 one-scale-everywhere (#21) + mobile no-overlap (#36) + dark edition (#17) +
+guide↔UI (#29). Each becomes a row above when it's a passing test.

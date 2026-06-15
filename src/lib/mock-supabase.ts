@@ -367,7 +367,14 @@ function rpc(name: string, a: any) {
   }
   if (name === 'member_change_decide') {
     const r = (seed.member_change_request ?? []).find((x: any) => x.id === a.p_request);
-    if (r) { r.status = a.p_approve ? 'approved' : 'rejected'; persist(); }
+    if (r && r.status === 'pending') {
+      // on approve, actually APPLY the change (mirror the real RPC) — not just flip status
+      if (a.p_approve) {
+        if (r.kind === 'skill') rpc('person_skill_set', { p_skill: r.payload.skill_id, p_level: r.payload.level, p_member: r.member_id });
+        else if (r.kind === 'hours') rpc('person_set_capacity', { p_hours: r.payload.hours, p_member: r.member_id });
+      }
+      r.status = a.p_approve ? 'approved' : 'rejected'; persist();
+    }
     return Promise.resolve({ data: null, error: null });
   }
   if (name === 'member_archive') {

@@ -7,9 +7,17 @@ import { type Page, expect } from '@playwright/test';
 //   uid-admin = Sai Tan    (President / admin)
 //   uid-wg    = Wu Jing    (working-group officer)
 export async function asRole(page: Page, role: string) {
+  // set on every nav, but only if not already set — so a test can switch persona
+  // mid-flow via switchRole() without this clobbering it back.
   await page.addInitScript((r) => {
-    try { localStorage.setItem('mockAs', r); } catch { /* ignore */ }
+    try { if (!localStorage.getItem('mockAs')) localStorage.setItem('mockAs', r); } catch { /* ignore */ }
   }, role);
+}
+
+// switch the acting persona mid-test (e.g. member submits → officer approves)
+export async function switchRole(page: Page, role: string) {
+  await page.evaluate((r) => localStorage.setItem('mockAs', r), role);
+  await page.reload();
 }
 
 // Collect console errors + uncaught page errors for the Definition-of-Done
