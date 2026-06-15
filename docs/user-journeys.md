@@ -91,8 +91,12 @@ green on the fix). Each is a real-role / real-surface round-trip to the Definiti
 | `nav J4.1` root→/projects and Back doesn't bounce | J4 | **#24** |
 | `nav J4.2` non-officer sees chapter context + "joining is reviewed" | J4 | **#47** |
 | `nav J4.3` People is the roster, no bolted-on matcher | J4 | **#22** |
+| `platform J5.1` one skill scale on the profile, no legacy badges | J5 | **#21** |
+| `platform J5.2` mobile: status badge doesn't overlap the title, no h-scroll | J5 | **#36** |
+| `platform J5.3` dark edition renders clean | J5 | **#17** |
+| `perms J1.5a/b/c` officer & admin edit; a non-officer is read-only | J1 | **#44** #41 |
 
-**Still to automate (◻ → green next):** J1 skill-gap error (#32) · officer↔claimed-member
-permission matrix (#44/#41) · J4 cold-label / unlabeled-affordance pass (#19/#42/#46) ·
-J5 one-scale-everywhere (#21) + mobile no-overlap (#36) + dark edition (#17) +
-guide↔UI (#29). Each becomes a row above when it's a passing test.
+**17 green.** Still to automate (◻): J1 skill-gap error naming the missing level (#32 — needs a
+non-qualifying candidate seeded into the matcher) · J4 cold-label / unlabeled-affordance pass
+(#19/#42/#46) · guide↔UI cross-check (#29). #45/#46 still need the reporter's screenshots to pin
+the exact screen.
