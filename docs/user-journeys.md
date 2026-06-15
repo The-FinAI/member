@@ -1,0 +1,72 @@
+# User journeys — distilled from issues, so the simulation replays intent (not assertions)
+
+Each issue is a *symptom*. Behind it is a **journey**: a persona with a goal, the
+steps they took, where it broke, what they expected. Distilling the journey lets
+us (a) replay it realistically, and (b) **generate tests they haven't filed** —
+the adjacent paths of the same goal. New issues get folded into the journey they
+belong to; if none fits, a new journey is added.
+
+Every test follows the Definition of Done (see usability-sim.md): real role · real
+surface · type → control appears → click → **reload → persisted** → console clean.
+Status: **✅ ran & passed · ❌ ran & failed · ◻ proposed, not yet run.**
+
+---
+
+## J1 — Chapter Officer maintains the roster
+**"I keep my chapter's people current — their available time, skills, resources —
+and I trust my edits persist and show the same everywhere."**
+Steps: People → open a member → change a field → expect it saved and visible later, on every page.
+**Explains:** #10, #14, #26, #43, #44, #41, #40A, #40C.
+**Tests generated:**
+- ✅ Officer edits a member's **hours** → Save appears → reload → persisted (the #43 fix; fails on the old `type=number`).
+- ✅ After editing hours, the **People roster** shows the new value (cross-page single source — ran: People showed `23/23 h/mo`).
+- ✅ Officer changes a **skill level** (one-tap) → reload → persisted (different code path from hours — ran: Independent→Lead stuck).
+- ✅ Officer can edit a **claimed member** in their chapter, not just cards (#44 — applies directly).
+- ◻ Officer edits a member in **another chapter** → correctly blocked (allow/deny matrix).
+- ◻ Editing a **resource** quota → review status visible → persists.
+- **Found while distilling (unreported):** hours need an explicit **Save**, but skills save on one tap — *two save models on one card.* Likely-confusing; candidate fix = one consistent model (the audit's F1).
+
+## J2 — Officer takes a consequential action and wants safety
+**"When I assign / change status / finish / remove, I want clear feedback and a way back —
+nothing silent or one-click-irreversible."**
+**Explains:** #20, #31, #33, #35, #34.
+**Tests generated:**
+- ✅ status change / Finish / assign First Author → confirm gate + toast.
+- ✅ Remove a seated person → seat frees, need reopens (reload).
+- ◻ Every create/claim/assign/post has a reachable undo/remove (the create⇒delete matrix).
+- ◻ Double-click a commit / save → no duplicate write.
+
+## J3 — Member edits their own card (and it gets reviewed)
+**"I update my own skills/hours; it goes to my officer; once approved it actually takes effect."**
+**Explains:** #40B, part of #44.
+**Tests generated:**
+- ✅ Member self-edit → "pending review" chip + "submitted for review".
+- ✅ Officer sees "Changes awaiting your review" → Approve.
+- ❌/◻ **After approval, the member's value ACTUALLY changes** — must verify end-to-end (old habit: I checked "the panel cleared", not "the value applied"). *Caveat: the mock's decide handler only flips status; the real RPC applies. So this one needs a prod-or-fixed-mock run, not a mock pass.*
+
+## J4 — A newcomer tries to understand and navigate
+**"I arrive cold — I want to know where I am, what a thing means, what to do next, how to join."**
+**Explains:** #16, #18, #19, #22, #42, #45, #46, #47.
+**Tests generated:**
+- ✅ Chapter panel shows description + "what joining means" to a non-officer (#47).
+- ◻ **Cold-label pass:** a persona given only a plain goal picks the entry from nav labels alone; every control it meets has a visible label; flag any unlabeled glyph or ambiguous field (would surface #19 arrow, #42 cancel, #46 "name field", #45 "old system").
+- ◻ Every form field answers "what do I put here?" without guessing (#46).
+
+## J5 — Consistency & platform
+**"One skill scale, one capacity number, the guide matches the UI, mobile/dark work."**
+**Explains:** #17, #21, #29, #36, #40A/C.
+**Tests generated:**
+- ✅ One competency scale everywhere (#21); ✅ mobile row doesn't overlap (#36).
+- ◻ Guide role-section ↔ reachable matching surface (#29).
+- ◻ Run the whole of J1–J4 in **dark** edition (#17).
+
+---
+
+## How this changes the loop
+1. A new issue → find its journey (or add one) → restate the **intent**, not just the bug.
+2. Replay the journey to reproduce — on the **current build**, as the **real role**.
+3. From the journey, run its **generated tests** — including the un-filed adjacent ones; that's where we get ahead of the reporter.
+4. A `◻` that, when run, fails becomes the next fix. A journey with no generated tests is a coverage hole.
+
+The point Jimin made: don't store one bug as one script — distill the *operation behind the
+issue* so the simulation is realistic **and** productive (it proposes the next test).
