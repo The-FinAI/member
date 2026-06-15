@@ -71,6 +71,22 @@
   }
   $effect(() => { projectId; load(); });
 
+  // #34: a posted need must be removable (while unfilled). Confirm-gated.
+  async function removeNeed(n: Need) {
+    const label = n.kind === 'work_resource' ? n.resource : n.skill;
+    const ok = await confirm({
+      title: $t('Remove this need?'),
+      body: label ? `${label} — ${$t('it will no longer be open for matching.')}` : $t('It will no longer be open for matching.'),
+      confirmLabel: $t('Remove'),
+      tone: 'danger'
+    });
+    if (!ok) return;
+    const { error } = await supabase.rpc('slot_close', { p_slot: n.id });
+    if (error) { toast.error(error.message); return; }
+    toast.success($t('Need removed'));
+    load();
+  }
+
   let removing = $state<string | null>(null);
   // #33/#34: an assignment must be removable. Confirms, then unassigns the
   // member from every need they hold on this project, re-opening those needs.
@@ -155,6 +171,7 @@
               <span class="n-fill">{n.filled}/{n.headcount}</span>
               {#if canManage && !finished && n.kind !== 'leader' && n.filled === 0}
                 <button class="n-edit" title={$t('Edit this need')} onclick={() => (editing = n)}><Icon name="edit" size={12} /></button>
+                <button class="n-edit n-del" title={$t('Remove this need')} onclick={() => removeNeed(n)}><Icon name="close" size={12} /></button>
               {/if}
             </div>
           {/if}
@@ -204,6 +221,8 @@
   .n-edit { margin-left: auto; border: 1px solid var(--line, #ddd); background: none; border-radius: var(--r-sm);
     padding: .05rem .4rem; cursor: pointer; color: var(--muted, #888); font-size: .8rem; }
   .n-edit:hover { border-color: var(--accent, var(--accent)); color: var(--accent, var(--accent)); }
+  .n-del { margin-left: .3rem; }
+  .n-del:hover { border-color: var(--down); color: var(--down); }
   .n-lvl { font-size: .72rem; border: 1px solid var(--info); color: var(--info); border-radius: var(--r-full); padding: 0 .4rem; }
   .n-q { font-size: .78rem; color: var(--muted, #aaa); }
   .n-fill { margin-left: auto; font-size: .78rem; color: var(--muted, #888); }

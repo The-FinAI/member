@@ -67,7 +67,7 @@
     loading = true;
     const ym = new Date().toISOString().slice(0, 7);
     const [mem, sk, skn, cap] = await Promise.all([
-      supabase.from('member').select('id,full_name,kind,affiliation,home_unit_id,monthly_hours').order('full_name'),
+      supabase.from('member').select('id,full_name,kind,affiliation,home_unit_id,monthly_hours').is('archived_at', null).order('full_name'),
       supabase.from('person_skill').select('member_id,skill_id,level'),
       supabase.from('skill').select('id,name'),
       supabase.rpc('member_capacity_all', { p_ym: ym })

@@ -106,7 +106,8 @@
     // ambiguous-FK embed can never blank out the whole project list.
     const [{ data: pr }, { data: ou }] = await Promise.all([
       supabase.from('project')
-        .select('id, name, target_venue, deadline, summary, org_unit_id, venue:venue_id(name, kind, deadline), project_type(name), project_status!project_status_id_fkey(name, rank, is_active)'),
+        .select('id, name, target_venue, deadline, summary, org_unit_id, venue:venue_id(name, kind, deadline), project_type(name), project_status!project_status_id_fkey(name, rank, is_active)')
+        .is('archived_at', null),
       supabase.from('org_unit').select('id, name')
     ]);
     const unitName: Record<string, string> = {};

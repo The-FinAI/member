@@ -168,6 +168,24 @@
     await load(); onChanged?.();   // re-render to the Finished state (no reload needed)
   }
 
+  // #34: a created project must be removable. Archive hides it from the ledger
+  // (history kept, reversible by an admin). Confirm-gated.
+  async function archiveProject() {
+    const ok = await confirm({
+      title: get(t)('Archive {name}?', { name: proj?.name ?? get(t)('this project') }),
+      body: get(t)('It leaves the project list. Its record is kept and an admin can restore it. Use this for test or abandoned projects.'),
+      confirmLabel: get(t)('Archive'),
+      tone: 'danger'
+    });
+    if (!ok) return;
+    busy = 'archive'; err = '';
+    const { error: e } = await supabase.rpc('project_archive', { p_project: projectId, p_archived: true });
+    busy = '';
+    if (e) { toast.error(e.message); err = e.message; return; }
+    toast.success(get(t)('Project archived'));
+    onChanged?.();
+  }
+
   async function addLink() {
     if (!lUrl.trim()) { err = get(t)('A URL is required.'); return; }
     busy = 'link'; err = '';
@@ -341,6 +359,15 @@
             onSubmitted={() => { showSettle = false; msg = get(t)('Settlement submitted for review.'); load(); onChanged?.(); }}
             onCancel={() => (showSettle = false)} />
         {/if}
+      {/if}
+
+      {#if canEdit}
+        <div class="pcb-archive">
+          <button type="button" class="pcb-archive-btn" disabled={busy === 'archive'} onclick={archiveProject}>
+            <Icon name="trash" size={13} /> {$t('Archive project')}
+          </button>
+          <span class="pcb-hint">{$t('Removes it from the list; an admin can restore it.')}</span>
+        </div>
       {/if}
     </div>
   {/if}
@@ -534,6 +561,11 @@
   .pcb-basic-grid > :global(.if-row) { flex: 1; min-width: 9rem; }
   .pcb-status-row { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; }
   .pcb-hint { font-size: .72rem; color: var(--muted); }
+  .pcb-archive { margin-top: .9rem; padding-top: .7rem; border-top: 1px dashed var(--border); display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+  .pcb-archive-btn { display: inline-flex; align-items: center; gap: .3rem; background: none; border: 1px solid var(--border-2);
+    color: var(--down); border-radius: var(--r-sm); padding: .3rem .65rem; font: inherit; font-size: .8rem; cursor: pointer; }
+  .pcb-archive-btn:hover { border-color: var(--down); background: var(--down-soft); }
+  .pcb-archive-btn:disabled { opacity: .5; cursor: default; }
   .pcb-link { background: transparent; border: 0; color: var(--accent); font: inherit; font-size: .8rem; cursor: pointer; padding: 0; }
   .pcb-link:hover { text-decoration: underline; }
   .pcb-muted { font-size: .82rem; color: var(--muted); margin: 0; }

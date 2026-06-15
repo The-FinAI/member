@@ -353,6 +353,26 @@ function rpc(name: string, a: any) {
     persist();
     return Promise.resolve({ data: null, error: null });
   }
+  if (name === 'member_archive') {
+    const m = seed.member.find((x: any) => x.id === a.p_member);
+    if (m) m.archived_at = (a.p_archived ?? true) ? '2026-06-15T00:00:00Z' : null;
+    persist();
+    return Promise.resolve({ data: null, error: null });
+  }
+  if (name === 'project_archive') {
+    const p = seed.project.find((x: any) => x.id === a.p_project);
+    if (p) p.archived_at = (a.p_archived ?? true) ? '2026-06-15T00:00:00Z' : null;
+    persist();
+    return Promise.resolve({ data: null, error: null });
+  }
+  if (name === 'slot_close') {
+    const filled = seed.work_commitment.some((w: any) => w.slot_id === a.p_slot);
+    if (filled) return Promise.resolve({ data: null, error: { message: 'this need has people on it — remove them first' } });
+    const s = seed.project_slot.find((x: any) => x.id === a.p_slot);
+    if (s) s.status = 'cancelled';
+    persist();
+    return Promise.resolve({ data: null, error: null });
+  }
   if (name === 'notification_read') { const n = seed.notification.find((x) => x.id === a.p_id); if (n) n.read_at = '2026-06-06T12:00:00Z'; return Promise.resolve({ data: null, error: null }); } persist();
   if (name === 'notification_read_all') { seed.notification.forEach((n) => (n.read_at = '2026-06-06T12:00:00Z')); return Promise.resolve({ data: null, error: null }); } persist();
 

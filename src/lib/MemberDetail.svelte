@@ -4,6 +4,9 @@
   import { member, capabilities } from '$lib/session';
   import { t } from '$lib/i18n';
   import Icon from '$lib/Icon.svelte';
+  import { toast } from '$lib/toast';
+  import { confirm } from '$lib/confirm';
+  import { goto } from '$app/navigation';
   import SkillCapacity from '$lib/people/SkillCapacity.svelte';
   import SectionNav from '$lib/SectionNav.svelte';
   import Breadcrumbs from '$lib/Breadcrumbs.svelte';
@@ -231,6 +234,26 @@
     loading = false;
   }
 
+  // #34: a person card added in error must be removable. Archive hides it from
+  // the roster (history kept, reversible by an admin). Officers only.
+  let archiving = $state(false);
+  async function archiveCard() {
+    if (!mem) return;
+    const ok = await confirm({
+      title: get(t)('Archive {name}?', { name: mem.full_name }),
+      body: get(t)('They leave the People roster. Their record is kept and an admin can restore them. Use this for cards added by mistake.'),
+      confirmLabel: get(t)('Archive'),
+      tone: 'danger'
+    });
+    if (!ok) return;
+    archiving = true;
+    const { error: e } = await supabase.rpc('member_archive', { p_member: mem.id, p_archived: true });
+    archiving = false;
+    if (e) { toast.error(e.message); return; }
+    toast.success(get(t)('Card archived'));
+    goto('/people');
+  }
+
   // re-load whenever the id prop changes (route nav or drawer subject swap)
   let lastId = '';
   $effect(() => {
@@ -418,6 +441,17 @@
     <div class="card stack" id="skills">
       <SkillCapacity memberId={id} canEdit={canEditCatalog} />
     </div>
+
+    <!-- #34: archive a card added in error (officers only, unclaimed cards) -->
+    {#if canEdit && mem.kind === 'card'}
+      <div class="row" style="gap:.6rem; align-items:center; flex-wrap:wrap; margin-top:.2rem;">
+        <button disabled={archiving} onclick={archiveCard}
+          style="display:inline-flex; align-items:center; gap:.3rem; background:none; border:1px solid var(--border-2); color:var(--down); border-radius:var(--r-sm); padding:.3rem .65rem; font:inherit; font-size:.8rem; cursor:pointer;">
+          <Icon name="trash" size={13} /> {$t('Archive this card')}
+        </button>
+        <span class="muted" style="font-size:.78rem;">{$t('Removes them from the roster; an admin can restore them.')}</span>
+      </div>
+    {/if}
 
     <!-- projects -->
     <div class="card stack" id="projects">
