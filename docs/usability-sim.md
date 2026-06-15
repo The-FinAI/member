@@ -117,6 +117,54 @@ Concretely, the next simulated run must additionally:
 9. **Seed-content validation:** assert seeded titles/roles are intentional (no stray "Secretary").
    *(catches #23)*
 
+10. **Exercise every editable field for real.** For each input/select on a card or form: type a
+    real value *through the framework* (not a code read, not "the element exists"), assert the
+    save/submit control then appears, click it, and assert the value persisted on reload. *(catches
+    #43 — the hours Save button never appeared because a number input was bound to a string and the
+    dirty-check threw; #26 was "fixed" but never actually exercised end-to-end.)*
+11. **Check the browser console after every interaction.** A clean console is part of the pass; any
+    thrown error (e.g. the `.trim()` TypeError on a coerced number) is a defect, not noise. *(would
+    have caught #43 the instant a value was typed.)*
+12. **Never explain away a failing signal.** If a control doesn't behave in preview (a button that
+    won't show, a value that won't stick), that is a finding until *proven* to be a harness
+    artifact — not assumed to be one. *(The #43 regression was visible in preview and dismissed as
+    "synthetic-input flakiness"; that rationalisation is the real miss.)*
+
 When a future issue arrives, add its row to Part 1, find (or add) the matching blind spot in
 Part 2, and confirm the Part 3 protocol would now catch it. If it wouldn't, the protocol — not
 just the app — gets a fix. That is the loop.
+
+---
+
+## Part 4 — Retro on the 2026-06-15 wave (#41–#47): why the sim missed the Save bug
+
+The single worst miss this cycle was **#43 / #44 — the Available-time Save button never worked**
+(a number input bound to a string state, so typing coerced it to a number and the dirty-check's
+`.trim()` threw; the button never rendered and hours could not be changed at all — and this had
+been broken since #26 "added" the Save).
+
+**Why the sim and our own verification missed it — a new standing blind spot:**
+
+> **BS-6 · Forms were verified by code-reading and element-presence, never by real typed input +
+> a persistence assertion — and a failing preview signal was rationalised away.**
+> We confirmed "the Save logic looks right" and "the input exists," and when a synthetic fill
+> showed the Save button not appearing, we called it a *harness artifact* and moved on. Both the
+> coverage gap (never typed + saved + reloaded) and the discipline gap (dismissed a real failing
+> signal) let a totally-broken core control ship twice.
+
+**The fix is protocol points 10–12 above**, now mandatory before any "fixed" claim on a form:
+type → save control appears → click → value persists on reload → console is clean. And the
+class-check we now run: after fixing one control bug, grep the whole app for the same shape
+(here: `type="number"` bound to a string that is later `.trim()`'d — confirmed unique, contained).
+
+Other #41–#47 items and their blind spots:
+- **#42** (Cancel button invisible) → BS-4 (unlabeled/low-contrast affordance a goal-primed agent
+  ignores). Fixed.
+- **#44 / #41** (officers can't edit claimed members' skills; permission/persistence inconsistency)
+  → a permission-matrix gap: the sim never tried *officer edits another claimed member* (only
+  cards). Add to the protocol: run each editable action as **every** role × **every** target kind
+  (own card · a card I manage · a claimed member in my chapter · someone outside my chapter) and
+  assert allow/deny matches the intended matrix.
+- **#45** ("still in the old system") / **#46** ("don't know what to fill in") / **#47** (chapter
+  join lacks context) → surface/route-coverage + field-label clarity; the full-route sweep (point
+  7) plus the cold-label pass (point 6) should surface these once we have the exact screens.

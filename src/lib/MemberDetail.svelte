@@ -52,10 +52,14 @@
   const AVAIL = ['available', 'limited', 'committed'];
 
   let editResId = $state('');           // resource currently being edited (re-review)
-  let canEdit = $state(false);          // officer manages this member-card's catalog
-  let canEditCatalog = $state(false);   // canEdit OR it's my own profile
+  let cardManaged = $state(false);      // manages_card RPC result (cards only)
   // viewer is looking at their own profile → inline self-edit controls
   const isMe = $derived(!!($member && mem && $member.id === mem.id));
+  // edit rights are REACTIVE (not computed once at load, which races the stores):
+  // an officer of the member's home chapter, an admin, or a card's manager.
+  const officerOfHome = $derived(!!mem?.home_unit_id && $officerUnits.some((u: any) => u.unit_id === mem!.home_unit_id));
+  const canEdit = $derived(officerOfHome || $capabilities.has('manage_members') || cardManaged);
+  const canEditCatalog = $derived(canEdit || isMe || $capabilities.has('manage_resources'));
 
   // self-profile editor (only when isMe)
   let pAffiliation = $state('');
@@ -179,7 +183,7 @@
 
   async function load(memberId: string) {
     if (!supabaseConfigured) { loading = false; return; }
-    loading = true; notFound = false; canEdit = false; canEditCatalog = false; cardResources = []; catError = '';
+    loading = true; notFound = false; cardManaged = false; cardResources = []; catError = '';
     profileSaved = false; profileErr = '';
     const { data: m } = await supabase.from('member')
       .select('id, full_name, affiliation, avatar_url, bio, status, kind, home_unit_id, links, member_position(position(name))')
@@ -192,16 +196,13 @@
     const mineSelf = !!(me && me.id === memberId);
     if (mineSelf) { pAffiliation = (m as Mem).affiliation ?? ''; pBio = (m as Mem).bio ?? ''; }
 
-    // can the viewer edit this profile's offerable catalog?
-    // officers manage a member-card's catalog; everyone manages their own.
+    // #44: a chapter officer manages ANY registered member in their chapter, not
+    // just cards (see the reactive canEdit derived above, which mirrors the
+    // backend can_edit_member gate). Only the manages_card RPC needs a fetch.
     if ((m as Mem).kind === 'card') {
       const { data: ce } = await supabase.rpc('manages_card', { p_card: memberId });
-      canEdit = !!ce;
+      cardManaged = !!ce;
     }
-    // owners edit their own; chapter officers manage a card; admins with
-    // manage_members / manage_resources can edit any member's catalog.
-    canEditCatalog = canEdit || mineSelf
-      || $capabilities.has('manage_members') || $capabilities.has('manage_resources');
     // load the catalog for EVERYONE — visitors see a read-only "Resources" tab
     // (what this card can bring); editors get the full editor below.
     await loadCatalog(memberId);
@@ -263,10 +264,7 @@
   const LVL_LABEL: Record<string, string> = { learning: 'Learning', independent: 'Independent', lead: 'Lead' };
   // who may approve this card's self-submitted changes: not the member; an
   // officer of their chapter, a card-manager, or an admin.
-  const canReviewChanges = $derived(
-    !isMe && (canEdit || $capabilities.has('manage_members')
-      || (!!mem?.home_unit_id && $officerUnits.some((u: any) => u.unit_id === mem!.home_unit_id)))
-  );
+  const canReviewChanges = $derived(!isMe && canEdit);
 
   async function loadPending(memberId: string) {
     if (!supabaseConfigured) return;
@@ -475,7 +473,7 @@
 
     <!-- skills: the Learning/Independent/Lead proficiency scale + evidence -->
     <div class="card stack" id="skills">
-      <SkillCapacity memberId={id} canEdit={canEditCatalog || isMe} reviewMode={isMe && !canEdit} />
+      <SkillCapacity memberId={id} canEdit={canEditCatalog} reviewMode={isMe && !canEdit} />
     </div>
 
     <!-- #40 B: officer reviews self-submitted changes for this card -->
