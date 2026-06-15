@@ -28,7 +28,9 @@
 - One skill scale everywhere — Learning, Independent, Lead. The old badge levels are retired.
 - You can now archive a project or a person added by mistake, and remove a posted role.
 - The Guide is rewritten around the three roles: Chapter Officer, Working Group Leader, First Author.
-- The mobile layout no longer overlaps titles and badges.
+- The mobile layout no longer overlaps titles and badges, and the notifications bell is now a clearly visible button.
+- A person's available time is shown as one consistent number everywhere, separated from compute/data/funding resources.
+- When you edit your own card (skills, level, hours), the change is now sent to your chapter officer to approve — so your roster stays accurate.
 
 Please keep the feedback coming — this is built by your suggestions, one round at a time.`);
 
