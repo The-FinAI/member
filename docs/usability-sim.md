@@ -1,5 +1,33 @@
 # Usability simulation — the feedback loop, and why it misses what it misses
 
+> ## ⛔ Definition of Done — read before claiming ANY fix
+>
+> A change is **VERIFIED** only after a **real-user round-trip**, with the evidence written out:
+> 1. As the **exact role** the issue names, on the **exact surface** (the real page — not a proxy,
+>    not the code, not "the element exists").
+> 2. Do the **real interaction**: type a real value into the real field, click the real button.
+> 3. **Reload the page** and confirm the change **actually persisted**.
+> 4. **Console is clean** (no errors) after the interaction.
+>
+> Then state it literally: *"as <role> on <url>: typed X → <control> appeared → clicked → reloaded
+> → still X → console clean."* No round-trip evidence ⇒ the change is **UNVERIFIED**, and I must
+> **say so**, list exactly what's left to confirm, and who can do it (e.g. "needs a prod login").
+>
+> **Hard rules (these are where I failed):**
+> - Never label something "fixed" / "live" on the strength of code-reading, element-presence, a
+>   synthetic DOM event, or "the deploy succeeded." Those are *not* verification.
+> - **A failing signal in preview is a DEFECT until proven otherwise — never "a harness artifact."**
+>   (The #43 Save button was visibly broken in preview and I shipped it anyway by calling it flaky.)
+> - Don't infer infrastructure failures (deploy / domain / cache) from weak signals. If a check
+>   can't even find a string you *know* is live, the **check** is wrong — say "I can't tell," don't
+>   alarm. (I twice declared the deploy broken from a broken grep.)
+>
+> ## Issue understanding — before touching code
+> For each issue, in order: **(1)** restate exactly what the reporter did and saw; **(2)** reproduce
+> it on the **current deployed build**; **(3)** classify — *code bug · data · permission · stale/cache ·
+> predates-a-fix*; **(4)** only then fix. Before saying anything is "live," check the **deploy commit**
+> AND the **report's timestamp vs the deploy time** (often the report just predates the fix).
+
 **The method, stated plainly.** We refactor continuously. A tester (or member) keeps
 proposing changes; we keep digesting them; after each pass we ask *which* suggestions are
 now absorbed and which remain open. This is not thrash — it **is** how the system is built.
