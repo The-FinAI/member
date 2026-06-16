@@ -56,3 +56,31 @@ test('ONB4: account-menu navigation actually re-renders (Wallet from a profile p
   // the page CONTENT must be the wallet, not the stale profile
   await expect(page.getByText(/STR balance|balance and history|Your STR/i).first()).toBeVisible();
 });
+
+// A President explorer who FINISHED the only project then saw the landing claim
+// "0 projects across the community" + "No projects match your filters" — reading
+// as "the community is empty / you searched wrong", when in fact every project had
+// shipped. The subtitle now counts ACTIVE projects (so 0 is honest) and the empty
+// state points to the Hall of Fame instead of a failed-search message.
+test('ONB5: when every project has shipped, the landing says so (not "0 projects / no match")', async ({ page }) => {
+  await asRole(page, 'uid-admin');
+  // finish the only (active) project: advance to Under review, then Finish
+  await page.goto('/projects');
+  await page.locator('.lrow-head').first().click();
+  await page.locator('.lrow-body').first().waitFor({ state: 'visible' });
+  await page.locator('.pcb-step', { hasText: 'Under review' }).click();
+  await page.locator('.cf-ok').click();
+  await expect(page.locator('.toast')).toContainText(/Status|→/);
+  await page.locator('.pcb-done', { hasText: /Finish/ }).click();
+  await page.locator('.cf-ok').click();
+  await expect(page.getByText(/Project finished/i).first()).toBeVisible();
+
+  // back on the landing: honest "active" count + an all-shipped message, not "no match"
+  await page.goto('/projects');
+  await expect(page.locator('h1', { hasText: 'Projects' })).toBeVisible();
+  await expect(page.getByText(/0 active projects/i)).toBeVisible();
+  await expect(page.getByText(/every project has shipped|Hall of fame/i).first()).toBeVisible();
+  await expect(page.getByText('No projects match your filters.')).toHaveCount(0);
+  // the "shipped" link jumps to the Hall of Fame anchor
+  await expect(page.locator('a[href="#hall-of-fame"]')).toBeVisible();
+});

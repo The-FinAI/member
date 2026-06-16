@@ -434,7 +434,7 @@
     <div class="stack" style="gap:.15rem;">
       <h1 style="margin:0;">{$t('Projects')}</h1>
       <span class="muted" style="font-size:.88rem;">
-        {$t('{n} projects across the community — working groups, slots, and open roles.', { n: kActive })}{#if kUpcoming > 0} · <span class="warn">{$t('{n} with a deadline ≤ 60d', { n: kUpcoming })}</span>{/if}
+        {$t('{n} active projects across the community — working groups, slots, and open roles.', { n: kActive })}{#if finished.length > 0} · <a href="#hall-of-fame">{$t('{n} shipped', { n: finished.length })}</a>{/if}{#if kUpcoming > 0} · <span class="warn">{$t('{n} with a deadline ≤ 60d', { n: kUpcoming })}</span>{/if}
       </span>
     </div>
     {#if $member}
@@ -482,7 +482,7 @@
 
   <!-- hall of fame: finished projects, settled & minted -->
   {#if finished.length > 0}
-    <div class="hof card">
+    <div class="hof card" id="hall-of-fame">
       <div
         class="hof-head"
         role="button" tabindex="0"
@@ -600,6 +600,10 @@
         <a class="btn ghost" href="/guide">{$t('Read the guide')}</a>
       </div>
     </div>
+  {:else if rows.length === 0 && kActive === 0 && finished.length > 0}
+    <!-- not a failed search: every project the community has has already shipped.
+         Point to where they live instead of "you searched wrong". -->
+    <div class="card"><p class="muted" style="padding:1rem;">{$t('No active projects right now — every project has shipped. See the 🏆 Hall of fame above.')}</p></div>
   {:else if rows.length === 0}
     <div class="card"><p class="muted" style="padding:1rem;">{$t('No projects match your filters.')}</p></div>
   {:else}

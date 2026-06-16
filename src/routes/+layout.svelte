@@ -14,6 +14,7 @@
   import ConfirmDialog from '$lib/shell/ConfirmDialog.svelte';
   import LaunchBanner from '$lib/LaunchBanner.svelte';
   import Icon from '$lib/Icon.svelte';
+  import Hint from '$lib/Hint.svelte';
 
   let { children } = $props();
 
@@ -161,6 +162,7 @@
             <a href="/wallet" class="mast-wallet" title={$t('STR is your contribution credit — it accrues from work and settles when a project finishes. Click for your wallet; the Guide explains how it works.')}>
               <Icon name="str" size={15} /> {(netValue ?? 0).toLocaleString()} <span class="mw-unit">STR</span>
             </a>
+            <Hint term="str" text={$t('STR is your contribution credit: it accrues as you work and becomes spendable when a project settles. It is not money.')} />
             <div class="usermenu">
               <button class="avatar-btn" onclick={() => (menuOpen = !menuOpen)} title={$t('Account')} aria-haspopup="true" aria-expanded={menuOpen}>
                 {initials($member?.full_name)}

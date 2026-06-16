@@ -133,6 +133,9 @@
   {:else if !filtered.length}
     <p class="pp-dim">{$t('No people match.')}</p>
   {:else}
+    {#if filtered.some((p: any) => p.kind === 'card')}
+      <p class="pp-legend"><span class="pc-tag">{$t('card')}</span> {$t('= someone you manage on their behalf — skills, time, work — until they sign in and claim it (like a row in your old shared doc).')}</p>
+    {/if}
     <div class="pp-grid">
       {#each filtered as p (p.id)}
         <a class="pcard" href={`/members/${p.id}`}>
@@ -185,6 +188,7 @@
   .pc-top { display: flex; align-items: center; gap: .4rem; }
   .pc-name { font-weight: 600; }
   .pc-tag { font-size: .68rem; background: var(--line, #eee); border-radius: var(--r-full); padding: 0 .4rem; color: var(--muted, #888); }
+  .pp-legend { display: flex; align-items: center; gap: .4rem; font-size: .78rem; color: var(--muted, #888); margin: -.4rem 0 .8rem; }
   .pc-aff { font-size: .8rem; color: var(--muted, #999); margin-top: .1rem; }
   .pc-cap { display: flex; gap: .4rem; align-items: baseline; margin: .5rem 0 .4rem; }
   .pc-cap-label { font-size: .72rem; color: var(--muted, #aaa); }

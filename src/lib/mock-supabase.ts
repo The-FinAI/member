@@ -45,11 +45,24 @@ const seed: Record<string, any[]> = {
     { member_id: M_ME, position_id: 'pos-pres', position: { name: 'President', position_capability: PRES_CAPS } },
     { member_id: 'm-admin', position_id: 'pos-pres', position: { name: 'President', position_capability: PRES_CAPS } }
   ],
-  position: [{ id: 'pos-pres', name: 'President' }],
+  position: [{ id: 'pos-pres', name: 'President', rank: 0 }],
+  // the capability catalogue the Permissions panel renders as toggleable chips —
+  // without it the panel shows no chips at all (an empty "what can each role do").
+  capability: [
+    { key: 'manage_members', description: 'Add, edit & archive any member; manage member cards' },
+    { key: 'invite_members', description: 'Invite officers and place them in chapters & working groups' },
+    { key: 'edit_any_project', description: 'Edit any project, its needs, status & team' },
+    { key: 'manage_taxonomy', description: 'Manage project types, statuses, venues & the skill list' },
+    { key: 'manage_guild', description: 'Manage the shared skill catalogue & competency scale' },
+    { key: 'manage_resources', description: 'Review & manage community resources and resource types' },
+    { key: 'manage_stater', description: 'Mint, grant & set STR policy; review settlements' },
+    { key: 'review_skillcard', description: 'Review member-card skill & resource submissions' }
+  ],
   position_capability: [
-    { position_id: 'pos-pres', capability: 'manage_members' }, { position_id: 'pos-pres', capability: 'edit_any_project' },
-    { position_id: 'pos-pres', capability: 'manage_taxonomy' }, { position_id: 'pos-pres', capability: 'manage_stater' },
-    { position_id: 'pos-pres', capability: 'manage_resources' }, { position_id: 'pos-pres', capability: 'review_skillcard' }
+    { position_id: 'pos-pres', capability_key: 'manage_members' }, { position_id: 'pos-pres', capability_key: 'invite_members' },
+    { position_id: 'pos-pres', capability_key: 'edit_any_project' }, { position_id: 'pos-pres', capability_key: 'manage_taxonomy' },
+    { position_id: 'pos-pres', capability_key: 'manage_guild' }, { position_id: 'pos-pres', capability_key: 'manage_resources' },
+    { position_id: 'pos-pres', capability_key: 'manage_stater' }, { position_id: 'pos-pres', capability_key: 'review_skillcard' }
   ],
   skill: [
     { id: DOM, name: 'Data', parent_id: null },

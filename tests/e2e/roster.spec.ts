@@ -77,4 +77,12 @@ test('J3.1 a member editing their own hours is told it went to review (not appli
   await page.locator('.sc-hours').fill('15');
   await page.locator('.sc-save').click();
   await expect(page.locator('.toast')).toContainText(/review/i); // "Submitted for review"
+  // the member must still SEE the value they submitted — a black-box member
+  // explorer found the input snapped back to the old value with a bare "pending
+  // review", so she couldn't confirm her 15 was captured.
+  await expect(page.locator('.sc-pend')).toContainText('15');
+  // and it survives a reload (the pending request, with its value, persists)
+  await page.reload();
+  await openSkillsTab(page);
+  await expect(page.locator('.sc-pend')).toContainText('15');
 });

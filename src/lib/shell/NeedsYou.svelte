@@ -94,8 +94,20 @@
     }
 
     if (canReview) {
-      const { count } = await supabase.from('forge_request').select('id', { count: 'exact', head: true }).eq('status', 'submitted');
-      if (count) out.push({ icon: 'scale', title: $t('{n} waiting for review', { n: count }), sub: $t('Badges, resources, needs & settlements'), href: '/admin/forge-queue', tone: 'warn' });
+      // surface EVERY decision waiting on a reviewer — the same queues the admin
+      // dashboard counts — so a President's home actually points at their job,
+      // not just the forge queue. (A reviewer landing saw nothing to do.)
+      const head = { count: 'exact' as const, head: true };
+      const [fr, cm, st, ms, ua] = await Promise.all([
+        supabase.from('forge_request').select('id', head).eq('status', 'submitted'),
+        supabase.from('work_commitment').select('id', head).eq('approval', 'needs_review'),
+        supabase.from('stater_settlement').select('id', head).in('status', ['submitted', 'under_review']),
+        supabase.from('project_milestone').select('id', head).in('status', ['claimed', 'under_review']),
+        supabase.from('org_unit_member').select('id', head).eq('status', 'pending')
+      ]);
+      const inbox = (fr.count ?? 0) + (cm.count ?? 0) + (st.count ?? 0) + (ms.count ?? 0);
+      if (inbox) out.push({ icon: 'scale', title: $t('{n} waiting for your review', { n: inbox }), sub: $t('Badges, resources, settlements, milestones & over-capacity commitments'), href: '/admin/forge-queue', tone: 'warn' });
+      if (ua.count) out.push({ icon: 'user', title: $t('{n} applying to join a unit', { n: ua.count }), sub: $t('Members asking to join a chapter or working group'), href: '/admin/review', tone: 'warn' });
     }
 
     const { count: nUnread } = await supabase.from('notification')

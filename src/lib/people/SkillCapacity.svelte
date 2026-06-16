@@ -31,6 +31,7 @@
   let allSkills = $state<Skill[]>([]);
   let hours = $state<number | null>(null);
   let hoursDraft = $state<string>('');
+  let pendingHours = $state<number | null>(null); // a self-submitted hours change awaiting review
   let freeHours = $state<number | null>(null);   // remaining this month (member_free_hours)
   let loading = $state(true);
   let err = $state('');
@@ -69,7 +70,11 @@
     const { data: mcr } = await supabase.from('member_change_request')
       .select('kind,payload').eq('member_id', memberId).eq('status', 'pending');
     const p = new Set<string>();
-    for (const r of (mcr as any[]) ?? []) p.add(r.kind === 'hours' ? 'hours' : (r.payload?.skill_id ?? ''));
+    pendingHours = null;
+    for (const r of (mcr as any[]) ?? []) {
+      p.add(r.kind === 'hours' ? 'hours' : (r.payload?.skill_id ?? ''));
+      if (r.kind === 'hours') pendingHours = r.payload?.hours ?? null;
+    }
     pending = p;
     loading = false;
   }
@@ -121,6 +126,7 @@
       busy = null;
       if (error) { toast.error(error.message); err = error.message; return; }
       hoursDraft = before == null ? '' : String(before);
+      pendingHours = v;
       pending = new Set(pending).add('hours');
       toast.success($t('Submitted for review'));
       return;
@@ -151,7 +157,7 @@
           disabled={busy === 'hours'} /> <span class="sc-unit">{$t('hours / month total')}</span>
         {#if hoursDirty}<button class="sc-save" disabled={busy === 'hours'} onclick={saveHours}>{busy === 'hours' ? $t('Saving…') : $t('Save')}</button>{/if}
         {#if freeHours != null}<span class="sc-free" class:sc-over={freeHours < 0} title={$t('Remaining after current commitments this month.')}>· {Math.max(0, freeHours)} {$t('free now')}{#if freeHours < 0} <Icon name="warn" size={12} /> {$t('over')}{/if}</span>{/if}
-        {#if pending.has('hours')}<span class="sc-pend"><Icon name="clock" size={11} /> {$t('pending review')}</span>{/if}
+        {#if pending.has('hours')}<span class="sc-pend"><Icon name="clock" size={11} /> {pendingHours != null ? $t('you requested {n} h/mo — awaiting approval', { n: pendingHours }) : $t('pending review')}</span>{/if}
       {:else if hours == null}
         <span class="sc-dim">{$t('Not set')}</span>
       {:else}

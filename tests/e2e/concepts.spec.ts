@@ -14,8 +14,11 @@ test('M1 (economy): STR is explained where it is first seen, not just a bare num
   await page.goto('/projects');
   const str = page.locator('.mast-wallet');
   await expect(str).toBeVisible();
-  // an officer who has never heard of "STR" can learn what it is right here
-  await expect(str).toHaveAttribute('title', /credit|contribution|guide/i);
+  // a VISIBLE "?" affordance sits beside STR (tappable, not hover-only) and opens
+  // an explanation — so a scanning / mobile officer can learn what STR is.
+  await expect(page.locator('.mast-right .hint .dot')).toBeVisible();
+  await page.locator('.mast-right .hint').hover();
+  await expect(page.locator('.mast-right .hint .bubble')).toContainText(/credit|accrues|settle/i);
 });
 
 test('M2 (two officer types): the guide distinguishes Chapter Officer from WG Leader', async ({ page }) => {
@@ -26,11 +29,13 @@ test('M2 (two officer types): the guide distinguishes Chapter Officer from WG Le
   await expect(page.locator('#wg')).toContainText(/working group/i);
 });
 
-test('M3 (custodial cards): the "card" tag explains the custodial concept', async ({ page }) => {
+test('M3 (custodial cards): the "card" concept is explained VISIBLY, not just on hover', async ({ page }) => {
   await asRole(page, 'uid-chap');
   await page.goto('/people');
-  const tag = page.locator('.pc-tag', { hasText: 'card' }).first();
-  await expect(tag).toBeVisible();
-  // "card" is meaningless to a doc user unless it says what it is
-  await expect(tag).toHaveAttribute('title', /claim|manage|behalf|signed up/i);
+  // a scanning / mobile user never hovers — the meaning must be on the page.
+  // (A black-box explorer, reading the screen, still found "card" unexplained
+  // when it was only a title= tooltip.)
+  const legend = page.locator('.pp-legend');
+  await expect(legend, 'the card concept must be spelled out in visible text').toBeVisible();
+  await expect(legend).toContainText(/manage on their behalf|claim/i);
 });
