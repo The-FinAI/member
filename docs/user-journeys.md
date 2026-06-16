@@ -95,8 +95,10 @@ green on the fix). Each is a real-role / real-surface round-trip to the Definiti
 | `platform J5.2` mobile: status badge doesn't overlap the title, no h-scroll | J5 | **#36** |
 | `platform J5.3` dark edition renders clean | J5 | **#17** |
 | `perms J1.5a/b/c` officer & admin edit; a non-officer is read-only | J1 | **#44** #41 |
+| `matcher J1.4` under-qualified candidate is flagged with the missing level | J1 | **#32** #31 |
+| `ui J4.4` add-skill Cancel is a visible bordered button | J4 | **#42** |
 
-**17 green.** Still to automate (◻): J1 skill-gap error naming the missing level (#32 — needs a
-non-qualifying candidate seeded into the matcher) · J4 cold-label / unlabeled-affordance pass
-(#19/#42/#46) · guide↔UI cross-check (#29). #45/#46 still need the reporter's screenshots to pin
-the exact screen.
+**19 green** (`npm run test:e2e`). Still ◻: arrow meaning needs a label/tooltip then a test
+(#19) · field-clarity (#46) and "still in the old system" (#45) need the reporter's screenshot to
+pin the exact screen · guide↔UI cross-check (#29, tractable next: assert every guide "Your pages"
+link resolves to a reachable surface).
