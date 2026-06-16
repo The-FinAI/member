@@ -18,21 +18,36 @@
   let sending = $state<'' | 'preview' | 'all'>('');
   let result = $state('');
 
-  let subject = $state("What's new — fixes from your feedback");
-  let bodyText = $state(`Thank you for all the issues you filed — almost everything below came straight from your reports. Here's what changed:
+  let subject = $state("What's new — a guided start, plus your feedback");
+  let bodyText = $state(`Thanks for all the issues you filed — most of this came straight from your reports. The headline this time: a guided start.
 
-- The browser Back button works again.
-- Assigning people now confirms first, tells you the exact missing skill if someone doesn't qualify, and every seated person can be removed or replaced from the team.
-- Changing a project's status asks before it commits; finishing a project asks twice.
-- Setting someone's monthly hours now has a clear Save button and a confirmation.
-- One skill scale everywhere — Learning, Independent, Lead. The old badge levels are retired.
-- You can now archive a project or a person added by mistake, and remove a posted role.
-- The Guide is rewritten around the three roles: Chapter Officer, Working Group Leader, First Author.
-- The mobile layout no longer overlaps titles and badges, and the notifications bell is now a clearly visible button.
-- A person's available time is shown as one consistent number everywhere, separated from compute/data/funding resources.
-- When you edit your own card (skills, level, hours), the change is now sent to your chapter officer to approve — so your roster stays accurate.
+When you log in, a short step-by-step panel now walks you through your first real task for your role, in plain language. Skip it anytime — it only appears once.
 
-Please keep the feedback coming — this is built by your suggestions, one round at a time.`);
+- Chapter officers: add a researcher, set their available time, put them on a project.
+- Working-group leaders: take a project into your group, then post the roles it needs.
+- Members: find your tasks and keep your availability current.
+- Each step explains the why — what STR is, what a "card" is — as you go.
+
+Finding your work and your way around:
+
+- "My tasks" is now in your account menu (top-right), so your worklist is always one click away.
+- Clicking your STR balance now actually opens your wallet (it used to change the address but leave you on the same page).
+- STR has a "?" beside it that explains what it is; a member "card" is spelled out on the People page.
+- The Projects page counts active projects and links shipped ones to the Hall of Fame.
+- The top-right "Admin" area gathers what's waiting on your review.
+
+For working-group leaders:
+
+- A new "Projects looking for a working group" section lets you adopt an unassigned project into your group — that's what unlocks editing it and posting its needs. You can also start a new project under your group.
+
+Safer, clearer actions (carried over from the last round):
+
+- Assigning, changing a project's status, or finishing a project asks you to confirm first, and seats can be removed or replaced.
+- A clear Save on availability that persists; editing your own card goes to your officer to approve.
+- One skill scale everywhere — Learning, Independent, Lead (old badges retired); archive a project or person added by mistake.
+- Mobile layout and dark mode cleaned up; the Guide is reorganized around your role.
+
+Keep it coming — every issue you open turns into a fix and a test so it stays fixed.`);
 
   const filtered = $derived(
     members.filter((m) => {
