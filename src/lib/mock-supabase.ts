@@ -284,7 +284,7 @@ function rpc(name: string, a: any) {
     if (t) Object.assign(t, a.p_patch, { updated_at: '2026-06-06T12:00:00Z' }); persist();
     return Promise.resolve({ data: t ? resolveEmbeds([t], 'task')[0] : null, error: null });
   }
-  if (name === 'task_remove') { seed.task = seed.task.filter((x) => x.id !== a.p_task); return Promise.resolve({ data: null, error: null }); } persist();
+  if (name === 'task_remove') { seed.task = seed.task.filter((x) => x.id !== a.p_task); persist(); return Promise.resolve({ data: null, error: null }); }
   if (name === 'task_reorder') return Promise.resolve({ data: null, error: null });
   if (name === 'project_set_meta') {
     const p = seed.project.find((x) => x.id === a.p_project);

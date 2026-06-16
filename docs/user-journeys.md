@@ -62,6 +62,26 @@ nothing silent or one-click-irreversible."**
 
 ---
 
+## Extrapolated tests — the next issues she'd file (举一反三)
+
+Take her *reasoning patterns* and apply them to surfaces she hasn't tested yet — so
+we get ahead of the report. Her patterns: **P1** "did my edit actually persist?" ·
+**P2** "every create needs an undo/delete" · **P3** "consequential ⇒ confirm" ·
+**P4** "single source / consistent across pages" · **P5** "permissions match expectation" ·
+**P6** "no silent bad write; clear feedback" · **P7** "labels/fields shouldn't need guessing."
+
+She stress-tested the **member card** (P1/P2/P6). The **task board** has the same
+create/edit/persist/delete shape and was never probed — so we probed it:
+| Test | Pattern | Result |
+|------|---------|--------|
+| `extrapolated P1` add a task → persists on reload | P1 (from #26/#43) | ✅ |
+| `extrapolated P2` created task → delete → stays gone on reload | P2 (from #34) | ✅ **— found a real persistence gap** (delete wasn't saved) and fixed it |
+| `extrapolated P6` empty task name can't be added | P6 (from #20/#31) | ✅ |
+
+**Next surfaces to apply the same patterns:** draft links & meetings (add/remove/persist),
+project rename (InlineField persist), need post (create/remove + validation), settlement
+(consequential confirm), over-capacity assign (P6 hard-block). Each is a row above when green.
+
 ## How this changes the loop
 1. A new issue → find its journey (or add one) → restate the **intent**, not just the bug.
 2. Replay the journey to reproduce — on the **current build**, as the **real role**.
