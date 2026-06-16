@@ -83,3 +83,45 @@ test('A5 (explorer): a tab label should point to where available time lives', as
   const pointsToAvailability = tabs.some((t) => /avail|time|capacity/i.test(t));
   expect(pointsToAvailability, `tabs ${JSON.stringify(tabs)} give no hint where available time is`).toBeTruthy();
 });
+
+// A6 — the IMPATIENT user double-clicks Save (she distrusts that one click worked).
+// It must not double-write or corrupt; the value ends up correct and console clean.
+test('A6 (double-click): rapidly double-clicking Save does not corrupt the value', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(String(e?.message ?? e)));
+  await asRole(page, 'uid-chap');
+  await page.goto('/members/m-li');
+  await openSkillsTab(page);
+
+  await page.locator('.sc-hours').fill('9');
+  const save = page.locator('.sc-save');
+  await save.click({ clickCount: 2, delay: 30 }); // impatient double-click
+
+  await page.goto('/members/m-li');
+  await openSkillsTab(page);
+  await expect(page.locator('.sc-hours')).toHaveValue('9');
+  expect(errors, 'no uncaught error from the double-click').toEqual([]);
+});
+
+// A8 — consistency under edit (her #41 class), via a surface she never tested:
+// after the officer lowers a member's available time, the MATCHER's free-capacity
+// for that member must reflect the new number — not a stale value that would let
+// them over-assign.
+test('A8 (stale across surfaces): lowering available time updates the matcher\'s free capacity', async ({ page }) => {
+  await asRole(page, 'uid-chap');
+  // 1) lower Li Hua's available time to 4
+  await page.goto('/members/m-li');
+  await openSkillsTab(page);
+  await page.locator('.sc-hours').fill('4');
+  await page.locator('.sc-save').click();
+  await expect(page.locator('.toast')).toContainText('Saved');
+
+  // 2) open the Annotation need in the matcher — her free must reflect 4, not stale
+  await page.goto('/projects');
+  await page.locator('.lrow-head').first().click();
+  await page.locator('.lrow-body').first().waitFor({ state: 'visible' });
+  await page.locator('.need-row', { hasText: 'Annotation' }).first().click();
+  const li = page.locator('.cand', { hasText: 'Li Hua' });
+  await expect(li).toBeVisible();
+  await expect(li.locator('.cap-txt'), 'matcher must show the freshly-set 4h free').toContainText('4h');
+});
