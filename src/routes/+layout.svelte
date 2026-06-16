@@ -173,6 +173,7 @@
                     <div class="mh-mail">{$session.user.email}</div>
                   </div>
                   <div class="menu-sep"></div>
+                  <button class="menu-item" onclick={() => go('/my')}><span class="mi-ico"><Icon name="check" /></span> {$t('My tasks')}</button>
                   <button class="menu-item" onclick={() => go($member ? `/members/${$member.id}` : '/profile')}><span class="mi-ico"><Icon name="user" /></span> {$t('My profile')}</button>
                   <button class="menu-item" onclick={() => go('/wallet')}><span class="mi-ico"><Icon name="str" /></span> {$t('Wallet')}</button>
                   <div class="menu-sep"></div>

@@ -24,3 +24,20 @@ test('ONB2: a WG leader\'s landing matches their job — start/run projects', as
   // her primary action is here and discoverable
   await expect(page.getByRole('button', { name: /Start a project/i })).toBeVisible();
 });
+
+// A cold member logs in to find their work, but /my (My tasks) had NO nav entry
+// and was absent from the avatar menu (only My profile / Wallet / Sign out) — so
+// the member's primary surface was unreachable except via easily-missed cards.
+// (Found by a source-blind member explorer: "I can't act on my tasks" — because
+// they couldn't FIND the page where the action lives. The control existed; the
+// route was orphaned.)
+test('ONB3: a member can reach My tasks from the account menu', async ({ page }) => {
+  await asRole(page, 'uid-member'); // Li Hua
+  await page.goto('/projects');
+  await page.locator('.avatar-btn').click();
+  const myTasks = page.locator('.menu-item', { hasText: /My tasks/i });
+  await expect(myTasks, 'the member needs a discoverable path to their own work').toBeVisible();
+  await myTasks.click();
+  await expect(page).toHaveURL(/\/my/);
+  await expect(page.locator('.mt-lanes')).toBeVisible();
+});
