@@ -377,6 +377,15 @@ function rpc(name: string, a: any) {
     }
     return Promise.resolve({ data: null, error: null });
   }
+  if (name === 'apply_to_unit') {
+    const me = CURRENT_MEMBER();
+    if (me) {
+      seed.org_unit_member = (seed.org_unit_member ?? []).filter((x: any) => !(x.org_unit_id === a.p_unit && x.member_id === me.id));
+      seed.org_unit_member.push({ org_unit_id: a.p_unit, member_id: me.id, status: 'pending', applied_on: '2026-06-15T00:00:00Z' });
+      persist();
+    }
+    return Promise.resolve({ data: null, error: null });
+  }
   if (name === 'member_archive') {
     const m = seed.member.find((x: any) => x.id === a.p_member);
     if (m) m.archived_at = (a.p_archived ?? true) ? '2026-06-15T00:00:00Z' : null;

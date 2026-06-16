@@ -75,14 +75,16 @@ can break *along the way*, asserted in context.
 |----------|----------------------|--------------------|
 | **WF1** officer staffs a person | roster → open member → set skill & available time → **Save** → open the project need → **assign** (confirm) → on the **team** → reload-persists | #10/#14/#26/#43/#44 #33 #40A |
 | **WF2** WG leader runs the record | open project → **add a task** (persists) → **advance status** (confirm gate) | #34 #35 |
+| **WF3** member does their work | My tasks → find own task → **reopen** it → persists | #40B-adjacent |
+| **WF4** researcher joins a unit | browse a working group → **read what it is** → **apply** → request goes pending | #47 |
 
 When a workflow breaks, that step is the bug she'd file. Walking WF-shaped task-board
 steps is also what surfaced the real `task_remove` persistence gap (delete wasn't saved).
 
-**Workflows still to encode** (each = a role's whole job): member self-service (claim →
-profile → review loop, partly WF/J3.2) · join a chapter (browse → apply → accepted) ·
-WG leader ships a paper (post needs → staff → milestones → finish → settle) · resource
-steward (offer a resource → review → it's offerable).
+**Workflows still to encode** (each = a role's whole job): WG leader ships a paper (post
+needs → staff → milestones → finish → settle) · resource steward (offer a resource →
+review → it's offerable) · officer onboards a brand-new card (add person → set up →
+first assignment).
 
 ## How this changes the loop
 1. A new issue → find its journey (or add one) → restate the **intent**, not just the bug.

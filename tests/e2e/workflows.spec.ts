@@ -85,3 +85,43 @@ test('WF2: WG leader adds a task and advances project status (with a confirm gat
 
   expect(errs(), 'console clean').toEqual([]);
 });
+
+// WF3 — a member does their own work: open My tasks, find the task assigned to
+// them, change its state, and have it persist. (The member's daily flow.)
+test('WF3: a member reopens their own task on My tasks, and it persists', async ({ page }) => {
+  await asRole(page, 'uid-member'); // Li Hua — owns the "EN / 3 taxonomies" task (done)
+  await page.goto('/my');
+
+  const card = page.locator('.mt-lanes .card', { hasText: '3 taxonomies' });
+  await expect(card, 'her task shows on My tasks').toBeVisible();
+
+  // it's in the done lane → reopen it (the undo control)
+  await card.locator('button[title="Reopen"]').click();
+  // now it's an open task → it gains the "Start" control
+  await expect(card.locator('button[title="Start"]')).toBeVisible();
+
+  // reload → the state change persisted (still open, still has Start)
+  await page.goto('/my');
+  const card2 = page.locator('.mt-lanes .card', { hasText: '3 taxonomies' });
+  await expect(card2.locator('button[title="Start"]'), 'reopened state persists').toBeVisible();
+});
+
+// WF4 — joining: a researcher browses a working group they're not in, reads what
+// it is, and applies; the request goes pending. (The #47 join flow, end to end.)
+test('WF4: a member browses a working group and applies → request goes pending', async ({ page }) => {
+  await asRole(page, 'uid-member'); // Li Hua — in Beijing chapter, not the WG
+  await page.goto('/community?tab=wgroups');
+
+  const card = page.locator('.card-grid > *').first();
+  await card.waitFor({ state: 'visible' });
+  await card.click();
+
+  // she can read what it is (context) and apply
+  await expect(page.locator('.ud-desc')).toBeVisible();
+  const apply = page.locator('button', { hasText: 'Apply to join' });
+  await expect(apply).toBeVisible();
+  await apply.click();
+
+  // the request is now pending (button reflects it)
+  await expect(page.getByText(/Application pending/i)).toBeVisible();
+});
