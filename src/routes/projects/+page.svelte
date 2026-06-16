@@ -62,12 +62,6 @@
     if (name === 'Hold' || name === 'Under review') return 'warn';
     return 'dim';
   }
-  // can the viewer manage this project's slot board? (WG officer or global editor)
-  const canManageSel = $derived.by(() => {
-    if (!sel) return false;
-    if ($capabilities.has('edit_any_project')) return true;
-    return !!sel.wgUnitId && $officerUnits.some((u) => u.unit_id === sel!.wgUnitId);
-  });
   // can the viewer seat cards into slots? admin (any card) or chapter officer
   // (own chapter's cards). The work_seat RPC enforces the precise rule.
   const canSeat = $derived(
@@ -506,7 +500,7 @@
       {#if showHof}
         <div class="hof-grid">
           {#each finished as r}
-            <button type="button" class="hof-card" onclick={() => openProject(r)}>
+            <a class="hof-card" href={`/projects/${r.id}`}>
               <div class="hof-card-top">
                 <span class="hof-name">{r.name}</span>
                 <span class="badge up">✓ {$t('shipped')}</span>
@@ -529,7 +523,7 @@
                   <span class="psub">· {$t('first author')}</span>
                 {/if}
               </div>
-            </button>
+            </a>
           {/each}
         </div>
       {/if}

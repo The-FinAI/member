@@ -49,6 +49,15 @@
 > → still X → console clean."* No round-trip evidence ⇒ the change is **UNVERIFIED**, and I must
 > **say so**, list exactly what's left to confirm, and who can do it (e.g. "needs a prod login").
 >
+> **A "type error" can be a crash.** A black-box explorer found `/wallet` silently dead — a
+> `joinStake is not defined` ReferenceError aborted the client-side mount and left the *previous*
+> page on screen. `svelte-check` had flagged it (and `openProject`, `awardOpen`) as `Cannot find
+> name` and I'd dismissed all of them as "pre-existing type noise." **`Cannot find name` on a route
+> = an undefined reference = a runtime crash waiting for that code path.** Rule: never dismiss the
+> svelte-check `Cannot find name` subclass; grep for it and fix every one. A route-smoke test
+> (`smoke.spec.ts`) now walks every surface via **client-side** nav (where SSR hides the throw) and
+> fails on any `pageerror` — proven red on the `joinStake` crash, green on the fix.
+>
 > **Hard rules (these are where I failed):**
 > - Never label something "fixed" / "live" on the strength of code-reading, element-presence, a
 >   synthetic DOM event, or "the deploy succeeded." Those are *not* verification.

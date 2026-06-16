@@ -223,8 +223,8 @@
   const drawerOpen = $derived(sel !== null);
   function openPerson(r: Row) { sel = { kind: 'person', row: r }; drawerErr = ''; drawerMsg = ''; }
   function openUnit(u: UnitRow) { sel = { kind: 'unit', unit: u, unitKind: tab === 'chapters' ? 'chapter' : 'working_group' }; drawerErr = ''; drawerMsg = ''; }
-  function openBadge(c: BadgeType) { sel = { kind: 'badge', badge: c }; drawerErr = ''; drawerMsg = ''; awardOpen = false; }
-  function closeDrawer() { sel = null; awardOpen = false; }
+  function openBadge(c: BadgeType) { sel = { kind: 'badge', badge: c }; drawerErr = ''; drawerMsg = ''; }
+  function closeDrawer() { sel = null; }
 
   // ---- permission-aware actions ----
   const isMe = (id: string) => !!($member && id === $member.id);

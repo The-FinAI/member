@@ -41,3 +41,18 @@ test('ONB3: a member can reach My tasks from the account menu', async ({ page })
   await expect(page).toHaveURL(/\/my/);
   await expect(page.locator('.mt-lanes')).toBeVisible();
 });
+
+// A WG-leader explorer reported that clicking Wallet in the account menu changed
+// the URL to /wallet but kept rendering the Profile (a "stale render"). Its
+// screenshot tool was broken, so this verifies the real behaviour from a route
+// where it's most likely to break (an existing /members/* page): real click →
+// the Wallet content must actually render, not just the URL change.
+test('ONB4: account-menu navigation actually re-renders (Wallet from a profile page)', async ({ page }) => {
+  await asRole(page, 'uid-wg'); // Wu Jing
+  await page.goto('/members/m-wg'); // start on a profile, the reported failure origin
+  await page.locator('.avatar-btn').click();
+  await page.locator('.menu-item', { hasText: /Wallet/i }).click();
+  await expect(page).toHaveURL(/\/wallet/);
+  // the page CONTENT must be the wallet, not the stale profile
+  await expect(page.getByText(/STR balance|balance and history|Your STR/i).first()).toBeVisible();
+});

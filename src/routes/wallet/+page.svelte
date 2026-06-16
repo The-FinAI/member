@@ -150,7 +150,7 @@
     <div class="card stack">
       <h2 style="margin:0;">{$t('Activity')}</h2>
       <p class="muted" style="font-size:.82rem; margin-top:-.4rem;">
-        {$t('Earned by finishing projects; spent to join ({n}/join) and stake.', { n: joinStake })}
+        {$t('Earned by finishing projects; spent to stake into the projects you join.')}
       </p>
       {#if loading}
         <div>{#each Array(5) as _}<div class="sk sk-row"></div>{/each}</div>
