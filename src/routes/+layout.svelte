@@ -158,7 +158,7 @@
         <a href="/projects" class="mast-brand">The Fin AI <span class="mb-sub">{$t('Community')} · {$t('The Living Record')}</span></a>
         {#if $session}
           <span class="mast-right">
-            <a href="/wallet" class="mast-wallet" title={$t('Open your wallet')}>
+            <a href="/wallet" class="mast-wallet" title={$t('STR is your contribution credit — it accrues from work and settles when a project finishes. Click for your wallet; the Guide explains how it works.')}>
               <Icon name="str" size={15} /> {(netValue ?? 0).toLocaleString()} <span class="mw-unit">STR</span>
             </a>
             <div class="usermenu">

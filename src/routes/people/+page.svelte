@@ -138,7 +138,7 @@
         <a class="pcard" href={`/members/${p.id}`}>
           <div class="pc-top">
             <span class="pc-name">{p.full_name}</span>
-            {#if p.kind === 'card'}<span class="pc-tag">{$t('card')}</span>{/if}
+            {#if p.kind === 'card'}<span class="pc-tag" title={$t('A member-card: someone who hasn’t signed up yet. You manage it on their behalf (skills, time, work) — like a row in your old shared doc — until they sign in and claim it.')}>{$t('card')}</span>{/if}
           </div>
           {#if p.affiliation}<div class="pc-aff">{p.affiliation}</div>{/if}
           <div class="pc-cap">

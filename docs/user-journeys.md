@@ -87,7 +87,26 @@ needs → staff → milestones → finish → settle) · resource steward (offer
 review → it's offerable) · officer onboards a brand-new card (add person → set up →
 first assignment).
 
-## The persona must be LOW-compliance (or it finds nothing)
+## Who the persona actually is
+
+Not a generic newbie. The testers are **officers who ran their group in a Google Doc**.
+They know how to coordinate research; what they *lack* is this system's **invented
+concepts**, and the bugs are the mismatch between their flat-doc model and these:
+1. **The STR economy** — pools, accrual, settlement. Alien.
+2. **Two kinds of group officer** — Chapter Officer (people) vs Working-Group Leader
+   (projects). They don't know which they are or why it gates what they can do (→ #44).
+3. **Custodial member-cards** — that "adding a person" creates a card you steward on
+   their behalf until they claim it. A doc has rows, not custodial objects.
+
+So the UI must **translate** each concept *where it's encountered*, not only in the guide.
+`concepts.spec.ts`:
+| Test | Concept the doc-user lacks | Bridge |
+|------|----------------------------|--------|
+| M1 | the STR economy | masthead STR now explains itself on hover (credit · accrues · settles · see Guide) — was a bare number with title "Open your wallet" |
+| M2 | two officer types | the guide separates "If you run a chapter" vs "…a working group" (#28) |
+| M3 | custodial cards | the "card" tag now explains it (you manage it on their behalf, like a doc row, until they claim it) — was an unexplained tag |
+
+## The persona must also be LOW-compliance (or it finds nothing)
 
 Jimin's catch: a goal-directed, compliant persona walks the happy path perfectly and
 so **never hits her bugs** — she finds them precisely because she is *not* compliant:
