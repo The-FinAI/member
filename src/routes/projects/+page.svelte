@@ -593,8 +593,21 @@
 
   {#if loading}
     <div class="card"><p class="muted" style="padding:1rem;">{$t('Loading…')}</p></div>
+  {:else if rows.length === 0 && grid.length === 0}
+    <!-- COLD START: a brand-new community with no projects. Orient the newcomer —
+         what this is + what to do — instead of a bare "no match" (which reads as
+         "you searched wrong" to someone who never searched). -->
+    <div class="card stack" style="padding:1.2rem; gap:.5rem;" id="first-run">
+      <strong style="font-size:1.05rem;">{$t('No projects yet.')}</strong>
+      <p class="muted" style="margin:0; line-height:1.5;">{$t('This is your group’s living record of projects — each holds a task board, a team and its open needs. Start one to begin, or go to People to add researchers. New here? The Guide explains how it all fits together.')}</p>
+      <div class="row" style="gap:.5rem; margin-top:.3rem;">
+        <button class="btn" onclick={() => (showForm = true)}>{$t('Start a project')}</button>
+        <a class="btn ghost" href="/people">{$t('Open People →')}</a>
+        <a class="btn ghost" href="/guide">{$t('Read the guide')}</a>
+      </div>
+    </div>
   {:else if rows.length === 0}
-    <div class="card"><p class="muted" style="padding:1rem;">{$t('No projects match.')}</p></div>
+    <div class="card"><p class="muted" style="padding:1rem;">{$t('No projects match your filters.')}</p></div>
   {:else}
     <div class="ledger">
       {#each rows as r (r.id)}

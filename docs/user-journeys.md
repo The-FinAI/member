@@ -103,11 +103,16 @@ also run an **adversarial** persona (`adversarial.spec.ts`):
 | A4 whitespace task name | pastes "   " | ✅ Add stays disabled |
 | **A5 explorer** | **zero goal-direction: scans the tabs to find where "available time" lives** | ❌ **found a real gap** — it was buried under a bare "Skills" tab; no label said availability/time/capacity (her #10/#14/#46 "where do I do X?" class). **Fixed**: tab relabelled "Skills & availability". |
 
-A5 is the proof: 33 compliant tests were green because each was *told* to click "Skills";
-the explorer, given only a goal, couldn't find it. Lowering goal-direction is what
-surfaces her kind of bug. **More low-compliance lenses to add:** deviate mid-flow (open a
-confirm, hit browser Back), double-click consequential actions, wrong terminology guesses
-(go to "Resources" looking for time), abandon-and-resume.
+| A6 impatient | double-clicks Save | ✅ no double-write / corruption |
+| A8 cross-surface staleness | lowers availability, checks the matcher's free capacity | ✅ reflects the new value |
+| **A9 cold start** | **a user who doesn't know what the system is FOR — lands on an empty community** | ❌ **found a real gap** — it showed "No projects match" (reads as "you searched wrong" to someone who never searched). **Fixed**: a first-run card — what this is + Start a project / Open People / Read the guide. |
+
+Two of the lenses found real gaps the compliant suite missed: **A5** (couldn't find
+where availability lives) and **A9** (no orientation in an empty community — her #45/#47
+"what is this / what do I do" class). The pattern holds: the *less* the persona knows and
+the *less* it complies, the more it finds. **More lenses to add:** deviate mid-flow (open a
+confirm, hit browser Back), wrong-terminology guesses (go to "Resources" looking for time),
+abandon-and-resume a half-filled form.
 
 ## How this changes the loop
 1. A new issue → find its journey (or add one) → restate the **intent**, not just the bug.

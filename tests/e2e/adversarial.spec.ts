@@ -125,3 +125,26 @@ test('A8 (stale across surfaces): lowering available time updates the matcher\'s
   await expect(li).toBeVisible();
   await expect(li.locator('.cap-txt'), 'matcher must show the freshly-set 4h free').toContainText('4h');
 });
+
+// A9 — the user who, from the very start, doesn't know what the system is FOR.
+// In a brand-new community (no projects yet), the landing must ORIENT them —
+// what this is + what to do — not show a bare "no match" that reads as "you
+// searched wrong" to someone who never searched. (Her #45/#47 "what is this /
+// what do I do" class.)
+test('A9 (cold start): an empty community orients the newcomer, not "no match"', async ({ page }) => {
+  await asRole(page, 'uid-admin');
+  await page.goto('/projects');
+
+  // empty the community: archive the only project
+  await page.locator('.lrow-head').first().click();
+  await page.locator('.lrow-body').first().waitFor({ state: 'visible' });
+  await page.locator('.pcb-archive-btn').click();
+  await expect(page.locator('.cf-modal')).toBeVisible();
+  await page.locator('.cf-ok').click();
+
+  // a cold-start user now gets a "start here" with what it is + a path to the guide
+  await expect(page.locator('#first-run')).toBeVisible();
+  await expect(page.locator('#first-run')).toContainText(/Start a project/i);
+  await expect(page.locator('#first-run a[href="/guide"]')).toBeVisible();
+  await expect(page.getByText('No projects match'), 'must not show a filter-style message in an empty community').toHaveCount(0);
+});
