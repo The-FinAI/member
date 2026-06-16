@@ -44,13 +44,13 @@ const CHAPTER_QUEST: Quest = {
 };
 const WG_QUEST: Quest = {
   id: 'wg',
-  title: 'Get your first project moving',
-  subtitle: "You're a Working-Group Leader — you run projects and post what they need.",
-  auto: false,
+  title: 'Take the lead on a project',
+  subtitle: "You're a Working-Group Leader — projects are already on the board. Your first move is to lead one, not start from scratch.",
+  auto: true, // the "claim" step auto-completes when you take a lead seat
   steps: [
-    { key: 'create', label: 'Start a project', why: 'A project is your living record — a task board, a team, and the roles it still needs.', href: '/projects', cta: 'Open Projects' },
-    { key: 'need', label: 'Post a need (e.g. an annotator)', why: 'You post the demand; a Chapter Officer fills it with a person from their chapter. You don’t hire directly.', href: '/projects', cta: 'Open your project' },
-    { key: 'advance', label: 'Move the project forward', why: 'When it finishes, STR (contribution credit) settles and splits among everyone who worked on it.', href: '/projects', cta: 'Open your project' }
+    { key: 'claim', label: 'Claim a project that needs a lead', why: 'Projects already exist here. Take the open first-author (lead) seat on one — look for the “1st-author open” badge — and it becomes yours to run.', href: '/projects', cta: 'Open Projects' },
+    { key: 'need', label: 'Post a role your project still needs', why: 'You post the demand (e.g. an annotator); a Chapter Officer fills it with someone from their chapter — you don’t hire directly.', href: '/projects', cta: 'Open your project' },
+    { key: 'advance', label: 'Move the project forward', why: 'As work lands and the project finishes, STR (contribution credit) settles and splits among everyone who contributed.', href: '/projects', cta: 'Open your project' }
   ]
 };
 const MEMBER_QUEST: Quest = {
@@ -84,17 +84,29 @@ function pickQuest(): Quest | null {
   return MEMBER_QUEST;
 }
 
-async function chapterCounts(): Promise<Record<string, number>> {
-  if (!chapterUnitIds.length) return { roster: 0, withHours: 0, staffed: 0 };
-  const { data: roster } = await supabase.from('member').select('id, monthly_hours').in('home_unit_id', chapterUnitIds);
-  const rows = (roster as { id: string; monthly_hours: number | null }[]) ?? [];
-  const withHours = rows.filter((r) => r.monthly_hours != null).length;
-  let staffed = 0;
-  if (rows.length) {
-    const { count } = await supabase.from('work_commitment').select('id', { count: 'exact', head: true }).in('member_id', rows.map((r) => r.id));
-    staffed = count ?? 0;
+// the metrics an auto quest watches, captured at start (baseline) and re-read on
+// each navigation; a step completes when its metric grows past the baseline.
+async function questCounts(q: Quest | null): Promise<Record<string, number>> {
+  const m = get(member);
+  if (q?.id === 'chapter') {
+    if (!chapterUnitIds.length) return { roster: 0, withHours: 0, staffed: 0 };
+    const { data: roster } = await supabase.from('member').select('id, monthly_hours').in('home_unit_id', chapterUnitIds);
+    const rows = (roster as { id: string; monthly_hours: number | null }[]) ?? [];
+    const withHours = rows.filter((r) => r.monthly_hours != null).length;
+    let staffed = 0;
+    if (rows.length) {
+      const { count } = await supabase.from('work_commitment').select('id', { count: 'exact', head: true }).in('member_id', rows.map((r) => r.id));
+      staffed = count ?? 0;
+    }
+    return { roster: rows.length, withHours, staffed };
   }
-  return { roster: rows.length, withHours, staffed };
+  if (q?.id === 'wg' && m) {
+    // "claimed a project" = you now hold a leader (first-author) seat
+    const { data } = await supabase.from('work_commitment').select('id, slot:slot_id(slot_kind)').eq('member_id', m.id);
+    const leads = ((data as { slot: { slot_kind: string } | null }[]) ?? []).filter((w) => w.slot?.slot_kind === 'leader').length;
+    return { leads };
+  }
+  return {};
 }
 
 function persist() {
@@ -118,11 +130,16 @@ export function dismiss() { questStatus.set('done'); persist(); }
 export async function refresh() {
   const q = get(quest);
   if (!q || !q.auto || get(questStatus) !== 'active') return;
-  const cur = await chapterCounts();
+  const cur = await questCounts(q);
   const i = get(questStep);
-  const hit = (i === 0 && cur.roster > (baseline.roster ?? 0))
-    || (i === 1 && cur.withHours > (baseline.withHours ?? 0))
-    || (i === 2 && cur.staffed > (baseline.staffed ?? 0));
+  let hit = false;
+  if (q.id === 'chapter') {
+    hit = (i === 0 && (cur.roster ?? 0) > (baseline.roster ?? 0))
+      || (i === 1 && (cur.withHours ?? 0) > (baseline.withHours ?? 0))
+      || (i === 2 && (cur.staffed ?? 0) > (baseline.staffed ?? 0));
+  } else if (q.id === 'wg') {
+    hit = i === 0 && (cur.leads ?? 0) > (baseline.leads ?? 0);
+  }
   if (hit) advance();
 }
 
@@ -141,7 +158,7 @@ export async function initOnboarding() {
     baseline = s.baseline ?? {};
     quest.set(q); questStep.set(Math.min(s.step, q.steps.length - 1)); questStatus.set('active');
   } else {
-    baseline = q.auto ? await chapterCounts() : {};
+    baseline = q.auto ? await questCounts(q) : {};
     quest.set(q); questStep.set(0); questStatus.set('active');
     persist();
   }
