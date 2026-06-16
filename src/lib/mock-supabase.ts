@@ -71,11 +71,23 @@ const seed: Record<string, any[]> = {
     { id: RT_LABOR, name: 'Labor', unit: 'hour', rank: 0, valuation_method: 'flat' },
     { id: RT_GPU, name: 'GPU', unit: 'GPU-hours', rank: 1, valuation_method: 'gpu' }
   ],
+  // GPU/API model catalogues — the forge form requires picking a model for a
+  // gpu/api resource, so without these the whole resource flow is unusable
+  // (empty dropdown blocks add; an existing GPU resource can't even be re-saved).
+  gpu_model: [
+    { id: 'gm-a100', name: 'NVIDIA A100 80GB', tflops: 312, is_active: true, rank: 0 },
+    { id: 'gm-h100', name: 'NVIDIA H100', tflops: 989, is_active: true, rank: 1 },
+    { id: 'gm-4090', name: 'NVIDIA RTX 4090', tflops: 83, is_active: true, rank: 2 }
+  ],
+  api_model: [
+    { id: 'am-gpt4o', provider: 'OpenAI', name: 'GPT-4o', usd_per_million: 5, is_active: true, rank: 0 },
+    { id: 'am-opus', provider: 'Anthropic', name: 'Claude Opus', usd_per_million: 15, is_active: true, rank: 1 }
+  ],
   resource: [
     { id: 'r-labor-li', holder_member_id: M_LI, type_id: RT_LABOR, scope: 'member', monthly_quota: 10, name: 'My time', approval_status: 'approved', availability: 'available', resource_type: { name: 'Labor', unit: 'hour' } },
-    { id: 'r-gpu-li', holder_member_id: M_LI, type_id: RT_GPU, scope: 'member', monthly_quota: 80, name: 'RTX 4090', approval_status: 'approved', availability: 'available', resource_type: { name: 'GPU', unit: 'GPU-hours' } },
-    { id: 'r-gpu-wang', holder_member_id: M_WANG, type_id: RT_GPU, scope: 'member', monthly_quota: 200, name: 'A100 ×2', approval_status: 'approved', availability: 'available', resource_type: { name: 'GPU', unit: 'GPU-hours' } },
-    { id: 'r-cluster-li', holder_member_id: M_LI, type_id: RT_GPU, scope: 'community', monthly_quota: 500, name: 'PKU shared cluster', approval_status: 'approved', availability: 'available', resource_type: { name: 'GPU', unit: 'GPU-hours' } }
+    { id: 'r-gpu-li', holder_member_id: M_LI, type_id: RT_GPU, scope: 'member', monthly_quota: 80, name: 'RTX 4090', gpu_model_id: 'gm-4090', approval_status: 'approved', availability: 'available', resource_type: { name: 'GPU', unit: 'GPU-hours' } },
+    { id: 'r-gpu-wang', holder_member_id: M_WANG, type_id: RT_GPU, scope: 'member', monthly_quota: 200, name: 'A100 ×2', gpu_model_id: 'gm-a100', approval_status: 'approved', availability: 'available', resource_type: { name: 'GPU', unit: 'GPU-hours' } },
+    { id: 'r-cluster-li', holder_member_id: M_LI, type_id: RT_GPU, scope: 'community', monthly_quota: 500, name: 'PKU shared cluster', gpu_model_id: 'gm-a100', approval_status: 'approved', availability: 'available', resource_type: { name: 'GPU', unit: 'GPU-hours' } }
   ],
   project: [
     { id: P1, name: 'ml-Tagging', emoji: '🏷️', code: 'ml-Tagging', tag: 'ml', body: 'XBRL multilingual tagging.', summary: 'XBRL tagging across languages', org_unit_id: U_WG, status_id: 'ps-active', target_venue: 'ACL', deadline: '2026-07-30', proposal_url: 'https://example.com' }
