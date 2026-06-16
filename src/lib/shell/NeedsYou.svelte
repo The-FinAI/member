@@ -69,6 +69,15 @@
         for (const w of (wc as any[]) ?? []) if (['work_labor', 'leader'].includes(w.slot?.slot_kind))
           used[w.member_id] = (used[w.member_id] ?? 0) + (Number(w.monthly_amount) || 0);
       }
+      // a chapter officer's core job is PEOPLE, but the landing is the project
+      // ledger — so always surface a path to their roster. Critical on first
+      // login when the chapter is empty and nothing else points them anywhere.
+      const rosterN = ((roster as any[]) ?? []).length;
+      if (rosterN === 0)
+        out.push({ icon: 'user', title: $t('Your chapter has no people yet'), sub: $t('Add your researchers — that’s a chapter officer’s first job'), href: '/people', tone: 'warn' });
+      else
+        out.push({ icon: 'user', title: $t('Your chapter · {n} people', { n: rosterN }), sub: $t('Add or update people — their skills & available time'), href: '/people', tone: 'info' });
+
       const free = ((roster as any[]) ?? []).filter((r) => r.monthly_hours && (used[r.id] ?? 0) < r.monthly_hours).length;
       if (free) out.push({ icon: 'swap', title: $t('{n} people have free time', { n: free }), sub: $t('Open a project and assign them to a need'), href: '/projects', tone: 'go' });
     }

@@ -68,7 +68,7 @@
 
 <div class="stack">
   <header>
-    <h1>{$t('Settings')}</h1>
+    <h1>{$t('Admin')}</h1>
     <p class="muted hsub">{$t('The community at a glance, what needs a decision, and every knob you’re cleared to turn.')}</p>
   </header>
 

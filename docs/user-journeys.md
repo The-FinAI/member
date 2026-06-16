@@ -136,7 +136,25 @@ also run an **adversarial** persona (`adversarial.spec.ts`):
 | A8 cross-surface staleness | lowers availability, checks the matcher's free capacity | ✅ reflects the new value |
 | **A9 cold start** | **a user who doesn't know what the system is FOR — lands on an empty community** | ❌ **found a real gap** — it showed "No projects match" (reads as "you searched wrong" to someone who never searched). **Fixed**: a first-run card — what this is + Start a project / Open People / Read the guide. |
 
-Two of the lenses found real gaps the compliant suite missed: **A5** (couldn't find
+### First login × the two officer types (the deepest lens yet)
+
+The reporters are **not new** — they're officers who ran their group in a Google Doc, so
+they arrive *knowing how to coordinate research* but **not** which of the two officer
+types they are or what each one's home surface is. Walking a **first-login, low-compliance
+officer** (one for each type, from a cleared session) surfaced an orientation gap the
+single landing hides (`onboarding.spec.ts`):
+
+| Test | First-login persona | Result |
+|------|---------------------|--------|
+| **ONB1 chapter officer** | lands on the **project ledger**, but her job is **people** | ❌ **found a gap** — "What needs you" only showed a people item *when people already had free time*; a first-timer (esp. an **empty chapter**) had **no path to her core people-job** — the only CTA, "Start a project", is the *other* officer's work. **Fixed**: the strip now always carries a chapter-roster entry ("Your chapter · N people" / "no people yet — add your researchers" → People). |
+| **ONB2 WG leader** | lands on the project ledger — which **is** her home | ✅ already aligned — "Start a project" + "open needs on your projects" orient her; an empty WG already got the A9 first-run card. |
+
+The asymmetry was the bug: an empty **working group** had the A9 first-run "Start a
+project" card, but an empty **chapter** had nothing — a single shared landing (the project
+ledger) silently favours one officer type. Fixed by making the people-steward's home
+reachable from that landing too.
+
+Two earlier lenses also found real gaps the compliant suite missed: **A5** (couldn't find
 where availability lives) and **A9** (no orientation in an empty community — her #45/#47
 "what is this / what do I do" class). The pattern holds: the *less* the persona knows and
 the *less* it complies, the more it finds. **More lenses to add:** deviate mid-flow (open a

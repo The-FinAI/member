@@ -194,7 +194,7 @@
           <a href="/community" class="sec-link" class:active={isActive('/community', $page.url.pathname)}>{$t('Directory')}</a>
           <a href="/guide" class="sec-link" class:active={isActive('/guide', $page.url.pathname)}>{$t('Guide')}</a>
           {#if canAdmin || canApprove}
-            <a href="/admin" class="sec-link" class:active={isActive('/admin', $page.url.pathname)}>{$t('Settings')}</a>
+            <a href="/admin" class="sec-link" class:active={isActive('/admin', $page.url.pathname)}>{$t('Admin')}</a>
           {/if}
         </div>
       </nav>
