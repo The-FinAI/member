@@ -303,7 +303,7 @@
   // in-page section nav (only the sections actually rendered, in DOM order)
   const sections = $derived([
     { id: 'stats', label: 'Overview' },
-    { id: 'skills', label: 'Skills' },
+    { id: 'skills', label: 'Skills & availability' },
     { id: 'projects', label: 'Projects' },
     { id: 'resources', label: 'Resources' }
   ]);

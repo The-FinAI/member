@@ -87,6 +87,28 @@ needs → staff → milestones → finish → settle) · resource steward (offer
 review → it's offerable) · officer onboards a brand-new card (add person → set up →
 first assignment).
 
+## The persona must be LOW-compliance (or it finds nothing)
+
+Jimin's catch: a goal-directed, compliant persona walks the happy path perfectly and
+so **never hits her bugs** — she finds them precisely because she is *not* compliant:
+she doesn't know the path, distrusts the UI, types junk, deviates. The workflow tests
+above all pass because they're *told* where to click; that's their blind spot. So we
+also run an **adversarial** persona (`adversarial.spec.ts`):
+
+| Test | Low-compliance behaviour | Result |
+|------|--------------------------|--------|
+| A1 junk input "abc" in hours | types garbage into a field | ✅ clamps to a number |
+| A2 negative hours | types -5 | ✅ not stored negative |
+| A3 skeptic | distrusts the toast; navigates away and back in-app to re-check | ✅ persists |
+| A4 whitespace task name | pastes "   " | ✅ Add stays disabled |
+| **A5 explorer** | **zero goal-direction: scans the tabs to find where "available time" lives** | ❌ **found a real gap** — it was buried under a bare "Skills" tab; no label said availability/time/capacity (her #10/#14/#46 "where do I do X?" class). **Fixed**: tab relabelled "Skills & availability". |
+
+A5 is the proof: 33 compliant tests were green because each was *told* to click "Skills";
+the explorer, given only a goal, couldn't find it. Lowering goal-direction is what
+surfaces her kind of bug. **More low-compliance lenses to add:** deviate mid-flow (open a
+confirm, hit browser Back), double-click consequential actions, wrong terminology guesses
+(go to "Resources" looking for time), abandon-and-resume.
+
 ## How this changes the loop
 1. A new issue → find its journey (or add one) → restate the **intent**, not just the bug.
 2. Replay the journey to reproduce — on the **current build**, as the **real role**.
