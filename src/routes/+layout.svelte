@@ -1,7 +1,7 @@
 <script lang="ts">
   import '../app.css';
   import { onMount } from 'svelte';
-  import { goto } from '$app/navigation';
+  import { goto, afterNavigate } from '$app/navigation';
   import { page } from '$app/stores';
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { session, member, capabilities, officerUnits, authReady, authError } from '$lib/session';
@@ -15,8 +15,16 @@
   import LaunchBanner from '$lib/LaunchBanner.svelte';
   import Icon from '$lib/Icon.svelte';
   import Hint from '$lib/Hint.svelte';
+  import QuestPanel from '$lib/onboarding/QuestPanel.svelte';
+  import { initOnboarding, refresh as refreshQuest } from '$lib/onboarding';
 
   let { children } = $props();
+
+  // first-run guided onboarding: start it once the member is known, and re-check
+  // step completion after every navigation (so the chapter quest auto-advances
+  // when the real action lands).
+  $effect(() => { if ($authReady && $member) initOnboarding(); });
+  afterNavigate(() => { refreshQuest(); });
 
   // PUBLIC_ROUTES: only valid when signed OUT — a signed-in user is bounced away
   // (e.g. /login). OPEN_ROUTES: reachable by anyone, no redirect either way
@@ -224,4 +232,5 @@
   </div>
   <Toaster />
   <ConfirmDialog />
+  {#if $session && $member}<QuestPanel />{/if}
 </div>

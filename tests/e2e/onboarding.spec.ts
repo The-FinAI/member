@@ -84,3 +84,40 @@ test('ONB5: when every project has shipped, the landing says so (not "0 projects
   // the "shipped" link jumps to the Hall of Fame anchor
   await expect(page.locator('a[href="#hall-of-fame"]')).toBeVisible();
 });
+
+// The game-like first-run quest: a cold officer lands on a data table full of
+// jargon and a CTA for the WRONG role. The quest names who they are and walks
+// them through their first REAL task, auto-advancing as each action lands.
+test('ONB6: a chapter officer gets a role-matched quest that auto-advances when they act', async ({ page }) => {
+  await asRole(page, 'uid-chap');
+  await page.goto('/projects');
+
+  // the right quest greets the right role (not the generic member one)
+  const quest = page.locator('.quest');
+  await expect(quest).toBeVisible();
+  await expect(quest.locator('.q-head strong')).toContainText(/Onboard your first researcher/i);
+  await expect(quest.locator('.q-grip-tx')).toContainText('1/3');
+
+  // do the real first step — add a person — and the quest advances on its own
+  await page.goto('/people');
+  await page.locator('.pp-add').click();
+  await page.locator('.pp-addform input').first().fill('Quest Newcomer ' + Date.now());
+  await page.locator('.pp-addform input[type="email"]').fill('newcomer@example.com');
+  await page.locator('.pp-go').click();
+  await expect(page).toHaveURL(/\/members\/m-/);
+  // auto-advanced to step 2 (set their hours) without the user touching the panel
+  await expect(page.locator('.quest .q-grip-tx')).toContainText('2/3');
+});
+
+test('ONB7: a member gets the "find your work" quest and can skip it', async ({ page }) => {
+  await asRole(page, 'uid-member'); // Li Hua — no officer role
+  await page.goto('/projects');
+  const quest = page.locator('.quest');
+  await expect(quest.locator('.q-head strong')).toContainText(/Find your work/i);
+  // manual advance works for non-auto quests
+  await quest.getByRole('button', { name: /Done/i }).click();
+  await expect(quest.locator('.q-grip-tx')).toContainText('2/3');
+  // and it can be dismissed, never to nag again
+  await quest.getByRole('button', { name: /Skip/i }).click();
+  await expect(page.locator('.quest')).toHaveCount(0);
+});
