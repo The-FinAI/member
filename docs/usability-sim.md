@@ -1,5 +1,41 @@
 # Usability simulation — the feedback loop, and why it misses what it misses
 
+> ## Why the sim still under-finds bugs — the structural ceilings (not "try harder")
+>
+> The personas got more adversarial and still found little, because the *limits are structural*:
+> the breaker and the author are the same head. Naming them so we attack the cause, not the symptom:
+>
+> 1. **The mock is my own mental model.** Tests run against `mock-supabase.ts`, which I wrote to
+>    encode how I *think* the backend behaves — and I "fix" the mock when a test fails. It can only
+>    reflect my assumptions back. The reporter's bugs happen on the **deployed build against real
+>    Supabase** (RLS, migration drift, real null/empty rows, real RPC shapes). The #43 Save bug was
+>    only caught because it was pure front-end. **Anything backend-shaped, the mock papers over.**
+>    → *Move: run the suite against a real-Supabase preview/staging, not the mock.* (Blocked on infra.)
+> 2. **I author the action AND the assertion.** `expect(x).toBeVisible()` for an `x` I just added
+>    confirms my implementation — it cannot discover. Worse failure mode (caught live): the M1/M3
+>    "concept bridges" assert `toHaveAttribute('title', …)` — a **hover tooltip**. A black-box
+>    explorer *scanning* the page (and every mobile/touch user) never hovers, so it still saw bare
+>    "0 STR" and an unexplained "card" pill — yet the tests were GREEN. **I asserted the
+>    implementation, not the user's comprehension.** → *Move: assert what's visible without hover;
+>    use a separate breaker (below).*
+> 3. **Playwright selectors bake in compliance.** Writing `locator('.need-row', {hasText:'Annotation'})`
+>    *requires* knowing the path, so the #1 real failure — "I couldn't find where to do this" — is
+>    literally unrepresentable. My "low-compliance" personas are still me wearing a hat.
+>    → *Move: a black-box explorer agent given only the URL + role + goal, FORBIDDEN from reading
+>    source, navigating by what it sees, reporting every dead-end.* (Run once — it works; it surfaced
+>    the hover-only-bridge flaw and the create-person coverage hole that all 44 scripted tests missed.)
+> 4. **One tidy seed; never messy/empty/concurrent/stale state.** Every test starts from the same
+>    fixture; none *creates* a person (WF8 added after a black-box run exposed that the officer's
+>    literal first action was untested), none runs an empty chapter, duplicate names, a half-claimed
+>    card, a mid-settlement project, a departed officer, or two tabs editing at once. I fuzz *input*,
+>    never *state* or *sequence* or *time*. → *Move: adversarial fixtures + cross-session/concurrency.*
+>
+> **The black-box explorer is the cheapest of these to keep running** and the only one that escapes my
+> blind spots without new infra. Caveat learned: `preview_click` does NOT fire Svelte `onclick`
+> handlers (only `<a>` nav + native `.click()`), so a black-box agent's "button does nothing" is a
+> tooling artifact to re-test with a real click — not a confirmed app bug. (Verified: "Add a person"
+> works via native click; the explorer's flagged "blocker" was the harness.)
+
 > ## ⛔ Definition of Done — read before claiming ANY fix
 >
 > A change is **VERIFIED** only after a **real-user round-trip**, with the evidence written out:

@@ -80,6 +80,7 @@ can break *along the way*, asserted in context.
 | **WF5** WG leader closes out | advance → **Finish** (irreversible, danger confirm) → **settlement opens** | #35 + the Finish→Settle surface |
 | **WF6** bipartite handoff | **WG leader** posts a need → **chapter officer (different person)** staffs it → team grows | the system's core design |
 | **WF7** handoff reaches the member | chapter officer staffs her → **the member** logs in and is notified she joined | three distinct people, one collaboration |
+| **WF8** onboard a brand-new person | **create** a person from scratch → land on the new card → set availability → **Save** → reload-persists → shows on roster | the create→equip lifecycle (every other test starts from a seeded roster — this was the untested first action) |
 
 **Coverage isn't just one persona doing different things.** WF1–5 / A1–9 / M1–3 were the
 *same* few roles in isolation; the system's real shape is **distinct people handing off**

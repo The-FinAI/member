@@ -189,6 +189,49 @@ test('WF6: WG leader posts a need; a chapter officer (different person) staffs i
   await expect(page.locator('.tchip', { hasText: 'Li Hua' })).toBeVisible();
 });
 
+// WF8 — onboard a BRAND-NEW person from scratch. Every other test starts from a
+// seeded roster, so the officer's literal first action — create a person, then
+// set their availability so they can be staffed — was never exercised. (Surfaced
+// by a black-box explorer sent to "onboard Wang Lei": the create→equip→persist
+// lifecycle had zero coverage.) Real clicks, full round-trip to persistence.
+test('WF8: officer creates a new person, sets their hours, and it persists + shows on the roster', async ({ page }) => {
+  const errs = trackErrors(page);
+  await asRole(page, 'uid-chap'); // Chan Min, Beijing chapter officer
+  await page.goto('/people');
+
+  // 1) open the add form and create the newcomer
+  const name = 'Wang Lei ' + Date.now();
+  await page.locator('.pp-add').click();
+  await page.locator('.pp-addform input').first().fill(name);
+  await page.locator('.pp-addform input[type="email"]').fill('wanglei@example.com');
+  await page.locator('.pp-addform input').nth(2).fill('Tsinghua');
+  await page.locator('.pp-go').click();
+
+  // 2) the officer is dropped straight onto the new card to equip them
+  await expect(page).toHaveURL(/\/members\/m-/);
+  await expect(page.getByText(name).first()).toBeVisible();
+
+  // 3) a brand-new person has NO availability yet — set it and Save (#43 path,
+  //    but on a freshly-created card whose monthly_hours started null)
+  await openSkillsTab(page);
+  await page.locator('.sc-hours').fill('15');
+  await page.locator('.sc-save').click();
+  await expect(page.locator('.toast')).toContainText('Saved');
+
+  // 4) reload the card — the availability stuck
+  await page.reload();
+  await openSkillsTab(page);
+  await expect(page.locator('.sc-hours')).toHaveValue('15');
+
+  // 5) and the newcomer is now a real row on the roster with that capacity
+  await page.goto('/people');
+  const row = page.locator('a', { hasText: name });
+  await expect(row).toBeVisible();
+  await expect(row).toContainText('15');
+
+  expect(errs(), 'console clean across the onboarding').toEqual([]);
+});
+
 // WF7 — the handoff reaches the THIRD person. After a chapter officer staffs her,
 // the member herself learns she's on a project (the notification). Three distinct
 // people across one collaboration: WG leader → chapter officer → member.
