@@ -125,3 +125,32 @@ test('WF4: a member browses a working group and applies → request goes pending
   // the request is now pending (button reflects it)
   await expect(page.getByText(/Application pending/i)).toBeVisible();
 });
+
+// WF5 — WG leader ships the paper's tail: advance the project to Under review,
+// Finish it (an irreversible, danger-confirmed step), and the settlement opens.
+// Crosses the high-risk Finish → Settle surface she hasn't tested.
+test('WF5: WG leader finishes a project (danger confirm) → settlement opens', async ({ page }) => {
+  const errs = trackErrors(page);
+  await asRole(page, 'uid-admin');
+  await page.goto('/projects');
+  await page.locator('.lrow-head').first().click();
+  await page.locator('.lrow-body').first().waitFor({ state: 'visible' });
+
+  // 1) advance Active → Under review (confirm gate)
+  await page.locator('.pcb-step', { hasText: 'Under review' }).click();
+  await expect(page.locator('.cf-modal')).toBeVisible();
+  await page.locator('.cf-ok').click();
+  await expect(page.locator('.toast')).toContainText(/Status|→/);
+
+  // 2) Finish appears at Under review — it is irreversible, so the confirm is danger
+  const finish = page.locator('.pcb-done', { hasText: /Finish/ });
+  await expect(finish).toBeVisible();
+  await finish.click();
+  await expect(page.locator('.cf-ok.danger'), 'Finish must be a danger confirm').toBeVisible();
+  await page.locator('.cf-ok').click();
+  await expect(page.getByText(/Project finished/i).first()).toBeVisible();
+
+  // 3) the project is finished and the settlement surface opens
+  await expect(page.getByText(/Settlement/i).first()).toBeVisible();
+  expect(errs(), 'console clean across the close-out').toEqual([]);
+});

@@ -77,6 +77,7 @@ can break *along the way*, asserted in context.
 | **WF2** WG leader runs the record | open project → **add a task** (persists) → **advance status** (confirm gate) | #34 #35 |
 | **WF3** member does their work | My tasks → find own task → **reopen** it → persists | #40B-adjacent |
 | **WF4** researcher joins a unit | browse a working group → **read what it is** → **apply** → request goes pending | #47 |
+| **WF5** WG leader closes out | advance → **Finish** (irreversible, danger confirm) → **settlement opens** | #35 + the Finish→Settle surface |
 
 When a workflow breaks, that step is the bug she'd file. Walking WF-shaped task-board
 steps is also what surfaced the real `task_remove` persistence gap (delete wasn't saved).
