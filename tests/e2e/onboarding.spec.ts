@@ -125,12 +125,17 @@ test('ONB7: a member gets the "find your work" quest and can skip it', async ({ 
 // A WG leader's first move is NOT "create a project" — projects already exist
 // (migrated from the old doc). Their real first step is to CLAIM the open lead
 // (first-author) seat on one. (Jimin's correction: 已经有项目了，组长应先认领。)
-test('ONB8: a WG leader\'s quest is to CLAIM an existing project, not create one', async ({ page }) => {
+test('ONB8: a WG leader\'s quest is to ADOPT a project into their WG, and it auto-advances', async ({ page }) => {
   await asRole(page, 'uid-wg'); // Wu Jing — working-group leader
   await page.goto('/projects');
   const quest = page.locator('.quest');
   await expect(quest.locator('.q-head strong')).toContainText(/Take the lead on a project/i);
-  await expect(quest.locator('.q-label').first()).toContainText(/Claim a project that needs a lead/i);
-  // the steps are about claiming/running an existing project, not creating one
+  await expect(quest.locator('.q-label').first()).toContainText(/Take a project into your working group/i);
+  // not the greenfield "start a project" framing
   await expect(quest.locator('.q-steps')).not.toContainText(/Start a project/i);
+  await expect(quest.locator('.q-grip-tx')).toContainText('1/3');
+
+  // doing the real action — adopting a project — auto-advances the quest
+  await page.locator('.adopt-row', { hasText: 'fin-Sentiment' }).locator('.adopt-go').click();
+  await expect(quest.locator('.q-grip-tx')).toContainText('2/3');
 });

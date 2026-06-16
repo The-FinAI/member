@@ -3,11 +3,19 @@
   // "why", a "take me there" button, a progress tracker, and a celebration on
   // completion. One-time & skippable. Auto-advances on the chapter quest.
   import { goto } from '$app/navigation';
-  import { quest, questStep, questStatus, advance, skip, dismiss } from '$lib/onboarding';
+  import { quest, questStep, questStatus, advance, skip, dismiss, refresh } from '$lib/onboarding';
   import { t } from '$lib/i18n';
   import Icon from '$lib/Icon.svelte';
 
   let collapsed = $state(false);
+
+  // some steps complete via an IN-PLACE action (adopt a project, staff a person)
+  // with no navigation, so afterNavigate can't catch them — poll while active.
+  $effect(() => {
+    if ($questStatus !== 'active') return;
+    const iv = setInterval(() => refresh(), 2500);
+    return () => clearInterval(iv);
+  });
 
   const steps = $derived($quest?.steps ?? []);
   const i = $derived($questStep);

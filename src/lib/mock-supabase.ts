@@ -103,7 +103,10 @@ const seed: Record<string, any[]> = {
     { id: 'r-cluster-li', holder_member_id: M_LI, type_id: RT_GPU, scope: 'community', monthly_quota: 500, name: 'PKU shared cluster', gpu_model_id: 'gm-a100', approval_status: 'approved', availability: 'available', resource_type: { name: 'GPU', unit: 'GPU-hours' } }
   ],
   project: [
-    { id: P1, name: 'ml-Tagging', emoji: '🏷️', code: 'ml-Tagging', tag: 'ml', body: 'XBRL multilingual tagging.', summary: 'XBRL tagging across languages', org_unit_id: U_WG, status_id: 'ps-active', target_venue: 'ACL', deadline: '2026-07-30', proposal_url: 'https://example.com' }
+    { id: P1, name: 'ml-Tagging', emoji: '🏷️', code: 'ml-Tagging', tag: 'ml', body: 'XBRL multilingual tagging.', summary: 'XBRL tagging across languages', org_unit_id: U_WG, status_id: 'ps-active', target_venue: 'ACL', deadline: '2026-07-30', proposal_url: 'https://example.com' },
+    // an UNASSIGNED proposal (org_unit_id null) — looking for a working group to
+    // adopt it. A WG officer claims it into their WG to gain edit/post-need rights.
+    { id: 'p-free', name: 'fin-Sentiment', emoji: '📊', code: 'fin-Sentiment', tag: 'fin', body: 'Financial-news sentiment benchmark.', summary: 'A sentiment benchmark looking for a working group', org_unit_id: null, status_id: 'ps-prop', target_venue: null, deadline: null, proposal_url: 'https://example.com/sent' }
   ],
   project_type: [{ id: 'pt-1', name: 'Dataset', leader_stake: 0 }],
   project_status: [
@@ -332,6 +335,28 @@ function rpc(name: string, a: any) {
     seed.member.push({ id, full_name: a.p_full_name, email: a.p_email, affiliation: a.p_affiliation ?? null,
       kind: 'card', status: 'active', home_unit_id: a.p_unit, auth_user_id: null, monthly_hours: null, member_position: [] }); persist();
     return Promise.resolve({ data: id, error: null });
+  }
+  if (name === 'create_project_phase1') {
+    // create a project under a working group (org_unit_id = p_wg_unit) + open its
+    // first-author (leader) seat. Mirrors create_project_phase1 in the backend.
+    const me = CURRENT_MEMBER();
+    const id = nid('p');
+    seed.project.push({ id, name: a.p_name, code: a.p_name, emoji: '🧪', tag: '', body: '', summary: a.p_summary ?? null,
+      org_unit_id: a.p_wg_unit ?? null, status_id: a.p_status_id, type_id: a.p_type_id,
+      target_venue: null, venue_id: a.p_venue_id ?? null, deadline: null, proposal_url: a.p_proposal_url ?? null, created_by: me?.id ?? null });
+    seed.project_slot.push({ id: nid('s'), project_id: id, slot_kind: 'leader', skill_id: null, resource_type_id: null,
+      desired_level: null, authorship: 'first', quota: null, headcount: 1, status: 'open', skill: null, resource_type: null,
+      project: { name: a.p_name, emoji: '🧪', code: a.p_name } });
+    persist();
+    return Promise.resolve({ data: id, error: null });
+  }
+  if (name === 'forge_claim') {
+    // adopt a project into a working group — sets org_unit_id, which (via the
+    // canManage gate) unlocks posting needs & editing for that WG's officers.
+    const p = seed.project.find((x: any) => x.id === a.p_project);
+    if (p) p.org_unit_id = a.p_wg_unit;
+    persist();
+    return Promise.resolve({ data: nid('req'), error: null });
   }
   if (name === 'need_post') {
     const id = nid('s');

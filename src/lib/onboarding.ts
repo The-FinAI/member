@@ -28,6 +28,7 @@ export const questStatus = writable<Status | null>(null);
 
 let baseline: Record<string, number> = {};
 let chapterUnitIds: string[] = [];
+let wgUnitIds: string[] = [];
 let initialized = false;
 
 // ---- the four role quests (data) ----
@@ -48,7 +49,7 @@ const WG_QUEST: Quest = {
   subtitle: "You're a Working-Group Leader — projects are already on the board. Your first move is to lead one, not start from scratch.",
   auto: true, // the "claim" step auto-completes when you take a lead seat
   steps: [
-    { key: 'claim', label: 'Claim a project that needs a lead', why: 'Projects already exist here. Take the open first-author (lead) seat on one — look for the “1st-author open” badge — and it becomes yours to run.', href: '/projects', cta: 'Open Projects' },
+    { key: 'adopt', label: 'Take a project into your working group', why: 'Projects already exist here. Adopt one into your group (see “Projects looking for a working group”) — that sets it under you and unlocks editing it and posting its needs.', href: '/projects', cta: 'Open Projects' },
     { key: 'need', label: 'Post a role your project still needs', why: 'You post the demand (e.g. an annotator); a Chapter Officer fills it with someone from their chapter — you don’t hire directly.', href: '/projects', cta: 'Open your project' },
     { key: 'advance', label: 'Move the project forward', why: 'As work lands and the project finishes, STR (contribution credit) settles and splits among everyone who contributed.', href: '/projects', cta: 'Open your project' }
   ]
@@ -100,11 +101,11 @@ async function questCounts(q: Quest | null): Promise<Record<string, number>> {
     }
     return { roster: rows.length, withHours, staffed };
   }
-  if (q?.id === 'wg' && m) {
-    // "claimed a project" = you now hold a leader (first-author) seat
-    const { data } = await supabase.from('work_commitment').select('id, slot:slot_id(slot_kind)').eq('member_id', m.id);
-    const leads = ((data as { slot: { slot_kind: string } | null }[]) ?? []).filter((w) => w.slot?.slot_kind === 'leader').length;
-    return { leads };
+  if (q?.id === 'wg') {
+    // "adopted a project" = a project now belongs to your working group
+    if (!wgUnitIds.length) return { owned: 0 };
+    const { count } = await supabase.from('project').select('id', { count: 'exact', head: true }).in('org_unit_id', wgUnitIds);
+    return { owned: count ?? 0 };
   }
   return {};
 }
@@ -138,7 +139,7 @@ export async function refresh() {
       || (i === 1 && (cur.withHours ?? 0) > (baseline.withHours ?? 0))
       || (i === 2 && (cur.staffed ?? 0) > (baseline.staffed ?? 0));
   } else if (q.id === 'wg') {
-    hit = i === 0 && (cur.leads ?? 0) > (baseline.leads ?? 0);
+    hit = i === 0 && (cur.owned ?? 0) > (baseline.owned ?? 0);
   }
   if (hit) advance();
 }
@@ -149,6 +150,7 @@ export async function initOnboarding() {
   const q = pickQuest(); if (!q) return;
   initialized = true;
   chapterUnitIds = get(officerUnits).filter((u) => u.kind === 'chapter').map((u) => u.unit_id);
+  wgUnitIds = get(officerUnits).filter((u) => u.kind === 'working_group').map((u) => u.unit_id);
 
   let raw: string | null = null;
   try { raw = localStorage.getItem(KEY(m.id)); } catch { /* ignore */ }

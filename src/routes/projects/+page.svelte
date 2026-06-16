@@ -351,6 +351,7 @@
   // chip overrides the is-active gate so Hold/etc. stay one click away.
   function keepRow(r: Grid, needle: string): boolean {
     if (r.finished) return false;
+    if (!r.wgUnitId) return false; // unassigned projects live in the "adopt" section, not the ledger
     if (statusFilter ? r.status !== statusFilter : !r.active) return false;
     if (typeFilter && r.type !== typeFilter) return false;
     if (venueFilter) {
@@ -389,7 +390,7 @@
   });
 
   // KPI summary — "active" = status.is_active (excludes Finished & Hold)
-  const kActive = $derived(grid.filter((r) => r.active && !r.finished).length);
+  const kActive = $derived(grid.filter((r) => r.active && !r.finished && r.wgUnitId).length);
   const kUpcoming = $derived(grid.filter((r) => {
     if (!r.active || r.finished || !r.deadline) return false;
     const days = (new Date(r.deadline + 'T00:00:00').getTime() - Date.now()) / 86400000;
@@ -409,6 +410,22 @@
     grid.filter((r) => r.finished).sort((a, b) => b.pool - a.pool)
   );
   const hofMinted = $derived(finished.reduce((a, r) => a + r.pool, 0));
+
+  // Unassigned projects (no working group yet) that a WG officer can ADOPT into
+  // their group — setting org_unit_id is what unlocks posting needs & editing.
+  const myWgUnits = $derived($officerUnits.filter((u: any) => u.kind === 'working_group'));
+  const unassigned = $derived(grid.filter((r) => !r.wgUnitId && !r.finished));
+  let adoptInto = $state('');   // chosen WG when the officer leads more than one
+  let adopting = $state('');
+  async function adopt(projectId: string) {
+    const wg = myWgUnits.length === 1 ? (myWgUnits[0] as any).unit_id : adoptInto;
+    if (!wg) { error = get(t)('Pick a working group to adopt into.'); return; }
+    adopting = projectId; error = '';
+    const { error: err } = await supabase.rpc('forge_claim', { p_project: projectId, p_wg_unit: wg });
+    adopting = '';
+    if (err) { error = err.message; return; }
+    await loadGrid();
+  }
 
   function initials(name: string) {
     const p = name.trim().split(/\s+/);
@@ -585,10 +602,38 @@
     </div>
   </div>
 
+  {#if myWgUnits.length && unassigned.length}
+    <div class="adopt card">
+      <div class="adopt-head">
+        <strong>{$t('Projects looking for a working group')}</strong>
+        <span class="muted">{$t('Adopt one into your group to manage it — post its needs, edit it, run its board.')}</span>
+      </div>
+      {#if myWgUnits.length > 1}
+        <select class="adopt-pick" bind:value={adoptInto}>
+          <option value="">{$t('Adopt into…')}</option>
+          {#each myWgUnits as u}<option value={(u as any).unit_id}>{(u as any).name}</option>{/each}
+        </select>
+      {/if}
+      <div class="adopt-list">
+        {#each unassigned as r (r.id)}
+          <div class="adopt-row">
+            <span class="adopt-name">{r.emoji} {r.name}</span>
+            {#if r.summary}<span class="muted adopt-sum">{r.summary}</span>{/if}
+            <button class="adopt-go" disabled={adopting === r.id} onclick={() => adopt(r.id)}>
+              {adopting === r.id ? $t('Adopting…') : myWgUnits.length === 1 ? $t('Adopt into {wg}', { wg: (myWgUnits[0] as any).name }) : $t('Adopt')}
+            </button>
+          </div>
+        {/each}
+      </div>
+      {#if error}<p class="adopt-err">{error}</p>{/if}
+    </div>
+  {/if}
+
   {#if loading}
     <div class="card"><p class="muted" style="padding:1rem;">{$t('Loading…')}</p></div>
-  {:else if rows.length === 0 && grid.length === 0}
-    <!-- COLD START: a brand-new community with no projects. Orient the newcomer —
+  {:else if rows.length === 0 && finished.length === 0 && !(myWgUnits.length && unassigned.length)}
+    <!-- COLD START: nothing to show this user — no ledger rows, none shipped, and
+         no project they could adopt. Orient the newcomer instead of "no match" —
          what this is + what to do — instead of a bare "no match" (which reads as
          "you searched wrong" to someone who never searched). -->
     <div class="card stack" style="padding:1.2rem; gap:.5rem;" id="first-run">
@@ -728,4 +773,17 @@
   .hof-stat .mono { font-size: 1.02rem; font-weight: 600; }
   .hof-stat .muted { font-size: .68rem; text-transform: uppercase; letter-spacing: .03em; }
   .hof-team { display: flex; align-items: center; gap: .4rem; padding-top: .15rem; }
+
+  .adopt { margin-bottom: 1rem; padding: .9rem 1rem; border-left: 3px solid var(--accent); display: flex; flex-direction: column; gap: .55rem; }
+  .adopt-head { display: flex; flex-direction: column; gap: .15rem; }
+  .adopt-head strong { font-size: .95rem; }
+  .adopt-head .muted { font-size: .8rem; }
+  .adopt-pick { align-self: flex-start; padding: .3rem .5rem; border: 1px solid var(--border); border-radius: var(--r-sm); }
+  .adopt-list { display: flex; flex-direction: column; gap: .4rem; }
+  .adopt-row { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+  .adopt-name { font-weight: 600; font-size: .9rem; }
+  .adopt-sum { font-size: .8rem; flex: 1; min-width: 8rem; }
+  .adopt-go { background: var(--accent); color: #fff; border: 0; border-radius: var(--r-sm); padding: .35rem .7rem; font-weight: 600; font-size: .82rem; cursor: pointer; }
+  .adopt-go:disabled { opacity: .6; cursor: default; }
+  .adopt-err { color: var(--danger, #c0392b); font-size: .8rem; margin: 0; }
 </style>

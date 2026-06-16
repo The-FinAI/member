@@ -39,4 +39,11 @@ export async function openSkillsTab(page: Page) {
   await page.locator('.sc-cap').first().waitFor({ state: 'visible' });
 }
 
+// Dismiss the first-run onboarding quest (a returning officer has finished it).
+// Tests not about onboarding skip it so its fixed panel can't intercept clicks.
+export async function dismissQuest(page: Page) {
+  const skip = page.locator('.q-skip');
+  try { await skip.click({ timeout: 2000 }); } catch { /* no quest present */ }
+}
+
 export { expect };
