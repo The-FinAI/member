@@ -78,6 +78,16 @@ can break *along the way*, asserted in context.
 | **WF3** member does their work | My tasks → find own task → **reopen** it → persists | #40B-adjacent |
 | **WF4** researcher joins a unit | browse a working group → **read what it is** → **apply** → request goes pending | #47 |
 | **WF5** WG leader closes out | advance → **Finish** (irreversible, danger confirm) → **settlement opens** | #35 + the Finish→Settle surface |
+| **WF6** bipartite handoff | **WG leader** posts a need → **chapter officer (different person)** staffs it → team grows | the system's core design |
+| **WF7** handoff reaches the member | chapter officer staffs her → **the member** logs in and is notified she joined | three distinct people, one collaboration |
+
+**Coverage isn't just one persona doing different things.** WF1–5 / A1–9 / M1–3 were the
+*same* few roles in isolation; the system's real shape is **distinct people handing off**
+(chapters hold people, WGs hold projects, they meet at the need). WF6/WF7 are the first
+that span people: WG leader → chapter officer → member. The next multi-person arcs to
+encode: the member then *does the work* (WF3) and the WG leader *finishes & splits* (WF5)
+— the full life of one project across all three actors; and the President's review job
+(approve a submitted resource / settlement) as a fourth, distinct actor.
 
 When a workflow breaks, that step is the bug she'd file. Walking WF-shaped task-board
 steps is also what surfaced the real `task_remove` persistence gap (delete wasn't saved).

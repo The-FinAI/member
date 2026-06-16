@@ -1,5 +1,5 @@
 import { test } from '@playwright/test';
-import { asRole, trackErrors, openSkillsTab, expect } from './helpers';
+import { asRole, switchRole, trackErrors, openSkillsTab, expect } from './helpers';
 
 // =====================================================================
 // WORKFLOWS — she tests by walking a real role's job END TO END, not by probing
@@ -153,4 +153,60 @@ test('WF5: WG leader finishes a project (danger confirm) → settlement opens', 
   // 3) the project is finished and the settlement surface opens
   await expect(page.getByText(/Settlement/i).first()).toBeVisible();
   expect(errs(), 'console clean across the close-out').toEqual([]);
+});
+
+// WF6 — the BIPARTITE HANDOFF between two DIFFERENT officers (the system's core
+// design: chapters hold people, working groups hold projects, they meet at a
+// need). The WG leader posts demand; a chapter officer supplies it. Not one
+// person wearing two hats — two people handing off at the need.
+test('WF6: WG leader posts a need; a chapter officer (different person) staffs it', async ({ page }) => {
+  // PART 1 — Wu Jing, the WORKING-GROUP leader, posts an open role on her project
+  await asRole(page, 'uid-wg');
+  await page.goto('/projects');
+  await page.locator('.lrow-head').first().click();
+  await page.locator('.lrow-body').first().waitFor({ state: 'visible' });
+  await page.locator('.np-toggle').first().click(); // "+ Post a role"
+  await page.locator('.np select').first().selectOption({ label: 'Annotation' });
+  await page.locator('.np-n').first().fill('6');
+  await page.locator('.np-go').click();
+  await expect(page.getByText(/qualify|Posted/i)).toBeVisible();
+
+  // PART 2 — Chan Min, the CHAPTER officer (a different person), staffs a person
+  // from her chapter into that project's open Annotation need.
+  await switchRole(page, 'uid-chap');
+  await page.goto('/projects');
+  await page.locator('.lrow-head').first().click();
+  await page.locator('.lrow-body').first().waitFor({ state: 'visible' });
+  await page.locator('.need-row', { hasText: 'Annotation' }).first().click();
+  const cand = page.locator('.cand', { hasText: 'Li Hua' });
+  await expect(cand).toBeVisible();
+  await cand.locator('.cand-h').fill('5');
+  await cand.locator('.assign').click();
+  await page.locator('.cf-ok').click(); // assigning confirms (#33)
+  await expect(page.locator('.toast')).toContainText(/Assigned/i);
+
+  // the handoff completed: the WG leader's project now has the chapter's person
+  await expect(page.locator('.tchip', { hasText: 'Li Hua' })).toBeVisible();
+});
+
+// WF7 — the handoff reaches the THIRD person. After a chapter officer staffs her,
+// the member herself learns she's on a project (the notification). Three distinct
+// people across one collaboration: WG leader → chapter officer → member.
+test('WF7: a staffed member is notified she joined the project (the third person)', async ({ page }) => {
+  // chapter officer staffs Li Hua onto the open Annotation need
+  await asRole(page, 'uid-chap');
+  await page.goto('/projects');
+  await page.locator('.lrow-head').first().click();
+  await page.locator('.lrow-body').first().waitFor({ state: 'visible' });
+  await page.locator('.need-row', { hasText: 'Annotation' }).first().click();
+  const cand = page.locator('.cand', { hasText: 'Li Hua' });
+  await cand.locator('.cand-h').fill('5');
+  await cand.locator('.assign').click();
+  await page.locator('.cf-ok').click();
+  await expect(page.locator('.toast')).toContainText(/Assigned/i);
+
+  // now SHE logs in — and finds out she was assigned (the notification)
+  await switchRole(page, 'uid-member'); // Li Hua
+  await page.locator('.ni-bell').click();
+  await expect(page.getByText(/assigned to a project/i).first()).toBeVisible();
 });
