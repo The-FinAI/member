@@ -62,25 +62,27 @@ nothing silent or one-click-irreversible."**
 
 ---
 
-## Extrapolated tests — the next issues she'd file (举一反三)
+## Workflows are the unit (she tests by walking a role's whole job)
 
-Take her *reasoning patterns* and apply them to surfaces she hasn't tested yet — so
-we get ahead of the report. Her patterns: **P1** "did my edit actually persist?" ·
-**P2** "every create needs an undo/delete" · **P3** "consequential ⇒ confirm" ·
-**P4** "single source / consistent across pages" · **P5** "permissions match expectation" ·
-**P6** "no silent bad write; clear feedback" · **P7** "labels/fields shouldn't need guessing."
+The right model isn't "probe control X for quality Y." She walks a **complete
+workflow** — a real role doing a real task start to finish — and bugs surface where
+the workflow breaks mid-stream. So the primary test is the **workflow**; the
+quality checks (persist / delete / confirm / consistency) are just the steps that
+can break *along the way*, asserted in context.
 
-She stress-tested the **member card** (P1/P2/P6). The **task board** has the same
-create/edit/persist/delete shape and was never probed — so we probed it:
-| Test | Pattern | Result |
-|------|---------|--------|
-| `extrapolated P1` add a task → persists on reload | P1 (from #26/#43) | ✅ |
-| `extrapolated P2` created task → delete → stays gone on reload | P2 (from #34) | ✅ **— found a real persistence gap** (delete wasn't saved) and fixed it |
-| `extrapolated P6` empty task name can't be added | P6 (from #20/#31) | ✅ |
+`workflows.spec.ts`:
+| Workflow | The role's whole job | Steps it exercises |
+|----------|----------------------|--------------------|
+| **WF1** officer staffs a person | roster → open member → set skill & available time → **Save** → open the project need → **assign** (confirm) → on the **team** → reload-persists | #10/#14/#26/#43/#44 #33 #40A |
+| **WF2** WG leader runs the record | open project → **add a task** (persists) → **advance status** (confirm gate) | #34 #35 |
 
-**Next surfaces to apply the same patterns:** draft links & meetings (add/remove/persist),
-project rename (InlineField persist), need post (create/remove + validation), settlement
-(consequential confirm), over-capacity assign (P6 hard-block). Each is a row above when green.
+When a workflow breaks, that step is the bug she'd file. Walking WF-shaped task-board
+steps is also what surfaced the real `task_remove` persistence gap (delete wasn't saved).
+
+**Workflows still to encode** (each = a role's whole job): member self-service (claim →
+profile → review loop, partly WF/J3.2) · join a chapter (browse → apply → accepted) ·
+WG leader ships a paper (post needs → staff → milestones → finish → settle) · resource
+steward (offer a resource → review → it's offerable).
 
 ## How this changes the loop
 1. A new issue → find its journey (or add one) → restate the **intent**, not just the bug.
