@@ -351,7 +351,6 @@
   // chip overrides the is-active gate so Hold/etc. stay one click away.
   function keepRow(r: Grid, needle: string): boolean {
     if (r.finished) return false;
-    if (!r.wgUnitId) return false; // unassigned projects live in the "adopt" section, not the ledger
     if (statusFilter ? r.status !== statusFilter : !r.active) return false;
     if (typeFilter && r.type !== typeFilter) return false;
     if (venueFilter) {
@@ -390,7 +389,7 @@
   });
 
   // KPI summary — "active" = status.is_active (excludes Finished & Hold)
-  const kActive = $derived(grid.filter((r) => r.active && !r.finished && r.wgUnitId).length);
+  const kActive = $derived(grid.filter((r) => r.active && !r.finished).length);
   const kUpcoming = $derived(grid.filter((r) => {
     if (!r.active || r.finished || !r.deadline) return false;
     const days = (new Date(r.deadline + 'T00:00:00').getTime() - Date.now()) / 86400000;
@@ -661,7 +660,7 @@
               <span class="lr-title">{r.emoji ? r.emoji + ' ' : ''}{r.code || r.name}</span>
               {#if r.wg || r.venue}<span class="lr-sub">{[r.wg, r.venue].filter(Boolean).join(' · ')}</span>{/if}
             </span>
-            {#if r.claimable}<span class="badge warn">{$t('1st-author open')}</span>{:else}<span class="status st-{projKind(r.status) === 'pos' ? 'finished' : projKind(r.status) === 'warn' ? 'review' : 'proposal'}"><span class="sdot"></span>{$t(r.status)}</span>{/if}
+            {#if !r.wgUnitId}<span class="badge warn" title={$t('This proposal has no working group yet — a WG leader adopts it to run it.')}>{$t('needs a working group')}</span>{:else if r.claimable}<span class="badge warn">{$t('1st-author open')}</span>{:else}<span class="status st-{projKind(r.status) === 'pos' ? 'finished' : projKind(r.status) === 'warn' ? 'review' : 'proposal'}"><span class="sdot"></span>{$t(r.status)}</span>{/if}
             <span class="lr-facts">
               <span class="lf"><b>{r.openTasks}</b> {$t('tasks')}</span>
               <span class="lf"><b>{r.openNeeds}</b> {$t('needs')}</span>

@@ -62,12 +62,13 @@ test('ONB4: account-menu navigation actually re-renders (Wallet from a profile p
 // as "the community is empty / you searched wrong", when in fact every project had
 // shipped. The subtitle now counts ACTIVE projects (so 0 is honest) and the empty
 // state points to the Hall of Fame instead of a failed-search message.
-test('ONB5: when every project has shipped, the landing says so (not "0 projects / no match")', async ({ page }) => {
+test('ONB5: shipping a project moves it to the Hall of Fame without hiding what remains', async ({ page }) => {
   await asRole(page, 'uid-admin');
-  // finish the only (active) project: advance to Under review, then Finish
+  // finish the WG's project: advance to Under review, then Finish
   await page.goto('/projects');
-  await page.locator('.lrow-head').first().click();
-  await page.locator('.lrow-body').first().waitFor({ state: 'visible' });
+  const mlRow = page.locator('.lrow', { hasText: 'ml-Tagging' });
+  await mlRow.locator('.lrow-head').click();
+  await mlRow.locator('.lrow-body').waitFor({ state: 'visible' });
   await page.locator('.pcb-step', { hasText: 'Under review' }).click();
   await page.locator('.cf-ok').click();
   await expect(page.locator('.toast')).toContainText(/Status|→/);
@@ -75,14 +76,14 @@ test('ONB5: when every project has shipped, the landing says so (not "0 projects
   await page.locator('.cf-ok').click();
   await expect(page.getByText(/Project finished/i).first()).toBeVisible();
 
-  // back on the landing: honest "active" count + an all-shipped message, not "no match"
+  // back on the landing: the shipped project links to the Hall of Fame, the
+  // unassigned proposal is STILL VISIBLE (hiding it was the #51 regression),
+  // and there is no misleading "no match" message
   await page.goto('/projects');
   await expect(page.locator('h1', { hasText: 'Projects' })).toBeVisible();
-  await expect(page.getByText(/0 active projects/i)).toBeVisible();
-  await expect(page.getByText(/every project has shipped|Hall of fame/i).first()).toBeVisible();
+  await expect(page.locator('a[href="#hall-of-fame"]'), 'shipped count links to the Hall of Fame').toBeVisible();
+  await expect(page.locator('.lrow', { hasText: 'fin-Sentiment' }), 'the unassigned proposal stays visible').toBeVisible();
   await expect(page.getByText('No projects match your filters.')).toHaveCount(0);
-  // the "shipped" link jumps to the Hall of Fame anchor
-  await expect(page.locator('a[href="#hall-of-fame"]')).toBeVisible();
 });
 
 // The game-like first-run quest: a cold officer lands on a data table full of

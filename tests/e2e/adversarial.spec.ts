@@ -135,12 +135,17 @@ test('A9 (cold start): an empty community orients the newcomer, not "no match"',
   await asRole(page, 'uid-admin');
   await page.goto('/projects');
 
-  // empty the community: archive the only project
-  await page.locator('.lrow-head').first().click();
-  await page.locator('.lrow-body').first().waitFor({ state: 'visible' });
-  await page.locator('.pcb-archive-btn').click();
-  await expect(page.locator('.cf-modal')).toBeVisible();
-  await page.locator('.cf-ok').click();
+  // empty the community: archive EVERY project (the WG's project and the
+  // unassigned proposal — which now correctly stays on the ledger, see #51)
+  for (const name of ['ml-Tagging', 'fin-Sentiment']) {
+    const row = page.locator('.lrow', { hasText: name });
+    await row.locator('.lrow-head').click();
+    await row.locator('.lrow-body').waitFor({ state: 'visible' });
+    await row.locator('.pcb-archive-btn').click();
+    await expect(page.locator('.cf-modal')).toBeVisible();
+    await page.locator('.cf-ok').click();
+    await expect(page.locator('.lrow', { hasText: name })).toHaveCount(0);
+  }
 
   // a cold-start user now gets a "start here" with what it is + a path to the guide
   await expect(page.locator('#first-run')).toBeVisible();

@@ -73,3 +73,30 @@ test('WGP4: a WG officer creates a project under their group', async ({ page }) 
   await page.goto('/projects');
   await expect(page.locator('.lrow', { hasText: name })).toBeVisible();
 });
+
+// #51 (@yankai-chen): "Normal users can not create new projects." The creation
+// actually SUCCEEDED — but the project landed unattributed (org_unit_id null)
+// and a prior change hid unassigned projects from the ledger, so it vanished
+// for its own creator with no error: indistinguishable from "can't create".
+// Regression guard: a plain member creates an unattributed proposal and SEES it.
+test('WGP5 (#51): a plain member creates a project and can still see it afterwards', async ({ page }) => {
+  await asRole(page, 'uid-member'); // Li Hua — no officer role anywhere
+  await page.goto('/projects');
+  await dismissQuest(page);
+  const name = 'WGP5 Proposal ' + Date.now();
+  await page.getByRole('button', { name: 'Start a project' }).click();
+  const form = page.locator('.card.stack', { hasText: 'Start a project' }).first();
+  await form.locator('input[placeholder="Project / paper name"]').fill(name);
+  await form.locator('select').first().selectOption({ label: 'Dataset' });
+  await form.locator('input[placeholder="https://…"]').fill('https://example.com/wgp5');
+  await form.getByRole('button', { name: 'Create project' }).click();
+
+  // her proposal is on the ledger, flagged as needing a working group
+  const row = page.locator('.lrow', { hasText: name });
+  await expect(row, 'the creator can see their own new project').toBeVisible();
+  await expect(row.locator('.badge', { hasText: /needs a working group/i })).toBeVisible();
+
+  // and it survives a reload
+  await page.goto('/projects');
+  await expect(page.locator('.lrow', { hasText: name }), 'still there after reload').toBeVisible();
+});
