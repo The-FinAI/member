@@ -145,7 +145,7 @@ permitted Edit must persist** (a Save that silently drops is always a bug — th
 | Project (unattributed) | creator (`created_by`) | creator | — | a WG adopts it (`forge_claim`) | `edit_any_project` |
 | Project (in a WG) | the working group | WG officers + leader-seat holder | — | — | `edit_any_project` |
 | Need / task | the project | project editors | — | — | `edit_any_project` |
-| Assignment | person + project | chapter officer (their people) / project editors | capacity over-commit → review (`review_commitment_period`) | `manage_stater/resources/members` | same |
+| Assignment | person + project | the member's **home-chapter officer** (`is_unit_officer_of`) or card steward — *not* project editors (see G5/#53, decision pending) | capacity over-commit → review (`review_commitment_period`) | `manage_stater/resources/members` | same |
 | Resource | its holder | holder / card steward | resource steward | `manage_resources` (⚠ + chapter officer for their people's) | `manage_resources` |
 | Milestone | the project | project editors | admin | `edit_any_project` / `manage_stater` / `manage_resources` | same |
 | Settlement / STR | the community | project lead drafts | reviewers | `manage_stater` | `manage_stater` |
@@ -218,7 +218,17 @@ restored" (#49's observation), that's a bug against this policy.
    fix) but day-to-day editing before adoption is limited to admin; whether the
    creator should edit their own proposal pre-adoption is an **open design
    question** for approval here.
-5. This document does not yet cover RLS row-visibility nuances (all members can
+5. **G4 (#52)** — the create-project form offers **every** working group to any
+   member; the backend rejects non-officers after they've filled the form.
+6. **G5 (#53)** — Assign controls render for **any** officer (`canSeat`), but
+   `work_seat` authorizes only the member's home-chapter officer — not even the
+   project's own WG leader. This also exposed a **doc/code contradiction**: §4
+   lists "project editors" among an assignment's editors, which the SQL does
+   not allow. UNDEFINED until decided: *may a WG leader seat their own
+   project's needs (Option B), or is staffing strictly the chapter officer's
+   (Option A, current SQL)?* §4's row stands corrected to match the code until
+   then.
+7. This document does not yet cover RLS row-visibility nuances (all members can
    currently *view* nearly everything; Phase 1 is an open-book community).
 
 ---
@@ -228,3 +238,4 @@ restored" (#49's observation), that's a bug against this policy.
 | Version | Date | Change | Trigger |
 |---|---|---|---|
 | v0.1 | 2026-06-19 | first complete draft, extracted from code | #49 (also answers #51, #44-class questions) |
+| v0.1.1 | 2026-06-19 | gaps G4/G5 added from the first I-4 audit cycle; §4 assignment row corrected to match SQL (decision pending in #53) | #52, #53 |

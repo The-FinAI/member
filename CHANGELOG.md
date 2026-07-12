@@ -20,6 +20,20 @@
 
 ---
 
+## v1.0.1 — 2026-06-19
+
+**Issues:** #52, #53 (filed by the first formal I-4 audit cycle under #50).
+
+### Changed
+- `docs/architecture.md` v0.1 → v0.1.1: gaps **G4** (create-form offers WGs the
+  creator can't use, #52) and **G5** (Assign shown to officers `work_seat`
+  rejects; §4 assignment-editor row corrected to match SQL — whether a WG
+  leader may seat their own project is UNDEFINED pending decision in #53).
+  *Reason:* audit findings must be reflected in the baseline document so later
+  audits don't re-discover them (#50 §1 retro step).
+
+---
+
 ## v1.0.0 — 2026-06-19
 
 **Issues:** #49, #50, #48 (this framework), building on #37/#38.
