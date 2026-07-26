@@ -413,6 +413,15 @@
   // Unassigned projects (no working group yet) that a WG officer can ADOPT into
   // their group — setting org_unit_id is what unlocks posting needs & editing.
   const myWgUnits = $derived($officerUnits.filter((u: any) => u.kind === 'working_group'));
+
+  // #52: the create form may only offer WGs the creator can actually attribute
+  // to (their own, or all for edit_any_project) — the backend rejects others,
+  // and offering them meant a member filled the whole form before the error.
+  const attributableWGs = $derived(
+    $capabilities.has('edit_any_project') || $capabilities.has('manage_stater')
+      ? workingGroups
+      : workingGroups.filter((w) => myWgUnits.some((u: any) => u.unit_id === w.id))
+  );
   const unassigned = $derived(grid.filter((r) => !r.wgUnitId && !r.finished));
   let adoptInto = $state('');   // chosen WG when the officer leads more than one
   let adopting = $state('');
@@ -477,12 +486,16 @@
             {#each venues as v}<option value={v.id}>{v.name}{v.deadline ? ` · ${$t('ddl')} ${fmtDate(v.deadline)}` : ''}</option>{/each}
           </select></label>
       </div>
-      {#if workingGroups.length}
+      {#if attributableWGs.length}
         <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Working Group')}</span>
           <select bind:value={cOrgUnit}>
             <option value="">{$t('— unattributed —')}</option>
-            {#each workingGroups as w}<option value={w.id}>{w.name}</option>{/each}
+            {#each attributableWGs as w}<option value={w.id}>{w.name}</option>{/each}
           </select></label>
+      {:else}
+        <p class="muted" style="font-size:.78rem; margin:0;">
+          {$t('Your proposal starts unattributed — a working-group leader adopts it to run it.')}
+        </p>
       {/if}
       <label class="stack" style="gap:.2rem;"><span class="muted" style="font-size:.75rem;">{$t('Proposal link *')} <span class="dim">{$t('(PDF on Drive, Overleaf, OpenReview…)')}</span></span>
         <input bind:value={cProposal} placeholder="https://…" /></label>

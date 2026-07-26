@@ -309,8 +309,16 @@ function rpc(name: string, a: any) {
   }
   if (name === 'task_update') {
     const t = seed.task.find((x) => x.id === a.p_task);
-    if (t) Object.assign(t, a.p_patch, { updated_at: '2026-06-06T12:00:00Z' }); persist();
-    return Promise.resolve({ data: t ? resolveEmbeds([t], 'task')[0] : null, error: null });
+    if (!t) return Promise.resolve({ data: null, error: { message: 'no such task' } });
+    // G3: project editors may edit anything; the task's OWNER may change only
+    // state/note (move their own work along). Mirrors the SQL gate.
+    const me = CURRENT_MEMBER();
+    const keys = Object.keys(a.p_patch ?? {});
+    const ownerOk = !!me && t.owner_member_id === me.id && keys.every((k) => k === 'state' || k === 'note');
+    if (!canEditProjectMock(me, t.project_id) && !ownerOk)
+      return Promise.resolve({ data: null, error: { message: 'not allowed to edit this project' } });
+    Object.assign(t, a.p_patch, { updated_at: '2026-06-06T12:00:00Z' }); persist();
+    return Promise.resolve({ data: resolveEmbeds([t], 'task')[0], error: null });
   }
   if (name === 'task_remove') { seed.task = seed.task.filter((x) => x.id !== a.p_task); persist(); return Promise.resolve({ data: null, error: null }); }
   if (name === 'task_reorder') return Promise.resolve({ data: null, error: null });
@@ -340,6 +348,10 @@ function rpc(name: string, a: any) {
     // create a project under a working group (org_unit_id = p_wg_unit) + open its
     // first-author (leader) seat. Mirrors create_project_phase1 in the backend.
     const me = CURRENT_MEMBER();
+    // #52: attributing to a WG requires being its officer (or admin); anyone may
+    // create an UNATTRIBUTED proposal (p_wg_unit null).
+    if (a.p_wg_unit && !(isOfficerOf(me, a.p_wg_unit) || isPresident(me)))
+      return Promise.resolve({ data: null, error: { message: 'only a working-group officer can create a project for this unit' } });
     const id = nid('p');
     seed.project.push({ id, name: a.p_name, code: a.p_name, emoji: '🧪', tag: '', body: '', summary: a.p_summary ?? null,
       org_unit_id: a.p_wg_unit ?? null, status_id: a.p_status_id, type_id: a.p_type_id,
@@ -384,6 +396,11 @@ function rpc(name: string, a: any) {
     persist(); return Promise.resolve({ data: s, error: null });
   }
   if (name === 'assign') {
+    // #53-A: strict bipartite — only the member's home-chapter officer (or
+    // card steward / admin) may seat them. Mirrors assign()+work_seat() SQL.
+    const me = CURRENT_MEMBER();
+    if (!canSeatMemberMock(me, a.p_member))
+      return Promise.resolve({ data: null, error: { message: "only the member's chapter officer (or an admin) can assign them" } });
     const s = seed.project_slot.find((x) => x.id === a.p_slot);
     seed.work_commitment.push({ id: nid('wc'), project_id: s?.project_id, slot_id: a.p_slot, member_id: a.p_member,
       monthly_amount: a.p_hours, nominal_str: Math.round(a.p_hours * 10), year_month: '2026-06', resource_id: null,
@@ -675,6 +692,26 @@ function isOfficerOf(me: any, unitId: string | undefined): boolean {
 }
 function isChapterOfficer(me: any): boolean {
   return (seed.org_unit_officer || []).some((o: any) => o.member_id === me.id && !o.ended_on && o.org_unit?.kind === 'chapter');
+}
+// ── permission gates mirroring the real SQL, so the mock FAILS where prod fails
+// (mock-fidelity: a green test must not hide a prod rejection — #52/#53/G3) ──
+function canEditProjectMock(me: any, projectId: string): boolean {
+  if (!me) return false;
+  if (isPresident(me)) return true; // edit_any_project via PRES_CAPS
+  const p = (seed.project || []).find((x: any) => x.id === projectId);
+  if (!p) return false;
+  if (p.org_unit_id && isOfficerOf(me, p.org_unit_id)) return true;
+  // manages_project: holds the leader (first-author) seat
+  const leadSlots = (seed.project_slot || []).filter((s: any) => s.project_id === projectId && s.slot_kind === 'leader').map((s: any) => s.id);
+  return (seed.work_commitment || []).some((w: any) => leadSlots.includes(w.slot_id) && w.member_id === me.id);
+}
+// work_seat's rule (decision #53-A, strict bipartite): only the member's
+// home-chapter officer (or admin capabilities) may seat them — NOT project editors.
+function canSeatMemberMock(me: any, memberId: string): boolean {
+  if (!me) return false;
+  if (isPresident(me)) return true; // manage_members / edit_any_project
+  const target = (seed.member || []).find((m: any) => m.id === memberId);
+  return !!target && isOfficerOf(me, target.home_unit_id);
 }
 
 const _u = currentUid();

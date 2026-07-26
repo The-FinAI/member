@@ -1,8 +1,10 @@
 # Roles, Permissions, Ownership & Approval — the architecture
 
-> **Status: PROPOSED (v0.1, 2026-06-19) — awaiting approval by the President.**
-> Issue: #49. Once approved, permission-related changes must cite this document,
-> and changes to *this document* are logged in the version history below (#48).
+> **Status: APPROVED (v0.2, 2026-07-26) by the President.** Issue: #49.
+> Permission-related changes must cite this document; changes to *this document*
+> are logged in the version history below (#48). Decision record: staffing is
+> **strict bipartite** (#53 → Option A) — working groups post demand, chapters
+> supply people; a project's editors do not seat members.
 >
 > This document is **descriptive of the current code** (every rule below is
 > extracted from the deployed SQL gates and UI guards, with the function that
@@ -117,7 +119,7 @@ permitted Edit must persist** (a Save that silently drops is always a bug — th
 | remove / undo | ✗ | same (`unassign`) | own project | ✓ |
 | commit own resource | holder only (`set_resource_commitment`) | — | — | — |
 | **E8 task** add/edit/delete | ✗ | ✗ | own project (`task_*`) | ✓ |
-| change own task's state | **✗ on prod — but the UI offers it** (gap G3 below) | — | own project | ✓ |
+| change own task's state/note | ✓ owner ⚠ (G3 rule, `task_update` owner exception) | — | own project | ✓ |
 | **E9/E10 skills & availability** | own → review ⚠ | unit ⚠ / cards: direct | ✗ | ✓ |
 | **E11 resource** add | own (`forge_resource`) → **review** | their cards' → review | ✗ | ✓ `manage_resources` |
 | edit | own (`update_resource`) → re-review | their cards' | ✗ | ✓ |
@@ -207,27 +209,27 @@ restored" (#49's observation), that's a bug against this policy.
    `release_recipients`. Rows marked ⚠ describe post-push behavior.
 2. **Restore surface**: archive is admin-reversible in data, but there is no UI
    to list & un-archive yet (#34 follow-up).
-3. **G3 — a task's owner cannot update their own task (backend), but the UI
-   offers it**: `task_update` requires `can_edit_project` with **no owner
-   exception**, while `/my` shows the owner Start/Reopen/Done controls. Found
-   while fact-checking this document (the mock has no gate, so local tests
-   pass). Proposed rule for approval: *a task's owner may change its `state`
-   and `note` (not reassign or delete it)*. Implementation blocked until this
-   document is approved (#49's own scope rule).
+3. **G3 — RESOLVED (v0.2)**: rule approved — *a task's owner may change its
+   `state` and `note` (not reassign or delete it)*. Implemented in migration
+   `20260726010000_task_owner_update.sql` (⚠ pending push) and mirrored in the
+   mock gate; `/my`'s owner controls now match the backend.
 4. **Unattributed-project editing**: the creator can see their proposal (#51
    fix) but day-to-day editing before adoption is limited to admin; whether the
    creator should edit their own proposal pre-adoption is an **open design
-   question** for approval here.
-5. **G4 (#52)** — the create-project form offers **every** working group to any
-   member; the backend rejects non-officers after they've filled the form.
-6. **G5 (#53)** — Assign controls render for **any** officer (`canSeat`), but
-   `work_seat` authorizes only the member's home-chapter officer — not even the
-   project's own WG leader. This also exposed a **doc/code contradiction**: §4
-   lists "project editors" among an assignment's editors, which the SQL does
-   not allow. UNDEFINED until decided: *may a WG leader seat their own
-   project's needs (Option B), or is staffing strictly the chapter officer's
-   (Option A, current SQL)?* §4's row stands corrected to match the code until
-   then.
+   question** (still undecided).
+5. **G4 (#52) — RESOLVED (v0.2)**: the create form now offers only working
+   groups the creator may attribute to; a plain member's proposal starts
+   unattributed with an explanatory line. Mock enforces the officer check.
+6. **G5 (#53) — DECIDED: Option A, strict bipartite (v0.2)**. Staffing belongs
+   to the member's home-chapter officer (or card steward / admin); project
+   editors do not seat members. Audit follow-up found the two seat paths had
+   **contradictory gates** (`assign()`: project editors yes, chapter officers
+   of claimed members no; `work_seat()`: the reverse) and, since `assign()`
+   calls `work_seat()`, the effective gate was their intersection — both
+   officer types were broken for claimed members. Unified in migration
+   `20260726020000_assign_bipartite.sql` (⚠ pending push); the matcher UI now
+   renders Assign only where authorized and routes others to the chapter
+   officer; the mock enforces the same rule.
 7. This document does not yet cover RLS row-visibility nuances (all members can
    currently *view* nearly everything; Phase 1 is an open-book community).
 
@@ -239,3 +241,4 @@ restored" (#49's observation), that's a bug against this policy.
 |---|---|---|---|
 | v0.1 | 2026-06-19 | first complete draft, extracted from code | #49 (also answers #51, #44-class questions) |
 | v0.1.1 | 2026-06-19 | gaps G4/G5 added from the first I-4 audit cycle; §4 assignment row corrected to match SQL (decision pending in #53) | #52, #53 |
+| v0.2 | 2026-07-26 | **APPROVED** by the President. G3 resolved (task-owner rule + migration); G4 fixed (attributable-WG dropdown); G5 decided **Option A — strict bipartite** + the contradictory `assign()`/`work_seat()` gates unified by migration | #49 approval; #52, #53 |

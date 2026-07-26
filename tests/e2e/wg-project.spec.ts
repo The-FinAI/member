@@ -1,5 +1,5 @@
 import { test } from '@playwright/test';
-import { asRole, dismissQuest, expect } from './helpers';
+import { asRole, switchRole, dismissQuest, expect } from './helpers';
 
 // =====================================================================
 // THE WG-LEADER PROJECT LIFECYCLE — the flow that was conceptually wrong AND
@@ -99,4 +99,57 @@ test('WGP5 (#51): a plain member creates a project and can still see it afterwar
   // and it survives a reload
   await page.goto('/projects');
   await expect(page.locator('.lrow', { hasText: name }), 'still there after reload').toBeVisible();
+});
+
+// #52 (audit I-4): the create form offered EVERY working group to any member —
+// the backend rejects non-officers only after the whole form was filled. Now the
+// dropdown lists only WGs the creator may attribute to; a plain member gets none
+// (their proposal starts unattributed) plus a line saying who picks it up.
+test('WGP6 (#52): the WG dropdown only offers groups the creator can actually use', async ({ page }) => {
+  // plain member → no WG dropdown, just the "starts unattributed" explanation
+  await asRole(page, 'uid-member');
+  await page.goto('/projects');
+  await dismissQuest(page);
+  await page.getByRole('button', { name: 'Start a project' }).click();
+  const form = page.locator('.card.stack', { hasText: 'Start a project' }).first();
+  await expect(form.getByText(/starts unattributed/i)).toBeVisible();
+  await expect(form.locator('select')).toHaveCount(2); // Type + Venue only
+
+  // WG officer → sees exactly her own group as an option
+  await switchRole(page, 'uid-wg');
+  await dismissQuest(page);
+  await page.getByRole('button', { name: 'Start a project' }).click();
+  const form2 = page.locator('.card.stack', { hasText: 'Start a project' }).first();
+  await expect(form2.locator('select')).toHaveCount(3);
+  await expect(form2.locator('select').last().locator('option', { hasText: 'Multilingual' })).toHaveCount(1);
+});
+
+// #53 decision A (strict bipartite): staffing is the member's home-chapter
+// officer's job. A WG leader still SEES who fits (transparency) but gets a
+// routing cue instead of an Assign button the backend would reject. (Before:
+// any officer saw Assign; assign()+work_seat() had contradictory gates and the
+// effective rule rejected BOTH officer types on claimed members — cards worked,
+// people didn't: intermittent, unexplained rejections.)
+test('WGP7 (#53-A): a WG leader sees candidates but Assign is routed to the chapter officer', async ({ page }) => {
+  await asRole(page, 'uid-wg'); // Wu Jing — WG officer, no chapter seat
+  await page.goto('/projects');
+  await dismissQuest(page);
+  const row = page.locator('.lrow', { hasText: 'ml-Tagging' });
+  await row.locator('.lrow-head').click();
+  await row.locator('.lrow-body').waitFor({ state: 'visible' });
+  await row.locator('.need-row', { hasText: 'Annotation' }).first().click();
+
+  // candidates are visible (she can SEE who fits her need)…
+  await expect(page.locator('.cand').first()).toBeVisible();
+  // …but she cannot assign — the cue routes her to the chapter officer
+  await expect(page.locator('.cand .assign')).toHaveCount(0);
+  await expect(page.locator('.cand-route').first()).toContainText(/chapter officer/i);
+
+  // and the chapter officer still CAN (the positive path, unchanged)
+  await switchRole(page, 'uid-chap');
+  const row2 = page.locator('.lrow', { hasText: 'ml-Tagging' });
+  await row2.locator('.lrow-head').click();
+  await row2.locator('.lrow-body').waitFor({ state: 'visible' });
+  await row2.locator('.need-row', { hasText: 'Annotation' }).first().click();
+  await expect(page.locator('.cand .assign').first()).toBeVisible();
 });

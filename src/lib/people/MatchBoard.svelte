@@ -5,6 +5,7 @@
   // under-level people still show, ranked lower. Path B (direct, name-and-go) is
   // always one search away. Optimistic.
   import { supabase, supabaseConfigured } from '$lib/supabase';
+  import { capabilities, officerUnits } from '$lib/session';
   import { t } from '$lib/i18n';
   import { toast } from '$lib/toast';
   import { confirm } from '$lib/confirm';
@@ -28,7 +29,7 @@
     tasks: number; shipped: number; free: number | null; unit: string;
     resource_id: string | null; fits: boolean; reason: string;
   };
-  type Member = { id: string; full_name: string };
+  type Member = { id: string; full_name: string; home_unit_id: string | null };
 
   const LEVEL_LABEL: Record<string, string> = { learning: 'Learning', independent: 'Independent', lead: 'Lead' };
 
@@ -49,8 +50,20 @@
   let directHours = $state('');
 
   const memberName = (id: string) => members.find((m) => m.id === id)?.full_name ?? '';
+
+  // #53 decision A (strict bipartite): staffing is the job of the member's
+  // HOME-CHAPTER officer (or an admin). Only render Assign where the backend
+  // would allow it — everyone else sees who fits, with a cue to route the ask.
+  const myChapterIds = $derived($officerUnits.filter((u) => u.kind === 'chapter').map((u) => u.unit_id));
+  const adminSeat = $derived($capabilities.has('manage_members') || $capabilities.has('edit_any_project'));
+  function canSeatMember(id: string): boolean {
+    if (adminSeat) return true;
+    const home = members.find((m) => m.id === id)?.home_unit_id;
+    return !!home && myChapterIds.includes(home);
+  }
+
   const directChoices = $derived(
-    members.filter((m) => m.full_name.toLowerCase().includes(directQ.trim().toLowerCase())).slice(0, 20)
+    members.filter((m) => canSeatMember(m.id) && m.full_name.toLowerCase().includes(directQ.trim().toLowerCase())).slice(0, 20)
   );
 
   async function load() {
@@ -62,7 +75,7 @@
     if (projectId) slotQ = slotQ.eq('project_id', projectId);
     const [nd, mem] = await Promise.all([
       slotQ,
-      supabase.from('member').select('id,full_name').order('full_name')
+      supabase.from('member').select('id,full_name,home_unit_id').order('full_name')
     ]);
     const rows = (nd.data as any[]) ?? [];
     const ids = rows.map((r) => r.id);
@@ -210,10 +223,16 @@
                     <span class="cap-txt" class:over={b.over}>{#if b.over}<Icon name="warn" size={12} /> {/if}{c.free ?? '∞'}{c.unit} {$t('free')}</span>
                   </div>
                   <div class="cand-act">
-                    <input class="cand-h" class:over={b.over} type="number" min="1" bind:value={hoursFor[c.member_id]} />
-                    <span class="cand-unit">{c.unit}</span>
-                    <button class="assign" disabled={busy === c.member_id || b.over || num(hoursFor[c.member_id]) <= 0}
-                      onclick={() => doAssign(c.member_id, n, hoursFor[c.member_id])}>{$t('Assign')}</button>
+                    {#if canSeatMember(c.member_id)}
+                      <input class="cand-h" class:over={b.over} type="number" min="1" bind:value={hoursFor[c.member_id]} />
+                      <span class="cand-unit">{c.unit}</span>
+                      <button class="assign" disabled={busy === c.member_id || b.over || num(hoursFor[c.member_id]) <= 0}
+                        onclick={() => doAssign(c.member_id, n, hoursFor[c.member_id])}>{$t('Assign')}</button>
+                    {:else}
+                      <span class="cand-route" title={$t('Chapters supply the people: only an officer of this person’s home chapter (or an admin) can assign them. Ask their chapter officer.')}>
+                        <Icon name="user" size={12} /> {$t('their chapter officer assigns')}
+                      </span>
+                    {/if}
                   </div>
                 </div>
               {/each}
@@ -282,6 +301,7 @@
   .cand-act { display: flex; gap: .3rem; align-items: center; }
   .cand-h.over { border-color: var(--down); color: var(--down); }
   .cand-h { width: 3.4rem; padding: .2rem .3rem; border: 1px solid var(--line, #ddd); border-radius: var(--r-sm); }
+  .cand-route { display: inline-flex; align-items: center; gap: .3rem; font-size: .74rem; color: var(--muted, #888); white-space: nowrap; cursor: help; }
   .assign { border: none; background: var(--accent, var(--accent)); color: #fff; border-radius: var(--r-sm); padding: .25rem .7rem; cursor: pointer; }
   .assign:disabled { opacity: .5; cursor: default; }
   .direct { display: flex; gap: .35rem; align-items: center; margin-top: .45rem; flex-wrap: wrap; }

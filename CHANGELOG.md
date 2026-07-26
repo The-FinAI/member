@@ -20,6 +20,30 @@
 
 ---
 
+## v1.1.0 — 2026-07-26
+
+**Issues:** #49 (approved), #52, #53 (decided).
+
+### Changed
+- `docs/architecture.md` v0.1.1 → **v0.2, APPROVED** by the President.
+  *Reason:* #49's approval gate cleared; permission work may now cite it.
+- **Decision recorded — #53 Option A (strict bipartite):** staffing a person
+  belongs to their home-chapter officer (or card steward / admin); project
+  editors do not seat members. Follow-up audit found `assign()` and
+  `work_seat()` had **contradictory gates** whose intersection broke both
+  officer types for claimed members; unified in migration
+  `20260726020000_assign_bipartite.sql` (pending push). Matcher UI renders
+  Assign only where authorized; others get a route-to-chapter-officer cue.
+- **G3 resolved:** a task's owner may change its `state`/`note` (migration
+  `20260726010000_task_owner_update.sql`, pending push; mock mirrors it).
+- **G4 (#52) resolved:** the create-project form offers only working groups the
+  creator may attribute to; plain members' proposals start unattributed.
+- Mock-fidelity: the mock now enforces the same gates as production for
+  `assign`, `task_update`, `create_project_phase1` — so tests fail where
+  production would fail.
+
+---
+
 ## v1.0.1 — 2026-06-19
 
 **Issues:** #52, #53 (filed by the first formal I-4 audit cycle under #50).
