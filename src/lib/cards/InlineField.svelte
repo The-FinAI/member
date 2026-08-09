@@ -13,7 +13,7 @@
     label: string;
     value?: string;
     display?: string;
-    type?: 'text' | 'textarea' | 'select';
+    type?: 'text' | 'textarea' | 'select' | 'date';
     options?: { value: string; label: string }[];
     canEdit?: boolean;
     placeholder?: string;
@@ -63,6 +63,8 @@
         </select>
       {:else if type === 'textarea'}
         <textarea bind:this={el} bind:value={draft} rows="2" disabled={busy} {placeholder} onkeydown={onKey} onblur={commit}></textarea>
+      {:else if type === 'date'}
+        <input type="date" bind:this={el} bind:value={draft} disabled={busy} onkeydown={onKey} onblur={commit} />
       {:else}
         <input bind:this={el} bind:value={draft} disabled={busy} {placeholder} onkeydown={onKey} onblur={commit} />
       {/if}

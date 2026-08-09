@@ -33,6 +33,7 @@
   let venues = $state<{ id: string; name: string; kind: string; deadline: string | null }[]>([]);
   let workingGroups = $state<{ id: string; name: string }[]>([]);
   let statuses = $state<{ id: string; name: string; rank: number }[]>([]);
+  let projectTypes = $state<{ id: string; name: string }[]>([]);
   let loading = $state(true);
   let notFound = $state(false);
 
@@ -65,19 +66,21 @@
   async function load() {
     if (!supabaseConfigured) { loading = false; return; }
     loading = true; notFound = false;
-    const [{ data: p }, { data: ou }, { data: vn }, { data: st }, { data: wg }] = await Promise.all([
+    const [{ data: p }, { data: ou }, { data: vn }, { data: st }, { data: wg }, { data: pt }] = await Promise.all([
       supabase.from('project')
         .select('id, name, target_venue, deadline, summary, org_unit_id, venue:venue_id(name, kind, deadline), project_type(name), project_status!project_status_id_fkey(name, is_active)')
         .eq('id', projectId).maybeSingle(),
       supabase.from('org_unit').select('id, name'),
       supabase.from('venue').select('id, name, kind, deadline').eq('is_active', true).order('rank'),
       supabase.from('project_status').select('id, name, rank').order('rank'),
-      supabase.from('org_unit').select('id, name').eq('kind', 'working_group').order('rank')
+      supabase.from('org_unit').select('id, name').eq('kind', 'working_group').order('rank'),
+      supabase.from('project_type').select('id, name').order('name')
     ]);
     if (!p) { notFound = true; loading = false; return; }
     venues = (vn as any[]) ?? [];
     statuses = (st as any[]) ?? [];
     workingGroups = (wg as any[]) ?? [];
+    projectTypes = (pt as any[]) ?? [];
     const unitName: Record<string, string> = {};
     for (const u of (ou as { id: string; name: string }[]) ?? []) unitName[u.id] = u.name;
 
@@ -226,7 +229,7 @@
       <ProjectTeam projectId={g.id} canManage={canPostNeed} canMatch={canSeat} finished={g.finished} />
     </div>
 
-    <ProjectCardBody projectId={g.id} {venues} {workingGroups} {statuses} onChanged={reload} />
+    <ProjectCardBody projectId={g.id} {venues} {workingGroups} {statuses} {projectTypes} onChanged={reload} />
 
     {#if !g.wg}
       <p class="muted" style="font-size:.82rem; margin:0;">{$t('This project isn’t attributed to a working group yet.')}</p>

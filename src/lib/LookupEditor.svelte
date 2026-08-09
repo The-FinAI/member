@@ -1,7 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { get } from 'svelte/store';
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { t } from '$lib/i18n';
+  import { confirm } from '$lib/confirm';
 
   type Col = { key: string; label: string; type?: 'text' | 'number' | 'bool' | 'date' | 'select'; options?: string[] };
 
@@ -53,9 +55,17 @@
     if (err) error = err.message;
   }
 
-  async function remove(id: string) {
+  async function remove(row: Record<string, any>) {
     error = '';
-    const { error: err } = await supabase.from(table).delete().eq('id', id);
+    const label = row[columns[0]?.key] ?? row.id;
+    const ok = await confirm({
+      title: get(t)('Delete {label}?', { label }),
+      body: get(t)('This cannot be undone. Projects or members referencing this item will lose the link.'),
+      confirmLabel: get(t)('Delete'),
+      tone: 'danger'
+    });
+    if (!ok) return;
+    const { error: err } = await supabase.from(table).delete().eq('id', row.id);
     if (err) { error = err.message; return; }
     await load();
   }
@@ -91,7 +101,7 @@
             {/each}
             <td class="row">
               <button class="ghost" onclick={() => save(row)}>{$t('Save')}</button>
-              <button class="danger" onclick={() => remove(row.id)}>{$t('Delete')}</button>
+              <button class="danger" onclick={() => remove(row)}>{$t('Delete')}</button>
             </td>
           </tr>
         {/each}

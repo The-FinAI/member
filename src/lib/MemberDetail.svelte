@@ -23,7 +23,7 @@
   type Mem = {
     id: string; full_name: string; affiliation: string | null;
     avatar_url: string | null; bio: string | null; status: string; kind: string;
-    home_unit_id: string | null;
+    home_unit_id: string | null; availability: string;
     links: Record<string, string> | null;
     member_position: { position: { name: string } | null }[];
   };
@@ -64,6 +64,10 @@
   // self-profile editor (only when isMe)
   let pAffiliation = $state('');
   let pBio = $state('');
+  let pScholar = $state('');
+  let pHf = $state('');
+  let pGithub = $state('');
+  let pHomepage = $state('');
   let profileSaving = $state(false);
   let profileSaved = $state(false);
   let profileErr = $state('');
@@ -71,13 +75,39 @@
   async function saveProfile() {
     if (!mem) return;
     profileErr = ''; profileSaving = true; profileSaved = false;
+    const links = { scholar: pScholar || null, hf: pHf || null, github: pGithub || null, homepage: pHomepage || null };
     const { error: err } = await supabase.from('member')
-      .update({ affiliation: pAffiliation || null, bio: pBio || null }).eq('id', mem.id);
+      .update({ affiliation: pAffiliation || null, bio: pBio || null, links }).eq('id', mem.id);
     profileSaving = false;
     if (err) { profileErr = err.message; return; }
     profileSaved = true;
-    mem = { ...mem, affiliation: pAffiliation || null, bio: pBio || null };
+    mem = { ...mem, affiliation: pAffiliation || null, bio: pBio || null, links };
     member.update((m) => (m ? { ...m, affiliation: pAffiliation || null } : m));
+  }
+
+  // F8: availability (looking/limited/full) for self and officers
+  let availBusy = $state(false);
+  async function setAvailability(val: string) {
+    if (!mem) return;
+    availBusy = true;
+    const { error: e } = await supabase.rpc('member_set_availability', { p_member: mem.id, p_availability: val });
+    availBusy = false;
+    if (e) { toast.error(e.message); return; }
+    mem = { ...mem, availability: val };
+  }
+
+  // F7: name edit for officers/admins
+  let editingName = $state(false);
+  let pName = $state('');
+  let nameSaving = $state(false);
+  async function saveName() {
+    if (!mem || !pName.trim()) return;
+    nameSaving = true;
+    const { error: e } = await supabase.rpc('member_rename', { p_member: mem.id, p_name: pName.trim() });
+    nameSaving = false;
+    if (e) { toast.error(e.message); return; }
+    mem = { ...mem, full_name: pName.trim() };
+    editingName = false;
   }
 
   let resTypes = $state<ResType[]>([]);
@@ -186,7 +216,7 @@
     loading = true; notFound = false; cardManaged = false; cardResources = []; catError = '';
     profileSaved = false; profileErr = '';
     const { data: m } = await supabase.from('member')
-      .select('id, full_name, affiliation, avatar_url, bio, status, kind, home_unit_id, links, member_position(position(name))')
+      .select('id, full_name, affiliation, avatar_url, bio, status, kind, home_unit_id, availability, links, member_position(position(name))')
       .eq('id', memberId).maybeSingle();
     if (!m) { mem = null; notFound = true; loading = false; return; }
     mem = m as Mem;
@@ -194,7 +224,15 @@
     // is the viewer the owner of this profile?
     const me = get(member);
     const mineSelf = !!(me && me.id === memberId);
-    if (mineSelf) { pAffiliation = (m as Mem).affiliation ?? ''; pBio = (m as Mem).bio ?? ''; }
+    if (mineSelf) {
+      pAffiliation = (m as Mem).affiliation ?? '';
+      pBio = (m as Mem).bio ?? '';
+      const lnk = (m as Mem).links ?? {};
+      pScholar = (lnk as any).scholar ?? '';
+      pHf = (lnk as any).hf ?? '';
+      pGithub = (lnk as any).github ?? '';
+      pHomepage = (lnk as any).homepage ?? '';
+    }
 
     // #44: a chapter officer manages ANY registered member in their chapter, not
     // just cards (see the reactive canEdit derived above, which mirrors the
@@ -237,14 +275,18 @@
     loadPending(memberId);
   }
 
-  // #34: a person card added in error must be removable. Archive hides it from
-  // the roster (history kept, reversible by an admin). Officers only.
+  // #34 / F4: archive hides the member from the roster (history kept, reversible).
+  // Cards: their officer or any manage_members admin. Operators: manage_members only.
   let archiving = $state(false);
+  const canArchive = $derived(!isMe && canEdit && (mem?.kind === 'card' || $capabilities.has('manage_members')));
   async function archiveCard() {
     if (!mem) return;
+    const isCard = mem.kind === 'card';
     const ok = await confirm({
       title: get(t)('Archive {name}?', { name: mem.full_name }),
-      body: get(t)('They leave the People roster. Their record is kept and an admin can restore them. Use this for cards added by mistake.'),
+      body: isCard
+        ? get(t)('They leave the People roster. Their record is kept and an admin can restore them. Use this for cards added by mistake.')
+        : get(t)('They leave the People roster and can no longer log in. Their record is kept and an admin can restore them.'),
       confirmLabel: get(t)('Archive'),
       tone: 'danger'
     });
@@ -253,7 +295,7 @@
     const { error: e } = await supabase.rpc('member_archive', { p_member: mem.id, p_archived: true });
     archiving = false;
     if (e) { toast.error(e.message); return; }
-    toast.success(get(t)('Card archived'));
+    toast.success(get(t)(isCard ? 'Card archived' : 'Member archived'));
     goto('/people');
   }
 
@@ -326,12 +368,34 @@
           {#if mem.avatar_url}<img src={mem.avatar_url} alt={mem.full_name} style="width:100%; height:100%; object-fit:cover; border-radius:inherit;" />{:else}{initials(mem.full_name)}{/if}
         </div>
         <div style="flex:1; min-width:200px;">
-          <div class="row" style="align-items:center; gap:.5rem;">
-            <h1 style="margin:0;">{mem.full_name}</h1>
+          <div class="row" style="align-items:center; gap:.5rem; flex-wrap:wrap;">
+            {#if editingName}
+              <input bind:value={pName} style="font-size:1.3rem; font-weight:bold; border:1px solid var(--accent); border-radius:var(--r-sm); padding:.2rem .4rem;" />
+              <button onclick={saveName} disabled={nameSaving} style="font-size:.8rem;">{nameSaving ? $t('Saving…') : $t('Save')}</button>
+              <button onclick={() => editingName = false} style="font-size:.8rem; background:none; border:1px solid var(--border-2); border-radius:var(--r-sm); padding:.2rem .5rem; cursor:pointer;">{$t('Cancel')}</button>
+            {:else}
+              <h1 style="margin:0;">{mem.full_name}</h1>
+              {#if canEdit && !isMe}<button onclick={() => { pName = mem!.full_name; editingName = true; }} style="background:none; border:none; color:var(--muted); cursor:pointer; padding:.1rem .25rem; font-size:.82rem;" title={$t('Edit name')}>✎</button>{/if}
+            {/if}
             {#if mem.kind === 'card'}<span class="badge dim" title={$t('A member-card: managed by a chapter officer; value is custodial until the person signs up and claims it.')}>{$t('card')}</span>{/if}
             {#if mem.status !== 'active'}<span class="badge dim">{mem.kind === 'card' && mem.status === 'invited' ? $t('unclaimed') : $t(mem.status)}</span>{/if}
           </div>
           <p class="muted" style="margin:.2rem 0 0;">{mem.affiliation ?? '—'}</p>
+          {#if mem.availability}
+            <div class="row" style="gap:.4rem; margin-top:.25rem; align-items:center;">
+              {#if isMe || canEdit}
+                <span class="muted" style="font-size:.75rem;">{$t('Availability')}:</span>
+                {#each ['looking', 'limited', 'full'] as av}
+                  <button onclick={() => setAvailability(av)} disabled={availBusy}
+                    style="font-size:.75rem; padding:.15rem .5rem; border-radius:var(--r-sm); cursor:pointer; border:1px solid {mem.availability === av ? 'var(--accent)' : 'var(--border-2)'}; background:{mem.availability === av ? 'var(--accent)' : 'none'}; color:{mem.availability === av ? 'var(--bg)' : 'inherit'};">
+                    {$t(av)}
+                  </button>
+                {/each}
+              {:else}
+                <span class="badge dim">{$t(mem.availability)}</span>
+              {/if}
+            </div>
+          {/if}
           {#if mem.member_position?.length}
             <div class="row" style="gap:.35rem; margin-top:.4rem; flex-wrap:wrap;">
               {#each mem.member_position as p}{#if p.position?.name}<span class="badge">{p.position.name}</span>{/if}{/each}
@@ -359,6 +423,25 @@
             <span class="muted" style="font-size:.75rem;">{$t('Bio')}</span>
             <textarea bind:value={pBio} rows="3" placeholder={$t('A short bio shown on your public profile.')}></textarea>
           </label>
+          <span class="muted" style="font-size:.75rem; margin-top:.25rem;">{$t('Profile links (leave blank to hide)')}</span>
+          <div class="pcf-links">
+            <label class="stack" style="gap:.15rem;">
+              <span class="muted" style="font-size:.72rem;">{$t('Google Scholar')}</span>
+              <input bind:value={pScholar} placeholder="https://scholar.google.com/…" />
+            </label>
+            <label class="stack" style="gap:.15rem;">
+              <span class="muted" style="font-size:.72rem;">{$t('Hugging Face')}</span>
+              <input bind:value={pHf} placeholder="https://huggingface.co/…" />
+            </label>
+            <label class="stack" style="gap:.15rem;">
+              <span class="muted" style="font-size:.72rem;">{$t('GitHub')}</span>
+              <input bind:value={pGithub} placeholder="https://github.com/…" />
+            </label>
+            <label class="stack" style="gap:.15rem;">
+              <span class="muted" style="font-size:.72rem;">{$t('Homepage')}</span>
+              <input bind:value={pHomepage} placeholder="https://…" />
+            </label>
+          </div>
           <div class="row" style="gap:.5rem; align-items:center;">
             <button onclick={saveProfile} disabled={profileSaving}>{profileSaving ? $t('Saving…') : $t('Save')}</button>
             {#if profileSaved}<span class="badge">{$t('Saved')}</span>{/if}
@@ -494,12 +577,12 @@
       </div>
     {/if}
 
-    <!-- #34: archive a card added in error (officers only, unclaimed cards) -->
-    {#if canEdit && mem.kind === 'card'}
+    <!-- #34 / F4: archive a member (card: officer or admin; operator: admin only) -->
+    {#if canArchive}
       <div class="row" style="gap:.6rem; align-items:center; flex-wrap:wrap; margin-top:.2rem;">
         <button disabled={archiving} onclick={archiveCard}
           style="display:inline-flex; align-items:center; gap:.3rem; background:none; border:1px solid var(--border-2); color:var(--down); border-radius:var(--r-sm); padding:.3rem .65rem; font:inherit; font-size:.8rem; cursor:pointer;">
-          <Icon name="trash" size={13} /> {$t('Archive this card')}
+          <Icon name="trash" size={13} /> {$t(mem.kind === 'card' ? 'Archive this card' : 'Archive this member')}
         </button>
         <span class="muted" style="font-size:.78rem;">{$t('Removes them from the roster; an admin can restore them.')}</span>
       </div>

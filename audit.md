@@ -966,4 +966,63 @@ Passing tests across both runs:
 
 ---
 
-*End of audit. Document is limited to this file (`audit.md`). No production code was modified.*
+## 26. Remediation Status (2026-08-09)
+
+This section records fixes applied to `audit/full-crud-functional-audit` after the initial audit.
+
+### Test suite baseline restored
+
+| Metric | Before | After |
+|---|---|---|
+| Tests passing | 6 / 60 | **60 / 60** |
+| Root cause | Missing `.env.mock` → `PUBLIC_MOCK` not set → `supabaseConfigured=false` → auth never fires | Created `.env.mock` with `PUBLIC_MOCK=1` |
+
+---
+
+### Findings fixed
+
+| Finding | Severity | Fix applied |
+|---|---|---|
+| **F2** — 54/60 e2e tests fail | High | Created `.env.mock` with `PUBLIC_MOCK=1`. Vite `--mode mock` loads this file; without it `supabaseConfigured` was false and the mock auth session never fired. |
+| **F3** — Mock `kind: 'member'` invalid | High | Changed all non-card mock members to `kind: 'operator'` in `mock-supabase.ts`. Tests now exercise the same code paths as production. |
+| **F1** — `member_update_self` RLS over-permissive | Critical | Migration `20260809010000_member_update_self_restrict.sql`: revoked table-level UPDATE on `member` from `authenticated`, granted column-level UPDATE on `(affiliation, bio, links)` only. Security-definer RPCs are unaffected. |
+| **F4** — `kind='operator'` members not archivable | High | `MemberDetail.svelte`: added `canArchive` derived (`!isMe && canEdit && (kind='card' OR manage_members)`). Archive button now shows for operators (admin only) with role-appropriate confirm text. DB function already permitted this; only UI was gated. |
+| **F5** — `project.type_id` not editable | Medium | Migration `20260809020000_project_set_type.sql` adds `project_set_type(p_project, p_type)` RPC. `ProjectDetailBody` now loads and passes `projectTypes`; `ProjectCardBody` now shows a Type InlineField. Mock handler added. |
+| **F6** — `member.links` no write UI | Medium | `MemberDetail.svelte:saveProfile()` now saves `links` (scholar, hf, github, homepage). Four link inputs added to the self-edit form. Column-level grant extended to include `links` in the RLS migration. |
+| **F7** — `member.full_name` not editable | Medium | Migration `20260809030000_member_rename.sql` adds `member_rename(p_member, p_name)` RPC (gated by `can_edit_member`). MemberDetail header shows a ✎ button for non-self editors that opens an inline name input. Mock handler added. |
+| **F8** — `member.availability` orphaned | Medium | Migration `20260809040000_member_set_availability.sql` adds `member_set_availability(p_member, p_availability)` RPC. MemberDetail header shows a three-button toggle (looking / limited / full) for self and officers. Read-only badge for others. Mock seed updated with `availability` field. |
+| **F10** — LookupEditor deletes without confirm | Medium | `LookupEditor.svelte:remove()` now calls the `confirm()` dialog (danger tone) before deleting. Item name is shown in the dialog title. |
+| **F11** — `project.deadline` no direct edit | Medium | Migration `20260809050000_project_set_deadline.sql` adds `project_set_deadline(p_project, p_deadline)` RPC. `InlineField` extended with `date` type. `ProjectCardBody` now shows a Deadline InlineField. Mock handler added. |
+| **F12** — 9 dead Svelte components | Low | Deleted: `GettingStarted.svelte`, `StartHere.svelte`, `MiningCockpit.svelte`, `Leaderboard.svelte`, `cards/CardBinder.svelte`, `cards/MatchConsole.svelte`, `cards/MemberCard.svelte`, `cards/SlotBoard.svelte`, `cards/SlotSeater.svelte`. All confirmed unreachable before deletion. |
+| **F19** — Duplicate i18n keys (build warnings) | Low | Removed first-occurrence duplicates of `Apprentice`, `Journeyman`, `Craftsman`, `Master` (zh); `Unit` (zh); `Active` (zh); `Level` (fr) from `messages.ts`. Remaining non-identical duplicates (`Level` zh, `Unit`/`Journeyman`/`Craftsman`/`Master` ja) require app-code key renaming and are deferred. |
+
+---
+
+### Mock core-field RPC handlers added
+
+`project_rename`, `project_set_summary`, `project_set_venue`, `project_set_org_unit` were silently falling through the mock (returning `{data: null, error: null}` without mutating seed data). All five — including the new `project_set_type`, `project_set_deadline` — now have explicit mock handlers that mutate seed data and log events.
+
+---
+
+### Findings deferred (not fixed in this cycle)
+
+| Finding | Reason |
+|---|---|
+| **F9** — `project.links` jsonb legacy column | Requires data migration (copy legacy data to `project_link` rows) + schema drop; risk of data loss without production data audit. |
+| **F13** — 4 obsolete DB tables | Audit rule: "Do NOT automatically drop database tables merely because the current UI does not use them." |
+| **F14** — `project.emoji`, `project.code` | Low priority; no RPC or UX spec defined. |
+| **F15** — `member.avatar_url` no upload | Requires Supabase Storage bucket setup; out of scope. |
+| **F16** — Positions not editable for existing members | Requires OfficersPanel rework; medium-to-large scope. |
+| **F17** — Misleading `project_insert` RLS | Documentation issue only; no security risk. |
+| **F18** — `session.ts` Member type narrow | Refactor; no functional impact. |
+| **F20** — No confirm for meeting/link removal | Low; both are logged in `project_event` (recoverable). |
+| **F21–F27** | Low-priority UX or documentation gaps. |
+
+---
+
+### Final test results
+
+**Date:** 2026-08-09 (post-remediation)  
+**60 / 60 tests passing** — full suite clean.
+
+*End of audit and remediation.*
