@@ -26,13 +26,13 @@ const seed: Record<string, any[]> = {
     { id: U_WG, code: 'MM', name: 'Multilingual & Multimodal', kind: 'working_group', description: 'M&M research', rank: 1 }
   ],
   member: [
-    { id: M_ME, full_name: 'Chen Wei', email: 'chen@test', affiliation: 'The Fin AI', kind: 'member', status: 'active', home_unit_id: U_CHAP, auth_user_id: 'mock-uid', monthly_hours: 20, bio: 'Chapter & WG officer.', links: {}, member_position: [{ position: { name: 'President' } }] },
-    { id: M_LI, full_name: 'Li Hua', email: 'li@test', affiliation: 'PKU', kind: 'member', status: 'active', home_unit_id: U_CHAP, auth_user_id: 'uid-member', monthly_hours: 10, bio: 'Researcher — no officer role.', links: {}, member_position: [], is_release_reviewer: true },
-    { id: M_WANG, full_name: 'Wang Fang', email: 'wang@test', affiliation: 'THU', kind: 'card', status: 'active', home_unit_id: U_CHAP, auth_user_id: null, monthly_hours: 30, member_position: [], is_release_reviewer: true },
-    { id: M_ZHAO, full_name: 'Zhao Lei', email: 'zhao@test', affiliation: 'SJTU', kind: 'card', status: 'active', home_unit_id: U_CHAP, auth_user_id: null, monthly_hours: 8, member_position: [] },
-    { id: 'm-wg', full_name: 'Wu Jing', email: 'wu@test', affiliation: 'The Fin AI', kind: 'member', status: 'active', home_unit_id: U_WG, auth_user_id: 'uid-wg', monthly_hours: 20, bio: 'Working-group officer.', links: {}, member_position: [] },
-    { id: 'm-chap', full_name: 'Chan Min', email: 'chan@test', affiliation: 'The Fin AI', kind: 'member', status: 'active', home_unit_id: U_CHAP, auth_user_id: 'uid-chap', monthly_hours: 20, bio: 'Chapter officer.', links: {}, member_position: [] },
-    { id: 'm-admin', full_name: 'Sai Tan', email: 'admin@test', affiliation: 'The Fin AI', kind: 'member', status: 'active', home_unit_id: U_CHAP, auth_user_id: 'uid-admin', monthly_hours: 0, bio: 'Community administrator.', links: {}, member_position: [{ position: { name: 'President' } }] }
+    { id: M_ME, full_name: 'Chen Wei', email: 'chen@test', affiliation: 'The Fin AI', kind: 'operator', status: 'active', availability: 'limited', home_unit_id: U_CHAP, auth_user_id: 'mock-uid', monthly_hours: 20, bio: 'Chapter & WG officer.', links: {}, member_position: [{ position: { name: 'President' } }] },
+    { id: M_LI, full_name: 'Li Hua', email: 'li@test', affiliation: 'PKU', kind: 'operator', status: 'active', availability: 'looking', home_unit_id: U_CHAP, auth_user_id: 'uid-member', monthly_hours: 10, bio: 'Researcher — no officer role.', links: {}, member_position: [], is_release_reviewer: true },
+    { id: M_WANG, full_name: 'Wang Fang', email: 'wang@test', affiliation: 'THU', kind: 'card', status: 'active', availability: 'looking', home_unit_id: U_CHAP, auth_user_id: null, monthly_hours: 30, member_position: [], is_release_reviewer: true },
+    { id: M_ZHAO, full_name: 'Zhao Lei', email: 'zhao@test', affiliation: 'SJTU', kind: 'card', status: 'active', availability: 'looking', home_unit_id: U_CHAP, auth_user_id: null, monthly_hours: 8, member_position: [] },
+    { id: 'm-wg', full_name: 'Wu Jing', email: 'wu@test', affiliation: 'The Fin AI', kind: 'operator', status: 'active', availability: 'looking', home_unit_id: U_WG, auth_user_id: 'uid-wg', monthly_hours: 20, bio: 'Working-group officer.', links: {}, member_position: [] },
+    { id: 'm-chap', full_name: 'Chan Min', email: 'chan@test', affiliation: 'The Fin AI', kind: 'operator', status: 'active', availability: 'looking', home_unit_id: U_CHAP, auth_user_id: 'uid-chap', monthly_hours: 20, bio: 'Chapter officer.', links: {}, member_position: [] },
+    { id: 'm-admin', full_name: 'Sai Tan', email: 'admin@test', affiliation: 'The Fin AI', kind: 'operator', status: 'active', availability: 'looking', home_unit_id: U_CHAP, auth_user_id: 'uid-admin', monthly_hours: 0, bio: 'Community administrator.', links: {}, member_position: [{ position: { name: 'President' } }] }
   ],
   org_unit_officer: [
     { member_id: M_ME, org_unit_id: U_CHAP, role: 'officer', ended_on: null, org_unit: { id: U_CHAP, code: 'BJ', name: 'Beijing Chapter', kind: 'chapter' } },
@@ -103,7 +103,7 @@ const seed: Record<string, any[]> = {
     { id: 'r-cluster-li', holder_member_id: M_LI, type_id: RT_GPU, scope: 'community', monthly_quota: 500, name: 'PKU shared cluster', gpu_model_id: 'gm-a100', approval_status: 'approved', availability: 'available', resource_type: { name: 'GPU', unit: 'GPU-hours' } }
   ],
   project: [
-    { id: P1, name: 'ml-Tagging', emoji: '🏷️', code: 'ml-Tagging', tag: 'ml', body: 'XBRL multilingual tagging.', summary: 'XBRL tagging across languages', org_unit_id: U_WG, status_id: 'ps-active', target_venue: 'ACL', deadline: '2026-07-30', proposal_url: 'https://example.com' },
+    { id: P1, name: 'ml-Tagging', emoji: '🏷️', code: 'ml-Tagging', tag: 'ml', body: 'XBRL multilingual tagging.', summary: 'XBRL tagging across languages', org_unit_id: U_WG, status_id: 'ps-active', type_id: 'pt-1', target_venue: 'ACL', deadline: '2026-07-30', proposal_url: 'https://example.com' },
     // an UNASSIGNED proposal (org_unit_id null) — looking for a working group to
     // adopt it. A WG officer claims it into their WG to gain edit/post-need rights.
     { id: 'p-free', name: 'fin-Sentiment', emoji: '📊', code: 'fin-Sentiment', tag: 'fin', body: 'Financial-news sentiment benchmark.', summary: 'A sentiment benchmark looking for a working group', org_unit_id: null, status_id: 'ps-prop', target_venue: null, deadline: null, proposal_url: 'https://example.com/sent' }
@@ -602,6 +602,37 @@ function rpc(name: string, a: any) {
     if (r) { r.name = a.p_name ?? r.name; r.monthly_quota = a.p_monthly_quota ?? r.monthly_quota; r.usd_per_unit = a.p_usd_per_unit ?? r.usd_per_unit; r.details = a.p_details ?? r.details; r.approval_status = 'pending'; }
     persist(); return Promise.resolve({ data: null, error: null });
   }
+  // ── project core field edits ──
+  if (name === 'project_rename') {
+    const p = seed.project.find((x: any) => x.id === a.p_project);
+    if (p) { p.name = a.p_name; logEvent(a.p_project, 'rename', 'Renamed to ' + a.p_name); } persist();
+    return Promise.resolve({ data: null, error: null });
+  }
+  if (name === 'project_set_summary') {
+    const p = seed.project.find((x: any) => x.id === a.p_project);
+    if (p) { p.summary = a.p_summary ?? null; logEvent(a.p_project, 'edit', 'Summary updated'); } persist();
+    return Promise.resolve({ data: null, error: null });
+  }
+  if (name === 'project_set_venue') {
+    const p = seed.project.find((x: any) => x.id === a.p_project);
+    if (p) { p.venue_id = a.p_venue ?? null; logEvent(a.p_project, 'edit', 'Venue updated'); } persist();
+    return Promise.resolve({ data: null, error: null });
+  }
+  if (name === 'project_set_org_unit') {
+    const p = seed.project.find((x: any) => x.id === a.p_project);
+    if (p) { p.org_unit_id = a.p_unit ?? null; logEvent(a.p_project, 'edit', 'Working group updated'); } persist();
+    return Promise.resolve({ data: null, error: null });
+  }
+  if (name === 'project_set_type') {
+    const p = seed.project.find((x: any) => x.id === a.p_project);
+    if (p) { p.type_id = a.p_type ?? null; logEvent(a.p_project, 'edit', 'Type updated'); } persist();
+    return Promise.resolve({ data: null, error: null });
+  }
+  if (name === 'project_set_deadline') {
+    const p = seed.project.find((x: any) => x.id === a.p_project);
+    if (p) { p.deadline = a.p_deadline ?? null; logEvent(a.p_project, 'edit', 'Deadline updated'); } persist();
+    return Promise.resolve({ data: null, error: null });
+  }
   // ── project living record: links · notes · meetings ──
   if (name === 'project_link_add') {
     const actor = seed.member.find((m: any) => m.id === (CURRENT_MEMBER()?.id));
@@ -639,6 +670,16 @@ function rpc(name: string, a: any) {
   }
   if (name === 'set_member_email') {
     const m = seed.member.find((x: any) => x.id === a.p_member); if (m) m.email = a.p_email;
+    persist(); return Promise.resolve({ data: null, error: null });
+  }
+  if (name === 'member_rename') {
+    const m = seed.member.find((x: any) => x.id === a.p_member);
+    if (m && a.p_name?.trim()) m.full_name = a.p_name.trim();
+    persist(); return Promise.resolve({ data: null, error: null });
+  }
+  if (name === 'member_set_availability') {
+    const m = seed.member.find((x: any) => x.id === a.p_member);
+    if (m) m.availability = a.p_availability;
     persist(); return Promise.resolve({ data: null, error: null });
   }
   if (name === 'stater_mint') {

@@ -12,18 +12,19 @@
   // editable core fields (name / summary / venue / working group). All writes
   // go through the project_* RPCs, which enforce leader / WG-officer / admin
   // and auto-log each change to history. Read-only when the viewer can't edit.
-  let { projectId, venues = [], workingGroups = [], statuses = [], onChanged }: {
+  let { projectId, venues = [], workingGroups = [], statuses = [], projectTypes = [], onChanged }: {
     projectId: string;
     venues?: { id: string; name: string; kind: string; deadline: string | null }[];
     workingGroups?: { id: string; name: string }[];
     statuses?: { id: string; name: string; rank: number }[];
+    projectTypes?: { id: string; name: string }[];
     onChanged?: () => void;
   } = $props();
 
   type Link = { id: string; kind: string; title: string | null; url: string; notes: string | null; created_at: string; member: { full_name: string } | null };
   type Meeting = { id: string; title: string; scheduled_at: string; ends_at: string | null; location: string | null; agenda: string | null; recurrence: string; member: { full_name: string } | null };
   type Event = { id: string; event_type: string; summary: string; created_at: string; member: { full_name: string } | null };
-  type Proj = { id: string; name: string; summary: string | null; venue_id: string | null; org_unit_id: string | null; status_id: string | null; held_from_status_id: string | null; project_status: { name: string } | { name: string }[] | null };
+  type Proj = { id: string; name: string; summary: string | null; type_id: string | null; deadline: string | null; venue_id: string | null; org_unit_id: string | null; status_id: string | null; held_from_status_id: string | null; project_status: { name: string } | { name: string }[] | null };
   // the linear pipeline (Hold lives off to the side); Finished is the terminal
   // step, reachable only via the reviewed Mint-done flow from Under review.
   const pipeline = $derived(statuses.filter((s) => s.name !== 'Hold').sort((a, b) => a.rank - b.rank));
@@ -71,6 +72,8 @@
   const saveSummary = (v: string) => rpcOrThrow('project_set_summary', { p_project: projectId, p_summary: v.trim() || null });
   const saveVenue = (v: string) => rpcOrThrow('project_set_venue', { p_project: projectId, p_venue: v || null });
   const saveUnit = (v: string) => rpcOrThrow('project_set_org_unit', { p_project: projectId, p_unit: v || null });
+  const saveType = (v: string) => rpcOrThrow('project_set_type', { p_project: projectId, p_type: v || null });
+  const saveDeadline = (v: string) => rpcOrThrow('project_set_deadline', { p_project: projectId, p_deadline: v || null });
   // add-link form
   let lKind = $state('paper'); let lTitle = $state(''); let lUrl = $state(''); let lNotes = $state('');
   let showAddLink = $state(false);
@@ -88,7 +91,7 @@
     if (!supabaseConfigured) { loading = false; return; }
     loading = true; err = '';
     const [{ data: p }, { data: ce }, { data: lk }, { data: mt }, { data: ev }, { data: cat }, { data: pm }, { data: setl }] = await Promise.all([
-      supabase.from('project').select('id, name, summary, venue_id, org_unit_id, status_id, held_from_status_id, project_status:status_id(name)').eq('id', projectId).maybeSingle(),
+      supabase.from('project').select('id, name, summary, type_id, deadline, venue_id, org_unit_id, status_id, held_from_status_id, project_status:status_id(name)').eq('id', projectId).maybeSingle(),
       supabase.rpc('can_edit_project', { p_project: projectId }),
       supabase.from('project_link').select('id, kind, title, url, notes, created_at, member:added_by(full_name)').eq('project_id', projectId).order('created_at', { ascending: false }),
       supabase.from('project_meeting').select('id, title, scheduled_at, ends_at, location, agenda, recurrence, member:created_by(full_name)').eq('project_id', projectId).order('scheduled_at', { ascending: false }),
@@ -259,6 +262,7 @@
   const venueName = $derived((id: string | null) => venues.find((v) => v.id === id)?.name ?? '');
   const curWgName = $derived(workingGroups.find((w) => w.id === proj?.org_unit_id)?.name ?? '');
   const curVenueName = $derived(venues.find((v) => v.id === proj?.venue_id)?.name ?? '');
+  const curTypeName = $derived(projectTypes.find((t) => t.id === proj?.type_id)?.name ?? '');
 
   let last = '';
   $effect(() => { if (projectId && projectId !== last) { last = projectId; load(); } });
@@ -281,6 +285,14 @@
         value={proj?.org_unit_id ?? ''} display={curWgName}
         options={[{ value: '', label: get(t)('— unattributed —') }, ...workingGroups.map((w) => ({ value: w.id, label: w.name }))]}
         onSave={saveUnit} />
+      {#if projectTypes.length > 0}
+        <InlineField label={$t('Type')} type="select" {canEdit}
+          value={proj?.type_id ?? ''} display={curTypeName}
+          options={[{ value: '', label: get(t)('— none —') }, ...projectTypes.map((t) => ({ value: t.id, label: t.name }))]}
+          onSave={saveType} />
+      {/if}
+      <InlineField label={$t('Deadline')} type="date" {canEdit}
+        value={proj?.deadline ?? ''} onSave={saveDeadline} />
     </div>
     {#if canEdit}
       <InlineField label={$t('Name')} type="text" {canEdit}
