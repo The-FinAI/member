@@ -20,6 +20,36 @@
 
 ---
 
+## v1.2.0 — 2026-08-21
+
+**Trigger:** merge of external audit branch `audit/full-crud-functional-audit`
+(a teammate's agent, 2026-08-09; 27-finding CRUD audit in `audit.md` + F1–F12/
+F19 remediation). Reviewed under the #50 framework before merge; suite green on
+the branch itself.
+
+### Changed
+- **Self-edit surface narrowed (their F1, critical):** the `member` self-update
+  RLS policy is replaced by **column-level grants** — a member may directly
+  update only `affiliation` / `bio` / `links`; everything identity- or
+  role-bearing requires `manage_members`, and skills/hours continue through
+  officer review. *Aligns the code exactly with architecture v0.2 §3-E1.*
+- **New gated RPCs:** `member_rename`, `member_set_availability` (both
+  `can_edit_member`), `project_set_type`, `project_set_deadline` (both
+  `can_edit_project`) — closing their F5/F7/F8/F11 CRUD gaps within the
+  approved model. Migrations `202608090*` (pending push).
+- **Dead code removed (their F12 = our R2):** 9 unreachable components deleted
+  (MatchConsole, SlotBoard, SlotSeater, MemberCard, CardBinder, GettingStarted,
+  StartHere, MiningCockpit, Leaderboard) — shrinking the gate-drift surface.
+- Mock realism: `member.kind` corrected to the DB's `operator|card` domain.
+
+### Review notes
+- Their audit's F2 ("54/60 tests fail") was a runner-environment artifact —
+  60/60 pass on both branches here; no code was changed to chase it.
+- Follow-up: their new mock `project_set_*` handlers lack permission gates
+  (fidelity nit); their remaining findings (F13–F27) are open recommendations.
+
+---
+
 ## v1.1.0 — 2026-07-26
 
 **Issues:** #49 (approved), #52, #53 (decided).
