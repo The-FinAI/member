@@ -2141,6 +2141,7 @@ const zh: Table = {
   'Welcome to The Fin AI': '欢迎加入 The Fin AI',
   "You've been invited! Confirm your email below and we'll send a secure one-time sign-in link — no password needed.": '你已被邀请!在下方确认你的邮箱,我们会发送一个安全的一次性登录链接 —— 无需密码。',
   // ── 市场 Market(v49)──
+  'Stage': '阶段',
   'New': '新建',
   'Working group (projects)': '小组(做项目)',
   'Chapter (people)': '分会(管人)',

@@ -244,12 +244,14 @@
   }
 
   const statusId = (name: string) => statuses.find((s) => s.name === name)?.id ?? null;
-  async function advance(p: Proj) {
-    const next = stage(p) === 0
-      ? (['Work in progress', 'Data Collecting', 'Active'].find((n) => statusId(n)) ?? 'Work in progress')
-      : 'Under review';
-    const sid = statusId(next);
-    if (!sid) { toast.error($t('Status {name} not found', { name: next })); return; }
+  // 阶段=下拉:可进可退可停滞(project_set_status 本就无方向限制)
+  const STATUS_ORDER = ['Proposal', 'Data Collecting', 'Work in progress', 'Active', 'Under review', 'Finished', 'Hold'];
+  const orderedStatuses = $derived([...statuses].sort((a, b) => {
+    const ia = STATUS_ORDER.indexOf(a.name), ib = STATUS_ORDER.indexOf(b.name);
+    return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+  }));
+  async function setStatus(p: Proj, sid: string) {
+    if (!sid || sid === statuses.find((s) => s.name === p.status)?.id) return;
     await run('st' + p.id, () => supabase.rpc('project_set_status', { p_project: p.id, p_status: sid }));
   }
 
@@ -491,13 +493,13 @@
               {/if}
 
               <div class="tail">
-                {#if sg === 0 && !leadOpen(p)}
-                  <button class="bt sm" disabled={busy === 'st' + p.id} onclick={() => advance(p)}>{$t('Advance stage')}</button>
-                {:else if sg === 1}
-                  <button class="bt sm ghosted" disabled={busy === 'st' + p.id} onclick={() => advance(p)}>{$t('Send to review')}</button>
-                {:else if sg === 3}
-                  <a class="bt sm ghosted" href="/admin">{$t('Settle (President)')}</a>
-                {/if}
+                <label class="stsel">{$t('Stage')}
+                  <select disabled={busy === 'st' + p.id}
+                    value={statuses.find((s) => s.name === p.status)?.id ?? ''}
+                    onchange={(e) => setStatus(p, (e.target as HTMLSelectElement).value)}>
+                    {#each orderedStatuses as s}<option value={s.id}>{$t(s.name)}</option>{/each}
+                  </select></label>
+                {#if sg === 3}<a class="bt sm ghosted" href="/admin">{$t('Settle (President)')}</a>{/if}
                 <details class="sub2"><summary>{$t('Edit')} ▾</summary>
                   <div class="hf">
                     <label>{$t('Name')} <input value={p.name} oninput={(e) => (editName[p.id] = (e.target as HTMLInputElement).value)} style="width:10rem" /></label>
@@ -727,7 +729,8 @@
     color: var(--dim2); flex-wrap: wrap; }
   .hf label { display: inline-flex; gap: 3px; align-items: center; }
 
-  .tail { display: flex; gap: 14px; align-items: baseline; padding-top: 10px; flex-wrap: wrap; }
+  .tail { display: flex; gap: 14px; align-items: center; padding-top: 10px; flex-wrap: wrap; }
+  .stsel { display: inline-flex; gap: 5px; align-items: center; font-size: 12px; color: var(--faint2); }
   .sub2 > summary { list-style: none; cursor: pointer; font-size: 12px; color: var(--dim2);
     font-weight: 500; border-radius: 4px; padding: 2px 6px; margin-left: -6px; }
   .sub2 > summary:hover { background: var(--wash); color: var(--ink2); }
