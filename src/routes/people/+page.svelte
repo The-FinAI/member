@@ -23,6 +23,7 @@
   let capacity = $state<Record<string, { total: number | null; free: number | null }>>({});
   let skillsBy = $state<Record<string, { name: string; level: string }[]>>({});
   let loading = $state(true);
+  let loadError = $state('');
   let q = $state('');
   let mineOnly = $state(false);
 
@@ -65,6 +66,7 @@
   async function load() {
     if (!supabaseConfigured) { loading = false; return; }
     loading = true;
+    loadError = '';
     const ym = new Date().toISOString().slice(0, 7);
     const [mem, sk, skn, cap] = await Promise.all([
       supabase.from('member').select('id,full_name,kind,affiliation,home_unit_id,monthly_hours').is('archived_at', null).order('full_name'),
@@ -72,6 +74,11 @@
       supabase.from('skill').select('id,name'),
       supabase.rpc('member_capacity_all', { p_ym: ym })
     ]);
+    if (mem.error || sk.error || skn.error || cap.error) {
+      loadError = $t('We could not load this page. Please try again.');
+      loading = false;
+      return;
+    }
     people = (mem.data as Person[]) ?? [];
     capacity = {};
     for (const c of (cap.data as { member_id: string; total: number | null; free: number | null }[]) ?? [])
@@ -130,6 +137,11 @@
 
   {#if loading}
     <p class="pp-dim">{$t('Loading…')}</p>
+  {:else if loadError}
+    <div class="card stack">
+      <p class="neg" style="margin:0;">{loadError}</p>
+      <button style="align-self:flex-start;" onclick={load}>{$t('Retry')}</button>
+    </div>
   {:else if !filtered.length}
     <p class="pp-dim">{$t('No people match.')}</p>
   {:else}

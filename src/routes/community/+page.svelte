@@ -31,6 +31,7 @@
   let projectNominalOf = $state<Record<string, number>>({}); // project_id -> Σ member nominal
   let projectUnitOf = $state<Record<string, string | null>>({}); // project_id -> org_unit_id
   let loading = $state(true);
+  let loadError = $state('');
   let q = $state('');
   let myBalance = $state(0);
   // current user's membership status per unit (org_unit_id -> 'active' | 'pending' | …)
@@ -81,12 +82,11 @@
     myUnitStatus = m;
   }
 
-  onMount(async () => {
-    const initial = $page.url.searchParams.get('tab');
-    if (initial === 'people') { goto('/people'); return; }   // people live on /people now
-    if (initial === 'chapters' || initial === 'wgroups' || initial === 'badges') tab = initial;
+  async function load() {
     if (!supabaseConfigured) { loading = false; return; }
-    const [{ data }, { data: bals }, { data: nom }, { data: ou }, { data: prj }] = await Promise.all([
+    loading = true;
+    loadError = '';
+    const [membersRes, balancesRes, nominalRes, unitsRes, projectsRes] = await Promise.all([
       supabase.from('member')
         .select('id, full_name, affiliation, status, kind, home_unit_id, member_position(position(name))')
         .order('full_name'),
@@ -95,6 +95,16 @@
       supabase.from('org_unit').select('id, code, name, kind, description').order('rank'),
       supabase.from('project').select('id, org_unit_id')
     ]);
+    const { data, error: membersErr } = membersRes;
+    const { data: bals, error: balancesErr } = balancesRes;
+    const { data: nom, error: nominalErr } = nominalRes;
+    const { data: ou, error: unitsErr } = unitsRes;
+    const { data: prj, error: projectsErr } = projectsRes;
+    if (membersErr || balancesErr || nominalErr || unitsErr || projectsErr) {
+      loadError = $t('We could not load this page. Please try again.');
+      loading = false;
+      return;
+    }
     rows = (data as Row[]) ?? [];
     const bmap: Record<string, number> = {};
     for (const b of (bals as { owner_member_id: string; balance: number }[]) ?? [])
@@ -112,20 +122,31 @@
     const pumap: Record<string, string | null> = {};
     for (const p of (prj as { id: string; org_unit_id: string | null }[]) ?? []) pumap[p.id] = p.org_unit_id ?? null;
     projectUnitOf = pumap;
-    loading = false;
-
     // skill catalog data (skill tree + who holds each skill, from person_skill —
     // the Learning/Independent/Lead scale; legacy badges retired, #21)
-    const [{ data: sk }, { data: ps }] = await Promise.all([
+    const [{ data: sk, error: skillsErr }, { data: ps, error: holdersErr }] = await Promise.all([
       supabase.from('skill').select('id, name, parent_id').order('name'),
       supabase.from('person_skill').select('skill_id, member_id, level, member:member_id(full_name)')
     ]);
+    if (skillsErr || holdersErr) {
+      loadError = $t('We could not load this page. Please try again.');
+      loading = false;
+      return;
+    }
     skills = (sk as Skill[]) ?? [];
     const hmap: Record<string, Holder[]> = {};
     for (const r of (ps as { skill_id: string; member_id: string; level: string; member: { full_name: string } | null }[]) ?? []) {
       (hmap[r.skill_id] ??= []).push({ member_id: r.member_id, full_name: r.member?.full_name ?? '—', level: r.level });
     }
     holdersOf = hmap;
+    loading = false;
+  }
+
+  onMount(() => {
+    const initial = $page.url.searchParams.get('tab');
+    if (initial === 'people') { goto('/people'); return; }   // people live on /people now
+    if (initial === 'chapters' || initial === 'wgroups' || initial === 'badges') tab = initial;
+    load();
     const unsub = member.subscribe((m) => { if (m) { loadMyBalance(); loadMyUnits(); } });
     return unsub;
   });
@@ -280,6 +301,11 @@
 
   {#if loading}
     <p class="muted">{$t('Loading…')}</p>
+  {:else if loadError}
+    <div class="card stack">
+      <p class="neg" style="margin:0;">{loadError}</p>
+      <button style="align-self:flex-start;" onclick={load}>{$t('Retry')}</button>
+    </div>
 
   <!-- ============ PEOPLE ============ -->
   {:else if tab === 'people'}
@@ -452,10 +478,6 @@
   .btn:disabled { opacity: .55; cursor: not-allowed; }
   .btn.ghost { background: transparent; color: var(--accent); border-color: var(--border); }
   .search input { width: 100%; }
-  .seg { display: inline-flex; gap: 0; }
-  .seg .chip.toggle { border-radius: 0; }
-  .seg .chip.toggle:first-child { border-radius: var(--r-full) 0 0 999px; }
-  .seg .chip.toggle:last-child { border-radius: 0 999px 999px 0; margin-left: -1px; }
   .award-cards { display: flex; flex-wrap: wrap; gap: .35rem; max-height: 9rem; overflow-y: auto; }
   .award-card { padding: .3rem .55rem; border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--card); color: var(--text); font: inherit; font-size: .82rem; cursor: pointer; }
   .award-card:hover { border-color: var(--accent); }

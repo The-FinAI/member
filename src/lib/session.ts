@@ -21,6 +21,8 @@ export const officerUnits = writable<OfficerUnit[]>([]);
 export const authReady = writable(false);
 /** a human-readable reason the last sign-in callback failed (expired link, etc.) */
 export const authError = writable<string | null>(null);
+/** a visible failure while resolving the signed-in user's membership/roles */
+export const profileError = writable<string | null>(null);
 
 export function hasCap(caps: Set<string>, key: string): boolean {
   return caps.has(key);

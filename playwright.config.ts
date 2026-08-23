@@ -11,13 +11,16 @@ export default defineConfig({
   fullyParallel: false,
   reporter: [['list']],
   use: {
-    baseURL: 'http://localhost:5183',
+    baseURL: 'http://127.0.0.1:5183',
     headless: true,
     ...devices['Desktop Chrome']
   },
   webServer: {
-    command: 'npx vite dev --port 5183 --mode mock',
-    port: 5183,
+    // Keep the test backend explicit so a clean clone does not depend on an
+    // ignored .env.mock file being present on the developer's machine.
+    command: 'npx vite dev --host 127.0.0.1 --port 5183 --mode mock',
+    env: { PUBLIC_MOCK: '1' },
+    url: 'http://127.0.0.1:5183',
     reuseExistingServer: !process.env.CI,
     timeout: 60_000
   }

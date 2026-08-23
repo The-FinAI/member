@@ -55,6 +55,7 @@
   let venues = $state<Venue[]>([]);
   let workingGroups = $state<WGroup[]>([]);
   let loading = $state(true);
+  let loadError = $state('');
 
   // status name → EntityCard status dot kind
   function projKind(name: string): 'pos' | 'warn' | 'dim' {
@@ -98,12 +99,18 @@
   async function loadGrid() {
     // org_unit name map is fetched separately (rather than embedded) so an
     // ambiguous-FK embed can never blank out the whole project list.
-    const [{ data: pr }, { data: ou }] = await Promise.all([
+    const [{ data: pr, error: projectsErr }, { data: ou, error: unitsErr }] = await Promise.all([
       supabase.from('project')
         .select('id, name, target_venue, deadline, summary, org_unit_id, venue:venue_id(name, kind, deadline), project_type(name), project_status!project_status_id_fkey(name, rank, is_active)')
         .is('archived_at', null),
       supabase.from('org_unit').select('id, name')
     ]);
+    if (projectsErr || unitsErr) {
+      grid = [];
+      slotsByProject = {};
+      loadError = get(t)('We could not load this page. Please try again.');
+      return;
+    }
     const unitName: Record<string, string> = {};
     for (const u of (ou as { id: string; name: string }[]) ?? []) unitName[u.id] = u.name;
     const projects = (pr as any[]) ?? [];
@@ -120,13 +127,19 @@
     const emojiOf: Record<string, string> = {};
     const codeOf: Record<string, string> = {};
     if (pids.length) {
-      const { data: sl } = await supabase.from('project_slot')
+      const { data: sl, error: slotsErr } = await supabase.from('project_slot')
         .select('id, project_id, slot_kind, req_access, quota, headcount, status, skill:skill_id(name), resource_type:resource_type_id(name)')
         .in('project_id', pids);
       slots = (sl as any[]) ?? [];
-      const { data: wc } = await supabase.from('work_commitment')
+      const { data: wc, error: commitmentsErr } = await supabase.from('work_commitment')
         .select('project_id, slot_id, member_id, monthly_amount, nominal_str, member:member_id(full_name), resource:resource_id(unit)')
         .in('project_id', pids);
+      if (slotsErr || commitmentsErr) {
+        grid = [];
+        slotsByProject = {};
+        loadError = get(t)('We could not load this page. Please try again.');
+        return;
+      }
       for (const w of (wc as any[]) ?? []) {
         pool[w.project_id] = (pool[w.project_id] ?? 0) + (Number(w.nominal_str) || 0);
         if (!w.slot_id) continue;
@@ -135,8 +148,14 @@
         arr.push({ id: w.member_id, name: w.member?.full_name ?? '—', amount: Number(w.monthly_amount) || 0, unit: w.resource?.unit ?? 'h' });
       }
       // output axis: verified milestones add to each project's nominal pool
-      const { data: vms } = await supabase.from('project_milestone')
+      const { data: vms, error: milestonesErr } = await supabase.from('project_milestone')
         .select('project_id, nominal_value').eq('status', 'verified').in('project_id', pids);
+      if (milestonesErr) {
+        grid = [];
+        slotsByProject = {};
+        loadError = get(t)('We could not load this page. Please try again.');
+        return;
+      }
       for (const m of (vms as any[]) ?? [])
         pool[m.project_id] = (pool[m.project_id] ?? 0) + (Number(m.nominal_value) || 0);
 
@@ -183,7 +202,7 @@
       // defensive: normalise away any invisible junk (zero-width, nbsp, BOM)
       // so name-based comparisons (statusClass / Hold chip) stay reliable.
       const statusName = (ps?.name ?? '—')
-        .replace(/[ - ​-‍⁠﻿]/g, ' ')
+        .replace(/[\u0000-\u001f\u00a0\u200b-\u200d\u2060\ufeff]/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
       const finished = statusName.toLowerCase() === 'finished';
@@ -230,22 +249,32 @@
     leaderMissing = (data as LeaderReq[]) ?? [];
   }
 
-  onMount(async () => {
+  async function loadPage() {
     if (!supabaseConfigured) { loading = false; return; }
-    const [, { data: ty }, { data: st }, { data: vn }, { data: wg }] = await Promise.all([
+    loading = true;
+    loadError = '';
+    const [, typesRes, statusesRes, venuesRes, groupsRes] = await Promise.all([
       loadGrid(),
       supabase.from('project_type').select('id, name, leader_stake, join_stake, finish_bonus').order('rank'),
       supabase.from('project_status').select('id, name, rank').order('rank'),
       supabase.from('venue').select('id, name, kind, deadline').eq('is_active', true).order('rank'),
       supabase.from('org_unit').select('id, code, name').eq('kind', 'working_group').order('rank')
     ]);
+    const { data: ty, error: typesErr } = typesRes;
+    const { data: st, error: statusesErr } = statusesRes;
+    const { data: vn, error: venuesErr } = venuesRes;
+    const { data: wg, error: groupsErr } = groupsRes;
+    if (typesErr || statusesErr || venuesErr || groupsErr) {
+      loadError = get(t)('We could not load this page. Please try again.');
+    }
     types = (ty as PType[]) ?? [];
     statuses = (st as PStatus[]) ?? [];
     venues = (vn as Venue[]) ?? [];
     workingGroups = (wg as WGroup[]) ?? [];
     cStatus = statuses.find((s) => s.name === 'Proposal')?.id ?? statuses[0]?.id ?? '';
     loading = false;
-  });
+  }
+  onMount(loadPage);
   // balance + leader readiness follow the effective identity (self or acting card)
   $effect(() => { if (effId) { loadMyBalance(effId); loadLeaderReadiness(effId); } });
 
@@ -643,6 +672,11 @@
 
   {#if loading}
     <div class="card"><p class="muted" style="padding:1rem;">{$t('Loading…')}</p></div>
+  {:else if loadError}
+    <div class="card stack" style="padding:1rem;">
+      <p class="neg" style="margin:0;">{loadError}</p>
+      <button style="align-self:flex-start;" onclick={loadPage}>{$t('Retry')}</button>
+    </div>
   {:else if rows.length === 0 && finished.length === 0 && !(myWgUnits.length && unassigned.length)}
     <!-- COLD START: nothing to show this user — no ledger rows, none shipped, and
          no project they could adopt. Orient the newcomer instead of "no match" —
