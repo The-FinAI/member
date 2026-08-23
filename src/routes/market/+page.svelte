@@ -158,10 +158,34 @@
   const freeMems = $derived(mems.filter((m) => (freeOf(m) ?? 0) > 0).sort((a, b) => (freeOf(b) ?? 0) - (freeOf(a) ?? 0)));
   const unsetCount = $derived(mems.filter((m) => m.hours == null).length);
 
-  const hiring = $derived(projs.filter((p) => p.slots.length && [0, 1].includes(stage(p)))
-    .sort((a, b) => (a.ddlDays ?? 998) - (b.ddlDays ?? 998)));
-  const others = $derived(projs.filter((p) => !(p.slots.length && [0, 1].includes(stage(p))))
-    .sort((a, b) => (stage(a) < 0 ? 1 : 0) - (stage(b) < 0 ? 1 : 0) || (a.ddlDays ?? 998) - (b.ddlDays ?? 998)));
+  // Notion 式视图控制:分组 × 排序,记住上次选择
+  let groupBy = $state<'needs' | 'stage' | 'wg' | 'none'>(
+    (typeof localStorage !== 'undefined' && (localStorage.getItem('mkGroup') as any)) || 'needs');
+  let sortBy = $state<'ddl' | 'name' | 'pool'>(
+    (typeof localStorage !== 'undefined' && (localStorage.getItem('mkSort') as any)) || 'ddl');
+  $effect(() => { try { localStorage.setItem('mkGroup', groupBy); localStorage.setItem('mkSort', sortBy); } catch { /* ignore */ } });
+
+  const cmp = (a: Proj, b: Proj) =>
+    sortBy === 'name' ? a.name.localeCompare(b.name) :
+    sortBy === 'pool' ? b.pool - a.pool :
+    (a.ddlDays ?? 998) - (b.ddlDays ?? 998);
+  const sections = $derived.by(() => {
+    const S = (label: string, ps: Proj[]) => ({ label, ps: [...ps].sort(cmp) });
+    if (groupBy === 'stage')
+      return [1, 0, 2, 3, -1].map((k) =>
+        S($t(k >= 0 ? STEPS[k] : 'On hold'), projs.filter((p) => stage(p) === k)));
+    if (groupBy === 'wg') {
+      const m = new Map<string, Proj[]>();
+      for (const p of projs) { const k = p.unit ?? $t('Proposal'); m.set(k, [...(m.get(k) ?? []), p]); }
+      return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([k, ps]) => S(k, ps));
+    }
+    if (groupBy === 'none') return [S($t('Projects'), projs)];
+    const hot = projs.filter((p) => p.slots.length && [0, 1].includes(stage(p)));
+    return [S($t('Projects needing people'), hot),
+      { label: $t('Other projects'),
+        ps: projs.filter((p) => !hot.includes(p))
+          .sort((a, b) => (stage(a) < 0 ? 1 : 0) - (stage(b) < 0 ? 1 : 0) || cmp(a, b)) }];
+  });
 
   // ── STR 双轨:名义(在池)/实际(已结算)+ 三榜 ──
   const nominalPerMember = $derived.by(() => {
@@ -528,10 +552,27 @@
           </details>
         {/snippet}
 
-        <h2>{$t('Projects needing people')} <span class="n">{hiring.length}</span></h2>
-        {#each hiring as p (p.id)}{@render prow(p)}{/each}
-        <h2>{$t('Other projects')} <span class="n">{others.length}</span></h2>
-        {#each others as p (p.id)}{@render prow(p)}{/each}
+        <div class="vtool">
+          <label>{$t('Group by')}
+            <select bind:value={groupBy}>
+              <option value="needs">{$t('Needs people')}</option>
+              <option value="stage">{$t('By stage')}</option>
+              <option value="wg">{$t('By working group')}</option>
+              <option value="none">{$t('Flat')}</option>
+            </select></label>
+          <label>{$t('Sort')}
+            <select bind:value={sortBy}>
+              <option value="ddl">{$t('By deadline')}</option>
+              <option value="name">{$t('By name')}</option>
+              <option value="pool">{$t('By pool STR')}</option>
+            </select></label>
+        </div>
+        {#each sections as sec (sec.label)}
+          {#if sec.ps.length}
+            <h2>{sec.label} <span class="n">{sec.ps.length}</span></h2>
+            {#each sec.ps as p (p.id)}{@render prow(p)}{/each}
+          {/if}
+        {/each}
       </div>
 
       <div>
@@ -626,6 +667,11 @@
   h2 { font-size: 13px; font-weight: 600; color: var(--dim2); padding: 14px 0 6px; }
   h2 .n, .sh .n { color: var(--faint2); font-weight: 400; font-size: 12px; margin-left: 5px; }
   .sh { font-size: 12px; font-weight: 600; color: var(--faint2); padding: 16px 2px 6px; }
+  .vtool { display: flex; gap: 14px; align-items: center; padding: 2px 0 4px; }
+  .vtool label { display: inline-flex; gap: 4px; align-items: center; font-size: 12px; color: var(--faint2); }
+  .vtool :global(select) { border: 0 !important; background: none !important; color: var(--dim2);
+    font-weight: 500; padding: 2px 4px; cursor: pointer; }
+  .vtool :global(select:hover) { background: var(--wash) !important; border-radius: 4px; }
   .cols { display: grid; grid-template-columns: 3fr 1fr; gap: 32px; align-items: start; }
   .cols > div { min-width: 0; }
   @media (max-width: 940px) { .cols { grid-template-columns: 1fr; } }
