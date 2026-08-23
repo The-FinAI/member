@@ -17,17 +17,17 @@
 :root {
   /* ---- Nature-journal palette (concept v49): warm paper, deep green action,
      amber for nominal STR, brick red for danger. Single light theme. ---- */
-  --bg:        #fbfaf7;   /* paper */
-  --bg-2:      #f1f0ec;
-  --card:      #ffffff;   /* sheet */
-  --card-2:    #f6f5f1;
+  --bg:        #ffffff;   /* clean sheet */
+  --bg-2:      #f7f7f5;   /* hover wash */
+  --card:      #ffffff;
+  --card-2:    #fbfbfa;
   --elevate:   #ffffff;
-  --border:    #e7e6df;   /* hairline rule */
-  --border-2:  #d5d3c8;
-  --rule-ink:  #1f2a26;
-  --text:      #1f2a26;   /* ink */
-  --text-dim:  #5c6660;
-  --muted:     #98a29b;
+  --border:    #e9e9e7;   /* hairline */
+  --border-2:  #d3d1cb;
+  --rule-ink:  #37352f;
+  --text:      #37352f;   /* ink */
+  --text-dim:  #6b6a66;
+  --muted:     #9b9a97;
   --accent:    #0b5e52;   /* deep green — the ONLY action color */
   --accent-2:  #0a4f45;
   --accent-ink:#ffffff;
@@ -47,7 +47,7 @@
   --ring:      0 0 0 3px rgba(11, 94, 82, .22);
 
   /* ---- type ---- */
-  --font-display: Georgia, "Songti SC", "Times New Roman", serif;
+  --font-display: -apple-system, "SF Pro SC", "PingFang SC", system-ui, "Segoe UI", sans-serif;
   --font-sans: -apple-system, "SF Pro SC", "PingFang SC", system-ui, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 

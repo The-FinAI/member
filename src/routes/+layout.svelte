@@ -143,22 +143,23 @@
 <style>
   .mk-head { display: flex; align-items: center; gap: 12px; max-width: 1120px; margin: 0 auto;
     padding: 12px 16px 0; }
-  .mk-brand { font: 700 15px Georgia, 'Songti SC', serif; color: var(--ink, #1f2a26); text-decoration: none; }
+  .mk-brand { font-size: 14px; font-weight: 700; color: var(--text, #37352f); text-decoration: none; letter-spacing: -.01em; }
   .mk-utils { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; }
-  .avatar-btn { width: 28px; height: 28px; border-radius: 50%; border: 1px solid #e7e6df; background: #fff;
-    font-size: 11px; font-weight: 700; cursor: pointer; color: #0b5e52; }
+  .avatar-btn { width: 28px; height: 28px; border-radius: 50%; border: 1px solid #e9e9e7; background: #fff;
+    font-size: 11px; font-weight: 600; cursor: pointer; color: #0b5e52; }
+  .avatar-btn:hover { background: #f7f7f5; }
   .usermenu { position: relative; }
   .menu-backdrop { position: fixed; inset: 0; z-index: 8; }
-  .menu { position: absolute; right: 0; top: 34px; z-index: 9; background: #fff; border: 1px solid #e7e6df;
-    border-radius: 10px; box-shadow: 0 8px 28px rgba(31, 42, 38, .14); padding: 6px; min-width: 200px;
+  .menu { position: absolute; right: 0; top: 34px; z-index: 9; background: #fff; border: 1px solid #e9e9e7;
+    border-radius: 10px; box-shadow: 0 8px 28px rgba(55, 53, 47, .12); padding: 6px; min-width: 200px;
     display: flex; flex-direction: column; gap: 2px; }
   .menu-head { padding: 6px 10px; }
   .mh-name { font-size: 12.5px; font-weight: 600; }
   .mh-mail { font-size: 11px; color: #98a29b; }
-  .menu-sep { border-top: 1px solid #e7e6df; margin: 3px 0; }
+  .menu-sep { border-top: 1px solid #e9e9e7; margin: 3px 0; }
   .menu-item { font: inherit; font-size: 12px; text-align: left; padding: 6px 10px; border: 0; background: none;
     border-radius: 7px; cursor: pointer; }
   .menu-item:hover { background: #0b5e520d; }
-  .banner { background: #f6f1e3; border: 1px solid #d9cba6; border-radius: 10px; padding: 10px 14px;
+  .banner { background: #fdecc8; border: 1px solid #f3dfad; border-radius: 10px; padding: 10px 14px;
     font-size: 12.5px; margin: 10px auto; max-width: 1120px; }
 </style>
