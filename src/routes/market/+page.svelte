@@ -159,7 +159,7 @@
   const unsetCount = $derived(mems.filter((m) => m.hours == null).length);
 
   // Notion 式视图控制:分组 × 排序,记住上次选择
-  let groupBy = $state<'needs' | 'stage' | 'wg' | 'none'>(
+  let groupBy = $state<'needs' | 'stage' | 'wg' | 'venue' | 'none'>(
     (typeof localStorage !== 'undefined' && (localStorage.getItem('mkGroup') as any)) || 'needs');
   let sortBy = $state<'ddl' | 'name' | 'pool'>(
     (typeof localStorage !== 'undefined' && (localStorage.getItem('mkSort') as any)) || 'ddl');
@@ -178,6 +178,15 @@
       const m = new Map<string, Proj[]>();
       for (const p of projs) { const k = p.unit ?? $t('Proposal'); m.set(k, [...(m.get(k) ?? []), p]); }
       return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([k, ps]) => S(k, ps));
+    }
+    if (groupBy === 'venue') {
+      const m = new Map<string, Proj[]>();
+      for (const p of projs) { const k = p.venue ?? $t('TBD'); m.set(k, [...(m.get(k) ?? []), p]); }
+      // 分节按该会最近截止日排,未定沉底
+      const ddlOf = (ps: Proj[]) => Math.min(...ps.map((p) => p.ddlDays ?? 998));
+      return [...m.entries()]
+        .sort((a, b) => (a[0] === $t('TBD') ? 1 : 0) - (b[0] === $t('TBD') ? 1 : 0) || ddlOf(a[1]) - ddlOf(b[1]))
+        .map(([k, ps]) => S(k, ps));
     }
     if (groupBy === 'none') return [S($t('Projects'), projs)];
     const hot = projs.filter((p) => p.slots.length && [0, 1].includes(stage(p)));
@@ -558,6 +567,7 @@
               <option value="needs">{$t('Needs people')}</option>
               <option value="stage">{$t('By stage')}</option>
               <option value="wg">{$t('By working group')}</option>
+              <option value="venue">{$t('By venue')}</option>
               <option value="none">{$t('Flat')}</option>
             </select></label>
           <label>{$t('Sort')}

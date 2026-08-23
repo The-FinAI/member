@@ -2147,6 +2147,7 @@ const zh: Table = {
   'Needs people': '缺人优先',
   'By stage': '按阶段',
   'By working group': '按小组',
+  'By venue': '按投稿会议',
   'Flat': '不分组',
   'By deadline': '按截止日',
   'By name': '按名称',
