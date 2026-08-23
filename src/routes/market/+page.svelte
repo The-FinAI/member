@@ -115,7 +115,8 @@
     gpuModels = (gm as any[]) ?? [];
     orphans = (orp as any[]) ?? [];
     const venByName: Record<string, any> = {};
-    for (const v of venues) venByName[v.name] = v;
+    const venById: Record<string, any> = {};
+    for (const v of venues) { venByName[v.name] = v; venById[v.id] = v; }
 
     const slotsBy: Record<string, Slot[]> = {};
     const slotById: Record<string, Slot> = {};
@@ -138,12 +139,13 @@
 
     const rowsAll = ((pr as any[]) ?? []);
     const toProj = (p: any) => {
-      const v = venByName[p.target_venue ?? ''];
-      const dd = nextDdl(p.target_venue, v?.kind ?? null, v?.deadline ?? null);
+      const v = p.venue_id ? venById[p.venue_id] : venByName[p.target_venue ?? ''];
+      const vname = v?.name ?? p.target_venue ?? null;
+      const dd = nextDdl(vname, v?.kind ?? null, v?.deadline ?? null);
       const team = (teamBy[p.id] ?? []).sort((a, b) => (a.authorship === 'first' ? -1 : 0) - (b.authorship === 'first' ? -1 : 0) || b.nominal - a.nominal);
       return { id: p.id, name: p.name, status: p.project_status?.name ?? 'Proposal',
-        venue: p.target_venue, venueId: p.venue_id ?? null,
-        venueYr: p.target_venue ? (dd.year ? `${p.target_venue} ${dd.year}` : p.target_venue) : '',
+        venue: vname, venueId: p.venue_id ?? null,
+        venueYr: vname ? (dd.year ? `${vname} ${dd.year}` : vname) : '',
         decision: p.deadline ?? null, venueNotif: v?.notification ?? null,
         outcome: p.tag || null, unitId: p.org_unit_id ?? null,
         unit: p.org_unit_id ? (unitName[p.org_unit_id] ?? null) : null,

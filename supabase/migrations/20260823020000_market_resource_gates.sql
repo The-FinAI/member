@@ -48,4 +48,20 @@ begin
 end $$;
 grant execute on function resource_set_quota(uuid, numeric) to authenticated;
 
+-- project_set_venue: verbatim from 20260603040000 + keep the legacy
+-- target_venue text column in sync (the UI and older surfaces read it).
+create or replace function project_set_venue(p_project uuid, p_venue uuid)
+returns void language plpgsql security definer set search_path = public as $$
+declare nm text;
+begin
+  if not can_edit_project(p_project) then raise exception 'not authorized to edit this project'; end if;
+  if p_venue is not null and not exists (select 1 from venue where id = p_venue) then
+    raise exception 'no such venue';
+  end if;
+  select name into nm from venue where id = p_venue;
+  update project set venue_id = p_venue, target_venue = nm where id = p_project;
+  perform project_log(p_project, 'Target venue set to ' || coalesce(nm, 'none'));
+end $$;
+grant execute on function project_set_venue(uuid, uuid) to authenticated;
+
 notify pgrst, 'reload schema';

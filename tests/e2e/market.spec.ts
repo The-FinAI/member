@@ -157,6 +157,27 @@ test.describe('market — officer single page', () => {
     expect(errs()).toEqual([]);
   });
 
+  test('M10: project edit — rename + change venue shows on the row', async ({ page }) => {
+    const errs = trackErrors(page);
+    await page.goto('/market');
+    await dismissQuest(page);
+    const row = page.locator('.prow', { hasText: 'ml-Tagging' });
+    await row.locator('> summary').click();
+    const edit = row.locator('details.sub2', { hasText: 'Edit' });
+    await edit.locator('> summary').click();
+    await edit.locator('label', { hasText: 'Name' }).locator('input').fill('ml-Tagging-v2');
+    await edit.locator('label', { hasText: 'Venue' }).locator('select').selectOption({ label: 'ARR' });
+    await edit.getByRole('button', { name: 'Save' }).click();
+    const row2 = page.locator('.prow', { hasText: 'ml-Tagging-v2' });
+    await expect(row2.locator('> summary .ddl')).toContainText('ARR');
+    await page.reload();
+    await dismissQuest(page);
+    const row3 = page.locator('.prow', { hasText: 'ml-Tagging-v2' });
+    await expect(row3).toBeVisible();
+    await expect(row3.locator('> summary .ddl')).toContainText('ARR');
+    expect(errs()).toEqual([]);
+  });
+
   test('M8: no component overflows its container (all rows expanded)', async ({ page }) => {
     await page.goto('/market');
     await dismissQuest(page);
