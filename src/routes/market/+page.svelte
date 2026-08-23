@@ -180,6 +180,21 @@
   }
   $effect(() => { load(); });
 
+  // 多人实时同步:别人改了,你的屏幕 ~1s 内静默刷新(Notion 感)。
+  // 自己的操作本来就会 run()→load(),这里去抖合并,mock 客户端无 channel 则跳过。
+  $effect(() => {
+    if (typeof (supabase as any).channel !== 'function') return;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const ch = (supabase as any)
+      .channel('market-live')
+      .on('postgres_changes', { event: '*', schema: 'public' }, () => {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => { if (!busy) load(); }, 600);
+      })
+      .subscribe();
+    return () => { if (timer) clearTimeout(timer); (supabase as any).removeChannel(ch); };
+  });
+
   const stage = (p: Proj) => (p.status === 'Hold' ? -1 : (SG[p.status] ?? 0));
   const leadOpen = (p: Proj) => p.slots.some((s) => s.slot_kind === 'leader');
   const freeOf = (m: Mem) => (m.hours != null ? m.hours - m.used : null);
