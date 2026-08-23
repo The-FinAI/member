@@ -125,6 +125,28 @@ test.describe('market — officer single page', () => {
     expect(errs()).toEqual([]);
   });
 
+  test('M8: no component overflows its container (all rows expanded)', async ({ page }) => {
+    await page.goto('/market');
+    await dismissQuest(page);
+    await page.locator('.prow').first().waitFor();
+    const bad = await page.evaluate(() => {
+      document.querySelectorAll('details').forEach((d) => (d.open = true));
+      const out: string[] = [];
+      const vw = document.documentElement.clientWidth;
+      if (document.body.scrollWidth > vw + 1) out.push(`body scrolls ${document.body.scrollWidth - vw}px`);
+      document.querySelectorAll('.p, .prow, .strbar, .cands').forEach((card) => {
+        const cb = card.getBoundingClientRect();
+        card.querySelectorAll('*').forEach((el) => {
+          const b = el.getBoundingClientRect();
+          if (b.width && b.right > cb.right + 2)
+            out.push(`${(el.className || el.tagName).toString().slice(0, 30)} overflows ${(card.className || '').toString().slice(0, 20)} by ${Math.round(b.right - cb.right)}px`);
+        });
+      });
+      return [...new Set(out)].slice(0, 10);
+    });
+    expect(bad).toEqual([]);
+  });
+
   test('M7: + New creates a project (open v0.3) and it appears', async ({ page }) => {
     const errs = trackErrors(page);
     await page.goto('/market');

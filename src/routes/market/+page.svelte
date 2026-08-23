@@ -389,19 +389,19 @@
         {#snippet cands(p: Proj, s: Slot)}
           <div class="cands">
             {#each freeMems.slice(0, 5) as fm}
-              <div class="cd">
+              <label class="cd">
+                <input type="radio" name="pick-{s.id}" value={fm.id} bind:group={assignPick[s.id]} />
                 <span class="av" style="background:{avColor(fm.name)}22;color:{avColor(fm.name)}">{initials(fm.name)}</span>
                 <span class="cdn">{fm.name}</span>
                 <span class="cdi">{fm.skills[0]?.name ?? ''} · {$t('free')} {freeOf(fm)}h</span>
-                <label class="radio"><input type="radio" name="pick-{s.id}" value={fm.id} bind:group={assignPick[s.id]} /></label>
-              </div>
+              </label>
             {/each}
             <div class="cd">
-              <select bind:value={assignPick[s.id]}>
+              <select bind:value={assignPick[s.id]} style="max-width:9rem">
                 <option value="">{$t('Others…')}</option>
                 {#each mems as om}<option value={om.id}>{om.name}</option>{/each}
               </select>
-              <input type="number" min="1" placeholder="h" bind:value={assignHours[s.id]} style="width:4rem" />
+              <input type="number" min="1" placeholder="h" bind:value={assignHours[s.id]} style="width:3.6rem" />
               <button class="bt sm" disabled={busy === s.id} onclick={() => assignSeat(p, s)}>{$t('Assign')}</button>
             </div>
             {#if unsetCount}<div class="mut">{$t('plus {n} members without hours are hidden', { n: unsetCount })}</div>{/if}
@@ -711,11 +711,12 @@
   .rolec.rlast { background: var(--tag-gn-bg); color: var(--tag-gn-tx); }
   .pts { font-size: 11px; font-weight: 600; color: var(--tag-yl-tx); background: var(--tag-yl-bg);
     border-radius: 4px; padding: 0 6px; white-space: nowrap; }
-  .cands { padding: 6px 0 2px 14px; }
-  .cd { display: flex; align-items: center; gap: 7px; padding: 3px 0; font-size: 12.5px; }
-  .cdn { font-weight: 500; }
-  .cdi { color: var(--faint2); font-size: 11.5px; flex: 1; }
-  .radio input { margin: 0; accent-color: var(--green); }
+  .cands { margin: 6px 0 4px 20px; max-width: 380px; background: var(--wash);
+    border-radius: 6px; padding: 8px 10px; }
+  .cd { display: flex; align-items: center; gap: 7px; padding: 3px 0; font-size: 12.5px; cursor: pointer; }
+  .cd input[type="radio"] { margin: 0; accent-color: var(--green); }
+  .cdn { font-weight: 500; white-space: nowrap; }
+  .cdi { color: var(--faint2); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
   .hire { margin-top: 8px; }
   .hire > summary { list-style: none; cursor: pointer; display: inline-block; font-size: 12.5px;
