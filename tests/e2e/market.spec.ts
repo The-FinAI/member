@@ -53,6 +53,9 @@ test.describe('market — officer single page', () => {
     await seat2.locator('.ghours').fill('8');
     await seat2.locator('.ghours').blur();
     await expect(row2.locator('.seat', { has: page.locator('.an', { hasText: 'Wang Fang' }) })).toContainText('80 STR');
+    // D: remove the seated member → the first-author seat reopens
+    await row2.locator('.seat', { has: page.locator('.an', { hasText: 'Wang Fang' }) }).locator('.rel').click({ force: true });
+    await expect(row2.locator('details.seat', { hasText: 'First author' })).toBeVisible();
     expect(errs()).toEqual([]);
   });
 
@@ -74,6 +77,9 @@ test.describe('market — officer single page', () => {
     const row3 = page.locator('.prow', { hasText: 'ml-Tagging' });
     if (!(await row3.locator('.pbody').isVisible())) await row3.locator('> summary').click();
     await expect(row3.locator('.seat', { hasText: 'Co-corresponding' })).toBeVisible();
+    // D: close the opening
+    await row3.locator('details.seat', { hasText: 'Co-corresponding' }).locator('.rel').click({ force: true });
+    await expect(row3.locator('.seat', { hasText: 'Co-corresponding' })).toHaveCount(0);
     expect(errs()).toEqual([]);
   });
 
@@ -146,8 +152,14 @@ test.describe('market — officer single page', () => {
     // D: delete the Annotation skill chip
     await wrow.locator('.chip', { hasText: 'Annotation' }).locator('.chipx').click({ force: true });
     await expect(wrow.locator('.chip', { hasText: 'Annotation' })).toHaveCount(0);
-    // C: add another resource via the collapsed adder
+    // C: add a skill via the collapsed adder
     await wrow.locator('details.sub2', { hasText: 'Add skill / resource' }).locator('> summary').click();
+    const skRow = wrow.locator('.addrow').nth(0);
+    await skRow.locator('select').first().selectOption({ label: 'Writing' });
+    await skRow.getByRole('button', { name: 'Add' }).click();
+    await expect(wrow.locator('.chip', { hasText: 'Writing' })).toBeVisible();
+    // C: add another resource via the collapsed adder
+    if (!(await wrow.locator('.addrow').nth(1).isVisible())) await wrow.locator('details.sub2', { hasText: 'Add skill / resource' }).locator('> summary').click();
     const resRow = wrow.locator('.addrow').nth(1);
     await resRow.locator('select').first().selectOption({ index: 1 });
     await resRow.locator('input[type=number]').fill('50');
@@ -180,6 +192,14 @@ test.describe('market — officer single page', () => {
     const row3 = page.locator('.prow', { hasText: 'ml-Tagging-v2' });
     await expect(row3).toBeVisible();
     await expect(row3.locator('> summary .ddl')).toContainText('ARR');
+    // U: transfer the project to another working group
+    if (!(await row3.locator('.pbody').isVisible())) await row3.locator('> summary').click();
+    const edit3 = row3.locator('details.sub2', { hasText: 'Edit' });
+    await edit3.locator('> summary').click();
+    await edit3.locator('label', { hasText: 'Group' }).locator('select').selectOption({ label: 'Proposal (no group)' });
+    await edit3.getByRole('button', { name: 'Save' }).click();
+    const row4 = page.locator('.prow', { hasText: 'ml-Tagging-v2' });
+    await expect(row4.locator('> summary .unitc2')).toContainText('Proposal');
     expect(errs()).toEqual([]);
   });
 
@@ -217,10 +237,15 @@ test.describe('market — officer single page', () => {
     await expect(row2.locator('> summary .ddl')).toContainText('result in');
     await row2.locator('.stsel select').first().selectOption({ label: 'Finished' });
     const row3 = page.locator('.prow', { hasText: 'ml-Tagging' });
-    // seeded outcome tag 'ml' → locked green chip, edit menu hidden
-    await expect(row3.locator('> summary .ddl.acc')).toContainText('ml');
     if (!(await row3.locator('.pbody').isVisible())) await row3.locator('> summary').click();
-    await expect(row3.locator('details.sub2', { hasText: 'Edit' })).toHaveCount(0);
+    // U: type the outcome once → green locked chip, edit menu hidden
+    await row3.locator('input[placeholder="main / findings"]').fill('main');
+    await row3.locator('input[placeholder="main / findings"]').blur();
+    const row4 = page.locator('.prow', { hasText: 'ml-Tagging' });
+    await expect(row4.locator('> summary .ddl.acc')).toContainText('main');
+    if (!(await row4.locator('.pbody').isVisible())) await row4.locator('> summary').click();
+    await expect(row4.locator('details.sub2', { hasText: 'Edit' })).toHaveCount(0);
+    await expect(row4.locator('input[placeholder="main / findings"]')).toHaveCount(0);
     expect(errs()).toEqual([]);
   });
 
@@ -275,6 +300,33 @@ test.describe('market — officer single page', () => {
     const addBox2 = page.locator('.newbox');
     await addBox2.locator('> summary').click();
     await expect(addBox2.locator('select option', { hasText: 'mk-NewChapter' })).toHaveCount(1);
+    expect(errs()).toEqual([]);
+  });
+
+  test('M15: add a member card, then move them to a new chapter', async ({ page }) => {
+    const errs = trackErrors(page);
+    await page.goto('/market');
+    await dismissQuest(page);
+    // C: + Member creates a card (no email is sent)
+    const addBox = page.locator('.newbox');
+    await addBox.locator('> summary').click();
+    await addBox.locator('input').first().fill('Xu Lan');
+    await addBox.locator('input').nth(1).fill('xu@test');
+    await addBox.getByRole('button', { name: 'Add' }).click();
+    await expect(page.locator('.p', { has: page.locator('.pname', { hasText: 'Xu Lan' }) })).toBeVisible();
+    // U: create a chapter and move the member there
+    await page.locator('.newmenu > summary').click({ force: true });
+    const chBox = page.locator('.newmenu .sub2', { hasText: 'Chapter' });
+    await chBox.locator('> summary').click({ force: true });
+    await chBox.locator('input').fill('mk-Chapter2');
+    await chBox.getByRole('button', { name: 'Create' }).click();
+    const mrow = page.locator('.p', { has: page.locator('.pname', { hasText: 'Xu Lan' }) }).first();
+    await mrow.locator('> summary').click();
+    await mrow.locator('.pf label', { hasText: 'Chapter' }).locator('select').selectOption({ label: 'mk-Chapter2' });
+    await expect(page.locator('.sh', { hasText: 'mk-Chapter2' })).toBeVisible();
+    await page.reload();
+    await dismissQuest(page);
+    await expect(page.locator('.sh', { hasText: 'mk-Chapter2' })).toBeVisible();
     expect(errs()).toEqual([]);
   });
 

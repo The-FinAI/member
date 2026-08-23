@@ -104,7 +104,7 @@ const seed: Record<string, any[]> = {
     { id: 'r-cluster-li', holder_member_id: M_LI, type_id: RT_GPU, scope: 'community', monthly_quota: 500, name: 'PKU shared cluster', gpu_model_id: 'gm-a100', approval_status: 'approved', availability: 'available', resource_type: { name: 'GPU', unit: 'GPU-hours' } }
   ],
   project: [
-    { id: P1, name: 'ml-Tagging', emoji: '🏷️', code: 'ml-Tagging', tag: 'ml', body: 'XBRL multilingual tagging.', summary: 'XBRL tagging across languages', org_unit_id: U_WG, status_id: 'ps-active', type_id: 'pt-1', target_venue: 'ACL', deadline: '2026-07-30', proposal_url: 'https://example.com' },
+    { id: P1, name: 'ml-Tagging', emoji: '🏷️', code: 'ml-Tagging', tag: '', body: 'XBRL multilingual tagging.', summary: 'XBRL tagging across languages', org_unit_id: U_WG, status_id: 'ps-active', type_id: 'pt-1', target_venue: 'ACL', deadline: '2026-07-30', proposal_url: 'https://example.com' },
     // an UNASSIGNED proposal (org_unit_id null) — looking for a working group to
     // adopt it. A WG officer claims it into their WG to gain edit/post-need rights.
     { id: 'p-free', name: 'fin-Sentiment', emoji: '📊', code: 'fin-Sentiment', tag: 'fin', body: 'Financial-news sentiment benchmark.', summary: 'A sentiment benchmark looking for a working group', org_unit_id: null, status_id: 'ps-prop', target_venue: null, deadline: null, proposal_url: 'https://example.com/sent' }

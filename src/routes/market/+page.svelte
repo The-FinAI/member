@@ -542,7 +542,8 @@
                       <span class="rolec {ROLE_CLS[roleOf(s)] ?? ''}">{$t(ROLE_LABEL[roleOf(s)] ?? 'Author')}</span>
                       <span class="ask">{slotAsk(s)} · {$t('open')}</span>
                       {#if seatPrice(s)}<span class="pts">{seatPrice(s)}</span>{/if}
-                      <span class="hint">{$t('Choose member')} ▾</span></summary>
+                      <span class="hint">{$t('Choose member')} ▾</span>
+                      <button class="rel" title={$t('Remove')} onclick={(e) => { e.preventDefault(); run(s.id, () => supabase.rpc('slot_close', { p_slot: s.id })); }}>×</button></summary>
                     {@render cands(p, s)}
                   </details>
                 {:else}
@@ -866,7 +867,7 @@
   .seat.dim { opacity: .55; }
   .rel { color: var(--faint2); cursor: pointer; font-weight: 600; padding: 0 4px; opacity: 0; border: 0;
     background: none; font-size: 13px; border-radius: 4px; }
-  .seat:hover .rel { opacity: 1; color: var(--tag-rd-tx); }
+  .seat:hover .rel, details.seat > summary:hover .rel { opacity: 1; color: var(--tag-rd-tx); }
   .rolec { font-size: 11px; font-weight: 500; border-radius: 4px; padding: 0 6px; white-space: nowrap;
     background: var(--tag-gy-bg); color: var(--tag-gy-tx); }
   .rolec.r1c { background: var(--tag-rd-bg); color: var(--tag-rd-tx); }
