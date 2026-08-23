@@ -82,7 +82,9 @@
 
   async function load() {
     if (!supabaseConfigured) { loading = false; return; }
-    loading = true;
+    // silent refresh: only the very first load shows the loading state —
+    // later run()->load() swaps data in place (no full-page flash)
+    if (!projs.length && !mems.length) loading = true;
     const [{ data: pr }, { data: ou }, { data: vn }, { data: slr }, { data: wc }, { data: mm },
       { data: ps }, { data: sk }, { data: rt }, { data: st }, { data: ty }, { data: rs },
       { data: gm }, { data: sb }, { data: orp }] = await Promise.all([
@@ -543,8 +545,9 @@
                   <span class="rolec {ROLE_CLS[seat.authorship] ?? ''}">{$t(ROLE_LABEL[seat.authorship] ?? 'Author')}</span>
                   {#if sg <= 1}
                     <span class="give"><input class="ghours" type="number" min="1" value={seat.amount}
-                      onchange={(e) => { const h = Number((e.target as HTMLInputElement).value); if (h > 0 && h !== seat.amount)
-                        run(seat.slotId + seat.memberId, () => supabase.rpc('assign', { p_member: seat.memberId, p_slot: seat.slotId, p_hours: h })); }} />h/{$t('mo')}</span>
+                      onchange={(e) => { const h = Number((e.target as HTMLInputElement).value); if (h > 0 && h !== seat.amount) {
+                        seat.amount = h; // optimistic; reload reconciles nominal
+                        run(seat.slotId + seat.memberId, () => supabase.rpc('assign', { p_member: seat.memberId, p_slot: seat.slotId, p_hours: h })); } }} />h/{$t('mo')}</span>
                   {:else}
                     <span class="give">{seat.amount}h/{$t('mo')}</span>
                   {/if}
@@ -662,7 +665,7 @@
         {/each}
         {#if archived.length}
           <details class="arcpool" open={!!openRows['arc']} ontoggle={toggleRow('arc')}>
-            <summary><h2 style="display:inline">{$t('Accepted')} <span class="n">{archived.length}</span></h2></summary>
+            <summary><h2 style="display:inline">{$t('Accepted (archived)')} <span class="n">{archived.length}</span></h2></summary>
             {#each archived as p (p.id)}
               <div class="arow">
                 <span class="sn">{p.name}</span>
@@ -723,21 +726,23 @@
               </summary>
               <div class="pf">
                 <div class="wfull">
-                  {#each m.skills as skl (skl.id)}<span class="chip">{skl.name}
-                    <select class="lvlsel" value={skl.level}
-                      onchange={(e) => run(m.id, () => supabase.rpc('person_skill_set', { p_skill: skl.id, p_level: (e.target as HTMLSelectElement).value, p_member: m.id }))}>
-                      <option value="learning">{$t('Learning')}</option>
-                      <option value="independent">{$t('Independent')}</option>
-                      <option value="lead">{$t('Can mentor')}</option>
+                  {#each m.skills as skl (skl.id)}<span class="chip"><span class="cn" title={skl.name}>{skl.name}</span>
+                    <select class="lvlsel" value={skl.level} title={$t(LV[skl.level] ?? skl.level)}
+                      onchange={(e) => { const lv = (e.target as HTMLSelectElement).value; skl.level = lv;
+                        run(m.id, () => supabase.rpc('person_skill_set', { p_skill: skl.id, p_level: lv, p_member: m.id })); }}>
+                      <option value="learning">{$t('Lrn')}</option>
+                      <option value="independent">{$t('Ind')}</option>
+                      <option value="lead">{$t('Lead')}</option>
                     </select>
                     <button class="chipx" title={$t('Remove')} onclick={() => removeSkill(m, skl.id)}>×</button></span>{/each}
                   {#each m.resources as r (r.id)}<span class="chip rs">{r.typeName}
                     <input class="ghours" type="number" min="0" value={r.quota}
-                      onchange={(e) => setQuota(r.id, Number((e.target as HTMLInputElement).value))} /></span>{/each}
+                      onchange={(e) => { const q = Number((e.target as HTMLInputElement).value); if (q >= 0) { r.quota = q; setQuota(r.id, q); } }} /></span>{/each}
                   {#if !m.skills.length && !m.resources.length}<span class="chip mutc">{$t('no skills set')}</span>{/if}
                 </div>
                 <label>{$t('Monthly')} (h)<input type="number" min="0" value={m.hours ?? ''}
-                  onchange={(e) => run(m.id, () => supabase.rpc('person_set_capacity', { p_hours: Math.max(0, Math.floor(Number((e.target as HTMLInputElement).value) || 0)), p_member: m.id }))} /></label>
+                  onchange={(e) => { const h = Math.max(0, Math.floor(Number((e.target as HTMLInputElement).value) || 0));
+                    m.hours = h; run(m.id, () => supabase.rpc('person_set_capacity', { p_hours: h, p_member: m.id })); }} /></label>
                 <label>{$t('Chapter')} <select value={m.unitId ?? ''} onchange={(e) => moveMember(m, (e.target as HTMLSelectElement).value)}>
                   <option value="">{$t('No chapter')}</option>
                   {#each chapterUnits as u}<option value={u.id}>{u.name}</option>{/each}</select></label>
@@ -950,7 +955,9 @@
   .chipx:hover { opacity: 1; color: var(--tag-rd-tx); }
   .chip .ghours { width: 3.4rem; font-size: 10.5px !important; }
   .lvlsel { border: 0 !important; background: none !important; font-size: 10.5px !important;
-    color: inherit; padding: 0 !important; cursor: pointer; }
+    color: inherit; padding: 0 !important; cursor: pointer; max-width: 3.2rem; }
+  .chip { display: inline-flex; align-items: center; gap: 3px; max-width: 100%; }
+  .chip .cn { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 8rem; }
   .addbox { display: flex; flex-direction: column; gap: 5px; padding: 6px 0 2px; }
   .addrow { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
   .addrow :global(select) { max-width: 8.5rem; }
