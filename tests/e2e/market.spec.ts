@@ -178,6 +178,101 @@ test.describe('market — officer single page', () => {
     expect(errs()).toEqual([]);
   });
 
+  test('M11: stage dropdown goes backward and to Hold, persists', async ({ page }) => {
+    const errs = trackErrors(page);
+    await page.goto('/market');
+    await dismissQuest(page);
+    const row = page.locator('.prow', { hasText: 'ml-Tagging' });
+    await row.locator('> summary').click();
+    const sel = row.locator('.stsel select').first();
+    await sel.selectOption({ label: 'Hold' });
+    await expect(page.locator('.prow.st-dorm', { hasText: 'ml-Tagging' })).toBeVisible();
+    // backward: Hold → Proposal (a reversal, not just forward)
+    const row2 = page.locator('.prow', { hasText: 'ml-Tagging' });
+    if (!(await row2.locator('.pbody').isVisible())) await row2.locator('> summary').click();
+    await row2.locator('.stsel select').first().selectOption({ label: 'Proposal' });
+    await expect(page.locator('.prow.st-seed', { hasText: 'ml-Tagging' })).toBeVisible();
+    await page.reload();
+    await dismissQuest(page);
+    await expect(page.locator('.prow.st-seed', { hasText: 'ml-Tagging' })).toBeVisible();
+    expect(errs()).toEqual([]);
+  });
+
+  test('M12: review sets a result date; Finished locks with the outcome chip', async ({ page }) => {
+    const errs = trackErrors(page);
+    await page.goto('/market');
+    await dismissQuest(page);
+    const row = page.locator('.prow', { hasText: 'ml-Tagging' });
+    await row.locator('> summary').click();
+    await row.locator('.stsel select').first().selectOption({ label: 'Under review' });
+    const row2 = page.locator('.prow', { hasText: 'ml-Tagging' });
+    if (!(await row2.locator('.pbody').isVisible())) await row2.locator('> summary').click();
+    await row2.locator('input[type=date]').fill('2027-01-15');
+    await row2.locator('input[type=date]').blur();
+    await expect(row2.locator('> summary .ddl')).toContainText('result in');
+    await row2.locator('.stsel select').first().selectOption({ label: 'Finished' });
+    const row3 = page.locator('.prow', { hasText: 'ml-Tagging' });
+    // seeded outcome tag 'ml' → locked green chip, edit menu hidden
+    await expect(row3.locator('> summary .ddl.acc')).toContainText('ml');
+    if (!(await row3.locator('.pbody').isVisible())) await row3.locator('> summary').click();
+    await expect(row3.locator('details.sub2', { hasText: 'Edit' })).toHaveCount(0);
+    expect(errs()).toEqual([]);
+  });
+
+  test('M13: Finished archives into the Accepted pool and restores', async ({ page }) => {
+    const errs = trackErrors(page);
+    await page.goto('/market');
+    await dismissQuest(page);
+    const row = page.locator('.prow', { hasText: 'ml-Tagging' });
+    await row.locator('> summary').click();
+    await row.locator('.stsel select').first().selectOption({ label: 'Finished' });
+    const row2 = page.locator('.prow', { hasText: 'ml-Tagging' });
+    if (!(await row2.locator('.pbody').isVisible())) await row2.locator('> summary').click();
+    await row2.getByRole('button', { name: 'Archive' }).click();
+    const pool = page.locator('.arcpool');
+    await pool.locator('> summary').click();
+    await expect(pool.locator('.arow', { hasText: 'ml-Tagging' })).toBeVisible();
+    await expect(page.locator('.prow', { hasText: 'ml-Tagging' })).toHaveCount(0);
+    await page.reload();
+    await dismissQuest(page);
+    const pool2 = page.locator('.arcpool');
+    await pool2.locator('> summary').click();
+    await pool2.locator('.arow', { hasText: 'ml-Tagging' }).getByRole('button', { name: 'Restore' }).click();
+    await expect(page.locator('.prow', { hasText: 'ml-Tagging' })).toBeVisible();
+    expect(errs()).toEqual([]);
+  });
+
+  test('M14: + New creates a working group and a chapter, usable at once', async ({ page }) => {
+    const errs = trackErrors(page);
+    await page.goto('/market');
+    await dismissQuest(page);
+    await page.locator('.newmenu > summary').click();
+    const wgBox = page.locator('.newmenu .sub2', { hasText: 'Working group' });
+    await wgBox.locator('> summary').click();
+    await wgBox.locator('input').fill('mk-NewWG');
+    await wgBox.getByRole('button', { name: 'Create' }).click();
+    // the new WG is immediately offered when creating a project
+    await page.locator('.newmenu > summary').click({ force: true });
+    const pBox = page.locator('.newmenu .sub2', { hasText: 'Project' }).first();
+    await pBox.locator('> summary').click({ force: true });
+    await expect(pBox.locator('select option', { hasText: 'mk-NewWG' })).toHaveCount(1);
+    // chapter
+    await page.locator('.newmenu > summary').click({ force: true });
+    const chBox = page.locator('.newmenu .sub2', { hasText: 'Chapter' });
+    await chBox.locator('> summary').click({ force: true });
+    await chBox.locator('input').fill('mk-NewChapter');
+    await chBox.getByRole('button', { name: 'Create' }).click();
+    const addBox = page.locator('.newbox');
+    await addBox.locator('> summary').click();
+    await expect(addBox.locator('select option', { hasText: 'mk-NewChapter' })).toHaveCount(1);
+    await page.reload();
+    await dismissQuest(page);
+    const addBox2 = page.locator('.newbox');
+    await addBox2.locator('> summary').click();
+    await expect(addBox2.locator('select option', { hasText: 'mk-NewChapter' })).toHaveCount(1);
+    expect(errs()).toEqual([]);
+  });
+
   test('M8: no component overflows its container (all rows expanded)', async ({ page }) => {
     await page.goto('/market');
     await dismissQuest(page);
