@@ -48,6 +48,11 @@ test.describe('market — officer single page', () => {
     await expect(row2.locator('.seat', { has: page.locator('.an', { hasText: 'Wang Fang' }) })).toBeVisible();
     // leader seat filled → the open first-author row is gone
     await expect(row2.locator('details.seat', { hasText: 'Lead · open' })).toHaveCount(0);
+    // U of CRUD: edit the seated hours inline → nominal STR recomputes
+    const seat2 = row2.locator('.seat', { has: page.locator('.an', { hasText: 'Wang Fang' }) });
+    await seat2.locator('.ghours').fill('8');
+    await seat2.locator('.ghours').blur();
+    await expect(row2.locator('.seat', { has: page.locator('.an', { hasText: 'Wang Fang' }) })).toContainText('80 STR');
     expect(errs()).toEqual([]);
   });
 

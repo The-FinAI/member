@@ -507,7 +507,13 @@
                   <span class="av" style="background:{avColor(seat.name)}22;color:{avColor(seat.name)}">{initials(seat.name)}</span>
                   <span class="an">{seat.name}</span>
                   <span class="rolec {ROLE_CLS[seat.authorship] ?? ''}">{$t(ROLE_LABEL[seat.authorship] ?? 'Author')}</span>
-                  <span class="give">{seat.amount}h/{$t('mo')}</span>
+                  {#if sg <= 1}
+                    <span class="give"><input class="ghours" type="number" min="1" value={seat.amount}
+                      onchange={(e) => { const h = Number((e.target as HTMLInputElement).value); if (h > 0 && h !== seat.amount)
+                        run(seat.slotId + seat.memberId, () => supabase.rpc('assign', { p_member: seat.memberId, p_slot: seat.slotId, p_hours: h })); }} />h/{$t('mo')}</span>
+                  {:else}
+                    <span class="give">{seat.amount}h/{$t('mo')}</span>
+                  {/if}
                   {#if seat.nominal}<span class="pts">{seat.nominal.toLocaleString()} STR</span>{/if}
                   {#if sg <= 1}<button class="rel" title={$t('Remove')} onclick={() => removeSeat(p, seat)}>×</button>{/if}
                 </div>
@@ -806,7 +812,9 @@
   details.seat > summary::-webkit-details-marker { display: none; }
   .seat .no { font-size: 11.5px; color: var(--faint2); }
   .seat .an { font-weight: 500; }
-  .seat .give { margin-left: auto; font-size: 11.5px; color: var(--faint2); }
+  .seat .give { margin-left: auto; font-size: 11.5px; color: var(--faint2); display: inline-flex; align-items: center; gap: 2px; }
+  .ghours { width: 3.2rem; text-align: right; border: 1px solid transparent !important; background: none !important; padding: 1px 4px !important; }
+  .ghours:hover, .ghours:focus { border-color: var(--line2) !important; background: #fff !important; }
   .seat .ask { color: var(--tag-or-tx); font-weight: 500; }
   .seat .ask.mut { color: var(--faint2); font-weight: 400; }
   .seat .hint { margin-left: auto; font-size: 12px; font-weight: 500; color: var(--green); }
