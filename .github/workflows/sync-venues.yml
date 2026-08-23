@@ -1,0 +1,18 @@
+# Weekly venue sync: deadlines via ccfddl, notification dates scraped from each
+# conference's official site. Requires the SUPABASE_SERVICE_ROLE_KEY secret;
+# without it the job still runs as a dry run and logs what it would write.
+name: Sync venue dates
+on:
+  schedule:
+    - cron: '0 6 * * 1'   # Mondays 06:00 UTC
+  workflow_dispatch:
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: node scripts/sync-venues.mjs
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

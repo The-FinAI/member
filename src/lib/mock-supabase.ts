@@ -118,7 +118,7 @@ const seed: Record<string, any[]> = {
     { id: 'ps-fin', name: 'Finished', rank: 5, is_active: false }
   ],
   venue: [
-    { id: 'v-acl', name: 'ACL', kind: 'conference', deadline: '2026-01-05', rank: 1 },
+    { id: 'v-acl', name: 'ACL', kind: 'conference', deadline: '2026-01-05', notification: '2026-11-20', rank: 1 },
     { id: 'v-iclr', name: 'ICLR', kind: 'conference', deadline: '2025-09-24', rank: 2 },
     { id: 'v-ipm', name: 'IPM', kind: 'journal', deadline: null, rank: 3 }
   ],

@@ -13,7 +13,7 @@
     desired_level: string | null; quota: number | null; status: string };
   type Seat = { memberId: string; name: string; amount: number; nominal: number; slotId: string; authorship: string };
   type Proj = { id: string; name: string; status: string; venue: string | null; venueId: string | null;
-    venueYr: string; decision: string | null; outcome: string | null;
+    venueYr: string; decision: string | null; venueNotif: string | null; outcome: string | null;
     unitId: string | null; unit: string | null; team: Seat[]; slots: Slot[];
     pool: number; ddlDays: number | null; ddlLabel: string };
   type Mem = { id: string; name: string; email: string; unitId: string | null; unit: string | null;
@@ -81,7 +81,7 @@
       { data: sb }, { data: orp }] = await Promise.all([
       supabase.from('project').select('id, name, org_unit_id, target_venue, venue_id, deadline, tag, archived_at, project_status!project_status_id_fkey(name)'),
       supabase.from('org_unit').select('id, name, kind'),
-      supabase.from('venue').select('id, name, kind, deadline'),
+      supabase.from('venue').select('id, name, kind, deadline, notification'),
       supabase.from('project_slot').select('id, project_id, slot_kind, authorship, desired_level, quota, status, skill:skill_id(name), resource_type:resource_type_id(name)'),
       supabase.from('work_commitment').select('project_id, slot_id, member_id, monthly_amount, nominal_str, member:member_id(full_name)'),
       supabase.from('member').select('id, full_name, email, home_unit_id, monthly_hours, auth_user_id, archived_at'),
@@ -136,7 +136,8 @@
       return { id: p.id, name: p.name, status: p.project_status?.name ?? 'Proposal',
         venue: p.target_venue, venueId: p.venue_id ?? null,
         venueYr: p.target_venue ? (dd.year ? `${p.target_venue} ${dd.year}` : p.target_venue) : '',
-        decision: p.deadline ?? null, outcome: p.tag || null, unitId: p.org_unit_id ?? null,
+        decision: p.deadline ?? null, venueNotif: v?.notification ?? null,
+        outcome: p.tag || null, unitId: p.org_unit_id ?? null,
         unit: p.org_unit_id ? (unitName[p.org_unit_id] ?? null) : null,
         team, slots: (slotsBy[p.id] ?? []).filter((s) => s.status === 'open'),
         pool: team.reduce((a, x) => a + x.nominal, 0), ddlDays: dd.days, ddlLabel: dd.label };
@@ -470,7 +471,7 @@
               {#if sg === 3 && p.venue}
                 <span class="ddl acc">{p.venueYr}{p.outcome ? ` · ${p.outcome}` : ''}</span>
               {:else if sg === 2 && p.venue}
-                {@const dn = decDays(p.decision)}
+                {@const dn = decDays(p.decision ?? p.venueNotif)}
                 <span class="ddl dec" class:red={dn != null && dn < 0}>{p.venueYr}{dn == null ? '' : dn < 0 ? ` · ${$t('result overdue')}` : ` · ${$t('result in')} ${dn}d`}</span>
               {:else if p.venue}
                 <span class="ddl" class:red={p.ddlDays != null && p.ddlDays <= 35 && p.ddlDays !== 999}
@@ -553,7 +554,7 @@
                   </select></label>
                 {#if sg === 2}
                   <label class="stsel">{$t('Result date')}
-                    <input type="date" value={p.decision ?? ''}
+                    <input type="date" value={p.decision ?? p.venueNotif ?? ''}
                       onchange={(e) => run('dd' + p.id, () => supabase.rpc('project_set_deadline', { p_project: p.id, p_deadline: (e.target as HTMLInputElement).value || null }))} /></label>
                 {/if}
                 {#if sg === 3 && !p.outcome}
@@ -656,7 +657,7 @@
             <select bind:value={addUnit}><option value="">{$t('No chapter')}</option>
               {#each chapterUnits as u}<option value={u.id}>{u.name}</option>{/each}</select>
             <button class="bt sm" disabled={busy === 'add'} onclick={addMember}>{$t('Add')}</button>
-            <span class="mut wfull">{$t('An invite is emailed on add; they are linked on sign-up and can then maintain their own info')}</span>
+            <span class="mut wfull">{$t('Adding creates a member card — no email is sent; if they later sign up with this email it links automatically')}</span>
           </div>
         </details>
 
