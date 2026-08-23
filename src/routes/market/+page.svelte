@@ -415,7 +415,7 @@
           {@const openS = p.slots}
           <details class="prow {sg >= 0 ? SG_CLS[Math.min(sg, 3)] : 'st-dorm'}" open={!!openRows['p' + p.id]} ontoggle={toggleRow('p' + p.id)}>
             <summary>
-              <span class="tg">▸</span><span class="sn">{p.name}</span>
+              <span class="sn">{p.name}</span>
               <span class="stc">{$t(sg >= 0 ? STEPS[Math.min(sg, 3)] : 'On hold')}</span>
               {#if openS.length && (sg === 0 || sg === 1)}<span class="vacb">{$t('needs {n}', { n: openS.length })}</span>{/if}
               <span class="unitc2">{p.unit ?? (p.unitId ? '' : $t('Proposal'))}</span>
@@ -573,8 +573,6 @@
                 <span class="av md" style="background:{avColor(m.name)}22;color:{avColor(m.name)}">{initials(m.name)}</span>
                 <span class="pname">{m.name}</span>
                 <span class="regd" class:on={m.linked} title={m.linked ? $t('linked account') : $t('not registered · linked on sign-up')}></span>
-                {#each m.skills.slice(0, 1) as skl}<span class="chip">{skl.name}</span>{/each}
-                {#if !m.skills.length}<span class="chip mutc">{$t('no skills set')}</span>{/if}
                 <span class="sp"></span>
                 {#if m.hours == null}<span class="warn">{$t('no hours set')}</span>
                 {:else if fh != null && fh < 0}<span class="warn">{$t('over by')} {-fh}h</span>
@@ -582,7 +580,7 @@
                 {:else}<span class="okn">{$t('free')} {fh}h</span>{/if}
               </summary>
               <div class="pf">
-                {#if m.resources.length}<div class="wfull">{#each m.resources as r}<span class="chip rs">{r.name} {r.quota.toLocaleString()}</span>{/each}</div>{/if}
+                <div class="wfull">{#each m.skills as skl}<span class="chip">{skl.name} · {$t(LV[skl.level] ?? skl.level)}</span>{/each}{#each m.resources as r}<span class="chip rs">{r.name} {r.quota.toLocaleString()}</span>{/each}{#if !m.skills.length && !m.resources.length}<span class="chip mutc">{$t('no skills set')}</span>{/if}</div>
                 <label>{$t('Monthly')} (h)<input type="number" min="0" value={m.hours ?? ''}
                   oninput={(e) => (hoursDraft[m.id] = (e.target as HTMLInputElement).value)} /></label>
                 <label>{$t('Skills')} <select bind:value={skillDraft[m.id]}>
@@ -648,21 +646,17 @@
   .lbi { display: inline-flex; align-items: center; gap: 5px; font-size: 12.5px; }
   .lbn { font-size: 10.5px; color: var(--faint2); font-weight: 600; }
   .lbm { font-weight: 500; }
-  .lbp { color: var(--tag-yl-tx); background: var(--tag-yl-bg); font-weight: 600; font-size: 11px;
-    border-radius: 4px; padding: 0 5px; }
-  .lbs { color: var(--tag-gn-tx); background: var(--tag-gn-bg); font-weight: 600; font-size: 11px;
-    border-radius: 4px; padding: 0 5px; }
+  .lbp { color: #b47d17; font-weight: 600; font-size: 12px; font-variant-numeric: tabular-nums; }
+  .lbs { color: var(--green); font-weight: 600; font-size: 12px; font-variant-numeric: tabular-nums; }
 
-  .prow { border-radius: 6px; margin-bottom: 1px; }
-  .prow > summary { display: flex; align-items: center; gap: 8px; padding: 7px 10px; cursor: pointer;
+  .prow { border-radius: 6px; margin: 0 -8px 1px; }
+  .prow > summary { display: flex; align-items: center; gap: 8px; padding: 7px 8px; cursor: pointer;
     list-style: none; border-radius: 6px; }
   .prow > summary:hover { background: var(--wash); }
   .prow > summary::-webkit-details-marker { display: none; }
   .prow[open] { background: #fbfbfa; border: 1px solid var(--line2); margin-bottom: 8px; }
-  .prow[open] > summary { border-bottom: 1px solid var(--line2); border-radius: 6px 6px 0 0; }
+  .prow[open] > summary { border-bottom: 1px solid #f1f1ef; border-radius: 6px 6px 0 0; }
   .prow.st-dorm { opacity: .55; }
-  .prow .tg { color: var(--faint2); font-size: 10px; transition: transform .12s; width: 12px; }
-  .prow[open] .tg { transform: rotate(90deg); }
   .sn { font-size: 14px; font-weight: 500; color: var(--ink2); min-width: 0; max-width: 46%;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .sp { flex: 1; }
@@ -682,7 +676,7 @@
   .ddl { font-size: 11.5px; color: var(--faint2); white-space: nowrap; }
   .ddl.amb { color: var(--tag-or-tx); }
   .ddl.red { color: var(--tag-rd-tx); font-weight: 600; }
-  .pbody { padding: 8px 16px 12px 30px; }
+  .pbody { padding: 8px 8px 12px; }
   .stp { display: flex; align-items: center; gap: 8px; }
   .stt { font-size: 12px; color: var(--dim2); white-space: nowrap; }
   .stb { display: flex; gap: 3px; flex: 1; }
@@ -738,15 +732,16 @@
   .evs { padding: 6px 0 0; }
   .evrow { font-size: 12px; color: var(--dim2); padding: 2px 0; display: flex; align-items: center; gap: 5px; }
 
-  .p { border-radius: 6px; margin-bottom: 1px; }
+  .p { border-radius: 6px; margin: 0 -8px 1px; }
   .p > summary { display: flex; align-items: center; gap: 7px; cursor: pointer; list-style: none;
-    flex-wrap: wrap; padding: 6px 8px; border-radius: 6px; }
+    padding: 6px 8px; border-radius: 6px; }
   .p > summary:hover { background: var(--wash); }
   .p > summary::-webkit-details-marker { display: none; }
   .p[open] { background: #fbfbfa; border: 1px solid var(--line2); margin-bottom: 8px; }
-  .p[open] > summary { border-bottom: 1px solid var(--line2); border-radius: 6px 6px 0 0; }
+  .p[open] > summary { border-bottom: 1px solid #f1f1ef; border-radius: 6px 6px 0 0; }
   .p[open] .pf { padding: 8px 10px; }
   .p.orphan { border: 1px solid var(--tag-rd-bg); background: #fff7f6; margin-bottom: 10px; }
+  .p[open] > summary { flex-wrap: wrap; }
   .pname { font-weight: 500; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .chip { background: var(--tag-gy-bg); border-radius: 4px; font-size: 10.5px; padding: 1px 5px; color: var(--tag-gy-tx); white-space: nowrap; }
   .chip.rs { background: var(--tag-pu-bg); color: var(--tag-pu-tx); font-weight: 500; }
