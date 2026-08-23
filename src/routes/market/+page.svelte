@@ -580,16 +580,16 @@
                 {:else}<span class="okn">{$t('free')} {fh}h</span>{/if}
               </summary>
               <div class="pf">
-                {#each m.resources as r}<span class="chip rs">{r.name} {r.quota.toLocaleString()}</span>{/each}
-                <label>{$t('Monthly')} <input type="number" min="0" value={m.hours ?? ''} style="width:3.6rem"
-                  oninput={(e) => (hoursDraft[m.id] = (e.target as HTMLInputElement).value)} />h</label>
+                {#if m.resources.length}<div class="wfull">{#each m.resources as r}<span class="chip rs">{r.name} {r.quota.toLocaleString()}</span>{/each}</div>{/if}
+                <label>{$t('Monthly')} (h)<input type="number" min="0" value={m.hours ?? ''}
+                  oninput={(e) => (hoursDraft[m.id] = (e.target as HTMLInputElement).value)} /></label>
                 <label>{$t('Skills')} <select bind:value={skillDraft[m.id]}>
                   <option value="">—</option>
                   {#each skills as skl}<option value={skl.id}>{skl.name}</option>{/each}</select></label>
-                <select bind:value={levelDraft[m.id]}>
+                <label>{$t('Level')}<select bind:value={levelDraft[m.id]}>
                   <option value="independent">{$t('Independent')}</option>
                   <option value="learning">{$t('Learning')}</option>
-                  <option value="lead">{$t('Can mentor')}</option></select>
+                  <option value="lead">{$t('Can mentor')}</option></select></label>
                 <label>{$t('Chapter')} <select value={m.unitId ?? ''} onchange={(e) => moveMember(m, (e.target as HTMLSelectElement).value)}>
                   <option value="">{$t('No chapter')}</option>
                   {#each chapterUnits as u}<option value={u.id}>{u.name}</option>{/each}</select></label>
@@ -750,9 +750,12 @@
   .chip.mutc { color: var(--faint2); background: transparent; border: 1px dashed var(--line2); }
   .okn { color: var(--green); font-weight: 600; font-size: 12px; white-space: nowrap; }
   .warn { color: var(--tag-rd-tx); font-weight: 600; font-size: 11.5px; white-space: nowrap; }
-  .pf { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; padding: 8px 0 2px;
+  .pf { display: flex; gap: 6px 8px; align-items: center; flex-wrap: wrap; padding: 8px 0 2px;
     font-size: 12px; color: var(--dim2); }
-  .pf label { display: inline-flex; gap: 3px; align-items: center; }
+  .pf label { display: flex; flex-direction: column; align-items: stretch; gap: 2px;
+    flex: 1 1 44%; min-width: 0; font-size: 11px; color: var(--faint2); }
+  .pf label :global(input), .pf label :global(select) { width: 100%; }
+  .pf > :global(.bt) { flex: 0 0 auto; }
   .regd { width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid var(--faint2); flex: none; }
   .regd.on { background: var(--green); border-color: var(--green); }
 
