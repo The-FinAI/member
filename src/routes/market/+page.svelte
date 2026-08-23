@@ -13,6 +13,7 @@
     desired_level: string | null; quota: number | null; status: string };
   type Seat = { memberId: string; name: string; amount: number; nominal: number; slotId: string; authorship: string };
   type Proj = { id: string; name: string; status: string; venue: string | null; venueId: string | null;
+    venueYr: string; decision: string | null; outcome: string | null;
     unitId: string | null; unit: string | null; team: Seat[]; slots: Slot[];
     pool: number; ddlDays: number | null; ddlLabel: string };
   type Mem = { id: string; name: string; email: string; unitId: string | null; unit: string | null;
@@ -54,15 +55,21 @@
   const avColor = (n: string) => PAL[[...n].reduce((a, c) => a + c.charCodeAt(0), 0) % PAL.length];
 
   // 目标会议的下一轮截止(过期按年顺延;期刊=随时可投)
-  function nextDdl(name: string | null, kind: string | null, deadline: string | null): { label: string; days: number | null } {
-    if (!name) return { label: '', days: null };
-    if (kind === 'journal') return { label: 'rolling', days: 999 };
-    if (!deadline) return { label: '', days: null };
+  function nextDdl(name: string | null, kind: string | null, deadline: string | null): { label: string; days: number | null; year: number | null } {
+    if (!name) return { label: '', days: null, year: null };
+    if (kind === 'journal') return { label: 'rolling', days: 999, year: null };
+    if (!deadline) return { label: '', days: null, year: null };
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const d = new Date(deadline + 'T00:00:00');
     while (d < today) d.setFullYear(d.getFullYear() + 1);
     const days = Math.round((d.getTime() - today.getTime()) / 86400000);
-    return { label: `${days}d`, days };
+    return { label: `${days}d`, days, year: d.getFullYear() };
+  }
+  // 评审中:倒数到 decision 日;为负=结果应已出
+  function decDays(decision: string | null): number | null {
+    if (!decision) return null;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    return Math.round((new Date(decision + 'T00:00:00').getTime() - today.getTime()) / 86400000);
   }
 
   async function load() {
@@ -71,7 +78,7 @@
     const [{ data: pr }, { data: ou }, { data: vn }, { data: slr }, { data: wc }, { data: mm },
       { data: ps }, { data: sk }, { data: rt }, { data: st }, { data: ty }, { data: rs },
       { data: sb }, { data: orp }] = await Promise.all([
-      supabase.from('project').select('id, name, org_unit_id, target_venue, venue_id, project_status!project_status_id_fkey(name)').is('archived_at', null),
+      supabase.from('project').select('id, name, org_unit_id, target_venue, venue_id, deadline, tag, project_status!project_status_id_fkey(name)').is('archived_at', null),
       supabase.from('org_unit').select('id, name, kind'),
       supabase.from('venue').select('id, name, kind, deadline'),
       supabase.from('project_slot').select('id, project_id, slot_kind, authorship, desired_level, quota, status, skill:skill_id(name), resource_type:resource_type_id(name)'),
@@ -125,7 +132,9 @@
       const dd = nextDdl(p.target_venue, v?.kind ?? null, v?.deadline ?? null);
       const team = (teamBy[p.id] ?? []).sort((a, b) => (a.authorship === 'first' ? -1 : 0) - (b.authorship === 'first' ? -1 : 0) || b.nominal - a.nominal);
       return { id: p.id, name: p.name, status: p.project_status?.name ?? 'Proposal',
-        venue: p.target_venue, venueId: p.venue_id ?? null, unitId: p.org_unit_id ?? null,
+        venue: p.target_venue, venueId: p.venue_id ?? null,
+        venueYr: p.target_venue ? (dd.year ? `${p.target_venue} ${dd.year}` : p.target_venue) : '',
+        decision: p.deadline ?? null, outcome: p.tag || null, unitId: p.org_unit_id ?? null,
         unit: p.org_unit_id ? (unitName[p.org_unit_id] ?? null) : null,
         team, slots: (slotsBy[p.id] ?? []).filter((s) => s.status === 'open'),
         pool: team.reduce((a, x) => a + x.nominal, 0), ddlDays: dd.days, ddlLabel: dd.label };
@@ -181,7 +190,7 @@
     }
     if (groupBy === 'venue') {
       const m = new Map<string, Proj[]>();
-      for (const p of projs) { const k = p.venue ?? $t('TBD'); m.set(k, [...(m.get(k) ?? []), p]); }
+      for (const p of projs) { const k = p.venueYr || $t('TBD'); m.set(k, [...(m.get(k) ?? []), p]); }
       // 分节按该会最近截止日排,未定沉底
       const ddlOf = (ps: Proj[]) => Math.min(...ps.map((p) => p.ddlDays ?? 998));
       return [...m.entries()]
@@ -454,8 +463,14 @@
               <span class="unitc2">{p.unit ?? (p.unitId ? '' : $t('Proposal'))}</span>
               <span class="sp"></span>
               {#if p.team.length}<span class="fp">{#each p.team.slice(0, 3) as seat}<span class="av" style="background:{avColor(seat.name)}22;color:{avColor(seat.name)}">{initials(seat.name)}</span>{/each}{#if p.team.length > 3}<span class="fpn">+{p.team.length - 3}</span>{/if}</span>{/if}
-              {#if p.venue}<span class="ddl" class:red={p.ddlDays != null && p.ddlDays <= 35 && p.ddlDays !== 999}
-                class:amb={p.ddlDays != null && p.ddlDays > 35 && p.ddlDays <= 70}>{p.venue}{p.ddlLabel ? ` · ${p.ddlLabel === 'rolling' ? $t('rolling') : $t('due in') + ' ' + p.ddlLabel}` : ''}</span>{/if}
+              {#if sg === 3 && p.venue}
+                <span class="ddl acc">{p.venueYr}{p.outcome ? ` · ${p.outcome}` : ''}</span>
+              {:else if sg === 2 && p.venue}
+                {@const dn = decDays(p.decision)}
+                <span class="ddl dec" class:red={dn != null && dn < 0}>{p.venueYr}{dn == null ? '' : dn < 0 ? ` · ${$t('result overdue')}` : ` · ${$t('result in')} ${dn}d`}</span>
+              {:else if p.venue}
+                <span class="ddl" class:red={p.ddlDays != null && p.ddlDays <= 35 && p.ddlDays !== 999}
+                class:amb={p.ddlDays != null && p.ddlDays > 35 && p.ddlDays <= 70}>{p.venueYr}{p.ddlLabel ? ` · ${p.ddlLabel === 'rolling' ? $t('rolling') : $t('due in') + ' ' + p.ddlLabel}` : ''}</span>{/if}
             </summary>
             <div class="pbody">
               <div class="stp"><span class="stt">{$t(sg >= 0 ? STEPS[Math.min(sg, 3)] : 'On hold')}{sg === 0 ? ' · ' + $t('awaiting first author') : ''}</span>
@@ -485,7 +500,7 @@
                   <span class="rolec {ROLE_CLS[seat.authorship] ?? ''}">{$t(ROLE_LABEL[seat.authorship] ?? 'Author')}</span>
                   <span class="give">{seat.amount}h/{$t('mo')}</span>
                   {#if seat.nominal}<span class="pts">{seat.nominal.toLocaleString()} STR</span>{/if}
-                  <button class="rel" title={$t('Remove')} onclick={() => removeSeat(p, seat)}>×</button>
+                  {#if sg <= 1}<button class="rel" title={$t('Remove')} onclick={() => removeSeat(p, seat)}>×</button>{/if}
                 </div>
               {/each}
               {#each p.slots.filter((s) => s.slot_kind !== 'leader') as s, j}
@@ -532,8 +547,18 @@
                     onchange={(e) => setStatus(p, (e.target as HTMLSelectElement).value)}>
                     {#each orderedStatuses as s}<option value={s.id}>{$t(s.name)}</option>{/each}
                   </select></label>
+                {#if sg === 2}
+                  <label class="stsel">{$t('Result date')}
+                    <input type="date" value={p.decision ?? ''}
+                      onchange={(e) => run('dd' + p.id, () => supabase.rpc('project_set_deadline', { p_project: p.id, p_deadline: (e.target as HTMLInputElement).value || null }))} /></label>
+                {/if}
+                {#if sg === 3 && !p.outcome}
+                  <span class="stsel">{$t('Outcome')}
+                    <input placeholder="main / findings" style="width:7rem"
+                      onchange={(e) => { const v = (e.target as HTMLInputElement).value.trim(); if (v) run('tg' + p.id, () => supabase.rpc('project_set_meta', { p_project: p.id, p_tag: v })); }} /></span>
+                {/if}
                 {#if sg === 3}<a class="bt sm ghosted" href="/admin">{$t('Settle (President)')}</a>{/if}
-                <details class="sub2"><summary>{$t('Edit')} ▾</summary>
+                {#if sg !== 3}<details class="sub2"><summary>{$t('Edit')} ▾</summary>
                   <div class="hf">
                     <label>{$t('Name')} <input value={p.name} oninput={(e) => (editName[p.id] = (e.target as HTMLInputElement).value)} style="width:10rem" /></label>
                     <label>{$t('Venue')} <select value={p.venueId ?? ''} onchange={(e) => (editVenue[p.id] = (e.target as HTMLSelectElement).value)}>
@@ -547,7 +572,7 @@
                       <span class="mut">{$t('Sure?')} </span>
                       <button class="bt sm danger" disabled={busy === 'a' + p.id} onclick={() => archiveProject(p)}>{$t('Confirm')}</button></details>
                   </div>
-                </details>
+                </details>{/if}
                 <details class="sub2"><summary>{$t('Activity')} ▾</summary>
                   <div class="evs">
                     {#each p.team.slice(0, 6) as seat}
@@ -732,6 +757,8 @@
   .ddl { font-size: 11.5px; color: var(--faint2); white-space: nowrap; }
   .ddl.amb { color: var(--tag-or-tx); }
   .ddl.red { color: var(--tag-rd-tx); font-weight: 600; }
+  .ddl.dec { color: var(--tag-bl-tx); }
+  .ddl.acc { color: var(--tag-gn-tx); background: var(--tag-gn-bg); border-radius: 4px; padding: 1px 7px; font-weight: 600; }
   .pbody { padding: 8px 8px 12px; }
   .stp { display: flex; align-items: center; gap: 8px; }
   .stt { font-size: 12px; color: var(--dim2); white-space: nowrap; }
