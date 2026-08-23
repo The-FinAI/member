@@ -2155,6 +2155,7 @@ const zh: Table = {
   'Outcome': '成果',
   'Archive': '归档',
   'Archive pool': '归档池',
+  // 池子标题直接用 'Accepted'(接收)
   'Restore': '恢复',
   'Adding creates a member card — no email is sent; if they later sign up with this email it links automatically': '加入即创建一张成员卡,不会发邮件;对方之后用该邮箱注册,登录时自动关联',
   'Flat': '不分组',

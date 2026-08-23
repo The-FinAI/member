@@ -67,6 +67,10 @@
     return { label: `${days}d`, days, year: d.getFullYear() };
   }
   // 评审中:倒数到 decision 日;为负=结果应已出
+  const venLabel = (v: { name: string; kind: string; deadline: string | null }) => {
+    const y = nextDdl(v.name, v.kind, v.deadline).year;
+    return y ? `${v.name} ${y}` : v.name;
+  };
   function decDays(decision: string | null): number | null {
     if (!decision) return null;
     const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -570,7 +574,7 @@
                     <label>{$t('Name')} <input value={p.name} oninput={(e) => (editName[p.id] = (e.target as HTMLInputElement).value)} style="width:10rem" /></label>
                     <label>{$t('Venue')} <select value={p.venueId ?? ''} onchange={(e) => (editVenue[p.id] = (e.target as HTMLSelectElement).value)}>
                       <option value="">{$t('TBD')}</option>
-                      {#each venues as v}<option value={v.id}>{v.name}</option>{/each}</select></label>
+                      {#each venues as v}<option value={v.id}>{venLabel(v)}</option>{/each}</select></label>
                     <label>{$t('Group')} <select value={p.unitId ?? ''} onchange={(e) => (editUnit[p.id] = (e.target as HTMLSelectElement).value)}>
                       <option value="">{$t('Proposal (no group)')}</option>
                       {#each wgs as u}<option value={u.id}>{u.name}</option>{/each}</select></label>
@@ -617,7 +621,7 @@
         {/each}
         {#if archived.length}
           <details class="arcpool" open={!!openRows['arc']} ontoggle={toggleRow('arc')}>
-            <summary><h2 style="display:inline">{$t('Archive pool')} <span class="n">{archived.length}</span></h2></summary>
+            <summary><h2 style="display:inline">{$t('Accepted')} <span class="n">{archived.length}</span></h2></summary>
             {#each archived as p (p.id)}
               <div class="arow">
                 <span class="sn">{p.name}</span>
