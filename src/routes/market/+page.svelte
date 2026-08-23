@@ -37,6 +37,7 @@
   let projs = $state<Proj[]>([]);
   let archived = $state<Proj[]>([]);
   let mems = $state<Mem[]>([]);
+  let removedMems = $state<{ id: string; name: string }[]>([]);
   let wgs = $state<Unit[]>([]);
   let chapterUnits = $state<Unit[]>([]);
   let venues = $state<{ id: string; name: string; kind: string; deadline: string | null }[]>([]);
@@ -166,6 +167,7 @@
     settledBy = {};
     for (const b of (sb as any[]) ?? []) if (b.owner_member_id) settledBy[b.owner_member_id] = (settledBy[b.owner_member_id] ?? 0) + (Number(b.balance) || 0);
 
+    removedMems = ((mm as any[]) ?? []).filter((m) => m.archived_at).map((m) => ({ id: m.id, name: m.full_name }));
     mems = ((mm as any[]) ?? []).filter((m) => !m.archived_at).map((m) => ({
       id: m.id, name: m.full_name, email: m.email ?? '', unitId: m.home_unit_id ?? null,
       unit: m.home_unit_id ? (unitName[m.home_unit_id] ?? null) : null,
@@ -329,6 +331,13 @@
 
   // ── 新建:项目 / 小组 / 分会 ──
   let newProj = $state(''); let newProjUnit = $state(''); let newWg = $state(''); let newCh = $state('');
+  let newVen = $state(''); let newVenKind = $state('conference'); let newVenDdl = $state('');
+  async function createVenue() {
+    if (!newVen.trim()) return;
+    if (await run('newv', () => supabase.rpc('venue_create', {
+      p_name: newVen.trim(), p_kind: newVenKind, p_deadline: newVenDdl || null
+    }))) { newVen = ''; newVenDdl = ''; }
+  }
   async function createProject() {
     if (!newProj.trim()) return;
     const sid = statusId('Proposal') ?? statuses[0]?.id;
@@ -422,6 +431,15 @@
         <details class="sub2"><summary class="mi">{$t('Chapter (people)')}</summary>
           <div class="hf"><input placeholder={$t('Chapter name')} bind:value={newCh} style="width:9rem" />
             <button class="bt sm" disabled={busy === 'newu'} onclick={() => createUnit('chapter')}>{$t('Create')}</button></div>
+        </details>
+        <details class="sub2"><summary class="mi">{$t('New venue')}</summary>
+          <div class="hf"><input placeholder={$t('Venue name')} bind:value={newVen} style="width:7rem" />
+            <select bind:value={newVenKind}>
+              <option value="conference">{$t('Conference')}</option>
+              <option value="journal">{$t('Journal')}</option>
+              <option value="rolling">{$t('Rolling')}</option></select>
+            <input type="date" bind:value={newVenDdl} title={$t('Deadline')} />
+            <button class="bt sm" disabled={busy === 'newv'} onclick={createVenue}>{$t('Create')}</button></div>
         </details>
       </div>
     </details>
@@ -755,6 +773,20 @@
             </details>
           {/each}
         {/each}
+        {#if removedMems.length}
+          <details class="arcpool" open={!!openRows['rm']} ontoggle={toggleRow('rm')}>
+            <summary><h2 style="display:inline">{$t('Removed')} <span class="n">{removedMems.length}</span></h2></summary>
+            {#each removedMems as rm2 (rm2.id)}
+              <div class="arow">
+                <span class="av" style="background:{avColor(rm2.name)}22;color:{avColor(rm2.name)}">{initials(rm2.name)}</span>
+                <span class="sn">{rm2.name}</span>
+                <span class="sp"></span>
+                <button class="bt sm ghosted" disabled={busy === 'rm' + rm2.id}
+                  onclick={() => run('rm' + rm2.id, () => supabase.rpc('member_archive', { p_member: rm2.id, p_archived: false }))}>{$t('Restore')}</button>
+              </div>
+            {/each}
+          </details>
+        {/if}
       </div>
     </div>
     <div class="foot">The Fin AI Research Community · 1 {$t('hour')} = 10 STR · {$t('compute / datasets / funding convert by type')}</div>

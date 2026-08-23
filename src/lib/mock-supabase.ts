@@ -398,6 +398,13 @@ function rpc(name: string, a: any) {
       project: null }); persist();
     return Promise.resolve({ data: id, error: null });
   }
+  if (name === 'venue_create') {
+    if ((seed.venue ?? []).some((v: any) => v.name.toLowerCase() === (a.p_name || '').trim().toLowerCase()))
+      return Promise.resolve({ data: null, error: { message: 'venue already exists' } });
+    const id = nid('v');
+    seed.venue.push({ id, name: (a.p_name || '').trim(), kind: a.p_kind, deadline: a.p_deadline ?? null, notification: null, rank: 99 });
+    persist(); return Promise.resolve({ data: id, error: null });
+  }
   if (name === 'unit_create') {
     const id = nid('u');
     (seed.org_unit ??= []).push({ id, name: a.p_name, code: (a.p_name || '').slice(0, 6).toUpperCase(), kind: a.p_kind, description: '', rank: 9 });

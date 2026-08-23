@@ -330,6 +330,50 @@ test.describe('market — officer single page', () => {
     expect(errs()).toEqual([]);
   });
 
+  test('M16: create a venue; it is immediately offered in project editing', async ({ page }) => {
+    const errs = trackErrors(page);
+    await page.goto('/market');
+    await dismissQuest(page);
+    await page.locator('.newmenu > summary').click({ force: true });
+    const vBox = page.locator('.newmenu .sub2', { hasText: 'New venue' });
+    await vBox.locator('> summary').click({ force: true });
+    await vBox.locator('input').first().fill('EMNLP');
+    await vBox.locator('input[type=date]').fill('2027-05-20');
+    await vBox.getByRole('button', { name: 'Create' }).click();
+    const row = page.locator('.prow', { hasText: 'ml-Tagging' });
+    await row.locator('> summary').click();
+    const edit = row.locator('details.sub2', { hasText: 'Edit' });
+    await edit.locator('> summary').click();
+    await edit.locator('label', { hasText: 'Venue' }).locator('select').selectOption({ label: 'EMNLP 2027' });
+    await edit.getByRole('button', { name: 'Save' }).click();
+    await expect(page.locator('.prow', { hasText: 'ml-Tagging' }).locator('> summary .ddl')).toContainText('EMNLP 2027');
+    await page.reload();
+    await dismissQuest(page);
+    await expect(page.locator('.prow', { hasText: 'ml-Tagging' }).locator('> summary .ddl')).toContainText('EMNLP 2027');
+    expect(errs()).toEqual([]);
+  });
+
+  test('M17: a removed member lands in the Removed pool and restores', async ({ page }) => {
+    const errs = trackErrors(page);
+    await page.goto('/market');
+    await dismissQuest(page);
+    const mrow = page.locator('.p', { has: page.locator('.pname', { hasText: 'Zhao Lei' }) }).first();
+    await mrow.locator('> summary').click();
+    await mrow.locator('.dz > summary').click();
+    await mrow.locator('.dz').getByRole('button', { name: 'Confirm' }).click();
+    await expect(page.locator('.p', { has: page.locator('.pname', { hasText: 'Zhao Lei' }) })).toHaveCount(0);
+    const pool = page.locator('.arcpool', { hasText: 'Removed' });
+    await pool.locator('> summary').click();
+    await expect(pool.locator('.arow', { hasText: 'Zhao Lei' })).toBeVisible();
+    await page.reload();
+    await dismissQuest(page);
+    const pool2 = page.locator('.arcpool', { hasText: 'Removed' });
+    await pool2.locator('> summary').click();
+    await pool2.locator('.arow', { hasText: 'Zhao Lei' }).getByRole('button', { name: 'Restore' }).click();
+    await expect(page.locator('.p', { has: page.locator('.pname', { hasText: 'Zhao Lei' }) }).first()).toBeVisible();
+    expect(errs()).toEqual([]);
+  });
+
   test('M8: no component overflows its container (all rows expanded)', async ({ page }) => {
     await page.goto('/market');
     await dismissQuest(page);
