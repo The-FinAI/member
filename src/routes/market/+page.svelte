@@ -34,6 +34,7 @@
   const PAL = ['#31735f', '#4c7a9b', '#8a6d3b', '#a35d48', '#5b5f97', '#6c8363', '#96694f', '#527a7a', '#7b5e7b', '#6e7f52'];
 
   let projs = $state<Proj[]>([]);
+  let archived = $state<Proj[]>([]);
   let mems = $state<Mem[]>([]);
   let wgs = $state<Unit[]>([]);
   let chapterUnits = $state<Unit[]>([]);
@@ -78,7 +79,7 @@
     const [{ data: pr }, { data: ou }, { data: vn }, { data: slr }, { data: wc }, { data: mm },
       { data: ps }, { data: sk }, { data: rt }, { data: st }, { data: ty }, { data: rs },
       { data: sb }, { data: orp }] = await Promise.all([
-      supabase.from('project').select('id, name, org_unit_id, target_venue, venue_id, deadline, tag, project_status!project_status_id_fkey(name)').is('archived_at', null),
+      supabase.from('project').select('id, name, org_unit_id, target_venue, venue_id, deadline, tag, archived_at, project_status!project_status_id_fkey(name)'),
       supabase.from('org_unit').select('id, name, kind'),
       supabase.from('venue').select('id, name, kind, deadline'),
       supabase.from('project_slot').select('id, project_id, slot_kind, authorship, desired_level, quota, status, skill:skill_id(name), resource_type:resource_type_id(name)'),
@@ -127,7 +128,8 @@
       nominalBy[w.member_id] = (nominalBy[w.member_id] ?? 0) + nom;
     }
 
-    projs = ((pr as any[]) ?? []).map((p) => {
+    const rowsAll = ((pr as any[]) ?? []);
+    const toProj = (p: any) => {
       const v = venByName[p.target_venue ?? ''];
       const dd = nextDdl(p.target_venue, v?.kind ?? null, v?.deadline ?? null);
       const team = (teamBy[p.id] ?? []).sort((a, b) => (a.authorship === 'first' ? -1 : 0) - (b.authorship === 'first' ? -1 : 0) || b.nominal - a.nominal);
@@ -138,7 +140,9 @@
         unit: p.org_unit_id ? (unitName[p.org_unit_id] ?? null) : null,
         team, slots: (slotsBy[p.id] ?? []).filter((s) => s.status === 'open'),
         pool: team.reduce((a, x) => a + x.nominal, 0), ddlDays: dd.days, ddlLabel: dd.label };
-    });
+    };
+    projs = rowsAll.filter((p) => !p.archived_at).map(toProj);
+    archived = rowsAll.filter((p) => p.archived_at).map(toProj);
 
     const skillBy: Record<string, { name: string; level: string }[]> = {};
     for (const r of (ps as any[]) ?? []) if (r.skill?.name) (skillBy[r.member_id] ??= []).push({ name: r.skill.name, level: r.level });
@@ -557,7 +561,9 @@
                     <input placeholder="main / findings" style="width:7rem"
                       onchange={(e) => { const v = (e.target as HTMLInputElement).value.trim(); if (v) run('tg' + p.id, () => supabase.rpc('project_set_meta', { p_project: p.id, p_tag: v })); }} /></span>
                 {/if}
-                {#if sg === 3}<a class="bt sm ghosted" href="/admin">{$t('Settle (President)')}</a>{/if}
+                {#if sg === 3}<a class="bt sm ghosted" href="/admin">{$t('Settle (President)')}</a>
+                  <button class="bt sm ghosted" disabled={busy === 'ar' + p.id}
+                    onclick={() => run('ar' + p.id, () => supabase.rpc('project_archive', { p_project: p.id, p_archived: true }))}>{$t('Archive')}</button>{/if}
                 {#if sg !== 3}<details class="sub2"><summary>{$t('Edit')} ▾</summary>
                   <div class="hf">
                     <label>{$t('Name')} <input value={p.name} oninput={(e) => (editName[p.id] = (e.target as HTMLInputElement).value)} style="width:10rem" /></label>
@@ -608,6 +614,20 @@
             {#each sec.ps as p (p.id)}{@render prow(p)}{/each}
           {/if}
         {/each}
+        {#if archived.length}
+          <details class="arcpool" open={!!openRows['arc']} ontoggle={toggleRow('arc')}>
+            <summary><h2 style="display:inline">{$t('Archive pool')} <span class="n">{archived.length}</span></h2></summary>
+            {#each archived as p (p.id)}
+              <div class="arow">
+                <span class="sn">{p.name}</span>
+                {#if p.venue}<span class="ddl acc">{p.venueYr}{p.outcome ? ` · ${p.outcome}` : ''}</span>{/if}
+                <span class="sp"></span>
+                <button class="bt sm ghosted" disabled={busy === 'ar' + p.id}
+                  onclick={() => run('ar' + p.id, () => supabase.rpc('project_archive', { p_project: p.id, p_archived: false }))}>{$t('Restore')}</button>
+              </div>
+            {/each}
+          </details>
+        {/if}
       </div>
 
       <div>
@@ -738,6 +758,12 @@
   .prow[open] { background: #fbfbfa; border: 1px solid var(--line2); margin-bottom: 8px; }
   .prow[open] > summary { border-bottom: 1px solid #f1f1ef; border-radius: 6px 6px 0 0; }
   .prow.st-dorm { opacity: .55; }
+  .arcpool { margin-top: 16px; }
+  .arcpool > summary { list-style: none; cursor: pointer; }
+  .arcpool > summary::-webkit-details-marker { display: none; }
+  .arow { display: flex; align-items: center; gap: 8px; padding: 5px 8px; margin: 0 -8px;
+    border-radius: 6px; opacity: .65; font-size: 13px; }
+  .arow:hover { background: var(--wash); opacity: 1; }
   .sn { font-size: 14px; font-weight: 500; color: var(--ink2); min-width: 0; max-width: 46%;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .sp { flex: 1; }
