@@ -28,9 +28,9 @@
     tag?: { label: string; color: string };
   } = $props();
 
-  const tintStyle = accentColor
+  const tintStyle = $derived(accentColor
     ? `--ec-accent:${accentColor}; --ec-tint:color-mix(in srgb, ${accentColor} 6%, var(--card))`
-    : undefined;
+    : undefined);
 </script>
 
 {#snippet body()}

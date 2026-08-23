@@ -2,7 +2,6 @@
   import { supabase, supabaseConfigured } from '$lib/supabase';
   import { authError } from '$lib/session';
   import { t } from '$lib/i18n';
-  import LangSwitcher from '$lib/LangSwitcher.svelte';
 
   // An invitation letter links here with ?email=…&invited=1 so we can greet
   // the new member and pre-fill their address before they request the link.
@@ -16,8 +15,7 @@
   let code = $state('');
   let verifying = $state(false);
 
-  async function signIn(e: Event) {
-    e.preventDefault();
+  async function requestCode() {
     error = '';
     if (!supabaseConfigured) {
       error = 'Supabase is not configured yet.';
@@ -51,6 +49,16 @@
     else sent = true;
   }
 
+  async function signIn(e: Event) {
+    e.preventDefault();
+    await requestCode();
+  }
+
+  async function resend() {
+    code = '';
+    await requestCode();
+  }
+
   async function verify(e: Event) {
     e.preventDefault();
     error = '';
@@ -75,15 +83,11 @@
 </script>
 
 <div class="stack" style="max-width: 420px; margin: 4rem auto;">
-  <div class="row" style="justify-content:space-between; gap:.55rem; margin-bottom:.25rem;">
-    <span class="brand" style="font-size:1.2rem;"><span class="dot"></span>The&nbsp;Fin&nbsp;AI <span class="muted" style="font-weight:500;">· Community</span></span>
-    <LangSwitcher />
-  </div>
   <div class="card stack">
     <h1 style="margin-bottom:0;">{invited ? $t('Welcome to The Fin AI') : $t('Sign in')}</h1>
     {#if invited}
       <p class="muted" style="margin-top:-.5rem;">
-        {$t("You've been invited! Confirm your email below and we'll send a secure one-time sign-in link — no password needed.")}
+        {$t("You've been invited! Confirm your email below and we'll send a secure one-time verification code — no password needed.")}
       </p>
     {:else}
       <p class="muted" style="margin-top:-.5rem;">
@@ -100,31 +104,43 @@
         {$t('We emailed a sign-in code to {email}. Enter it below to sign in.', { email })}
       </p>
       <form class="stack" onsubmit={verify}>
-        <input
-          type="text"
-          inputmode="numeric"
-          autocomplete="one-time-code"
-          maxlength="10"
-          placeholder="••••••"
-          bind:value={code}
-          style="letter-spacing:.4em; font-size:1.2rem; text-align:center;"
-          required
-        />
+        <label class="stack" style="gap:.35rem;">
+          <span class="muted" style="font-size:.82rem;">{$t('Verification code')}</span>
+          <input
+            type="text"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            maxlength="10"
+            placeholder="••••••"
+            bind:value={code}
+            style="letter-spacing:.4em; font-size:1.2rem; text-align:center;"
+            required
+          />
+        </label>
         <button type="submit" disabled={verifying}>
           {verifying ? $t('Verifying…') : $t('Verify & sign in')}
         </button>
       </form>
-      <button class="linkish" onclick={restart} style="background:none; border:none; color:var(--muted); font-size:.82rem; cursor:pointer; padding:0; text-align:left;">
-        {$t('Use a different email')}
-      </button>
+      <div class="row" style="justify-content:space-between; gap:.75rem;">
+        <button class="linkish" onclick={resend} disabled={loading} style="background:none; border:none; color:var(--accent); font-size:.82rem; cursor:pointer; padding:0;">
+          {loading ? $t('Sending…') : $t('Resend code')}
+        </button>
+        <button class="linkish" onclick={restart} style="background:none; border:none; color:var(--muted); font-size:.82rem; cursor:pointer; padding:0;">
+          {$t('Use a different email')}
+        </button>
+      </div>
     {:else}
       <form class="stack" onsubmit={signIn}>
-        <input
-          type="email"
-          placeholder="you@university.edu"
-          bind:value={email}
-          required
-        />
+        <label class="stack" style="gap:.35rem;">
+          <span class="muted" style="font-size:.82rem;">{$t('Email')}</span>
+          <input
+            type="email"
+            placeholder="you@university.edu"
+            autocomplete="email"
+            bind:value={email}
+            required
+          />
+        </label>
         <button type="submit" disabled={loading}>
           {loading ? $t('Sending…') : $t('Send verification code')}
         </button>
@@ -132,4 +148,7 @@
     {/if}
     {#if error}<p class="neg" style="font-size:.85rem;">{$t(error)}</p>{/if}
   </div>
+  <p class="muted" style="font-size:.85rem; text-align:center; margin-top:.25rem;">
+    {$t('New to the community?')} <a href="/guide">{$t('Read how the community works →')}</a>
+  </p>
 </div>

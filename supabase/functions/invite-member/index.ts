@@ -160,7 +160,7 @@ function renderInvite(opts: { fullName: string; link: string; inviterName: strin
           <tr><td style="padding:16px 32px 0;">
             <p style="margin:0; font-size:12.5px; line-height:1.6; color:#8b949e;">
               This invitation is tied to your email. Click above, and we'll send a secure one-time
-              sign-in link — there's no password to remember. If the button doesn't work, paste this into your browser:<br>
+              verification code — there's no password to remember. If the button doesn't work, paste this into your browser:<br>
               <a href="${link}" style="color:#6aa6ff; word-break:break-all;">${esc(link)}</a>
             </p>
           </td></tr>

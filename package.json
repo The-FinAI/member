@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "sync": "svelte-kit sync",
+    "check": "svelte-kit sync && tsc --noEmit",
     "test:e2e": "playwright test"
   },
   "devDependencies": {

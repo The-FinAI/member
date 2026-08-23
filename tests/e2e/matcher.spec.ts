@@ -1,4 +1,4 @@
-import { test } from '@playwright/test';
+import { test, type Page } from '@playwright/test';
 import { asRole, expect } from './helpers';
 
 // =====================================================================
@@ -9,7 +9,7 @@ import { asRole, expect } from './helpers';
 // holds Annotation at Learning (under-qualified); Wang Fang holds it at Lead.
 // =====================================================================
 
-async function openMatcherNeed(page, needText: string) {
+async function openMatcherNeed(page: Page, needText: string) {
   await page.goto('/projects');
   await page.locator('.lrow-head').first().click();
   await page.locator('.lrow-body').first().waitFor({ state: 'visible' });

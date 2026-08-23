@@ -2,7 +2,7 @@
   import { t } from '$lib/i18n';
   import Icon from '$lib/Icon.svelte';
 
-  // A single click-to-edit field: shows a value (with a ✎ icon + double-click to
+  // A single click-to-edit field: shows a value with a visible ✎ affordance and
   // edit for permitted users) and swaps to an input / textarea / select in place.
   // Enter (or change, for selects) commits via onSave; Esc / blur-without-change
   // cancels. Stays open and shows an error if onSave throws.
@@ -73,17 +73,14 @@
     {#if err}<span class="if-err">{err}</span>{/if}
   {:else}
     {@const readText = display || (type === 'select' ? '' : value)}
-    <span
-      class="if-val"
-      class:editable={canEdit}
-      role={canEdit ? 'button' : undefined}
-      tabindex={canEdit ? 0 : undefined}
-      ondblclick={start}
-      onkeydown={(e) => { if (canEdit && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); start(); } }}
-    >
-      <span class="if-text" class:muted={!readText}>{readText || '—'}</span>
-      {#if canEdit}<button type="button" class="if-pen" onclick={start} title={$t("Edit")} aria-label={$t("Edit")}><Icon name="edit" size={13} /></button>{/if}
-    </span>
+    {#if canEdit}
+      <button type="button" class="if-val editable" onclick={start} aria-label={`${$t('Edit')} ${label}`}>
+        <span class="if-text" class:muted={!readText}>{readText || '—'}</span>
+        <span class="if-pen" aria-hidden="true"><Icon name="edit" size={13} /></span>
+      </button>
+    {:else}
+      <span class="if-val"><span class="if-text" class:muted={!readText}>{readText || '—'}</span></span>
+    {/if}
   {/if}
 </div>
 
@@ -91,7 +88,7 @@
   .if-row { display: flex; flex-direction: column; gap: .2rem; }
   .if-label { font-size: .7rem; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); }
   .if-val { display: inline-flex; align-items: baseline; gap: .35rem; max-width: 100%; }
-  .if-val.editable { cursor: text; border-radius: var(--r-sm); }
+  .if-val.editable { cursor: text; border: 0; padding: 0; border-radius: var(--r-sm); background: transparent; color: inherit; font: inherit; text-align: left; }
   .if-val.editable:hover .if-pen { opacity: 1; }
   .if-text { font-size: .9rem; color: var(--text); line-height: 1.4; word-break: break-word; }
   .if-text.muted { color: var(--muted); }
@@ -99,7 +96,7 @@
     flex: none; background: transparent; border: 0; color: var(--accent); cursor: pointer;
     font-size: .82rem; padding: 0 .15rem; opacity: 0; transition: opacity .12s;
   }
-  .if-val.editable:focus-within .if-pen, .if-pen:focus { opacity: 1; }
+  .if-val.editable:focus-visible .if-pen { opacity: 1; }
   .if-edit-wrap { display: flex; align-items: center; gap: .4rem; }
   .if-edit-wrap input, .if-edit-wrap textarea, .if-edit-wrap select {
     flex: 1; min-width: 0; padding: .4rem .55rem; border-radius: var(--r-sm); border: 1px solid var(--accent);

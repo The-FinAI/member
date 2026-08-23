@@ -1,4 +1,4 @@
-import { test } from '@playwright/test';
+import { test, type Page } from '@playwright/test';
 import { asRole, trackErrors, expect } from './helpers';
 
 // =====================================================================
@@ -8,7 +8,7 @@ import { asRole, trackErrors, expect } from './helpers';
 // Distilled from #20 / #31 / #33 / #34 / #35.
 // =====================================================================
 
-async function openFirstProject(page) {
+async function openFirstProject(page: Page) {
   await page.goto('/projects');
   const row = page.locator('.lrow-head').first();
   await row.waitFor({ state: 'visible' });

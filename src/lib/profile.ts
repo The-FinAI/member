@@ -1,5 +1,5 @@
 import { supabase, supabaseConfigured } from './supabase';
-import { member, capabilities, officerUnits, type Member, type OfficerUnit } from './session';
+import { member, capabilities, officerUnits, profileError, type Member, type OfficerUnit } from './session';
 
 /** Bind a pre-created (invited) member row to the just-authenticated user. */
 export async function claimMembership(): Promise<void> {
@@ -10,12 +10,21 @@ export async function claimMembership(): Promise<void> {
 /** Load the current user's member row + derived capabilities into stores. */
 export async function loadProfile(authUserId: string): Promise<void> {
   if (!supabaseConfigured) return;
+  profileError.set(null);
 
-  const { data: m } = await supabase
+  const { data: m, error: memberErr } = await supabase
     .from('member')
     .select('id, full_name, email, affiliation, status')
     .eq('auth_user_id', authUserId)
     .maybeSingle();
+
+  if (memberErr) {
+    member.set(null);
+    capabilities.set(new Set());
+    officerUnits.set([]);
+    profileError.set('We could not load your membership. Please reload and try again.');
+    return;
+  }
 
   member.set((m as Member) ?? null);
   if (!m) {
@@ -25,11 +34,17 @@ export async function loadProfile(authUserId: string): Promise<void> {
   }
 
   // org-unit officer roles the member currently serves (drives "My chapter")
-  const { data: off } = await supabase
-    .from('org_unit_officer')
-    .select('role, org_unit:org_unit_id(id, code, name, kind)')
-    .eq('member_id', (m as Member).id)
-    .is('ended_on', null);
+  const [{ data: off, error: officerErr }, { data: caps, error: capabilityErr }] = await Promise.all([
+    supabase
+      .from('org_unit_officer')
+      .select('role, org_unit:org_unit_id(id, code, name, kind)')
+      .eq('member_id', (m as Member).id)
+      .is('ended_on', null),
+    supabase
+      .from('member_position')
+      .select('position(position_capability(capability_key))')
+      .eq('member_id', (m as Member).id)
+  ]);
   officerUnits.set(
     ((off ?? []) as any[])
       .filter((r) => r.org_unit)
@@ -40,11 +55,6 @@ export async function loadProfile(authUserId: string): Promise<void> {
   );
 
   // capabilities = union of capability_key across the member's positions
-  const { data: caps } = await supabase
-    .from('member_position')
-    .select('position(position_capability(capability_key))')
-    .eq('member_id', (m as Member).id);
-
   const set = new Set<string>();
   for (const row of caps ?? []) {
     const pos = (row as any).position;
@@ -53,10 +63,14 @@ export async function loadProfile(authUserId: string): Promise<void> {
     }
   }
   capabilities.set(set);
+  if (officerErr || capabilityErr) {
+    profileError.set('Your membership loaded, but some permissions could not be loaded. Please reload and try again.');
+  }
 }
 
 export function clearProfile(): void {
   member.set(null);
   capabilities.set(new Set());
   officerUnits.set([]);
+  profileError.set(null);
 }

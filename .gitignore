@@ -1,13 +1,11 @@
 node_modules/
 /build/
 /.svelte-kit/
-/package-lock.json
 .env
 .env.*
 !.env.example
 .DS_Store
 supabase/.temp/
-.env.mock
 test-results/
 playwright-report/
 .playwright/

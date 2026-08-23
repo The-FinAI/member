@@ -4,7 +4,7 @@
   import { goto, afterNavigate } from '$app/navigation';
   import { page } from '$app/stores';
   import { supabase, supabaseConfigured } from '$lib/supabase';
-  import { session, member, capabilities, officerUnits, authReady, authError } from '$lib/session';
+  import { session, member, capabilities, officerUnits, authReady, authError, profileError } from '$lib/session';
   import { loadProfile, clearProfile, claimMembership } from '$lib/profile';
   import { theme, toggleTheme } from '$lib/theme';
   import { t } from '$lib/i18n';
@@ -38,10 +38,15 @@
   const netValue = $derived(balance === null ? null : balance + nominal);
 
   async function loadBalance(memberId: string) {
-    const [{ data: bal }, { data: nom }] = await Promise.all([
+    const [{ data: bal, error: balErr }, { data: nom, error: nomErr }] = await Promise.all([
       supabase.from('stater_balance').select('balance').eq('owner_member_id', memberId).maybeSingle(),
       supabase.from('stater_project_member_nominal').select('nominal').eq('member_id', memberId)
     ]);
+    if (balErr || nomErr) {
+      balance = null;
+      nominal = 0;
+      return;
+    }
     balance = Number((bal as { balance: number } | null)?.balance ?? 0);
     nominal = ((nom as { nominal: number }[]) ?? []).reduce((s, r) => s + (Number(r.nominal) || 0), 0);
   }
@@ -60,8 +65,7 @@
   }
   function go(href: string) { menuOpen = false; goto(href); }
 
-  // If a magic link lands here with an error (single-use link already consumed
-  // by an email scanner, expired, etc.), Supabase redirects back with the
+  // If an authentication callback lands here with an error, Supabase redirects back with the
   // reason in the URL hash/query. Capture it BEFORE the route guard sends us to
   // /login and discards the hash, so the user sees *why* instead of a silent
   // bounce. Returns true when an auth error was present.
@@ -75,8 +79,8 @@
     if (!err && !code && !desc) return false;
     authError.set(
       code === 'otp_expired'
-        ? 'This sign-in link has expired or was already used. Please request a new one below.'
-        : desc || 'Sign-in failed. Please request a new link below.'
+        ? 'This verification code has expired or was already used. Please request a new one below.'
+        : desc || 'Sign-in failed. Please request a new verification code below.'
     );
     // strip the error params so they don't linger or get re-processed
     history.replaceState(null, '', window.location.pathname);
@@ -164,11 +168,11 @@
 
       <div class="mast-title">
         <img src="/logo.png" alt="" class="brand-logo" />
-        <a href="/projects" class="mast-brand">The Fin AI <span class="mb-sub">{$t('Community')} · {$t('The Living Record')}</span></a>
+        <a href={$session ? '/projects' : '/guide'} class="mast-brand">The Fin AI <span class="mb-sub">{$t('Community')} · {$t('The Living Record')}</span></a>
         {#if $session}
           <span class="mast-right">
             <a href="/wallet" class="mast-wallet" title={$t('STR is your contribution credit — it accrues from work and settles when a project finishes. Click for your wallet; the Guide explains how it works.')}>
-              <Icon name="str" size={15} /> {(netValue ?? 0).toLocaleString()} <span class="mw-unit">STR</span>
+              <Icon name="str" size={15} /> {netValue === null ? '—' : netValue.toLocaleString()} <span class="mw-unit">STR</span>
             </a>
             <Hint term="str" text={$t('STR is your contribution credit: it accrues as you work and becomes spendable when a project settles. It is not money.')} />
             <div class="usermenu">
@@ -221,7 +225,12 @@
           project URL + anon key, then restart the dev server. Pages render but data calls are disabled.
         </p>
       {/if}
-      {#if supabaseConfigured && $authReady && $session && !$member}
+      {#if $profileError}
+        <p class="banner">
+          {$t($profileError)} <button class="linkish" onclick={() => window.location.reload()}>{$t('Reload')}</button>
+        </p>
+      {/if}
+      {#if supabaseConfigured && $authReady && $session && !$member && !$profileError}
         <p class="banner">
           {$t("You're signed in as {email}, but this email isn't linked to a membership. Access is invite-only — please ask an admin to invite you. Meanwhile you can", { email: $session.user.email })}
           <a href="/guide">{$t('read how the community works →')}</a>

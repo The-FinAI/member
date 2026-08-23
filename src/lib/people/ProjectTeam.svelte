@@ -190,14 +190,6 @@
   .pt-lead-l { font-weight: 600; font-size: .82rem; color: var(--muted, #777); }
   .pt-lead-n { font-weight: 600; }
   .pt-lead-open { color: var(--muted, #aaa); font-style: italic; }
-  .pt-lead-set { border: 1px dashed var(--line, #ddd); background: none; border-radius: var(--r-sm); padding: .2rem .6rem; cursor: pointer; color: var(--muted, #777); font-size: .82rem; }
-  .pt-lead-set:hover { border-color: var(--accent, var(--accent)); color: var(--accent, var(--accent)); }
-  .pt-lead select { padding: .25rem .4rem; border: 1px solid var(--line, #ddd); border-radius: var(--r-sm); }
-  .pt-lead-h { width: 3.6rem; padding: .25rem .3rem; border: 1px solid var(--line, #ddd); border-radius: var(--r-sm); }
-  .pt-go { border: none; background: var(--accent, var(--accent)); color: #fff; border-radius: var(--r-sm); padding: .25rem .7rem; cursor: pointer; }
-  .pt-go:disabled { opacity: .5; }
-  .pt-ghost { border: 1px solid var(--line, #ddd); background: none; border-radius: var(--r-sm); padding: .25rem .6rem; cursor: pointer; }
-  .pt-err { color: var(--neg, var(--down)); font-size: .8rem; }
   .pt-head { margin-bottom: .4rem; }
   .pt-h { font-weight: 600; font-size: .92rem; }
   .pt-dim { color: var(--muted, #999); font-size: .88rem; }
