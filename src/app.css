@@ -15,45 +15,46 @@
    ============================================================ */
 
 :root {
-  /* ---- day edition (default) ---- */
-  --bg:        #f3eee3;   /* aged paper */
-  --bg-2:      #ece5d5;
-  --card:      #faf7ef;   /* sheet */
-  --card-2:    #f1ebdd;
-  --elevate:   #fffdf7;
-  --border:    #ddd3bd;   /* hairline rule */
-  --border-2:  #c7bb9f;
-  --rule-ink:  #1e1a12;   /* the black section rule */
-  --text:      #1e1a12;   /* ink */
-  --text-dim:  #4c4536;
-  --muted:     #7d7560;
-  --accent:    #b53a1c;   /* vermillion — the ONLY action color */
-  --accent-2:  #93290f;
-  --accent-ink:#fffdf7;
-  --accent-soft: rgba(181, 58, 28, .09);
-  --up:        #2e6f46;   /* forest — gain / success */
-  --up-soft:   rgba(46, 111, 70, .11);
-  --down:      #8e2f45;   /* wine — loss / danger */
-  --down-soft: rgba(142, 47, 69, .10);
-  --warn:      #8a6414;   /* bronze — attention */
-  --warn-soft: rgba(138, 100, 20, .12);
-  --info:      #45628e;   /* slate — neutral note */
-  --info-soft: rgba(69, 98, 142, .11);
-  --gold:      #94731b;   /* STR ONLY */
-  --gold-soft: rgba(148, 115, 27, .13);
-  --shadow:    0 1px 0 rgba(30, 26, 18, .05);            /* paper lift (subtle) */
-  --shadow-pop:0 6px 24px rgba(30, 26, 18, .18);          /* floating popovers only */
-  --ring:      0 0 0 3px rgba(181, 58, 28, .25);
+  /* ---- Nature-journal palette (concept v49): warm paper, deep green action,
+     amber for nominal STR, brick red for danger. Single light theme. ---- */
+  --bg:        #fbfaf7;   /* paper */
+  --bg-2:      #f1f0ec;
+  --card:      #ffffff;   /* sheet */
+  --card-2:    #f6f5f1;
+  --elevate:   #ffffff;
+  --border:    #e7e6df;   /* hairline rule */
+  --border-2:  #d5d3c8;
+  --rule-ink:  #1f2a26;
+  --text:      #1f2a26;   /* ink */
+  --text-dim:  #5c6660;
+  --muted:     #98a29b;
+  --accent:    #0b5e52;   /* deep green — the ONLY action color */
+  --accent-2:  #0a4f45;
+  --accent-ink:#ffffff;
+  --accent-soft: rgba(11, 94, 82, .08);
+  --up:        #0b5e52;   /* settled / success */
+  --up-soft:   rgba(11, 94, 82, .10);
+  --down:      #a33a2a;   /* danger */
+  --down-soft: rgba(163, 58, 42, .10);
+  --warn:      #9a6b1f;   /* amber — open seats, deadlines */
+  --warn-soft: rgba(154, 107, 31, .12);
+  --info:      #4c7a9b;
+  --info-soft: rgba(76, 122, 155, .11);
+  --gold:      #7a5f30;   /* nominal STR */
+  --gold-soft: #f7f0df;
+  --shadow:    0 1px 0 rgba(31, 42, 38, .04);
+  --shadow-pop:0 8px 28px rgba(31, 42, 38, .14);
+  --ring:      0 0 0 3px rgba(11, 94, 82, .22);
 
   /* ---- type ---- */
-  --font-display: "Fraunces", Georgia, "Times New Roman", serif;
-  --font-sans: Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: Georgia, "Songti SC", "Times New Roman", serif;
+  --font-sans: -apple-system, "SF Pro SC", "PingFang SC", system-ui, "Segoe UI", sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   /* ---- geometry: print corners (the only radii in the app) ---- */
-  --r-sm:   2px;   /* controls, stamps, slugs */
-  --r-md:   3px;   /* rows, inner blocks */
-  --r-lg:   4px;   /* panels */
+  --r-sm:   6px;   /* controls, chips */
+  --r-md:   8px;   /* rows, inner blocks */
+  --r-lg:   12px;  /* panels */
   --r-full: 999px; /* reserved: avatars/monograms only */
   --ctl-h:    36px;
   --ctl-h-sm: 28px;
@@ -83,38 +84,6 @@
 
 :root[data-theme="light"] { color-scheme: light; }
 
-:root[data-theme="dark"] {
-  /* ---- night edition: ink paper, cream type, same hues lifted ---- */
-  --bg:        #17140e;
-  --bg-2:      #1d1912;
-  --card:      #201c14;
-  --card-2:    #272217;
-  --elevate:   #2d271b;
-  --border:    #3a3322;
-  --border-2:  #4c432d;
-  --rule-ink:  #e9e2cf;
-  --text:      #e9e2cf;
-  --text-dim:  #c8bfa6;
-  --muted:     #9c937a;
-  --accent:    #e0683f;
-  --accent-2:  #ea7e58;
-  --accent-ink:#1c0f08;
-  --accent-soft: rgba(224, 104, 63, .14);
-  --up:        #5fae7c;
-  --up-soft:   rgba(95, 174, 124, .14);
-  --down:      #d36f87;
-  --down-soft: rgba(211, 111, 135, .14);
-  --warn:      #cda43e;
-  --warn-soft: rgba(205, 164, 62, .14);
-  --info:      #7e9cc7;
-  --info-soft: rgba(126, 156, 199, .14);
-  --gold:      #d8b357;
-  --gold-soft: rgba(216, 179, 87, .15);
-  --shadow:    0 1px 0 rgba(0, 0, 0, .25);
-  --shadow-pop:0 8px 28px rgba(0, 0, 0, .5);
-  --ring:      0 0 0 3px rgba(224, 104, 63, .3);
-  color-scheme: dark;
-}
 
 * { box-sizing: border-box; }
 
