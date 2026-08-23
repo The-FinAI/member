@@ -241,3 +241,33 @@ Other #41–#47 items and their blind spots:
 - **#45** ("still in the old system") / **#46** ("don't know what to fill in") / **#47** (chapter
   join lacks context) → surface/route-coverage + field-label clarity; the full-route sweep (point
   7) plus the cold-label pass (point 6) should surface these once we have the exact screens.
+
+## Retro 2026-08-23 — market: three misses the President found by hand
+
+**Miss 1 — venue edit showed the stale name (real defect).** `project_set_venue`
+writes `venue_id`; the row chip read the legacy `target_venue` text. No e2e
+touched project editing at all, so nothing could fail. *Class:* coverage gap.
+*Fix:* M10 drives rename+venue-change from the rendered UI; class-check ran on
+every edit path (all others re-read what they write).
+
+**Miss 2 — a skill's level could not be edited (missing affordance).** The
+implemented path was "re-pick the same skill + level, press Save"; M9 tested
+exactly that hidden path — and passed. A test written by the implementer
+verifies the implementation, not the expectation; when the author's model has
+a gap, the test inherits it (the black-box-explorer ceilings, verbatim).
+*Fix:* level is now an inline select on the chip (M9 asserts it), and the
+lesson stands: affordance questions need goal-primed cold walkthroughs
+("change Wang Fang's Annotation to learning") by an agent that has NOT read
+the code, not more author-written assertions.
+
+**Miss 3 — the member editor was an 8-row strip ("over-long").** M8 asserts
+geometry (nothing overflows its container) and stayed green: the strip was
+contained, just bloated. Aesthetic bloat is not a box constraint; it is only
+catchable by screenshot review or a cold-read agent with a "does this feel
+like one row's editor?" prompt. *Fix:* editor cut to 4 lines (chips with
+inline controls, change-to-save, collapsed adder).
+
+**Standing conclusion:** author-written e2e is necessary (it caught real
+regressions M1–M14) but structurally cannot find (a) paths never built,
+(b) judgments that aren't box constraints. Those need the source-blind
+explorer pass before each release.
