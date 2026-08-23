@@ -236,6 +236,8 @@ test.describe('market — officer single page', () => {
     await row2.locator('input[type=date]').blur();
     await expect(row2.locator('> summary .ddl')).toContainText('result in');
     await row2.locator('.stsel select').first().selectOption({ label: 'Finished' });
+    // Finished rows live only in the Accepted pool now
+    await page.locator('.arcpool > summary').click();
     const row3 = page.locator('.prow', { hasText: 'ml-Tagging' });
     if (!(await row3.locator('.pbody').isVisible())) await row3.locator('> summary').click();
     // U: type the outcome once → green locked chip, edit menu hidden
@@ -256,11 +258,11 @@ test.describe('market — officer single page', () => {
     const row = page.locator('.prow', { hasText: 'ml-Tagging' });
     await row.locator('> summary').click();
     await row.locator('.stsel select').first().selectOption({ label: 'Finished' });
-    const row2 = page.locator('.prow', { hasText: 'ml-Tagging' });
-    if (!(await row2.locator('.pbody').isVisible())) await row2.locator('> summary').click();
-    await row2.getByRole('button', { name: 'Archive' }).click();
     const pool = page.locator('.arcpool');
     await pool.locator('> summary').click();
+    const row2 = pool.locator('.prow', { hasText: 'ml-Tagging' });
+    if (!(await row2.locator('.pbody').isVisible())) await row2.locator('> summary').click();
+    await row2.getByRole('button', { name: 'Archive' }).click();
     await expect(pool.locator('.arow', { hasText: 'ml-Tagging' })).toBeVisible();
     await expect(page.locator('.prow', { hasText: 'ml-Tagging' })).toHaveCount(0);
     await page.reload();

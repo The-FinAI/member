@@ -197,30 +197,32 @@
     sortBy === 'name' ? a.name.localeCompare(b.name) :
     sortBy === 'pool' ? b.pool - a.pool :
     (a.ddlDays ?? 998) - (b.ddlDays ?? 998);
+  const working = $derived(projs.filter((p) => stage(p) !== 3));
+  const finished = $derived(projs.filter((p) => stage(p) === 3));
   const sections = $derived.by(() => {
     const S = (label: string, ps: Proj[]) => ({ label, ps: [...ps].sort(cmp) });
     if (groupBy === 'stage')
-      return [1, 0, 2, 3, -1].map((k) =>
-        S($t(k >= 0 ? STEPS[k] : 'On hold'), projs.filter((p) => stage(p) === k)));
+      return [1, 0, 2, -1].map((k) =>
+        S($t(k >= 0 ? STEPS[k] : 'On hold'), working.filter((p) => stage(p) === k)));
     if (groupBy === 'wg') {
       const m = new Map<string, Proj[]>();
-      for (const p of projs) { const k = p.unit ?? $t('Proposal'); m.set(k, [...(m.get(k) ?? []), p]); }
+      for (const p of working) { const k = p.unit ?? $t('Proposal'); m.set(k, [...(m.get(k) ?? []), p]); }
       return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([k, ps]) => S(k, ps));
     }
     if (groupBy === 'venue') {
       const m = new Map<string, Proj[]>();
-      for (const p of projs) { const k = p.venueYr || $t('TBD'); m.set(k, [...(m.get(k) ?? []), p]); }
+      for (const p of working) { const k = p.venueYr || $t('TBD'); m.set(k, [...(m.get(k) ?? []), p]); }
       // 分节按该会最近截止日排,未定沉底
       const ddlOf = (ps: Proj[]) => Math.min(...ps.map((p) => p.ddlDays ?? 998));
       return [...m.entries()]
         .sort((a, b) => (a[0] === $t('TBD') ? 1 : 0) - (b[0] === $t('TBD') ? 1 : 0) || ddlOf(a[1]) - ddlOf(b[1]))
         .map(([k, ps]) => S(k, ps));
     }
-    if (groupBy === 'none') return [S($t('Projects'), projs)];
-    const hot = projs.filter((p) => p.slots.length && [0, 1].includes(stage(p)));
+    if (groupBy === 'none') return [S($t('Projects'), working)];
+    const hot = working.filter((p) => p.slots.length && [0, 1].includes(stage(p)));
     return [S($t('Projects needing people'), hot),
       { label: $t('Other projects'),
-        ps: projs.filter((p) => !hot.includes(p))
+        ps: working.filter((p) => !hot.includes(p))
           .sort((a, b) => (stage(a) < 0 ? 1 : 0) - (stage(b) < 0 ? 1 : 0) || cmp(a, b)) }];
   });
 
@@ -663,9 +665,10 @@
             {#each sec.ps as p (p.id)}{@render prow(p)}{/each}
           {/if}
         {/each}
-        {#if archived.length}
+        {#if archived.length || finished.length}
           <details class="arcpool" open={!!openRows['arc']} ontoggle={toggleRow('arc')}>
-            <summary><h2 style="display:inline">{$t('Accepted (archived)')} <span class="n">{archived.length}</span></h2></summary>
+            <summary><h2 style="display:inline">{$t('Accepted')} <span class="n">{finished.length + archived.length}</span></h2></summary>
+            {#each finished as p (p.id)}{@render prow(p)}{/each}
             {#each archived as p (p.id)}
               <div class="arow">
                 <span class="sn">{p.name}</span>
