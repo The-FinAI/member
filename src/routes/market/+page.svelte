@@ -352,19 +352,8 @@
       p_full_name: addName.trim(), p_email: addEmail.trim(), p_unit: addUnit || null, p_affiliation: null
     }))) { addName = ''; addEmail = ''; }
   }
-  const hoursDraft: Record<string, string> = {};
   const skillDraft: Record<string, string> = {};
   const levelDraft: Record<string, string> = {};
-  async function saveMember(m: Mem) {
-    const hv = hoursDraft[m.id];
-    if (hv !== undefined && hv !== '' && Number(hv) !== m.hours) {
-      if (!await run(m.id, () => supabase.rpc('person_set_capacity', { p_hours: Math.max(0, Math.floor(Number(hv) || 0)), p_member: m.id }))) return;
-    }
-    const skid = skillDraft[m.id];
-    if (skid) {
-      if (!await run(m.id, () => supabase.rpc('person_skill_set', { p_skill: skid, p_level: levelDraft[m.id] || 'independent', p_member: m.id }))) return;
-    }
-  }
   async function moveMember(m: Mem, unitId: string) {
     if ((unitId || null) === m.unitId) return;
     await run(m.id, () => supabase.rpc('member_set_home_unit', { p_member: m.id, p_unit: unitId || null }));
@@ -715,7 +704,13 @@
               </summary>
               <div class="pf">
                 <div class="wfull">
-                  {#each m.skills as skl (skl.id)}<span class="chip">{skl.name} · {$t(LV[skl.level] ?? skl.level)}
+                  {#each m.skills as skl (skl.id)}<span class="chip">{skl.name}
+                    <select class="lvlsel" value={skl.level}
+                      onchange={(e) => run(m.id, () => supabase.rpc('person_skill_set', { p_skill: skl.id, p_level: (e.target as HTMLSelectElement).value, p_member: m.id }))}>
+                      <option value="learning">{$t('Learning')}</option>
+                      <option value="independent">{$t('Independent')}</option>
+                      <option value="lead">{$t('Can mentor')}</option>
+                    </select>
                     <button class="chipx" title={$t('Remove')} onclick={() => removeSkill(m, skl.id)}>×</button></span>{/each}
                   {#each m.resources as r (r.id)}<span class="chip rs">{r.typeName}
                     <input class="ghours" type="number" min="0" value={r.quota}
@@ -723,27 +718,34 @@
                   {#if !m.skills.length && !m.resources.length}<span class="chip mutc">{$t('no skills set')}</span>{/if}
                 </div>
                 <label>{$t('Monthly')} (h)<input type="number" min="0" value={m.hours ?? ''}
-                  oninput={(e) => (hoursDraft[m.id] = (e.target as HTMLInputElement).value)} /></label>
-                <label>{$t('Skills')} <select bind:value={skillDraft[m.id]}>
-                  <option value="">—</option>
-                  {#each skills as skl}<option value={skl.id}>{skl.name}</option>{/each}</select></label>
-                <label>{$t('Level')}<select bind:value={levelDraft[m.id]}>
-                  <option value="independent">{$t('Independent')}</option>
-                  <option value="learning">{$t('Learning')}</option>
-                  <option value="lead">{$t('Can mentor')}</option></select></label>
+                  onchange={(e) => run(m.id, () => supabase.rpc('person_set_capacity', { p_hours: Math.max(0, Math.floor(Number((e.target as HTMLInputElement).value) || 0)), p_member: m.id }))} /></label>
                 <label>{$t('Chapter')} <select value={m.unitId ?? ''} onchange={(e) => moveMember(m, (e.target as HTMLSelectElement).value)}>
                   <option value="">{$t('No chapter')}</option>
                   {#each chapterUnits as u}<option value={u.id}>{u.name}</option>{/each}</select></label>
-                <label>{$t('Resources')}<select bind:value={resDraft[m.id]}>
-                  <option value="">—</option>
-                  {#each resourceTypes.filter((x) => x.name !== 'Labor') as ty}<option value={ty.id}>{ty.name}</option>{/each}
-                </select></label>
-                <label>{$t('qty')}/{$t('mo')}<input type="number" min="1" bind:value={resQty[m.id]} /></label>
-                <select bind:value={resModel[m.id]} style="max-width:9rem" title="GPU model">
-                  {#each gpuModels as g}<option value={g.id}>{g.name}</option>{/each}
-                </select>
-                <button class="bt sm ghosted" disabled={busy === 'res' + m.id} onclick={() => addResource(m)}>{$t('Add')}</button>
-                <button class="bt sm" disabled={busy === m.id} onclick={() => saveMember(m)}>{$t('Save')}</button>
+                <details class="sub2 wfull"><summary>+ {$t('Add skill / resource')}</summary>
+                  <div class="addbox">
+                    <div class="addrow">
+                      <select bind:value={skillDraft[m.id]}>
+                        <option value="">{$t('Skill')}…</option>
+                        {#each skills as skl}<option value={skl.id}>{skl.name}</option>{/each}</select>
+                      <select bind:value={levelDraft[m.id]}>
+                        <option value="independent">{$t('Independent')}</option>
+                        <option value="learning">{$t('Learning')}</option>
+                        <option value="lead">{$t('Can mentor')}</option></select>
+                      <button class="bt sm ghosted" disabled={busy === m.id}
+                        onclick={() => { const skid = skillDraft[m.id]; if (skid) run(m.id, () => supabase.rpc('person_skill_set', { p_skill: skid, p_level: levelDraft[m.id] || 'independent', p_member: m.id })); }}>{$t('Add')}</button>
+                    </div>
+                    <div class="addrow">
+                      <select bind:value={resDraft[m.id]}>
+                        <option value="">{$t('Resource')}…</option>
+                        {#each resourceTypes.filter((x) => x.name !== 'Labor') as ty}<option value={ty.id}>{ty.name}</option>{/each}</select>
+                      <input type="number" min="1" placeholder={$t('qty') + '/' + $t('mo')} bind:value={resQty[m.id]} style="width:4.6rem" />
+                      <select bind:value={resModel[m.id]} style="max-width:7.5rem" title="GPU model">
+                        {#each gpuModels as g}<option value={g.id}>{g.name}</option>{/each}</select>
+                      <button class="bt sm ghosted" disabled={busy === 'res' + m.id} onclick={() => addResource(m)}>{$t('Add')}</button>
+                    </div>
+                  </div>
+                </details>
                 {#if !m.linked && m.email}<a class="bt sm ghosted" href={inviteHref(m)}>{$t('Send invite')}</a>{/if}
                 <details class="dz"><summary>{$t('Remove (recoverable)…')}</summary>
                   <span class="mut">{$t('Sure?')} </span>
@@ -914,6 +916,11 @@
   .chipx { border: 0; background: none; cursor: pointer; color: inherit; opacity: .5; padding: 0 1px; font-size: 11px; }
   .chipx:hover { opacity: 1; color: var(--tag-rd-tx); }
   .chip .ghours { width: 3.4rem; font-size: 10.5px !important; }
+  .lvlsel { border: 0 !important; background: none !important; font-size: 10.5px !important;
+    color: inherit; padding: 0 !important; cursor: pointer; }
+  .addbox { display: flex; flex-direction: column; gap: 5px; padding: 6px 0 2px; }
+  .addrow { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
+  .addrow :global(select) { max-width: 8.5rem; }
   .okn { color: var(--green); font-weight: 600; font-size: 12px; white-space: nowrap; }
   .warn { color: var(--tag-rd-tx); font-weight: 600; font-size: 11.5px; white-space: nowrap; }
   .pf { display: flex; gap: 6px 8px; align-items: center; flex-wrap: wrap; padding: 8px 0 2px;

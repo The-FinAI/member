@@ -84,7 +84,7 @@ test.describe('market — officer single page', () => {
     const mrow = page.locator('.p', { has: page.locator('.pname', { hasText: 'Zhao Lei' }) }).first();
     await mrow.locator('> summary').click();
     await mrow.locator('.pf label', { hasText: 'Monthly' }).locator('input').fill('12');
-    await mrow.getByRole('button', { name: 'Save' }).click();
+    await mrow.locator('.pf label', { hasText: 'Monthly' }).locator('input').blur();
     await page.reload();
     await dismissQuest(page);
     const mrow2 = page.locator('.p', { has: page.locator('.pname', { hasText: 'Zhao Lei' }) }).first();
@@ -140,13 +140,18 @@ test.describe('market — officer single page', () => {
     await wrow.locator('.chip.rs .ghours').fill('150');
     await wrow.locator('.chip.rs .ghours').blur();
     await expect(wrow.locator('.chip.rs .ghours')).toHaveValue('150');
+    // U2: change a skill's level inline on its chip
+    await wrow.locator('.chip', { hasText: 'Annotation' }).locator('.lvlsel').selectOption('learning');
+    await expect(wrow.locator('.chip', { hasText: 'Annotation' }).locator('.lvlsel')).toHaveValue('learning');
     // D: delete the Annotation skill chip
     await wrow.locator('.chip', { hasText: 'Annotation' }).locator('.chipx').click({ force: true });
     await expect(wrow.locator('.chip', { hasText: 'Annotation' })).toHaveCount(0);
-    // C: add a Funding-free path — add another GPU resource
-    await wrow.locator('.pf label', { hasText: 'Resources' }).locator('select').selectOption({ index: 1 });
-    await wrow.locator('.pf label', { hasText: 'qty' }).locator('input').fill('50');
-    await wrow.getByRole('button', { name: 'Add' }).click();
+    // C: add another resource via the collapsed adder
+    await wrow.locator('details.sub2', { hasText: 'Add skill / resource' }).locator('> summary').click();
+    const resRow = wrow.locator('.addrow').nth(1);
+    await resRow.locator('select').first().selectOption({ index: 1 });
+    await resRow.locator('input[type=number]').fill('50');
+    await resRow.getByRole('button', { name: 'Add' }).click();
     await expect(wrow.locator('.chip.rs')).toHaveCount(2);
     await page.reload();
     await dismissQuest(page);
