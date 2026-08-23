@@ -62,6 +62,10 @@ function parseDates(text) {
   for (const m of text.matchAll(/(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]{3,9})\.?,?\s+(\d{4})/g)) {
     const mo = MONTHS[m[2].slice(0, 3).toLowerCase()]; if (mo) push(+m[3], mo, +m[1]);
   }
+  // nips.cc-family sites write "Sep 24 '26"
+  for (const m of text.matchAll(/([A-Za-z]{3,9})\.?\s+(\d{1,2})\s+'(\d{2})\b/g)) {
+    const mo = MONTHS[m[1].slice(0, 3).toLowerCase()]; if (mo) push(2000 + +m[3], mo, +m[2]);
+  }
   return found;
 }
 const strip = (html) => html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, ' ')
@@ -70,15 +74,19 @@ const strip = (html) => html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\
 // Look for a date on the same line (or the next) as a notification keyword.
 function findNotification(html) {
   const lines = strip(html).split(/\n|(?<=\.)\s{2,}/);
-  const hits = [];
+  const strong = [], weak = [];
+  const EXCLUDE = /camera|registration|competition|workshop|demo|tutorial|abstract/i;
   for (let i = 0; i < lines.length; i++) {
-    if (/(notification|decision|acceptance)s?\b/i.test(lines[i]) && !/camera|registration/i.test(lines[i])) {
-      for (const d of [...parseDates(lines[i]), ...parseDates(lines[i + 1] ?? '')]) hits.push(d);
-    }
+    const l = lines[i];
+    if (!/(notification|decision|acceptance)s?\b/i.test(l) || EXCLUDE.test(l)) continue;
+    const dates = [...parseDates(l), ...parseDates(lines[i + 1] ?? '')];
+    // "paper/author notification" is THE decision date; anything else is fallback
+    (/(paper|author)/i.test(l) ? strong : weak).push(...dates);
   }
   const today = new Date().toISOString().slice(0, 10);
-  const future = hits.filter((d) => d >= today).sort();
-  return future[0] ?? null; // nearest upcoming notification
+  // nearest upcoming; else the most recent past (UI then shows "result overdue")
+  const pick = (a) => a.filter((d) => d >= today).sort()[0] ?? a.filter((d) => d < today).sort().at(-1) ?? null;
+  return pick(strong) ?? pick(weak);
 }
 
 async function scrapeOfficial(link) {
@@ -89,7 +97,7 @@ async function scrapeOfficial(link) {
     try {
       const n = findNotification(await get(url));
       if (n) return { notification: n, source: url };
-    } catch { /* try next */ }
+    } catch (e) { if (process.env.DEBUG) console.error('  ?', url, String(e).slice(0, 120)); }
   }
   return null;
 }
