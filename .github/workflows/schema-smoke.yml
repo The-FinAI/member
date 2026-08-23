@@ -1,0 +1,20 @@
+# Real-postgres smoke: apply every migration to a fresh supabase db, then
+# drive every market RPC as a signed-in user (supabase/tests/rpc_smoke.sql).
+# Catches what the typeless mock e2e cannot: column types, enums, constraints.
+name: Schema smoke
+on:
+  push:
+    paths: ['supabase/**']
+  pull_request:
+    paths: ['supabase/**']
+  workflow_dispatch:
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: supabase/setup-cli@v1
+        with: { version: latest }
+      - run: supabase db start
+      - run: supabase migration up --local
+      - run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -f supabase/tests/rpc_smoke.sql
