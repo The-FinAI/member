@@ -638,6 +638,12 @@ function rpc(name: string, a: any) {
     });
     persist(); return Promise.resolve({ data: null, error: null });
   }
+  if (name === 'resource_set_quota') {
+    const r = seed.resource.find((x: any) => x.id === a.p_resource);
+    if (!r) return Promise.resolve({ data: null, error: { message: 'no such resource' } });
+    r.monthly_quota = a.p_quota; persist();
+    return Promise.resolve({ data: null, error: null });
+  }
   if (name === 'update_resource') {
     const r = (seed.resource ?? []).find((x: any) => x.id === a.p_resource);
     if (r) { r.name = a.p_name ?? r.name; r.monthly_quota = a.p_monthly_quota ?? r.monthly_quota; r.usd_per_unit = a.p_usd_per_unit ?? r.usd_per_unit; r.details = a.p_details ?? r.details; r.approval_status = 'pending'; }

@@ -17,8 +17,9 @@
     unitId: string | null; unit: string | null; team: Seat[]; slots: Slot[];
     pool: number; ddlDays: number | null; ddlLabel: string };
   type Mem = { id: string; name: string; email: string; unitId: string | null; unit: string | null;
-    hours: number | null; used: number; linked: boolean; skills: { name: string; level: string }[];
-    resources: { name: string; quota: number }[] };
+    hours: number | null; used: number; linked: boolean;
+    skills: { id: string; name: string; level: string }[];
+    resources: { id: string; name: string; typeName: string; quota: number }[] };
   type Unit = { id: string; name: string; kind: string };
 
   const STEPS = ['Start', 'Active', 'In review', 'Accepted'];
@@ -43,6 +44,7 @@
   let resourceTypes = $state<{ id: string; name: string }[]>([]);
   let statuses = $state<{ id: string; name: string }[]>([]);
   let types = $state<{ id: string; name: string }[]>([]);
+  let gpuModels = $state<{ id: string; name: string }[]>([]);
   let orphans = $state<{ account_id: string; email: string }[]>([]);
   let settledBy = $state<Record<string, number>>({});
   let loading = $state(true);
@@ -82,19 +84,20 @@
     loading = true;
     const [{ data: pr }, { data: ou }, { data: vn }, { data: slr }, { data: wc }, { data: mm },
       { data: ps }, { data: sk }, { data: rt }, { data: st }, { data: ty }, { data: rs },
-      { data: sb }, { data: orp }] = await Promise.all([
+      { data: gm }, { data: sb }, { data: orp }] = await Promise.all([
       supabase.from('project').select('id, name, org_unit_id, target_venue, venue_id, deadline, tag, archived_at, project_status!project_status_id_fkey(name)'),
       supabase.from('org_unit').select('id, name, kind'),
       supabase.from('venue').select('id, name, kind, deadline, notification'),
       supabase.from('project_slot').select('id, project_id, slot_kind, authorship, desired_level, quota, status, skill:skill_id(name), resource_type:resource_type_id(name)'),
       supabase.from('work_commitment').select('project_id, slot_id, member_id, monthly_amount, nominal_str, member:member_id(full_name)'),
       supabase.from('member').select('id, full_name, email, home_unit_id, monthly_hours, auth_user_id, archived_at'),
-      supabase.from('person_skill').select('member_id, level, skill:skill_id(name)'),
+      supabase.from('person_skill').select('member_id, level, skill_id, skill:skill_id(name)'),
       supabase.from('skill').select('id, name, parent_id'),
       supabase.from('resource_type').select('id, name'),
       supabase.from('project_status').select('id, name'),
       supabase.from('project_type').select('id, name'),
-      supabase.from('resource').select('holder_member_id, monthly_quota, resource_type:type_id(name)'),
+      supabase.from('resource').select('id, name, holder_member_id, monthly_quota, resource_type:type_id(name)'),
+      supabase.from('gpu_model').select('id, name').order('rank'),
       supabase.from('stater_balance').select('owner_member_id, balance'),
       supabase.rpc('orphan_accounts')
     ]);
@@ -109,6 +112,7 @@
     resourceTypes = (rt as any[]) ?? [];
     statuses = (st as any[]) ?? [];
     types = (ty as any[]) ?? [];
+    gpuModels = (gm as any[]) ?? [];
     orphans = (orp as any[]) ?? [];
     const venByName: Record<string, any> = {};
     for (const v of venues) venByName[v.name] = v;
@@ -149,13 +153,13 @@
     projs = rowsAll.filter((p) => !p.archived_at).map(toProj);
     archived = rowsAll.filter((p) => p.archived_at).map(toProj);
 
-    const skillBy: Record<string, { name: string; level: string }[]> = {};
-    for (const r of (ps as any[]) ?? []) if (r.skill?.name) (skillBy[r.member_id] ??= []).push({ name: r.skill.name, level: r.level });
-    const resBy: Record<string, { name: string; quota: number }[]> = {};
+    const skillBy: Record<string, { id: string; name: string; level: string }[]> = {};
+    for (const r of (ps as any[]) ?? []) if (r.skill?.name) (skillBy[r.member_id] ??= []).push({ id: r.skill_id, name: r.skill.name, level: r.level });
+    const resBy: Record<string, { id: string; name: string; typeName: string; quota: number }[]> = {};
     for (const r of (rs as any[]) ?? []) {
       const nm = r.resource_type?.name;
-      if (!nm || nm === 'Labor' || !r.monthly_quota) continue;
-      (resBy[r.holder_member_id] ??= []).push({ name: nm, quota: Number(r.monthly_quota) });
+      if (!nm || nm === 'Labor') continue;
+      (resBy[r.holder_member_id] ??= []).push({ id: r.id, name: r.name ?? nm, typeName: nm, quota: Number(r.monthly_quota) || 0 });
     }
     settledBy = {};
     for (const b of (sb as any[]) ?? []) if (b.owner_member_id) settledBy[b.owner_member_id] = (settledBy[b.owner_member_id] ?? 0) + (Number(b.balance) || 0);
@@ -365,6 +369,27 @@
   }
   async function archiveMember(m: Mem) {
     await run(m.id, () => supabase.rpc('member_archive', { p_member: m.id, p_archived: true }));
+  }
+  async function removeSkill(m: Mem, skillId: string) {
+    await run(m.id, () => supabase.rpc('person_skill_set', { p_skill: skillId, p_level: null, p_member: m.id }));
+  }
+  async function setQuota(rid: string, q: number) {
+    if (!(q >= 0)) return;
+    await run(rid, () => supabase.rpc('resource_set_quota', { p_resource: rid, p_quota: q }));
+  }
+  const resDraft: Record<string, string> = {};
+  const resQty: Record<string, string> = {};
+  const resModel: Record<string, string> = {};
+  async function addResource(m: Mem) {
+    const typeId = resDraft[m.id];
+    const qty = Number(resQty[m.id]);
+    if (!typeId || !(qty > 0)) return;
+    const ty = resourceTypes.find((x) => x.id === typeId);
+    const isGpu = /gpu|compute/i.test(ty?.name ?? '');
+    await run('res' + m.id, () => supabase.rpc('forge_resource', {
+      p_type: typeId, p_name: ty?.name ?? 'Resource', p_holder: m.id, p_scope: 'member',
+      p_monthly_quota: qty, p_gpu_model: isGpu ? (resModel[m.id] || gpuModels[0]?.id || null) : null
+    }));
   }
   const inviteHref = (m: Mem) =>
     `mailto:${m.email}?subject=${encodeURIComponent('Join The Fin AI research community')}&body=${encodeURIComponent(
@@ -687,7 +712,14 @@
                 {:else}<span class="okn">{$t('free')} {fh}h</span>{/if}
               </summary>
               <div class="pf">
-                <div class="wfull">{#each m.skills as skl}<span class="chip">{skl.name} · {$t(LV[skl.level] ?? skl.level)}</span>{/each}{#each m.resources as r}<span class="chip rs">{r.name} {r.quota.toLocaleString()}</span>{/each}{#if !m.skills.length && !m.resources.length}<span class="chip mutc">{$t('no skills set')}</span>{/if}</div>
+                <div class="wfull">
+                  {#each m.skills as skl (skl.id)}<span class="chip">{skl.name} · {$t(LV[skl.level] ?? skl.level)}
+                    <button class="chipx" title={$t('Remove')} onclick={() => removeSkill(m, skl.id)}>×</button></span>{/each}
+                  {#each m.resources as r (r.id)}<span class="chip rs">{r.typeName}
+                    <input class="ghours" type="number" min="0" value={r.quota}
+                      onchange={(e) => setQuota(r.id, Number((e.target as HTMLInputElement).value))} /></span>{/each}
+                  {#if !m.skills.length && !m.resources.length}<span class="chip mutc">{$t('no skills set')}</span>{/if}
+                </div>
                 <label>{$t('Monthly')} (h)<input type="number" min="0" value={m.hours ?? ''}
                   oninput={(e) => (hoursDraft[m.id] = (e.target as HTMLInputElement).value)} /></label>
                 <label>{$t('Skills')} <select bind:value={skillDraft[m.id]}>
@@ -700,6 +732,15 @@
                 <label>{$t('Chapter')} <select value={m.unitId ?? ''} onchange={(e) => moveMember(m, (e.target as HTMLSelectElement).value)}>
                   <option value="">{$t('No chapter')}</option>
                   {#each chapterUnits as u}<option value={u.id}>{u.name}</option>{/each}</select></label>
+                <label>{$t('Resources')}<select bind:value={resDraft[m.id]}>
+                  <option value="">—</option>
+                  {#each resourceTypes.filter((x) => x.name !== 'Labor') as ty}<option value={ty.id}>{ty.name}</option>{/each}
+                </select></label>
+                <label>{$t('qty')}/{$t('mo')}<input type="number" min="1" bind:value={resQty[m.id]} /></label>
+                <select bind:value={resModel[m.id]} style="max-width:9rem" title="GPU model">
+                  {#each gpuModels as g}<option value={g.id}>{g.name}</option>{/each}
+                </select>
+                <button class="bt sm ghosted" disabled={busy === 'res' + m.id} onclick={() => addResource(m)}>{$t('Add')}</button>
                 <button class="bt sm" disabled={busy === m.id} onclick={() => saveMember(m)}>{$t('Save')}</button>
                 {#if !m.linked && m.email}<a class="bt sm ghosted" href={inviteHref(m)}>{$t('Send invite')}</a>{/if}
                 <details class="dz"><summary>{$t('Remove (recoverable)…')}</summary>
@@ -868,6 +909,9 @@
   .chip { background: var(--tag-gy-bg); border-radius: 4px; font-size: 10.5px; padding: 1px 5px; color: var(--tag-gy-tx); white-space: nowrap; }
   .chip.rs { background: var(--tag-pu-bg); color: var(--tag-pu-tx); font-weight: 500; }
   .chip.mutc { color: var(--faint2); background: transparent; border: 1px dashed var(--line2); }
+  .chipx { border: 0; background: none; cursor: pointer; color: inherit; opacity: .5; padding: 0 1px; font-size: 11px; }
+  .chipx:hover { opacity: 1; color: var(--tag-rd-tx); }
+  .chip .ghours { width: 3.4rem; font-size: 10.5px !important; }
   .okn { color: var(--green); font-weight: 600; font-size: 12px; white-space: nowrap; }
   .warn { color: var(--tag-rd-tx); font-weight: 600; font-size: 11.5px; white-space: nowrap; }
   .pf { display: flex; gap: 6px 8px; align-items: center; flex-wrap: wrap; padding: 8px 0 2px;

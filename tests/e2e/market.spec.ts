@@ -83,13 +83,13 @@ test.describe('market — officer single page', () => {
     await dismissQuest(page);
     const mrow = page.locator('.p', { has: page.locator('.pname', { hasText: 'Zhao Lei' }) }).first();
     await mrow.locator('> summary').click();
-    await mrow.locator('.pf input[type=number]').fill('12');
+    await mrow.locator('.pf label', { hasText: 'Monthly' }).locator('input').fill('12');
     await mrow.getByRole('button', { name: 'Save' }).click();
     await page.reload();
     await dismissQuest(page);
     const mrow2 = page.locator('.p', { has: page.locator('.pname', { hasText: 'Zhao Lei' }) }).first();
     await mrow2.locator('> summary').click();
-    await expect(mrow2.locator('.pf input[type=number]')).toHaveValue('12');
+    await expect(mrow2.locator('.pf label', { hasText: 'Monthly' }).locator('input')).toHaveValue('12');
     // remove (recoverable): inline dz confirm + app confirm dialog
     await mrow2.locator('.dz > summary').click();
     await mrow2.locator('.dz').getByRole('button', { name: 'Confirm' }).click();
@@ -127,6 +127,33 @@ test.describe('market — officer single page', () => {
     // Wang Fang now shows the linked dot
     const wrow = page.locator('.p', { hasText: 'Wang Fang' }).first();
     await expect(wrow.locator('.regd.on')).toBeVisible();
+    expect(errs()).toEqual([]);
+  });
+
+  test('M9: member skills & resources are full CRUD', async ({ page }) => {
+    const errs = trackErrors(page);
+    await page.goto('/market');
+    await dismissQuest(page);
+    const wrow = page.locator('.p', { has: page.locator('.pname', { hasText: 'Wang Fang' }) }).first();
+    await wrow.locator('> summary').click();
+    // U: edit the GPU resource quota inline
+    await wrow.locator('.chip.rs .ghours').fill('150');
+    await wrow.locator('.chip.rs .ghours').blur();
+    await expect(wrow.locator('.chip.rs .ghours')).toHaveValue('150');
+    // D: delete the Annotation skill chip
+    await wrow.locator('.chip', { hasText: 'Annotation' }).locator('.chipx').click({ force: true });
+    await expect(wrow.locator('.chip', { hasText: 'Annotation' })).toHaveCount(0);
+    // C: add a Funding-free path — add another GPU resource
+    await wrow.locator('.pf label', { hasText: 'Resources' }).locator('select').selectOption({ index: 1 });
+    await wrow.locator('.pf label', { hasText: 'qty' }).locator('input').fill('50');
+    await wrow.getByRole('button', { name: 'Add' }).click();
+    await expect(wrow.locator('.chip.rs')).toHaveCount(2);
+    await page.reload();
+    await dismissQuest(page);
+    const wrow2 = page.locator('.p', { has: page.locator('.pname', { hasText: 'Wang Fang' }) }).first();
+    await wrow2.locator('> summary').click();
+    await expect(wrow2.locator('.chip.rs')).toHaveCount(2);
+    await expect(wrow2.locator('.chip', { hasText: 'Annotation' })).toHaveCount(0);
     expect(errs()).toEqual([]);
   });
 
