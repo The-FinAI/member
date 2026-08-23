@@ -414,9 +414,11 @@
           <details class="prow {sg >= 0 ? SG_CLS[Math.min(sg, 3)] : 'st-dorm'}" open={!!openRows['p' + p.id]} ontoggle={toggleRow('p' + p.id)}>
             <summary>
               <span class="tg">▸</span><span class="sn">{p.name}</span>
+              <span class="stc">{$t(sg >= 0 ? STEPS[Math.min(sg, 3)] : 'On hold')}</span>
               {#if openS.length && (sg === 0 || sg === 1)}<span class="vacb">{$t('needs {n}', { n: openS.length })}</span>{/if}
               <span class="unitc2">{p.unit ?? (p.unitId ? '' : $t('Proposal'))}</span>
-              <span class="stc">{$t(sg >= 0 ? STEPS[Math.min(sg, 3)] : 'On hold')}</span>
+              <span class="sp"></span>
+              {#if p.team.length}<span class="fp">{#each p.team.slice(0, 3) as seat}<span class="av" style="background:{avColor(seat.name)}22;color:{avColor(seat.name)}">{initials(seat.name)}</span>{/each}{#if p.team.length > 3}<span class="fpn">+{p.team.length - 3}</span>{/if}</span>{/if}
               {#if p.venue}<span class="ddl" class:red={p.ddlDays != null && p.ddlDays <= 35 && p.ddlDays !== 999}
                 class:amb={p.ddlDays != null && p.ddlDays > 35 && p.ddlDays <= 70}>{p.venue}{p.ddlLabel ? ` · ${p.ddlLabel === 'rolling' ? $t('rolling') : $t('due in') + ' ' + p.ddlLabel}` : ''}</span>{/if}
             </summary>
@@ -570,14 +572,15 @@
                 <span class="pname">{m.name}</span>
                 <span class="regd" class:on={m.linked} title={m.linked ? $t('linked account') : $t('not registered · linked on sign-up')}></span>
                 {#each m.skills.slice(0, 1) as skl}<span class="chip">{skl.name}</span>{/each}
-                {#each m.resources.slice(0, 1) as r}<span class="chip rs">{r.name} {r.quota.toLocaleString()}</span>{/each}
-                {#if !m.skills.length && !m.resources.length}<span class="chip mutc">{$t('no skills set')}</span>{/if}
+                {#if !m.skills.length}<span class="chip mutc">{$t('no skills set')}</span>{/if}
+                <span class="sp"></span>
                 {#if m.hours == null}<span class="warn">{$t('no hours set')}</span>
                 {:else if fh != null && fh < 0}<span class="warn">{$t('over by')} {-fh}h</span>
                 {:else if fh === 0}<span class="mut mr">{$t('fully booked')}</span>
                 {:else}<span class="okn">{$t('free')} {fh}h</span>{/if}
               </summary>
               <div class="pf">
+                {#each m.resources as r}<span class="chip rs">{r.name} {r.quota.toLocaleString()}</span>{/each}
                 <label>{$t('Monthly')} <input type="number" min="0" value={m.hours ?? ''} style="width:3.6rem"
                   oninput={(e) => (hoursDraft[m.id] = (e.target as HTMLInputElement).value)} />h</label>
                 <label>{$t('Skills')} <select bind:value={skillDraft[m.id]}>
@@ -626,7 +629,7 @@
   .cols { display: grid; grid-template-columns: 1fr 320px; gap: 36px; align-items: start; }
   @media (max-width: 940px) { .cols { grid-template-columns: 1fr; } }
   .mut { color: var(--faint2); font-size: 12px; }
-  .mut.mr { margin-left: auto; }
+  .mut.mr { white-space: nowrap; }
   .wfull { width: 100%; }
 
   .av { display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;
@@ -657,8 +660,13 @@
   .prow.st-dorm { opacity: .55; }
   .prow .tg { color: var(--faint2); font-size: 10px; transition: transform .12s; width: 12px; }
   .prow[open] .tg { transform: rotate(90deg); }
-  .sn { font-size: 14px; font-weight: 500; color: var(--ink2); flex: 1; min-width: 0;
+  .sn { font-size: 14px; font-weight: 500; color: var(--ink2); min-width: 0; max-width: 46%;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sp { flex: 1; }
+  .fp { display: inline-flex; align-items: center; }
+  .fp .av { margin-left: -5px; box-shadow: 0 0 0 1.5px #fff; }
+  .fp .av:first-child { margin-left: 0; }
+  .fpn { font-size: 10.5px; color: var(--faint2); margin-left: 3px; }
   .stc { font-size: 11.5px; border-radius: 4px; padding: 1px 7px; white-space: nowrap;
     background: var(--tag-gy-bg); color: var(--tag-gy-tx); }
   .prow.st-seed .stc { background: var(--tag-or-bg); color: var(--tag-or-tx); }
@@ -738,8 +746,8 @@
   .chip { background: var(--tag-gy-bg); border-radius: 4px; font-size: 10.5px; padding: 1px 5px; color: var(--tag-gy-tx); white-space: nowrap; }
   .chip.rs { background: var(--tag-pu-bg); color: var(--tag-pu-tx); font-weight: 500; }
   .chip.mutc { color: var(--faint2); background: transparent; border: 1px dashed var(--line2); }
-  .okn { margin-left: auto; color: var(--green); font-weight: 600; font-size: 12px; }
-  .warn { margin-left: auto; color: var(--tag-rd-tx); font-weight: 600; font-size: 11.5px; }
+  .okn { color: var(--green); font-weight: 600; font-size: 12px; white-space: nowrap; }
+  .warn { color: var(--tag-rd-tx); font-weight: 600; font-size: 11.5px; white-space: nowrap; }
   .pf { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; padding: 8px 0 2px;
     font-size: 12px; color: var(--dim2); }
   .pf label { display: inline-flex; gap: 3px; align-items: center; }
