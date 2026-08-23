@@ -7,7 +7,7 @@
   import { session, member, capabilities, authReady, authError } from '$lib/session';
   import { loadProfile, clearProfile, claimMembership } from '$lib/profile';
   import { t } from '$lib/i18n';
-  import LangSwitcher from '$lib/LangSwitcher.svelte';
+  import { locale, setLocale } from '$lib/i18n';
   import Toaster from '$lib/shell/Toaster.svelte';
   import ConfirmDialog from '$lib/shell/ConfirmDialog.svelte';
 
@@ -95,7 +95,7 @@
   <header class="mk-head">
     <a href="/market" class="mk-brand">The Fin AI</a>
     <span class="mk-utils">
-      <LangSwitcher />
+      <button class="lang-toggle" onclick={() => setLocale($locale === 'zh' ? 'en' : 'zh')}>{$locale === 'zh' ? 'EN' : '中文'}</button>
       {#if $session}
         <div class="usermenu">
           <button class="avatar-btn" onclick={() => (menuOpen = !menuOpen)} title={$t('Account')} aria-haspopup="true" aria-expanded={menuOpen}>
@@ -141,8 +141,11 @@
 </div>
 
 <style>
-  .mk-head { display: flex; align-items: center; gap: 12px; max-width: 1120px; margin: 0 auto;
-    padding: 12px 16px 0; }
+  .mk-head { display: flex; align-items: center; gap: 12px; max-width: 1012px; margin: 0 auto;
+    padding: 12px 24px 0; }
+  .lang-toggle { font: inherit; font-size: 12.5px; font-weight: 500; color: #6b6a66; border: 0;
+    background: none; cursor: pointer; border-radius: 6px; padding: 4px 8px; }
+  .lang-toggle:hover { background: #f7f7f5; color: #37352f; }
   .mk-brand { font-size: 14px; font-weight: 700; color: var(--text, #37352f); text-decoration: none; letter-spacing: -.01em; }
   .mk-utils { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; }
   .avatar-btn { width: 28px; height: 28px; border-radius: 50%; border: 1px solid #e9e9e7; background: #fff;

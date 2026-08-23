@@ -569,7 +569,7 @@
                 <span class="av md" style="background:{avColor(m.name)}22;color:{avColor(m.name)}">{initials(m.name)}</span>
                 <span class="pname">{m.name}</span>
                 <span class="regd" class:on={m.linked} title={m.linked ? $t('linked account') : $t('not registered · linked on sign-up')}></span>
-                {#each m.skills.slice(0, 2) as skl}<span class="chip">{skl.name}</span>{/each}
+                {#each m.skills.slice(0, 1) as skl}<span class="chip">{skl.name}</span>{/each}
                 {#each m.resources.slice(0, 1) as r}<span class="chip rs">{r.name} {r.quota.toLocaleString()}</span>{/each}
                 {#if !m.skills.length && !m.resources.length}<span class="chip mutc">{$t('no skills set')}</span>{/if}
                 {#if m.hours == null}<span class="warn">{$t('no hours set')}</span>
@@ -617,13 +617,13 @@
     --tag-gy-bg: #f1f0ef; --tag-gy-tx: #57564f;   /* On hold / neutral */
     --tag-rd-bg: #ffe2dd; --tag-rd-tx: #93382a;   /* first author / danger */
     --tag-pu-bg: #e8deee; --tag-pu-tx: #5a4a72;   /* resources */
-    max-width: 1120px; margin: 0 auto; color: var(--ink2); font-size: 14px; }
+    margin: 0 auto; color: var(--ink2); font-size: 14px; }
   .mtop { display: flex; align-items: baseline; gap: 16px; }
   h1 { font-size: 28px; font-weight: 700; letter-spacing: -.01em; padding: 14px 0 14px; }
   h2 { font-size: 13px; font-weight: 600; color: var(--dim2); padding: 14px 0 6px; }
   h2 .n, .sh .n { color: var(--faint2); font-weight: 400; font-size: 12px; margin-left: 5px; }
   .sh { font-size: 12px; font-weight: 600; color: var(--faint2); padding: 16px 2px 6px; }
-  .cols { display: grid; grid-template-columns: 1fr 340px; gap: 40px; align-items: start; }
+  .cols { display: grid; grid-template-columns: 1fr 320px; gap: 36px; align-items: start; }
   @media (max-width: 940px) { .cols { grid-template-columns: 1fr; } }
   .mut { color: var(--faint2); font-size: 12px; }
   .mut.mr { margin-left: auto; }
@@ -735,7 +735,7 @@
   .p[open] .pf { padding: 8px 10px; }
   .p.orphan { border: 1px solid var(--tag-rd-bg); background: #fff7f6; margin-bottom: 10px; }
   .pname { font-weight: 500; font-size: 13px; }
-  .chip { background: var(--tag-gy-bg); border-radius: 4px; font-size: 11px; padding: 1px 6px; color: var(--tag-gy-tx); }
+  .chip { background: var(--tag-gy-bg); border-radius: 4px; font-size: 10.5px; padding: 1px 5px; color: var(--tag-gy-tx); white-space: nowrap; }
   .chip.rs { background: var(--tag-pu-bg); color: var(--tag-pu-tx); font-weight: 500; }
   .chip.mutc { color: var(--faint2); background: transparent; border: 1px dashed var(--line2); }
   .okn { margin-left: auto; color: var(--green); font-weight: 600; font-size: 12px; }
