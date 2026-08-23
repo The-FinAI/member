@@ -626,7 +626,8 @@
   h2 { font-size: 13px; font-weight: 600; color: var(--dim2); padding: 14px 0 6px; }
   h2 .n, .sh .n { color: var(--faint2); font-weight: 400; font-size: 12px; margin-left: 5px; }
   .sh { font-size: 12px; font-weight: 600; color: var(--faint2); padding: 16px 2px 6px; }
-  .cols { display: grid; grid-template-columns: 1fr 320px; gap: 36px; align-items: start; }
+  .cols { display: grid; grid-template-columns: 3fr 1fr; gap: 32px; align-items: start; }
+  .cols > div { min-width: 0; }
   @media (max-width: 940px) { .cols { grid-template-columns: 1fr; } }
   .mut { color: var(--faint2); font-size: 12px; }
   .mut.mr { white-space: nowrap; }
@@ -742,7 +743,7 @@
   .p[open] > summary { border-bottom: 1px solid var(--line2); border-radius: 6px 6px 0 0; }
   .p[open] .pf { padding: 8px 10px; }
   .p.orphan { border: 1px solid var(--tag-rd-bg); background: #fff7f6; margin-bottom: 10px; }
-  .pname { font-weight: 500; font-size: 13px; }
+  .pname { font-weight: 500; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .chip { background: var(--tag-gy-bg); border-radius: 4px; font-size: 10.5px; padding: 1px 5px; color: var(--tag-gy-tx); white-space: nowrap; }
   .chip.rs { background: var(--tag-pu-bg); color: var(--tag-pu-tx); font-weight: 500; }
   .chip.mutc { color: var(--faint2); background: transparent; border: 1px dashed var(--line2); }
