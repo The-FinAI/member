@@ -242,3 +242,23 @@ restored" (#49's observation), that's a bug against this policy.
 | v0.1 | 2026-06-19 | first complete draft, extracted from code | #49 (also answers #51, #44-class questions) |
 | v0.1.1 | 2026-06-19 | gaps G4/G5 added from the first I-4 audit cycle; §4 assignment row corrected to match SQL (decision pending in #53) | #52, #53 |
 | v0.2 | 2026-07-26 | **APPROVED** by the President. G3 resolved (task-owner rule + migration); G4 fixed (attributable-WG dropdown); G5 decided **Option A — strict bipartite** + the contradictory `assign()`/`work_seat()` gates unified by migration | #49 approval; #52, #53 |
+
+
+## v0.3 — Market Phase 1: permissions suspended (2026-08-23)
+
+**Decision (President):** the officer market at `/market` operates with the
+permission model **suspended**. Any signed-in member may: create projects,
+groups and chapters; post openings with an author role (first / author /
+co-corresponding / last); seat and remove members; edit member hours, skills
+and chapter; archive (recoverable) projects and members; link orphan auth
+accounts. Safety comes from **openness + history + reversibility**, not gates.
+
+**Unchanged:** settlement and STR minting remain President-gated. Archival is
+soft (recoverable) everywhere. All actions run through the same audited RPCs.
+
+**Backend:** `20260821010000_market_authorship.sql` (author-role enum +
+`forge_need` role param) and `20260821020000_phase1_open_gates.sql`
+(gates → signed-in with **verbatim** function bodies; `orphan_accounts` /
+`member_link_account`). The v0.2 rules above (G3/G4/G5) are **superseded for
+the market surface** while v0.3 is in force; they remain the reference model
+for a future re-tightening.

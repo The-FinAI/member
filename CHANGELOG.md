@@ -20,6 +20,21 @@
 
 ---
 
+## v1.3.0 — 2026-08-23
+
+**Trigger:** President directive — land the Market (concept v49) as Phase 1.
+
+- `docs/architecture.md`: new **v0.3** section — permissions suspended for the
+  `/market` surface (any signed-in member may act); settlement/minting stay
+  President-gated; safety = openness + history + reversibility.
+- New surface `/market`: single-page officer market (projects as toggle rows
+  with author-role seats priced in STR, dual-track STR bar — nominal in pool
+  vs settled — with member/group/chapter boards, member maintenance with
+  account-link state, orphan-account linking, + New for project/group/chapter).
+- Migrations `20260821010000` (authorship roles on openings) and
+  `20260821020000` (open gates, verbatim bodies; account-linking RPCs).
+- Tests: `tests/e2e/market.spec.ts` (M1–M7) per the Definition of Done.
+
 ## v1.2.0 — 2026-08-21
 
 **Trigger:** merge of external audit branch `audit/full-crud-functional-audit`

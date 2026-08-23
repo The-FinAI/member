@@ -4,20 +4,37 @@
     {
       "name": "community",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--", "--port", "5179"],
-      "port": 5179
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--"
+      ],
+      "port": 5179,
+      "autoPort": true
     },
     {
       "name": "mock",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["vite", "dev", "--port", "5181", "--mode", "mock"],
-      "port": 5181
+      "runtimeArgs": [
+        "vite",
+        "dev",
+        "--mode",
+        "mock"
+      ],
+      "port": 5186,
+      "autoPort": true
     },
     {
       "name": "mockups",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "5180", "--directory", "mockups"],
-      "port": 5180
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "--directory",
+        "mockups"
+      ],
+      "port": 5180,
+      "autoPort": true
     }
   ]
 }

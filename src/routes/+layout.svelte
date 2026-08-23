@@ -199,6 +199,7 @@
     {#if $session}
       <nav class="sections">
         <div class="sections-inner">
+          <a href="/market" class="sec-link" class:active={isActive('/market', $page.url.pathname)}>{$t('Market')}</a>
           <a href="/projects" class="sec-link" class:active={$page.url.pathname === '/' || isActive('/projects', $page.url.pathname)}>{$t('Projects')}</a>
           <a href="/people" class="sec-link" class:active={isActive('/people', $page.url.pathname)}>{$t('People')}</a>
           <span class="sec-spacer"></span>

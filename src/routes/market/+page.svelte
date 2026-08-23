@@ -1,0 +1,756 @@
+<script lang="ts">
+  // 市场 Market —— 概念稿 v49 的落地(规格:scratchpad/gen.py)。
+  // 本体:缺口(项目要的贡献)↔ 人池(每个人能给的贡献)。
+  // 动词三个:派(补位)· 招(挂缺口)· 维护(人)。Notion 式折叠行,详情页退役。
+  // Phase 1 无权限(governance v0.3):登录即可操作;结算/铸币仍归 President。
+  import { supabase, supabaseConfigured } from '$lib/supabase';
+  import { member } from '$lib/session';
+  import { t } from '$lib/i18n';
+  import { toast } from '$lib/toast';
+
+  type Slot = { id: string; project_id: string; slot_kind: string; authorship: string | null;
+    skill: { name: string } | null; resource_type: { name: string } | null;
+    desired_level: string | null; quota: number | null; status: string };
+  type Seat = { memberId: string; name: string; amount: number; nominal: number; slotId: string; authorship: string };
+  type Proj = { id: string; name: string; status: string; venue: string | null; venueId: string | null;
+    unitId: string | null; unit: string | null; team: Seat[]; slots: Slot[];
+    pool: number; ddlDays: number | null; ddlLabel: string };
+  type Mem = { id: string; name: string; email: string; unitId: string | null; unit: string | null;
+    hours: number | null; used: number; linked: boolean; skills: { name: string; level: string }[];
+    resources: { name: string; quota: number }[] };
+  type Unit = { id: string; name: string; kind: string };
+
+  const STEPS = ['Start', 'Active', 'In review', 'Accepted'];
+  const SG: Record<string, number> = { Proposal: 0, 'Data Collecting': 1, 'Work in progress': 1, Active: 1, 'Under review': 2, Finished: 3 };
+  const SG_CLS = ['st-seed', 'st-grow', 'st-rev', 'st-ripe'];
+  const LV: Record<string, string> = { learning: 'Learning', independent: 'Independent', lead: 'Can mentor' };
+  const ROLE_LABEL: Record<string, string> = {
+    first: 'First author', normal: 'Author', co: 'Author',
+    corresponding: '✉ Co-corresponding', last: 'Last author', last_candidate: 'Last author'
+  };
+  const ROLE_CLS: Record<string, string> = { first: 'r1c', corresponding: 'rcor', last: 'rlast', last_candidate: 'rlast' };
+  const CIRC = '①②③④⑤⑥⑦⑧⑨⑩⑪⑫';
+  const PAL = ['#31735f', '#4c7a9b', '#8a6d3b', '#a35d48', '#5b5f97', '#6c8363', '#96694f', '#527a7a', '#7b5e7b', '#6e7f52'];
+
+  let projs = $state<Proj[]>([]);
+  let mems = $state<Mem[]>([]);
+  let wgs = $state<Unit[]>([]);
+  let chapterUnits = $state<Unit[]>([]);
+  let venues = $state<{ id: string; name: string; kind: string; deadline: string | null }[]>([]);
+  let skills = $state<{ id: string; name: string }[]>([]);
+  let resourceTypes = $state<{ id: string; name: string }[]>([]);
+  let statuses = $state<{ id: string; name: string }[]>([]);
+  let types = $state<{ id: string; name: string }[]>([]);
+  let orphans = $state<{ account_id: string; email: string }[]>([]);
+  let settledBy = $state<Record<string, number>>({});
+  let loading = $state(true);
+  let busy = $state('');
+  // details open-state survives load() re-renders (Notion-like: a row you
+  // opened stays open while you act inside it)
+  let openRows = $state<Record<string, boolean>>({});
+  const toggleRow = (id: string) => (e: Event) => { openRows[id] = (e.target as HTMLDetailsElement).open; };
+
+  const initials = (n: string) => { const p = n.split(' '); return (p[0]?.[0] ?? '' ) + (p[1]?.[0] ?? ''); };
+  const avColor = (n: string) => PAL[[...n].reduce((a, c) => a + c.charCodeAt(0), 0) % PAL.length];
+
+  // 目标会议的下一轮截止(过期按年顺延;期刊=随时可投)
+  function nextDdl(name: string | null, kind: string | null, deadline: string | null): { label: string; days: number | null } {
+    if (!name) return { label: '', days: null };
+    if (kind === 'journal') return { label: 'rolling', days: 999 };
+    if (!deadline) return { label: '', days: null };
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const d = new Date(deadline + 'T00:00:00');
+    while (d < today) d.setFullYear(d.getFullYear() + 1);
+    const days = Math.round((d.getTime() - today.getTime()) / 86400000);
+    return { label: `${days}d`, days };
+  }
+
+  async function load() {
+    if (!supabaseConfigured) { loading = false; return; }
+    loading = true;
+    const [{ data: pr }, { data: ou }, { data: vn }, { data: slr }, { data: wc }, { data: mm },
+      { data: ps }, { data: sk }, { data: rt }, { data: st }, { data: ty }, { data: rs },
+      { data: sb }, { data: orp }] = await Promise.all([
+      supabase.from('project').select('id, name, org_unit_id, target_venue, venue_id, project_status!project_status_id_fkey(name)').is('archived_at', null),
+      supabase.from('org_unit').select('id, name, kind'),
+      supabase.from('venue').select('id, name, kind, deadline'),
+      supabase.from('project_slot').select('id, project_id, slot_kind, authorship, desired_level, quota, status, skill:skill_id(name), resource_type:resource_type_id(name)'),
+      supabase.from('work_commitment').select('project_id, slot_id, member_id, monthly_amount, nominal_str, member:member_id(full_name)'),
+      supabase.from('member').select('id, full_name, email, home_unit_id, monthly_hours, auth_user_id, archived_at'),
+      supabase.from('person_skill').select('member_id, level, skill:skill_id(name)'),
+      supabase.from('skill').select('id, name, parent_id'),
+      supabase.from('resource_type').select('id, name'),
+      supabase.from('project_status').select('id, name'),
+      supabase.from('project_type').select('id, name'),
+      supabase.from('resource').select('holder_member_id, monthly_quota, resource_type:type_id(name)'),
+      supabase.from('stater_balance').select('owner_member_id, balance'),
+      supabase.rpc('orphan_accounts')
+    ]);
+
+    const unitName: Record<string, string> = {};
+    for (const u of (ou as any[]) ?? []) unitName[u.id] = u.name;
+    wgs = ((ou as any[]) ?? []).filter((u) => u.kind === 'working_group');
+    chapterUnits = ((ou as any[]) ?? []).filter((u) => u.kind === 'chapter');
+    venues = (vn as any[]) ?? [];
+    skills = ((sk as any[]) ?? []).filter((s) => s.parent_id != null);
+    if (!skills.length) skills = (sk as any[]) ?? [];
+    resourceTypes = (rt as any[]) ?? [];
+    statuses = (st as any[]) ?? [];
+    types = (ty as any[]) ?? [];
+    orphans = (orp as any[]) ?? [];
+    const venByName: Record<string, any> = {};
+    for (const v of venues) venByName[v.name] = v;
+
+    const slotsBy: Record<string, Slot[]> = {};
+    const slotById: Record<string, Slot> = {};
+    for (const s of (slr as any[]) ?? []) { (slotsBy[s.project_id] ??= []).push(s as Slot); slotById[s.id] = s as Slot; }
+
+    const teamBy: Record<string, Seat[]> = {};
+    const usedBy: Record<string, number> = {};
+    const nominalBy: Record<string, number> = {};
+    for (const w of (wc as any[]) ?? []) {
+      const list = (teamBy[w.project_id] ??= []);
+      const nom = Number(w.nominal_str) || 0;
+      const prev = list.find((x) => x.memberId === w.member_id);
+      if (prev) { prev.amount += Number(w.monthly_amount) || 0; prev.nominal += nom; }
+      else list.push({ memberId: w.member_id, name: w.member?.full_name ?? '—',
+        amount: Number(w.monthly_amount) || 0, nominal: nom, slotId: w.slot_id,
+        authorship: slotById[w.slot_id]?.authorship ?? (slotById[w.slot_id]?.slot_kind === 'leader' ? 'first' : 'normal') });
+      usedBy[w.member_id] = (usedBy[w.member_id] ?? 0) + (Number(w.monthly_amount) || 0);
+      nominalBy[w.member_id] = (nominalBy[w.member_id] ?? 0) + nom;
+    }
+
+    projs = ((pr as any[]) ?? []).map((p) => {
+      const v = venByName[p.target_venue ?? ''];
+      const dd = nextDdl(p.target_venue, v?.kind ?? null, v?.deadline ?? null);
+      const team = (teamBy[p.id] ?? []).sort((a, b) => (a.authorship === 'first' ? -1 : 0) - (b.authorship === 'first' ? -1 : 0) || b.nominal - a.nominal);
+      return { id: p.id, name: p.name, status: p.project_status?.name ?? 'Proposal',
+        venue: p.target_venue, venueId: p.venue_id ?? null, unitId: p.org_unit_id ?? null,
+        unit: p.org_unit_id ? (unitName[p.org_unit_id] ?? null) : null,
+        team, slots: (slotsBy[p.id] ?? []).filter((s) => s.status === 'open'),
+        pool: team.reduce((a, x) => a + x.nominal, 0), ddlDays: dd.days, ddlLabel: dd.label };
+    });
+
+    const skillBy: Record<string, { name: string; level: string }[]> = {};
+    for (const r of (ps as any[]) ?? []) if (r.skill?.name) (skillBy[r.member_id] ??= []).push({ name: r.skill.name, level: r.level });
+    const resBy: Record<string, { name: string; quota: number }[]> = {};
+    for (const r of (rs as any[]) ?? []) {
+      const nm = r.resource_type?.name;
+      if (!nm || nm === 'Labor' || !r.monthly_quota) continue;
+      (resBy[r.holder_member_id] ??= []).push({ name: nm, quota: Number(r.monthly_quota) });
+    }
+    settledBy = {};
+    for (const b of (sb as any[]) ?? []) if (b.owner_member_id) settledBy[b.owner_member_id] = (settledBy[b.owner_member_id] ?? 0) + (Number(b.balance) || 0);
+
+    mems = ((mm as any[]) ?? []).filter((m) => !m.archived_at).map((m) => ({
+      id: m.id, name: m.full_name, email: m.email ?? '', unitId: m.home_unit_id ?? null,
+      unit: m.home_unit_id ? (unitName[m.home_unit_id] ?? null) : null,
+      hours: m.monthly_hours, used: usedBy[m.id] ?? 0, linked: !!m.auth_user_id,
+      skills: skillBy[m.id] ?? [], resources: resBy[m.id] ?? []
+    }));
+    loading = false;
+  }
+  $effect(() => { load(); });
+
+  const stage = (p: Proj) => (p.status === 'Hold' ? -1 : (SG[p.status] ?? 0));
+  const leadOpen = (p: Proj) => p.slots.some((s) => s.slot_kind === 'leader');
+  const freeOf = (m: Mem) => (m.hours != null ? m.hours - m.used : null);
+  const freeMems = $derived(mems.filter((m) => (freeOf(m) ?? 0) > 0).sort((a, b) => (freeOf(b) ?? 0) - (freeOf(a) ?? 0)));
+  const unsetCount = $derived(mems.filter((m) => m.hours == null).length);
+
+  const hiring = $derived(projs.filter((p) => p.slots.length && [0, 1].includes(stage(p)))
+    .sort((a, b) => (a.ddlDays ?? 998) - (b.ddlDays ?? 998)));
+  const others = $derived(projs.filter((p) => !(p.slots.length && [0, 1].includes(stage(p))))
+    .sort((a, b) => (stage(a) < 0 ? 1 : 0) - (stage(b) < 0 ? 1 : 0) || (a.ddlDays ?? 998) - (b.ddlDays ?? 998)));
+
+  // ── STR 双轨:名义(在池)/实际(已结算)+ 三榜 ──
+  const nominalPerMember = $derived.by(() => {
+    const m: Record<string, number> = {};
+    for (const p of projs) for (const s of p.team) m[s.name] = (m[s.name] ?? 0) + s.nominal;
+    return m;
+  });
+  const settledPerName = $derived.by(() => {
+    const m: Record<string, number> = {};
+    for (const me of mems) if (settledBy[me.id]) m[me.name] = settledBy[me.id];
+    return m;
+  });
+  const nomTotal = $derived(Object.values(nominalPerMember).reduce((a, b) => a + b, 0));
+  const setTotal = $derived(Object.values(settledPerName).reduce((a, b) => a + b, 0));
+  function board(nom: Record<string, number>, set: Record<string, number>, n: number) {
+    return Object.entries(nom).sort((a, b) => (b[1] + (set[b[0]] ?? 0)) - (a[1] + (set[a[0]] ?? 0))).slice(0, n);
+  }
+  const wgBoard = $derived.by(() => {
+    const nom: Record<string, number> = {};
+    for (const p of projs) if (p.unit) nom[p.unit] = (nom[p.unit] ?? 0) + p.pool;
+    return board(nom, {}, 4);
+  });
+  const chBoard = $derived.by(() => {
+    const nom: Record<string, number> = {}; const set: Record<string, number> = {};
+    const unitOf: Record<string, string | null> = {};
+    for (const me of mems) unitOf[me.name] = me.unit;
+    for (const [nm, v] of Object.entries(nominalPerMember)) { const u = unitOf[nm]; if (u) nom[u] = (nom[u] ?? 0) + v; }
+    for (const [nm, v] of Object.entries(settledPerName)) { const u = unitOf[nm]; if (u) set[u] = (set[u] ?? 0) + v; }
+    return { rows: board(nom, set, 3), set };
+  });
+  const memBoard = $derived(board(nominalPerMember, settledPerName, 5));
+
+  const chapterGroups = $derived.by(() => {
+    const m = new Map<string, Mem[]>();
+    for (const me of mems) { const k = me.unit ?? ''; m.set(k, [...(m.get(k) ?? []), me]); }
+    const key = (x: Mem) => { const fh = freeOf(x); return [fh != null && fh > 0 ? 0 : x.hours != null ? 1 : 2, -(fh ?? 0)] as const; };
+    for (const [, list] of m) list.sort((a, b) => { const ka = key(a), kb = key(b); return ka[0] - kb[0] || ka[1] - kb[1]; });
+    return [...m.entries()].sort((a, b) => (a[0] === '' ? 1 : 0) - (b[0] === '' ? 1 : 0));
+  });
+  const linkedCount = $derived(mems.filter((m) => m.linked).length);
+
+  // ── 动作(全部真实 RPC;错误上 toast)──
+  async function run(key: string, fn: () => PromiseLike<{ error: any }>) {
+    busy = key;
+    const { error } = await fn();
+    busy = '';
+    if (error) { toast.error(error.message); return false; }
+    await load();
+    return true;
+  }
+
+  // form drafts are plain objects on purpose: typing/picking must not re-render
+  // the page (a re-render would collapse the open <details> rows)
+  const assignPick: Record<string, string> = {};
+  const assignHours: Record<string, string> = {};
+  async function assignSeat(p: Proj, s: Slot) {
+    const memberId = assignPick[s.id];
+    if (!memberId) return;
+    const hours = Number(assignHours[s.id]) || Number(s.quota) || 5;
+    await run(s.id, () => supabase.rpc('assign', { p_member: memberId, p_slot: s.id, p_hours: hours }));
+  }
+  async function removeSeat(p: Proj, seat: Seat) {
+    await run(seat.slotId + seat.memberId,
+      () => supabase.rpc('unassign', { p_slot: seat.slotId, p_member: seat.memberId }));
+  }
+
+  const openRole: Record<string, string> = {};
+  const openNeed: Record<string, string> = {};
+  const openHours: Record<string, string> = {};
+  async function addOpening(p: Proj) {
+    const need = openNeed[p.id] ?? '';
+    const isRes = need.startsWith('rt:');
+    const hours = Number(openHours[p.id]) || 8;
+    await run('open' + p.id, () => supabase.rpc('forge_need', {
+      p_project: p.id, p_kind: isRes ? 'work_resource' : 'work_labor',
+      p_skill: !isRes && need ? need : null, p_resource_type: isRes ? need.slice(3) : null,
+      p_level: null, p_capacity: hours, p_headcount: 1,
+      p_authorship: openRole[p.id] || 'normal'
+    }));
+  }
+
+  const statusId = (name: string) => statuses.find((s) => s.name === name)?.id ?? null;
+  async function advance(p: Proj) {
+    const next = stage(p) === 0
+      ? (['Work in progress', 'Data Collecting', 'Active'].find((n) => statusId(n)) ?? 'Work in progress')
+      : 'Under review';
+    const sid = statusId(next);
+    if (!sid) { toast.error($t('Status {name} not found', { name: next })); return; }
+    await run('st' + p.id, () => supabase.rpc('project_set_status', { p_project: p.id, p_status: sid }));
+  }
+
+  const editName: Record<string, string> = {};
+  const editVenue: Record<string, string> = {};
+  const editUnit: Record<string, string> = {};
+  async function saveProject(p: Proj) {
+    const nm = (editName[p.id] ?? p.name).trim();
+    if (nm && nm !== p.name) { if (!await run('e' + p.id, () => supabase.rpc('project_rename', { p_project: p.id, p_name: nm }))) return; }
+    const v = editVenue[p.id];
+    if (v !== undefined && v !== (p.venueId ?? '')) { if (!await run('e' + p.id, () => supabase.rpc('project_set_venue', { p_project: p.id, p_venue: v || null }))) return; }
+    const u = editUnit[p.id];
+    if (u !== undefined && u !== (p.unitId ?? '')) { if (!await run('e' + p.id, () => supabase.rpc('project_set_org_unit', { p_project: p.id, p_unit: u || null }))) return; }
+  }
+  async function archiveProject(p: Proj) {
+    await run('a' + p.id, () => supabase.rpc('project_archive', { p_project: p.id, p_archived: true }));
+  }
+
+  // ── 新建:项目 / 小组 / 分会 ──
+  let newProj = $state(''); let newProjUnit = $state(''); let newWg = $state(''); let newCh = $state('');
+  async function createProject() {
+    if (!newProj.trim()) return;
+    const sid = statusId('Proposal') ?? statuses[0]?.id;
+    const tid = types.find((x) => /paper|research/i.test(x.name))?.id ?? types[0]?.id;
+    if (await run('newp', () => supabase.rpc('create_project_phase1', {
+      p_name: newProj.trim(), p_type_id: tid, p_status_id: sid, p_wg_unit: newProjUnit || null
+    }))) { newProj = ''; newProjUnit = ''; }
+  }
+  async function createUnit(kind: 'working_group' | 'chapter') {
+    const nm = (kind === 'working_group' ? newWg : newCh).trim();
+    if (!nm) return;
+    if (await run('newu', () => supabase.rpc('unit_create', { p_name: nm, p_kind: kind })))
+      { newWg = ''; newCh = ''; }
+  }
+
+  // ── 成员维护 ──
+  let addName = $state(''); let addEmail = $state(''); let addUnit = $state('');
+  async function addMember() {
+    if (!addName.trim() || !addEmail.trim()) { toast.error($t('Name and email are required.')); return; }
+    if (await run('add', () => supabase.rpc('forge_member_card', {
+      p_full_name: addName.trim(), p_email: addEmail.trim(), p_unit: addUnit || null, p_affiliation: null
+    }))) { addName = ''; addEmail = ''; }
+  }
+  const hoursDraft: Record<string, string> = {};
+  const skillDraft: Record<string, string> = {};
+  const levelDraft: Record<string, string> = {};
+  async function saveMember(m: Mem) {
+    const hv = hoursDraft[m.id];
+    if (hv !== undefined && hv !== '' && Number(hv) !== m.hours) {
+      if (!await run(m.id, () => supabase.rpc('person_set_capacity', { p_hours: Math.max(0, Math.floor(Number(hv) || 0)), p_member: m.id }))) return;
+    }
+    const skid = skillDraft[m.id];
+    if (skid) {
+      if (!await run(m.id, () => supabase.rpc('person_skill_set', { p_skill: skid, p_level: levelDraft[m.id] || 'independent', p_member: m.id }))) return;
+    }
+  }
+  async function moveMember(m: Mem, unitId: string) {
+    if ((unitId || null) === m.unitId) return;
+    await run(m.id, () => supabase.rpc('member_set_home_unit', { p_member: m.id, p_unit: unitId || null }));
+  }
+  async function archiveMember(m: Mem) {
+    await run(m.id, () => supabase.rpc('member_archive', { p_member: m.id, p_archived: true }));
+  }
+  const inviteHref = (m: Mem) =>
+    `mailto:${m.email}?subject=${encodeURIComponent('Join The Fin AI research community')}&body=${encodeURIComponent(
+      `Hi ${m.name},\n\nSign up with this email at ${location.origin}/login and your member record links automatically.\n`)}`;
+  const linkPick: Record<string, string> = {};
+  async function linkOrphan(o: { account_id: string; email: string }) {
+    const mid = linkPick[o.account_id];
+    if (!mid) return;
+    await run('lnk', () => supabase.rpc('member_link_account', { p_member: mid, p_account: o.account_id }));
+  }
+
+  const slotAsk = (s: Slot) =>
+    s.slot_kind === 'leader' ? $t('Lead · hours') :
+    s.slot_kind === 'work_resource' ? (s.resource_type?.name ?? $t('Resource')) :
+    `${s.skill?.name ?? $t('Hours')}${s.desired_level ? ' (' + $t(LV[s.desired_level] ?? s.desired_level) + ')' : ''}${s.quota ? ` ${s.quota}h/${$t('mo')}` : ''}`;
+  const seatPrice = (s: Slot) =>
+    s.slot_kind === 'work_resource' ? $t('by type') : s.quota ? `≈ ${Number(s.quota) * 10} STR/${$t('mo')}` : '';
+  const roleOf = (s: Slot) => s.authorship ?? (s.slot_kind === 'leader' ? 'first' : 'normal');
+</script>
+
+<svelte:head><title>{$t('Market')} · The Fin AI</title></svelte:head>
+
+<div class="mk">
+  <div class="mtop">
+    <h1>🌿 {$t('Market')}</h1>
+    <details class="acct newmenu">
+      <summary class="np">+ {$t('New')} ▾</summary>
+      <div class="km">
+        <details class="sub2"><summary class="mi">{$t('Project')}</summary>
+          <div class="hf"><input placeholder={$t('Project name')} bind:value={newProj} style="width:9rem" />
+            <select bind:value={newProjUnit}><option value="">{$t('Proposal (no group)')}</option>
+              {#each wgs as u}<option value={u.id}>{u.name}</option>{/each}</select>
+            <button class="bt sm" disabled={busy === 'newp'} onclick={createProject}>{$t('Create')}</button></div>
+        </details>
+        <details class="sub2"><summary class="mi">{$t('Working group (projects)')}</summary>
+          <div class="hf"><input placeholder={$t('Group name')} bind:value={newWg} style="width:9rem" />
+            <button class="bt sm" disabled={busy === 'newu'} onclick={() => createUnit('working_group')}>{$t('Create')}</button></div>
+        </details>
+        <details class="sub2"><summary class="mi">{$t('Chapter (people)')}</summary>
+          <div class="hf"><input placeholder={$t('Chapter name')} bind:value={newCh} style="width:9rem" />
+            <button class="bt sm" disabled={busy === 'newu'} onclick={() => createUnit('chapter')}>{$t('Create')}</button></div>
+        </details>
+      </div>
+    </details>
+  </div>
+
+  {#if loading}
+    <p class="mut">{$t('Loading…')}</p>
+  {:else}
+    <div class="strbar">
+      <div class="strt">STR
+        <span class="lbp">{$t('Nominal (in pool)')} {nomTotal.toLocaleString()}</span> ·
+        <span class="lbs">{$t('Settled')} {setTotal.toLocaleString()}</span>
+        <span class="mut"> · {$t('Nominal converts to settled by share at settlement')} · 1 {$t('hour')} = 10 STR</span>
+      </div>
+      <div class="lbrow"><span class="lbl">{$t('Members')}</span>
+        {#each memBoard as [nm, v], i}<span class="lbi"><span class="lbn">{i + 1}</span>
+          <span class="av" style="background:{avColor(nm)}22;color:{avColor(nm)}">{initials(nm)}</span>
+          <span class="lbm">{nm}</span><span class="lbp">{v.toLocaleString()}</span>
+          {#if settledPerName[nm]}<span class="lbs">{settledPerName[nm].toLocaleString()}</span>{/if}</span>{/each}
+      </div>
+      <div class="lbrow"><span class="lbl">{$t('Groups')}</span>
+        {#each wgBoard as [nm, v], i}<span class="lbi"><span class="lbn">{i + 1}</span>
+          <span class="lbm">{nm}</span><span class="lbp">{v.toLocaleString()}</span></span>{/each}
+      </div>
+      <div class="lbrow"><span class="lbl">{$t('Chapters')}</span>
+        {#each chBoard.rows as [nm, v], i}<span class="lbi"><span class="lbn">{i + 1}</span>
+          <span class="lbm">{nm}</span><span class="lbp">{v.toLocaleString()}</span>
+          {#if chBoard.set[nm]}<span class="lbs">{chBoard.set[nm].toLocaleString()}</span>{/if}</span>{/each}
+      </div>
+    </div>
+
+    <div class="cols">
+      <div>
+        {#snippet cands(p: Proj, s: Slot)}
+          <div class="cands">
+            {#each freeMems.slice(0, 5) as fm}
+              <div class="cd">
+                <span class="av" style="background:{avColor(fm.name)}22;color:{avColor(fm.name)}">{initials(fm.name)}</span>
+                <span class="cdn">{fm.name}</span>
+                <span class="cdi">{fm.skills[0]?.name ?? ''} · {$t('free')} {freeOf(fm)}h</span>
+                <label class="radio"><input type="radio" name="pick-{s.id}" value={fm.id} bind:group={assignPick[s.id]} /></label>
+              </div>
+            {/each}
+            <div class="cd">
+              <select bind:value={assignPick[s.id]}>
+                <option value="">{$t('Others…')}</option>
+                {#each mems as om}<option value={om.id}>{om.name}</option>{/each}
+              </select>
+              <input type="number" min="1" placeholder="h" bind:value={assignHours[s.id]} style="width:4rem" />
+              <button class="bt sm" disabled={busy === s.id} onclick={() => assignSeat(p, s)}>{$t('Assign')}</button>
+            </div>
+            {#if unsetCount}<div class="mut">{$t('plus {n} members without hours are hidden', { n: unsetCount })}</div>{/if}
+          </div>
+        {/snippet}
+
+        {#snippet prow(p: Proj)}
+          {@const sg = stage(p)}
+          {@const openS = p.slots}
+          <details class="prow {sg >= 0 ? SG_CLS[Math.min(sg, 3)] : 'st-dorm'}" open={!!openRows['p' + p.id]} ontoggle={toggleRow('p' + p.id)}>
+            <summary>
+              <span class="tg">▸</span><span class="sn">{p.name}</span>
+              {#if openS.length && (sg === 0 || sg === 1)}<span class="vacb">{$t('needs {n}', { n: openS.length })}</span>{/if}
+              <span class="unitc2">{p.unit ?? (p.unitId ? '' : $t('Proposal'))}</span>
+              <span class="stc">{$t(sg >= 0 ? STEPS[Math.min(sg, 3)] : 'On hold')}</span>
+              {#if p.venue}<span class="ddl" class:red={p.ddlDays != null && p.ddlDays <= 35 && p.ddlDays !== 999}
+                class:amb={p.ddlDays != null && p.ddlDays > 35 && p.ddlDays <= 70}>{p.venue}{p.ddlLabel ? ` · ${p.ddlLabel === 'rolling' ? $t('rolling') : $t('due in') + ' ' + p.ddlLabel}` : ''}</span>{/if}
+            </summary>
+            <div class="pbody">
+              <div class="stp"><span class="stt">{$t(sg >= 0 ? STEPS[Math.min(sg, 3)] : 'On hold')}{sg === 0 ? ' · ' + $t('awaiting first author') : ''}</span>
+                <span class="stb">{#each [0, 1, 2, 3] as k}<i class:on={sg >= 0 && k <= sg}></i>{/each}</span></div>
+              {#if p.pool}
+                <div class="poolln">{$t('Project pool')} {p.pool.toLocaleString()} STR · {$t('author order set by STR at settlement')}</div>
+              {/if}
+
+              {#each p.slots.filter((s) => s.slot_kind === 'leader') as s}
+                {#if sg === 0 || sg === 1}
+                  <details class="seat vac">
+                    <summary><span class="no">①</span><span class="rolec r1c">{$t('First author')}</span>
+                      <span class="ask">{$t('Lead · open')}</span><span class="hint">{$t('Choose member')} ▾</span></summary>
+                    {@render cands(p, s)}
+                  </details>
+                {:else}
+                  <div class="seat dim"><span class="no">①</span><span class="rolec r1c">{$t('First author')}</span>
+                    <span class="ask mut">{$t('Lead · open')}</span></div>
+                {/if}
+              {/each}
+              {#each p.team as seat, i}
+                {@const pos = i + (leadOpen(p) ? 1 : 0)}
+                <div class="seat">
+                  <span class="no">{CIRC[Math.min(pos, 11)]}</span>
+                  <span class="av" style="background:{avColor(seat.name)}22;color:{avColor(seat.name)}">{initials(seat.name)}</span>
+                  <span class="an">{seat.name}</span>
+                  <span class="rolec {ROLE_CLS[seat.authorship] ?? ''}">{$t(ROLE_LABEL[seat.authorship] ?? 'Author')}</span>
+                  <span class="give">{seat.amount}h/{$t('mo')}</span>
+                  {#if seat.nominal}<span class="pts">{seat.nominal.toLocaleString()} STR</span>{/if}
+                  <button class="rel" title={$t('Remove')} onclick={() => removeSeat(p, seat)}>×</button>
+                </div>
+              {/each}
+              {#each p.slots.filter((s) => s.slot_kind !== 'leader') as s, j}
+                {@const pos = p.team.length + (leadOpen(p) ? 1 : 0) + j}
+                {#if sg === 1}
+                  <details class="seat vac">
+                    <summary><span class="no">{CIRC[Math.min(pos, 11)]}</span>
+                      <span class="rolec {ROLE_CLS[roleOf(s)] ?? ''}">{$t(ROLE_LABEL[roleOf(s)] ?? 'Author')}</span>
+                      <span class="ask">{slotAsk(s)} · {$t('open')}</span>
+                      {#if seatPrice(s)}<span class="pts">{seatPrice(s)}</span>{/if}
+                      <span class="hint">{$t('Choose member')} ▾</span></summary>
+                    {@render cands(p, s)}
+                  </details>
+                {:else}
+                  <div class="seat dim"><span class="no">{CIRC[Math.min(pos, 11)]}</span>
+                    <span class="rolec {ROLE_CLS[roleOf(s)] ?? ''}">{$t(ROLE_LABEL[roleOf(s)] ?? 'Author')}</span>
+                    <span class="ask mut">{slotAsk(s)} · {$t('open')}{sg === 0 ? ' · ' + $t('awaiting first author') : ''}</span></div>
+                {/if}
+              {/each}
+              {#if !p.team.length && !p.slots.length}<div class="seat"><span class="mut">{$t('no members yet')}</span></div>{/if}
+
+              {#if sg === 1}
+                <details class="hire"><summary>+ {$t('Add opening')}</summary>
+                  <div class="hf">
+                    <label>{$t('Role')} <select bind:value={openRole[p.id]}>
+                      <option value="normal">{$t('Author')}</option><option value="first">{$t('First author')}</option>
+                      <option value="corresponding">{$t('Co-corresponding')}</option><option value="last">{$t('Last author')}</option>
+                    </select></label>
+                    <label>{$t('Needs')} <select bind:value={openNeed[p.id]}>
+                      {#each skills as skl}<option value={skl.id}>{skl.name}</option>{/each}
+                      {#each resourceTypes.filter((r) => r.name !== 'Labor') as r}<option value={'rt:' + r.id}>{r.name} ({$t('resource')})</option>{/each}
+                    </select></label>
+                    <input type="number" min="1" bind:value={openHours[p.id]} placeholder="8" style="width:3.4rem" />h/{$t('mo')}
+                    <span class="pts">≈ 80 STR/{$t('mo')}</span>
+                    <button class="bt sm" disabled={busy === 'open' + p.id} onclick={() => addOpening(p)}>{$t('Add')}</button>
+                  </div>
+                </details>
+              {/if}
+
+              <div class="tail">
+                {#if sg === 0 && !leadOpen(p)}
+                  <button class="bt sm" disabled={busy === 'st' + p.id} onclick={() => advance(p)}>{$t('Advance stage')}</button>
+                {:else if sg === 1}
+                  <button class="bt sm ghosted" disabled={busy === 'st' + p.id} onclick={() => advance(p)}>{$t('Send to review')}</button>
+                {:else if sg === 3}
+                  <a class="bt sm ghosted" href="/admin">{$t('Settle (President)')}</a>
+                {/if}
+                <details class="sub2"><summary>{$t('Edit')} ▾</summary>
+                  <div class="hf">
+                    <label>{$t('Name')} <input value={p.name} oninput={(e) => (editName[p.id] = (e.target as HTMLInputElement).value)} style="width:10rem" /></label>
+                    <label>{$t('Venue')} <select value={p.venueId ?? ''} onchange={(e) => (editVenue[p.id] = (e.target as HTMLSelectElement).value)}>
+                      <option value="">{$t('TBD')}</option>
+                      {#each venues as v}<option value={v.id}>{v.name}</option>{/each}</select></label>
+                    <label>{$t('Group')} <select value={p.unitId ?? ''} onchange={(e) => (editUnit[p.id] = (e.target as HTMLSelectElement).value)}>
+                      <option value="">{$t('Proposal (no group)')}</option>
+                      {#each wgs as u}<option value={u.id}>{u.name}</option>{/each}</select></label>
+                    <button class="bt sm" disabled={busy === 'e' + p.id} onclick={() => saveProject(p)}>{$t('Save')}</button>
+                    <details class="dz"><summary>{$t('Archive (recoverable)…')}</summary>
+                      <span class="mut">{$t('Sure?')} </span>
+                      <button class="bt sm danger" disabled={busy === 'a' + p.id} onclick={() => archiveProject(p)}>{$t('Confirm')}</button></details>
+                  </div>
+                </details>
+                <details class="sub2"><summary>{$t('Activity')} ▾</summary>
+                  <div class="evs">
+                    {#each p.team.slice(0, 6) as seat}
+                      <div class="evrow"><span class="av sm" style="background:{avColor(seat.name)}22;color:{avColor(seat.name)}">{initials(seat.name)}</span>
+                        {seat.name} {$t('joined')} · {seat.amount}h/{$t('mo')}</div>
+                    {:else}<div class="mut">{$t('No activity yet')}</div>{/each}
+                  </div>
+                </details>
+              </div>
+            </div>
+          </details>
+        {/snippet}
+
+        <h2>{$t('Projects needing people')} <span class="n">{hiring.length}</span></h2>
+        {#each hiring as p (p.id)}{@render prow(p)}{/each}
+        <h2>{$t('Other projects')} <span class="n">{others.length}</span></h2>
+        {#each others as p (p.id)}{@render prow(p)}{/each}
+      </div>
+
+      <div>
+        <h2>{$t('Members')} <span class="n">{mems.length} · {$t('linked')} {linkedCount} · {$t('unlinked')} {mems.length - linkedCount}</span></h2>
+
+        {#each orphans as o (o.account_id)}
+          <details class="p m-over orphan" open={!!openRows['o' + o.account_id]} ontoggle={toggleRow('o' + o.account_id)}>
+            <summary><span class="regd on"></span><span class="pname">{o.email}</span>
+              <span class="chip mutc">{$t('registered, linked to no member')}</span></summary>
+            <div class="pf">
+              <label>{$t('Link to member')} <select bind:value={linkPick[o.account_id]}>
+                <option value="">{$t('Choose…')}</option>
+                {#each mems.filter((m) => !m.linked) as m}<option value={m.id}>{m.name}</option>{/each}
+              </select></label>
+              <button class="bt sm" disabled={busy === 'lnk'} onclick={() => linkOrphan(o)}>{$t('Link')}</button>
+              <span class="mut wfull">{$t('Or: if the account email matches a member email, linking is automatic on login')}</span>
+            </div>
+          </details>
+        {/each}
+
+        <details class="newbox">
+          <summary class="bt sm">+ {$t('Member')}</summary>
+          <div class="pf">
+            <input placeholder={$t('Name')} bind:value={addName} style="width:7rem" />
+            <input placeholder={$t('Email')} bind:value={addEmail} style="width:10rem" />
+            <select bind:value={addUnit}><option value="">{$t('No chapter')}</option>
+              {#each chapterUnits as u}<option value={u.id}>{u.name}</option>{/each}</select>
+            <button class="bt sm" disabled={busy === 'add'} onclick={addMember}>{$t('Add')}</button>
+            <span class="mut wfull">{$t('An invite is emailed on add; they are linked on sign-up and can then maintain their own info')}</span>
+          </div>
+        </details>
+
+        {#each chapterGroups as [cn, list] (cn)}
+          <h3 class="sh">{cn || $t('No chapter')}<span class="n">{list.length}</span></h3>
+          {#each list as m (m.id)}
+            {@const fh = freeOf(m)}
+            <details class="p {fh != null && fh > 0 ? 'm-free' : fh != null && fh < 0 ? 'm-over' : m.hours == null ? 'm-unset' : 'm-full'}" open={!!openRows['m' + m.id]} ontoggle={toggleRow('m' + m.id)}>
+              <summary>
+                <span class="av md" style="background:{avColor(m.name)}22;color:{avColor(m.name)}">{initials(m.name)}</span>
+                <span class="pname">{m.name}</span>
+                <span class="regd" class:on={m.linked} title={m.linked ? $t('linked account') : $t('not registered · linked on sign-up')}></span>
+                {#each m.skills.slice(0, 2) as skl}<span class="chip">{skl.name}</span>{/each}
+                {#each m.resources.slice(0, 1) as r}<span class="chip rs">{r.name} {r.quota.toLocaleString()}</span>{/each}
+                {#if !m.skills.length && !m.resources.length}<span class="chip mutc">{$t('no skills set')}</span>{/if}
+                {#if m.hours == null}<span class="warn">{$t('no hours set')}</span>
+                {:else if fh != null && fh < 0}<span class="warn">{$t('over by')} {-fh}h</span>
+                {:else if fh === 0}<span class="mut mr">{$t('fully booked')}</span>
+                {:else}<span class="okn">{$t('free')} {fh}h</span>{/if}
+              </summary>
+              <div class="pf">
+                <label>{$t('Monthly')} <input type="number" min="0" value={m.hours ?? ''} style="width:3.6rem"
+                  oninput={(e) => (hoursDraft[m.id] = (e.target as HTMLInputElement).value)} />h</label>
+                <label>{$t('Skills')} <select bind:value={skillDraft[m.id]}>
+                  <option value="">—</option>
+                  {#each skills as skl}<option value={skl.id}>{skl.name}</option>{/each}</select></label>
+                <select bind:value={levelDraft[m.id]}>
+                  <option value="independent">{$t('Independent')}</option>
+                  <option value="learning">{$t('Learning')}</option>
+                  <option value="lead">{$t('Can mentor')}</option></select>
+                <label>{$t('Chapter')} <select value={m.unitId ?? ''} onchange={(e) => moveMember(m, (e.target as HTMLSelectElement).value)}>
+                  <option value="">{$t('No chapter')}</option>
+                  {#each chapterUnits as u}<option value={u.id}>{u.name}</option>{/each}</select></label>
+                <button class="bt sm" disabled={busy === m.id} onclick={() => saveMember(m)}>{$t('Save')}</button>
+                {#if !m.linked && m.email}<a class="bt sm ghosted" href={inviteHref(m)}>{$t('Send invite')}</a>{/if}
+                <details class="dz"><summary>{$t('Remove (recoverable)…')}</summary>
+                  <span class="mut">{$t('Sure?')} </span>
+                  <button class="bt sm danger" disabled={busy === m.id} onclick={() => archiveMember(m)}>{$t('Confirm')}</button></details>
+              </div>
+            </details>
+          {/each}
+        {/each}
+      </div>
+    </div>
+    <div class="foot">The Fin AI Research Community · 1 {$t('hour')} = 10 STR · {$t('compute / datasets / funding convert by type')}</div>
+  {/if}
+</div>
+
+<style>
+  /* Nature 期刊色系 —— 规格:scratchpad/gen.py(概念稿 v49) */
+  .mk { --paper: #fbfaf7; --ink2: #1f2a26; --dim2: #5c6660; --faint2: #98a29b; --line2: #e7e6df;
+    --green: #0b5e52; --seed: #f6f1e3; --seed-bd: #d9cba6; --grow: #eef4ea; --grow-bd: #b9cfae;
+    --rev: #eef1f3; --rev-bd: #bcc8cf; --ripe: #f7f0df; --ripe-bd: #d9bc7a; --dorm: #f1f0ec;
+    --amber2: #9a6b1f; --red2: #a33a2a;
+    max-width: 1120px; margin: 0 auto; color: var(--ink2); font-size: 13.5px; }
+  .mtop { display: flex; align-items: baseline; gap: 16px; }
+  h1 { font: 700 24px/1.2 Georgia, 'Songti SC', serif; color: var(--green); padding: 8px 0 12px; }
+  h2 { font: 600 14px Georgia, serif; color: var(--dim2); padding: 8px 0 10px; }
+  h2 .n, .sh .n { color: var(--faint2); font-weight: 400; font-size: 12px; margin-left: 5px; }
+  .sh { font: 600 13px Georgia, serif; color: var(--dim2); padding: 16px 2px 8px; }
+  .cols { display: grid; grid-template-columns: 1fr 340px; gap: 36px; align-items: start; }
+  @media (max-width: 940px) { .cols { grid-template-columns: 1fr; } }
+  .mut { color: var(--faint2); font-size: 11px; }
+  .mut.mr { margin-left: auto; }
+  .wfull { width: 100%; }
+
+  .av { display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;
+    width: 20px; height: 20px; font-size: 8.5px; font-weight: 700; flex: none; }
+  .av.md { width: 26px; height: 26px; font-size: 10.5px; }
+  .av.sm { width: 14px; height: 14px; font-size: 6.5px; }
+
+  .strbar { display: flex; flex-direction: column; gap: 4px; background: #fff; border: 1px solid var(--line2);
+    border-radius: 12px; padding: 9px 14px; margin: 4px 0 18px; }
+  .strt { font-size: 12.5px; color: var(--dim2); }
+  .lbrow { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .lbl { font-size: 10.5px; font-weight: 700; color: var(--faint2); width: 44px; flex: none; }
+  .lbi { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; }
+  .lbn { font-size: 10px; color: var(--faint2); font-weight: 700; }
+  .lbm { font-weight: 600; }
+  .lbp { color: #7a5f30; font-weight: 700; font-size: 11px; }
+  .lbs { color: var(--green); font-weight: 700; font-size: 11px; }
+
+  .prow { background: #fff; border: 1px solid var(--line2); border-radius: 10px; margin-bottom: 6px; }
+  .prow.st-seed { background: var(--seed); border-color: var(--seed-bd); }
+  .prow.st-grow { background: var(--grow); border-color: var(--grow-bd); }
+  .prow.st-rev { background: var(--rev); border-color: var(--rev-bd); }
+  .prow.st-ripe { background: var(--ripe); border-color: var(--ripe-bd); }
+  .prow.st-dorm { background: var(--dorm); opacity: .65; }
+  .prow > summary { display: flex; align-items: center; gap: 9px; padding: 7px 12px; cursor: pointer; list-style: none; }
+  .prow > summary::-webkit-details-marker { display: none; }
+  .prow .tg { color: var(--faint2); font-size: 10px; transition: transform .12s; }
+  .prow[open] .tg { transform: rotate(90deg); }
+  .prow[open] > summary { border-bottom: 1px solid #00000010; }
+  .sn { font-size: 12.5px; font-weight: 600; color: var(--ink2); flex: 1; min-width: 0;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .stc { font-size: 10.5px; color: var(--dim2); background: #ffffffaa; border-radius: 6px; padding: 1px 7px; white-space: nowrap; }
+  .unitc2 { font-size: 10px; color: var(--faint2); white-space: nowrap; }
+  .vacb { font-size: 10.5px; font-weight: 700; color: var(--amber2); background: #ffffffcc;
+    border: 1px solid #d9bc7a; border-radius: 6px; padding: 1px 7px; white-space: nowrap; }
+  .ddl { font-size: 10.5px; font-weight: 600; color: var(--dim2); background: #ffffffaa;
+    border: 1px solid var(--line2); border-radius: 6px; padding: 1px 7px; white-space: nowrap; }
+  .ddl.amb { color: var(--amber2); border-color: #d9bc7a; }
+  .ddl.red { color: var(--red2); border-color: #d9a08f; }
+  .pbody { padding: 8px 14px 12px 30px; }
+  .stp { display: flex; align-items: center; gap: 8px; }
+  .stt { font-size: 11px; font-weight: 600; color: var(--dim2); white-space: nowrap; }
+  .stb { display: flex; gap: 3px; flex: 1; }
+  .stb i { flex: 1; height: 3px; border-radius: 2px; background: #00000014; }
+  .stb i.on { background: var(--green); }
+  .poolln { font-size: 11px; color: var(--dim2); padding: 6px 0 2px; }
+
+  .seat { padding: 6px 0; border-top: 1px dashed #00000012; font-size: 12.5px; display: flex; align-items: center; gap: 8px; }
+  details.seat { display: block; }
+  details.seat > summary { display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none; }
+  details.seat > summary::-webkit-details-marker { display: none; }
+  .seat .no { font-size: 11.5px; color: var(--faint2); }
+  .seat .an { font-weight: 600; }
+  .seat .give { margin-left: auto; font-size: 10.5px; color: var(--dim2); }
+  .seat .ask { color: var(--amber2); font-weight: 600; }
+  .seat .ask.mut { color: var(--faint2); font-weight: 400; }
+  .seat .hint { margin-left: auto; font-size: 11.5px; font-weight: 600; color: var(--green); }
+  .seat.dim { opacity: .6; }
+  .rel { color: var(--faint2); cursor: pointer; font-weight: 700; padding: 0 4px; opacity: 0; border: 0; background: none; font-size: 13px; }
+  .seat:hover .rel { opacity: 1; color: var(--red2); }
+  .rolec { font-size: 10px; font-weight: 700; color: var(--dim2); background: #fff; border: 1px solid var(--line2);
+    border-radius: 5px; padding: 0 6px; white-space: nowrap; }
+  .rolec.r1c { color: var(--red2); border-color: #d9a08f; }
+  .rolec.rcor { color: #4c7a9b; border-color: #a9c4d6; }
+  .rolec.rlast { color: var(--green); border-color: #9ec4ba; }
+  .pts { font-size: 10px; font-weight: 700; color: #7a5f30; background: #f7f0df; border-radius: 5px; padding: 0 6px; white-space: nowrap; }
+  .cands { padding: 6px 0 2px 14px; }
+  .cd { display: flex; align-items: center; gap: 7px; padding: 3px 0; font-size: 12px; }
+  .cdn { font-weight: 600; }
+  .cdi { color: var(--faint2); font-size: 11px; flex: 1; }
+  .radio input { margin: 0; }
+
+  .hire { margin-top: 8px; }
+  .hire > summary { list-style: none; cursor: pointer; display: inline-block; font-size: 12px; color: var(--green);
+    font-weight: 600; border: 1px dashed var(--green); border-radius: 8px; padding: 3px 10px; opacity: .85; }
+  .hire > summary::-webkit-details-marker { display: none; }
+  .hf { display: flex; gap: 6px; align-items: center; padding: 8px 0 2px; font-size: 12px; color: var(--dim2); flex-wrap: wrap; }
+  .hf label { display: inline-flex; gap: 3px; align-items: center; }
+
+  .tail { display: flex; gap: 14px; align-items: baseline; padding-top: 10px; flex-wrap: wrap; }
+  .sub2 > summary { list-style: none; cursor: pointer; font-size: 11.5px; color: var(--dim2); font-weight: 600; }
+  .sub2 > summary::-webkit-details-marker { display: none; }
+  .sub2 > summary:hover { color: var(--ink2); }
+  .evs { padding: 6px 0 0; }
+  .evrow { font-size: 11.5px; color: var(--dim2); padding: 2px 0; display: flex; align-items: center; gap: 5px; }
+
+  .p { background: #fff; border: 1px solid var(--line2); border-radius: 10px; padding: 7px 10px; margin-bottom: 6px; }
+  .p.m-free { background: var(--grow); border-color: var(--grow-bd); }
+  .p.m-unset { background: var(--seed); border-color: var(--seed-bd); }
+  .p.m-over { background: #f9ecea; border-color: #dcb0a6; }
+  .p.orphan { margin-bottom: 10px; }
+  .p > summary { display: flex; align-items: center; gap: 7px; cursor: pointer; list-style: none; flex-wrap: wrap; }
+  .p > summary::-webkit-details-marker { display: none; }
+  .pname { font-weight: 600; font-size: 12.5px; }
+  .chip { background: #00000009; border-radius: 6px; font-size: 10.5px; padding: 1px 7px; color: var(--dim2); }
+  .chip.rs { background: #5b5f9718; color: #4a4e86; font-weight: 600; }
+  .chip.mutc { color: var(--faint2); }
+  .okn { margin-left: auto; color: var(--green); font-weight: 700; font-size: 11.5px; }
+  .warn { margin-left: auto; color: var(--red2); font-weight: 600; font-size: 11px; }
+  .pf { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; padding: 8px 0 2px; font-size: 11.5px; color: var(--dim2); }
+  .pf label { display: inline-flex; gap: 3px; align-items: center; }
+  .regd { width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid var(--faint2); flex: none; }
+  .regd.on { background: var(--green); border-color: var(--green); }
+
+  .dz { width: 100%; }
+  .dz > summary { list-style: none; cursor: pointer; font-size: 11px; color: var(--red2); }
+  .dz > summary::-webkit-details-marker { display: none; }
+  .newbox { margin-bottom: 10px; }
+  .newbox > summary { list-style: none; cursor: pointer; display: inline-block; }
+  .newbox > summary::-webkit-details-marker { display: none; }
+
+  .acct { position: relative; margin-left: auto; }
+  .acct > summary { list-style: none; cursor: pointer; display: inline-flex; }
+  .acct > summary::-webkit-details-marker { display: none; }
+  .np { color: var(--green); font-weight: 600; font-size: 12px; }
+  .acct[open] > .km { display: flex; position: absolute; right: 0; top: 26px; z-index: 9; background: #fff;
+    border: 1px solid var(--line2); border-radius: 10px; box-shadow: 0 8px 28px rgba(31, 42, 38, .14);
+    padding: 8px; min-width: 240px; flex-direction: column; gap: 2px; }
+  .mi { font-size: 12px; text-align: left; padding: 6px 10px; border: 0; background: none;
+    border-radius: 7px; cursor: pointer; color: var(--ink2); list-style: none; }
+  .mi::-webkit-details-marker { display: none; }
+  .mi:hover { background: #0b5e520d; }
+
+  .mk :global(input), .mk :global(select) { font: inherit; font-size: 11.5px; padding: 3px 7px;
+    border: 1px solid var(--line2); border-radius: 6px; background: #fff; }
+  .bt { font: inherit; font-size: 11.5px; font-weight: 600; padding: 3px 11px; border: 0; border-radius: 7px;
+    background: var(--green); color: #fff; cursor: pointer; text-decoration: none; display: inline-block; }
+  .bt:disabled { opacity: .5; }
+  .bt.danger { background: var(--red2); }
+  .bt.sm { padding: 2px 9px; font-size: 11px; }
+  .bt.ghosted { background: #fff; color: var(--dim2); border: 1px solid var(--line2); }
+  .foot { margin-top: 44px; font: 12px Georgia, serif; color: var(--faint2); }
+</style>

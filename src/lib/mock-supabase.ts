@@ -41,6 +41,7 @@ const seed: Record<string, any[]> = {
     { member_id: 'm-chap', org_unit_id: U_CHAP, role: 'officer', ended_on: null, org_unit: { id: U_CHAP, code: 'BJ', name: 'Beijing Chapter', kind: 'chapter' } }
   ],
   org_unit_member: [],
+  auth_orphan: [{ account_id: 'uid-orphan', email: 'orphan@test' }],
   member_position: [
     { member_id: M_ME, position_id: 'pos-pres', position: { name: 'President', position_capability: PRES_CAPS } },
     { member_id: 'm-admin', position_id: 'pos-pres', position: { name: 'President', position_capability: PRES_CAPS } }
@@ -116,11 +117,15 @@ const seed: Record<string, any[]> = {
     { id: 'ps-hold', name: 'Hold', rank: 4, is_active: false },
     { id: 'ps-fin', name: 'Finished', rank: 5, is_active: false }
   ],
-  venue: [{ id: 'v-acl', name: 'ACL', kind: 'conference', deadline: '2026-07-30', rank: 1 }],
+  venue: [
+    { id: 'v-acl', name: 'ACL', kind: 'conference', deadline: '2026-01-05', rank: 1 },
+    { id: 'v-iclr', name: 'ICLR', kind: 'conference', deadline: '2025-09-24', rank: 2 },
+    { id: 'v-ipm', name: 'IPM', kind: 'journal', deadline: null, rank: 3 }
+  ],
   project_slot: [
-    { id: 's-lead', project_id: P1, slot_kind: 'leader', skill_id: null, resource_type_id: null, desired_level: null, quota: 20, headcount: 1, status: 'open', skill: null, resource_type: null, project: { name: 'ml-Tagging', emoji: '🏷️', code: 'ml-Tagging' } },
-    { id: 's-ann', project_id: P1, slot_kind: 'work_labor', skill_id: SK_ANN, resource_type_id: null, desired_level: 'independent', quota: 10, headcount: 2, status: 'open', skill: { name: 'Annotation' }, resource_type: null, project: { name: 'ml-Tagging', emoji: '🏷️', code: 'ml-Tagging' } },
-    { id: 's-gpu', project_id: P1, slot_kind: 'work_resource', skill_id: null, resource_type_id: RT_GPU, desired_level: null, quota: 100, headcount: 1, status: 'open', skill: null, resource_type: { name: 'GPU', unit: 'GPU-hours' }, project: { name: 'ml-Tagging', emoji: '🏷️', code: 'ml-Tagging' } }
+    { id: 's-lead', project_id: P1, slot_kind: 'leader', authorship: 'first', skill_id: null, resource_type_id: null, desired_level: null, quota: 20, headcount: 1, status: 'open', skill: null, resource_type: null, project: { name: 'ml-Tagging', emoji: '🏷️', code: 'ml-Tagging' } },
+    { id: 's-ann', project_id: P1, slot_kind: 'work_labor', authorship: 'normal', skill_id: SK_ANN, resource_type_id: null, desired_level: 'independent', quota: 10, headcount: 2, status: 'open', skill: { name: 'Annotation' }, resource_type: null, project: { name: 'ml-Tagging', emoji: '🏷️', code: 'ml-Tagging' } },
+    { id: 's-gpu', project_id: P1, slot_kind: 'work_resource', authorship: 'normal', skill_id: null, resource_type_id: RT_GPU, desired_level: null, quota: 100, headcount: 1, status: 'open', skill: null, resource_type: { name: 'GPU', unit: 'GPU-hours' }, project: { name: 'ml-Tagging', emoji: '🏷️', code: 'ml-Tagging' } }
   ],
   work_commitment: [
     { id: 'wc-1', project_id: P1, slot_id: 's-ann', member_id: M_ZHAO, monthly_amount: 5, nominal_str: 50, year_month: '2026-06', resource_id: null, slot: { slot_kind: 'work_labor' }, member: { full_name: 'Zhao Lei' }, resource: { unit: 'h' } },
@@ -350,8 +355,7 @@ function rpc(name: string, a: any) {
     const me = CURRENT_MEMBER();
     // #52: attributing to a WG requires being its officer (or admin); anyone may
     // create an UNATTRIBUTED proposal (p_wg_unit null).
-    if (a.p_wg_unit && !(isOfficerOf(me, a.p_wg_unit) || isPresident(me)))
-      return Promise.resolve({ data: null, error: { message: 'only a working-group officer can create a project for this unit' } });
+    if (!me) return Promise.resolve({ data: null, error: { message: 'sign in first' } });
     const id = nid('p');
     seed.project.push({ id, name: a.p_name, code: a.p_name, emoji: '🧪', tag: '', body: '', summary: a.p_summary ?? null,
       org_unit_id: a.p_wg_unit ?? null, status_id: a.p_status_id, type_id: a.p_type_id,
@@ -369,6 +373,39 @@ function rpc(name: string, a: any) {
     if (p) p.org_unit_id = a.p_wg_unit;
     persist();
     return Promise.resolve({ data: nid('req'), error: null });
+  }
+  if (name === 'orphan_accounts') {
+    const linked = new Set(seed.member.map((m: any) => m.auth_user_id).filter(Boolean));
+    return Promise.resolve({ data: (seed.auth_orphan || []).filter((o: any) => !linked.has(o.account_id)), error: null });
+  }
+  if (name === 'member_link_account') {
+    const m = seed.member.find((x: any) => x.id === a.p_member);
+    if (!m) return Promise.resolve({ data: null, error: { message: 'no such member' } });
+    if (m.auth_user_id) return Promise.resolve({ data: null, error: { message: 'that member is already linked to an account' } });
+    m.auth_user_id = a.p_account; if (m.kind === 'card') m.kind = 'operator'; persist();
+    return Promise.resolve({ data: null, error: null });
+  }
+  if (name === 'forge_need') {
+    const id = nid('s');
+    const sk = a.p_skill ? (seed.skill.find((s: any) => s.id === a.p_skill) || {}) : null;
+    seed.project_slot.push({ id, project_id: a.p_project, slot_kind: a.p_kind, skill_id: a.p_skill ?? null,
+      resource_type_id: a.p_resource_type ?? null, desired_level: a.p_level ?? null,
+      quota: a.p_capacity ?? null, headcount: a.p_headcount ?? 1,
+      authorship: a.p_authorship ?? 'normal', status: 'open',
+      skill: sk ? { name: sk.name } : null,
+      resource_type: a.p_resource_type ? seed.resource_type.find((r: any) => r.id === a.p_resource_type) : null,
+      project: null }); persist();
+    return Promise.resolve({ data: id, error: null });
+  }
+  if (name === 'unit_create') {
+    const id = nid('u');
+    (seed.org_unit ??= []).push({ id, name: a.p_name, code: (a.p_name || '').slice(0, 6).toUpperCase(), kind: a.p_kind, description: '', rank: 9 });
+    persist(); return Promise.resolve({ data: id, error: null });
+  }
+  if (name === 'member_set_home_unit') {
+    const m = seed.member.find((x: any) => x.id === a.p_member);
+    if (m) m.home_unit_id = a.p_unit; persist();
+    return Promise.resolve({ data: null, error: null });
   }
   if (name === 'need_post') {
     const id = nid('s');
@@ -405,6 +442,10 @@ function rpc(name: string, a: any) {
     seed.work_commitment.push({ id: nid('wc'), project_id: s?.project_id, slot_id: a.p_slot, member_id: a.p_member,
       monthly_amount: a.p_hours, nominal_str: Math.round(a.p_hours * 10), year_month: '2026-06', resource_id: null,
       slot: { slot_kind: s?.slot_kind }, member: { full_name: (seed.member.find((m) => m.id === a.p_member) || {}).full_name }, resource: { unit: 'h' } });
+    if (s) {
+      const filled = new Set(seed.work_commitment.filter((w) => w.slot_id === s.id).map((w) => w.member_id)).size;
+      if (filled >= (s.headcount ?? 1) && s.status === 'open') s.status = 'filled';
+    }
     // notify the assignee
     seed.notification.push({ id: nid('n'), recipient_member_id: a.p_member, kind: 'assigned',
       title: 'You were assigned to a project', body: 'ml-Tagging', link: '/projects/p-ml', read_at: null, created_at: '2026-06-06T12:00:00Z' }); persist();
@@ -736,23 +777,14 @@ function isChapterOfficer(me: any): boolean {
 }
 // ── permission gates mirroring the real SQL, so the mock FAILS where prod fails
 // (mock-fidelity: a green test must not hide a prod rejection — #52/#53/G3) ──
-function canEditProjectMock(me: any, projectId: string): boolean {
-  if (!me) return false;
-  if (isPresident(me)) return true; // edit_any_project via PRES_CAPS
-  const p = (seed.project || []).find((x: any) => x.id === projectId);
-  if (!p) return false;
-  if (p.org_unit_id && isOfficerOf(me, p.org_unit_id)) return true;
-  // manages_project: holds the leader (first-author) seat
-  const leadSlots = (seed.project_slot || []).filter((s: any) => s.project_id === projectId && s.slot_kind === 'leader').map((s: any) => s.id);
-  return (seed.work_commitment || []).some((w: any) => leadSlots.includes(w.slot_id) && w.member_id === me.id);
+function canEditProjectMock(me: any, _projectId: string): boolean {
+  // governance v0.3: permissions suspended — any signed-in member may act
+  return !!me;
 }
 // work_seat's rule (decision #53-A, strict bipartite): only the member's
 // home-chapter officer (or admin capabilities) may seat them — NOT project editors.
-function canSeatMemberMock(me: any, memberId: string): boolean {
-  if (!me) return false;
-  if (isPresident(me)) return true; // manage_members / edit_any_project
-  const target = (seed.member || []).find((m: any) => m.id === memberId);
-  return !!target && isOfficerOf(me, target.home_unit_id);
+function canSeatMemberMock(me: any, _memberId: string): boolean {
+  return !!me; // governance v0.3: open
 }
 
 const _u = currentUid();
