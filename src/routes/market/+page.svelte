@@ -271,7 +271,7 @@
     busy = key;
     const { error } = await fn();
     busy = '';
-    if (error) { toast.error(error.message); return false; }
+    if (error) { toast.error(error.message); await load(); return false; } // reload reverts optimistic state
     await load();
     return true;
   }
@@ -559,7 +559,7 @@
               {/each}
               {#each p.slots.filter((s) => s.slot_kind !== 'leader') as s, j}
                 {@const pos = p.team.length + (leadOpen(p) ? 1 : 0) + j}
-                {#if sg === 1}
+                {#if sg === 1 || sg === 2}
                   <details class="seat vac">
                     <summary><span class="no">{CIRC[Math.min(pos, 11)]}</span>
                       <span class="rolec {ROLE_CLS[roleOf(s)] ?? ''}">{$t(ROLE_LABEL[roleOf(s)] ?? 'Author')}</span>
@@ -577,7 +577,7 @@
               {/each}
               {#if !p.team.length && !p.slots.length}<div class="seat"><span class="mut">{$t('no members yet')}</span></div>{/if}
 
-              {#if sg === 1}
+              {#if sg === 1 || sg === 2}
                 <details class="hire"><summary>+ {$t('Add opening')}</summary>
                   <div class="hf">
                     <label>{$t('Role')} <select bind:value={openRole[p.id]}>
