@@ -154,7 +154,7 @@ begin
 end $$;
 grant execute on function forge_claim(uuid, uuid) to authenticated;
 
-create or replace function member_archive(p_member uuid, p_archived boolean)
+create or replace function member_archive(p_member uuid, p_archived boolean default true)
 returns void language plpgsql security definer set search_path = public as $$
 begin
   if current_member_id() is null then raise exception 'sign in first'; end if;

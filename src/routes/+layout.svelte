@@ -1,56 +1,22 @@
 <script lang="ts">
   import '../app.css';
   import { onMount } from 'svelte';
-  import { goto, afterNavigate } from '$app/navigation';
+  import { goto } from '$app/navigation';
   import { page } from '$app/stores';
   import { supabase, supabaseConfigured } from '$lib/supabase';
-  import { session, member, capabilities, officerUnits, authReady, authError } from '$lib/session';
+  import { session, member, capabilities, authReady, authError } from '$lib/session';
   import { loadProfile, clearProfile, claimMembership } from '$lib/profile';
-  import { theme, toggleTheme } from '$lib/theme';
   import { t } from '$lib/i18n';
   import LangSwitcher from '$lib/LangSwitcher.svelte';
-  import NotificationInbox from '$lib/shell/NotificationInbox.svelte';
   import Toaster from '$lib/shell/Toaster.svelte';
   import ConfirmDialog from '$lib/shell/ConfirmDialog.svelte';
-  import LaunchBanner from '$lib/LaunchBanner.svelte';
-  import Icon from '$lib/Icon.svelte';
-  import Hint from '$lib/Hint.svelte';
-  import QuestPanel from '$lib/onboarding/QuestPanel.svelte';
-  import { initOnboarding, refresh as refreshQuest } from '$lib/onboarding';
 
   let { children } = $props();
 
-  // first-run guided onboarding: start it once the member is known, and re-check
-  // step completion after every navigation (so the chapter quest auto-advances
-  // when the real action lands).
-  $effect(() => { if ($authReady && $member) initOnboarding(); });
-  afterNavigate(() => { refreshQuest(); });
-
-  // PUBLIC_ROUTES: only valid when signed OUT — a signed-in user is bounced away
-  // (e.g. /login). OPEN_ROUTES: reachable by anyone, no redirect either way
-  // (e.g. /guide, so prospective members can read it before being invited).
+  // The app IS the market (concept v49): one surface, a minimal shell.
+  // /login (magic link) and /admin (President settlement door) are the only
+  // other routes.
   const PUBLIC_ROUTES = ['/login'];
-  const OPEN_ROUTES = ['/guide'];
-
-  let balance = $state<number | null>(null);
-  let nominal = $state(0);
-  // net value = liquid STR + nominal STR still accruing in live projects
-  const netValue = $derived(balance === null ? null : balance + nominal);
-
-  async function loadBalance(memberId: string) {
-    const [{ data: bal }, { data: nom }] = await Promise.all([
-      supabase.from('stater_balance').select('balance').eq('owner_member_id', memberId).maybeSingle(),
-      supabase.from('stater_project_member_nominal').select('nominal').eq('member_id', memberId)
-    ]);
-    balance = Number((bal as { balance: number } | null)?.balance ?? 0);
-    nominal = ((nom as { nominal: number }[]) ?? []).reduce((s, r) => s + (Number(r.nominal) || 0), 0);
-  }
-
-  $effect(() => { if ($member) loadBalance($member.id); else { balance = null; nominal = 0; } });
-
-  function isActive(href: string, path: string) {
-    return href === '/' ? path === '/' : path.startsWith(href);
-  }
 
   let menuOpen = $state(false);
   function initials(name: string | undefined) {
@@ -58,7 +24,6 @@
     const p = name.trim().split(/\s+/);
     return ((p[0]?.[0] ?? '') + (p.length > 1 ? p[p.length - 1][0] : '')).toUpperCase() || '·';
   }
-  function go(href: string) { menuOpen = false; goto(href); }
 
   // If a magic link lands here with an error (single-use link already consumed
   // by an email scanner, expired, etc.), Supabase redirects back with the
@@ -78,7 +43,6 @@
         ? 'This sign-in link has expired or was already used. Please request a new one below.'
         : desc || 'Sign-in failed. Please request a new link below.'
     );
-    // strip the error params so they don't linger or get re-processed
     history.replaceState(null, '', window.location.pathname);
     return true;
   }
@@ -115,9 +79,8 @@
     if (!$authReady || !supabaseConfigured) return;
     const path = $page.url.pathname;
     const isPublic = PUBLIC_ROUTES.some((p) => path.startsWith(p));
-    const isOpen = OPEN_ROUTES.some((p) => path.startsWith(p));
-    if (!$session && !isPublic && !isOpen) goto('/login');
-    if ($session && isPublic) goto('/projects');
+    if (!$session && !isPublic) goto('/login');
+    if ($session && isPublic) goto('/market');
   });
 
   async function signOut() {
@@ -125,97 +88,40 @@
     goto('/login');
   }
 
-  const canAdmin = $derived(
-    $capabilities.has('manage_taxonomy') ||
-      $capabilities.has('manage_members') ||
-      $capabilities.has('edit_any_project')
-  );
-  // anyone who can act on at least one approval queue gets the Approvals entry
-  const canApprove = $derived(
-    $officerUnits.length > 0 ||
-      $capabilities.has('manage_resources') ||
-      $capabilities.has('manage_stater') ||
-      $capabilities.has('manage_members') ||
-      $capabilities.has('review_skillcard')
-  );
+  const canSettle = $derived($capabilities.has('manage_stater'));
 </script>
 
 <div class="app-shell">
-  <!-- THE MASTHEAD — the app is typeset like the record it keeps.
-       Row 1: dateline (date · your hats · utilities). Row 2: the title.
-       Row 3: sections, ruled thick-over-thin, sticky. -->
-  <header class="masthead">
-    <div class="mast-inner">
-      <div class="dateline">
-        <span class="dl-date">{new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
-        {#if $member}
-          <span class="dl-hats">
-            {$member.full_name}{#if $officerUnits.length} · {$officerUnits.map((u) => u.name).join(' · ')}{/if}
-          </span>
-        {/if}
-        <span class="dl-utils">
-          <LangSwitcher />
-          {#if $session && $member}<NotificationInbox />{/if}
-          <button class="icon-btn" onclick={toggleTheme} title={$t('Toggle theme')} aria-label={$t('Toggle theme')}>
-            <Icon name={$theme === 'dark' ? 'sun' : 'moon'} size={15} />
+  <header class="mk-head">
+    <a href="/market" class="mk-brand">The Fin AI</a>
+    <span class="mk-utils">
+      <LangSwitcher />
+      {#if $session}
+        <div class="usermenu">
+          <button class="avatar-btn" onclick={() => (menuOpen = !menuOpen)} title={$t('Account')} aria-haspopup="true" aria-expanded={menuOpen}>
+            {initials($member?.full_name)}
           </button>
-        </span>
-      </div>
-
-      <div class="mast-title">
-        <img src="/logo.png" alt="" class="brand-logo" />
-        <a href="/projects" class="mast-brand">The Fin AI <span class="mb-sub">{$t('Community')} · {$t('The Living Record')}</span></a>
-        {#if $session}
-          <span class="mast-right">
-            <a href="/wallet" class="mast-wallet" title={$t('STR is your contribution credit — it accrues from work and settles when a project finishes. Click for your wallet; the Guide explains how it works.')}>
-              <Icon name="str" size={15} /> {(netValue ?? 0).toLocaleString()} <span class="mw-unit">STR</span>
-            </a>
-            <Hint term="str" text={$t('STR is your contribution credit: it accrues as you work and becomes spendable when a project settles. It is not money.')} />
-            <div class="usermenu">
-              <button class="avatar-btn" onclick={() => (menuOpen = !menuOpen)} title={$t('Account')} aria-haspopup="true" aria-expanded={menuOpen}>
-                {initials($member?.full_name)}
-              </button>
-              {#if menuOpen}
-                <div class="menu-backdrop" onclick={() => (menuOpen = false)} role="presentation"></div>
-                <div class="menu">
-                  <div class="menu-head">
-                    <div class="mh-name">{$member?.full_name ?? 'Account'}</div>
-                    <div class="mh-mail">{$session.user.email}</div>
-                  </div>
-                  <div class="menu-sep"></div>
-                  <button class="menu-item" onclick={() => go('/my')}><span class="mi-ico"><Icon name="check" /></span> {$t('My tasks')}</button>
-                  <button class="menu-item" onclick={() => go($member ? `/members/${$member.id}` : '/profile')}><span class="mi-ico"><Icon name="user" /></span> {$t('My profile')}</button>
-                  <button class="menu-item" onclick={() => go('/wallet')}><span class="mi-ico"><Icon name="str" /></span> {$t('Wallet')}</button>
-                  <div class="menu-sep"></div>
-                  <button class="menu-item" onclick={signOut}><span class="mi-ico"><Icon name="power" /></span> {$t('Sign out')}</button>
-                </div>
+          {#if menuOpen}
+            <div class="menu-backdrop" onclick={() => (menuOpen = false)} role="presentation"></div>
+            <div class="menu">
+              <div class="menu-head">
+                <div class="mh-name">{$member?.full_name ?? 'Account'}</div>
+                <div class="mh-mail">{$session.user.email}</div>
+              </div>
+              <div class="menu-sep"></div>
+              {#if canSettle}
+                <button class="menu-item" onclick={() => { menuOpen = false; goto('/admin'); }}>{$t('Settle (President)')}</button>
               {/if}
+              <button class="menu-item" onclick={signOut}>{$t('Sign out')}</button>
             </div>
-          </span>
-        {/if}
-      </div>
-    </div>
-
-    {#if $session}
-      <nav class="sections">
-        <div class="sections-inner">
-          <a href="/market" class="sec-link" class:active={isActive('/market', $page.url.pathname)}>{$t('Market')}</a>
-          <a href="/projects" class="sec-link" class:active={$page.url.pathname === '/' || isActive('/projects', $page.url.pathname)}>{$t('Projects')}</a>
-          <a href="/people" class="sec-link" class:active={isActive('/people', $page.url.pathname)}>{$t('People')}</a>
-          <span class="sec-spacer"></span>
-          <a href="/community" class="sec-link" class:active={isActive('/community', $page.url.pathname)}>{$t('Directory')}</a>
-          <a href="/guide" class="sec-link" class:active={isActive('/guide', $page.url.pathname)}>{$t('Guide')}</a>
-          {#if canAdmin || canApprove}
-            <a href="/admin" class="sec-link" class:active={isActive('/admin', $page.url.pathname)}>{$t('Admin')}</a>
           {/if}
         </div>
-      </nav>
-    {/if}
+      {/if}
+    </span>
   </header>
 
   <div class="main-col">
     <main class="container">
-      {#if $session && $member}<LaunchBanner />{/if}
       {#if !supabaseConfigured}
         <p class="banner">
           Supabase is not configured. Copy <code>.env.example</code> to <code>.env</code> and add your
@@ -224,8 +130,7 @@
       {/if}
       {#if supabaseConfigured && $authReady && $session && !$member}
         <p class="banner">
-          {$t("You're signed in as {email}, but this email isn't linked to a membership. Access is invite-only — please ask an admin to invite you. Meanwhile you can", { email: $session.user.email })}
-          <a href="/guide">{$t('read how the community works →')}</a>
+          {$t("You're signed in as {email}, but this email isn't linked to a membership. If your email matches a member record it links automatically — otherwise ask any member to add you on the market.", { email: $session.user.email })}
         </p>
       {/if}
       {@render children()}
@@ -233,5 +138,27 @@
   </div>
   <Toaster />
   <ConfirmDialog />
-  {#if $session && $member}<QuestPanel />{/if}
 </div>
+
+<style>
+  .mk-head { display: flex; align-items: center; gap: 12px; max-width: 1120px; margin: 0 auto;
+    padding: 12px 16px 0; }
+  .mk-brand { font: 700 15px Georgia, 'Songti SC', serif; color: var(--ink, #1f2a26); text-decoration: none; }
+  .mk-utils { margin-left: auto; display: inline-flex; align-items: center; gap: 10px; }
+  .avatar-btn { width: 28px; height: 28px; border-radius: 50%; border: 1px solid #e7e6df; background: #fff;
+    font-size: 11px; font-weight: 700; cursor: pointer; color: #0b5e52; }
+  .usermenu { position: relative; }
+  .menu-backdrop { position: fixed; inset: 0; z-index: 8; }
+  .menu { position: absolute; right: 0; top: 34px; z-index: 9; background: #fff; border: 1px solid #e7e6df;
+    border-radius: 10px; box-shadow: 0 8px 28px rgba(31, 42, 38, .14); padding: 6px; min-width: 200px;
+    display: flex; flex-direction: column; gap: 2px; }
+  .menu-head { padding: 6px 10px; }
+  .mh-name { font-size: 12.5px; font-weight: 600; }
+  .mh-mail { font-size: 11px; color: #98a29b; }
+  .menu-sep { border-top: 1px solid #e7e6df; margin: 3px 0; }
+  .menu-item { font: inherit; font-size: 12px; text-align: left; padding: 6px 10px; border: 0; background: none;
+    border-radius: 7px; cursor: pointer; }
+  .menu-item:hover { background: #0b5e520d; }
+  .banner { background: #f6f1e3; border: 1px solid #d9cba6; border-radius: 10px; padding: 10px 14px;
+    font-size: 12.5px; margin: 10px auto; max-width: 1120px; }
+</style>

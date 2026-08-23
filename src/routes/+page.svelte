@@ -1,6 +1,5 @@
 <script lang="ts">
-  // Root redirects to /projects at load time (see +page.ts). This renders only
-  // for the instant before the redirect resolves.
+  // Root redirects to /market at load time (see +page.ts).
 </script>
 
 <p class="muted" style="padding:1.5rem;">…</p>

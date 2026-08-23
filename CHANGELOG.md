@@ -20,6 +20,21 @@
 
 ---
 
+## v1.3.1 — 2026-08-23
+
+**Trigger:** President follow-up — the market is not a tab, it is the app.
+
+- All other surfaces removed (projects, people, community, guide, members,
+  units, wallet, my, profile, officer, opportunities, str, styleguide) with
+  their e2e specs. `/` now redirects to `/market`.
+- Shell reduced to the concept: brand · language · avatar (email, Settle for
+  President, sign out). Notifications, theme toggle, STR banner, onboarding
+  quest and section nav removed.
+- Remaining routes: `/market`, `/login` (magic link), `/admin` (President
+  settlement door, reachable from the avatar menu / market Settle link only).
+- Migration fix: `member_archive` keeps its original `default true` parameter
+  (postgres cannot drop defaults via `create or replace`).
+
 ## v1.3.0 — 2026-08-23
 
 **Trigger:** President directive — land the Market (concept v49) as Phase 1.
