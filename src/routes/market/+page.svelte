@@ -325,6 +325,10 @@
     }));
   }
 
+  async function setRole(slotId: string, v: string) {
+    await run('rl' + slotId, () => supabase.rpc('slot_set_role', { p_slot: slotId, p_authorship: v }));
+  }
+
   // 直加作者(补录既有作者):forge_need 建槽 → assign 入席,一步完成
   const authorPick: Record<string, string> = {};
   const authorRole: Record<string, string> = {};
@@ -583,7 +587,15 @@
                   <span class="no">{CIRC[Math.min(pos, 11)]}</span>
                   <span class="av" style="background:{avColor(seat.name)}22;color:{avColor(seat.name)}">{initials(seat.name)}</span>
                   <span class="an">{seat.name}</span>
-                  <span class="rolec {ROLE_CLS[seat.authorship] ?? ''}">{$t(ROLE_LABEL[seat.authorship] ?? 'Author')}</span>
+                  {#if sg <= 2 && seat.authorship !== 'first'}
+                    <select class="rolec rolesel {ROLE_CLS[seat.authorship] ?? ''}" value={seat.authorship}
+                      onchange={(e) => { const v = (e.target as HTMLSelectElement).value; seat.authorship = v; setRole(seat.slotId, v); }}>
+                      <option value="normal">{$t('Author')}</option><option value="first">{$t('First author')}</option>
+                      <option value="corresponding">{$t('Co-corresponding')}</option><option value="last">{$t('Last author')}</option>
+                    </select>
+                  {:else}
+                    <span class="rolec {ROLE_CLS[seat.authorship] ?? ''}">{$t(ROLE_LABEL[seat.authorship] ?? 'Author')}</span>
+                  {/if}
                   {#if sg <= 1}
                     <span class="give"><input class="ghours" type="number" min="1" value={seat.amount}
                       onchange={(e) => { const h = Number((e.target as HTMLInputElement).value); if (h > 0 && h !== seat.amount) {
@@ -601,7 +613,12 @@
                 {#if sg === 1 || sg === 2}
                   <details class="seat vac">
                     <summary><span class="no">{CIRC[Math.min(pos, 11)]}</span>
-                      <span class="rolec {ROLE_CLS[roleOf(s)] ?? ''}">{$t(ROLE_LABEL[roleOf(s)] ?? 'Author')}</span>
+                      <select class="rolec rolesel {ROLE_CLS[roleOf(s)] ?? ''}" value={roleOf(s)}
+                        onclick={(e) => e.preventDefault()}
+                        onchange={(e) => { const v = (e.target as HTMLSelectElement).value; s.authorship = v; setRole(s.id, v); }}>
+                        <option value="normal">{$t('Author')}</option><option value="first">{$t('First author')}</option>
+                        <option value="corresponding">{$t('Co-corresponding')}</option><option value="last">{$t('Last author')}</option>
+                      </select>
                       <span class="ask">{slotAsk(s)} · {$t('open')}</span>
                       {#if seatPrice(s)}<span class="pts">{seatPrice(s)}</span>{/if}
                       <span class="hint">{$t('Choose member')} ▾</span>
@@ -967,6 +984,8 @@
   .rolec.r1c { background: var(--tag-rd-bg); color: var(--tag-rd-tx); }
   .rolec.rcor { background: var(--tag-bl-bg); color: var(--tag-bl-tx); }
   .rolec.rlast { background: var(--tag-gn-bg); color: var(--tag-gn-tx); }
+  select.rolesel { border: 0 !important; padding: 0 4px !important; cursor: pointer;
+    -webkit-appearance: none; appearance: none; font-size: 11px !important; font-weight: 500; }
   .pts { font-size: 11px; font-weight: 600; color: var(--tag-yl-tx); background: var(--tag-yl-bg);
     border-radius: 4px; padding: 0 6px; white-space: nowrap; }
   .cands { margin: 6px 0 4px 20px; max-width: 380px; background: var(--wash);

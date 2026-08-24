@@ -405,6 +405,12 @@ function rpc(name: string, a: any) {
     seed.venue.push({ id, name: (a.p_name || '').trim(), kind: a.p_kind, deadline: a.p_deadline ?? null, notification: null, rank: 99 });
     persist(); return Promise.resolve({ data: id, error: null });
   }
+  if (name === 'slot_set_role') {
+    const s = seed.project_slot.find((x: any) => x.id === a.p_slot);
+    if (!s) return Promise.resolve({ data: null, error: { message: 'no such need' } });
+    s.authorship = a.p_authorship; persist();
+    return Promise.resolve({ data: null, error: null });
+  }
   if (name === 'unit_create') {
     const id = nid('u');
     (seed.org_unit ??= []).push({ id, name: a.p_name, code: (a.p_name || '').slice(0, 6).toUpperCase(), kind: a.p_kind, description: '', rank: 9 });

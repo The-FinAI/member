@@ -45,7 +45,7 @@ test.describe('market — officer single page', () => {
     await dismissQuest(page);
     const row = page.locator('.prow', { hasText: 'ml-Tagging' });
     await row.locator('> summary').click();
-    const lead = row.locator('details.seat', { hasText: 'First author' });
+    const lead = row.locator('details.seat', { hasText: 'Lead · open' });
     await lead.locator('> summary').click();
     // OpenReview/Notion-style search pick instead of the radio quick-pick
     await lead.locator('.ppick input').fill('fang');
@@ -68,7 +68,7 @@ test.describe('market — officer single page', () => {
     await expect(row2.locator('.seat', { has: page.locator('.an', { hasText: 'Wang Fang' }) })).toContainText('80 STR');
     // D: remove the seated member → the first-author seat reopens
     await row2.locator('.seat', { has: page.locator('.an', { hasText: 'Wang Fang' }) }).locator('.rel').click({ force: true });
-    await expect(row2.locator('details.seat', { hasText: 'First author' })).toBeVisible();
+    await expect(row2.locator('details.seat', { hasText: 'Lead · open' })).toBeVisible();
     expect(errs()).toEqual([]);
   });
 
@@ -84,15 +84,20 @@ test.describe('market — officer single page', () => {
     await hire.locator('select').first().selectOption('corresponding');
     await hire.locator('input[type=number]').fill('6');
     await hire.getByRole('button', { name: 'Add' }).click();
-    await expect(row.locator('.seat', { hasText: 'Co-corresponding' })).toBeVisible();
+    await expect(row.locator('details.seat', { hasText: '6h/mo' })).toBeVisible();
     await page.reload();
     await dismissQuest(page);
     const row3 = page.locator('.prow', { hasText: 'ml-Tagging' });
     await ensureOpen(row3);
-    await expect(row3.locator('.seat', { hasText: 'Co-corresponding' })).toBeVisible();
+    const opening = row3.locator('details.seat', { hasText: '6h/mo' });
+    await expect(opening).toBeVisible();
+    await expect(opening.locator('select.rolesel')).toHaveValue('corresponding');
+    // U: change the opening's role inline
+    await opening.locator('select.rolesel').selectOption('last');
+    await expect(opening.locator('select.rolesel')).toHaveValue('last');
     // D: close the opening
-    await row3.locator('details.seat', { hasText: 'Co-corresponding' }).locator('.rel').click({ force: true });
-    await expect(row3.locator('.seat', { hasText: 'Co-corresponding' })).toHaveCount(0);
+    await opening.locator('.rel').click({ force: true });
+    await expect(row3.locator('details.seat', { hasText: '6h/mo' })).toHaveCount(0);
     expect(errs()).toEqual([]);
   });
 
@@ -123,7 +128,7 @@ test.describe('market — officer single page', () => {
     await dismissQuest(page);
     const row = page.locator('.prow', { hasText: 'ml-Tagging' });
     await row.locator('> summary').click();
-    const lead = row.locator('details.seat', { hasText: 'First author' });
+    const lead = row.locator('details.seat', { hasText: 'Lead · open' });
     await lead.locator('> summary').click();
     await lead.locator('.cd', { hasText: 'Wang Fang' }).locator('input[type=radio]').check();
     await lead.getByRole('button', { name: 'Assign' }).click();
@@ -411,7 +416,15 @@ test.describe('market — officer single page', () => {
     await dismissQuest(page);
     const row2 = page.locator('.prow', { hasText: 'ml-Tagging' });
     await ensureOpen(row2);
-    await expect(row2.locator('.seat', { has: page.locator('.an', { hasText: 'Chan Min' }) })).toContainText('Co-corresponding');
+    const seat2 = row2.locator('.seat', { has: page.locator('.an', { hasText: 'Chan Min' }) });
+    await expect(seat2).toContainText('Co-corresponding');
+    // U: change the seated author's role inline
+    await seat2.locator('select.rolesel').selectOption('last');
+    await page.reload();
+    await dismissQuest(page);
+    const row3 = page.locator('.prow', { hasText: 'ml-Tagging' });
+    await ensureOpen(row3);
+    await expect(row3.locator('.seat', { has: page.locator('.an', { hasText: 'Chan Min' }) }).locator('select.rolesel')).toHaveValue('last');
     expect(errs()).toEqual([]);
   });
 
