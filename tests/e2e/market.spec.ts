@@ -47,7 +47,9 @@ test.describe('market — officer single page', () => {
     await row.locator('> summary').click();
     const lead = row.locator('details.seat', { hasText: 'First author' });
     await lead.locator('> summary').click();
-    await lead.locator('.cd', { hasText: 'Wang Fang' }).locator('input[type=radio]').check();
+    // OpenReview/Notion-style search pick instead of the radio quick-pick
+    await lead.locator('.ppick input').fill('fang');
+    await lead.locator('.pp-row', { hasText: 'Wang Fang' }).click();
     await lead.locator('input[type=number]').fill('10');
     await lead.getByRole('button', { name: 'Assign' }).click();
     const seated = row.locator('.seat', { has: page.locator('.an', { hasText: 'Wang Fang' }) });
@@ -135,7 +137,8 @@ test.describe('market — officer single page', () => {
     await dismissQuest(page);
     const orow = page.locator('.p.orphan', { hasText: 'orphan@' });
     await orow.locator('> summary').click();
-    await orow.locator('select').selectOption({ label: 'Wang Fang' });
+    await orow.locator('.ppick input').fill('wang');
+    await orow.locator('.pp-row', { hasText: 'Wang Fang' }).click();
     await orow.getByRole('button', { name: 'Link' }).click();
     await expect(page.locator('.p.orphan')).toHaveCount(0);
     await page.reload();

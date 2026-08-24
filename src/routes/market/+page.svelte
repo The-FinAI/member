@@ -7,6 +7,7 @@
   import { member } from '$lib/session';
   import { t } from '$lib/i18n';
   import { toast } from '$lib/toast';
+  import PersonPick from '$lib/PersonPick.svelte';
 
   type Slot = { id: string; project_id: string; slot_kind: string; authorship: string | null;
     skill: { name: string } | null; resource_type: { name: string } | null;
@@ -506,10 +507,9 @@
               </label>
             {/each}
             <div class="cd">
-              <select bind:value={assignPick[s.id]} style="max-width:9rem">
-                <option value="">{$t('Others…')}</option>
-                {#each mems as om}<option value={om.id}>{om.name}</option>{/each}
-              </select>
+              <PersonPick placeholder={$t('Search member…')}
+                people={mems.map((om) => ({ id: om.id, name: om.name, hint: `${om.skills[0]?.name ?? ''}${freeOf(om) != null ? ` · ${$t('free')} ${freeOf(om)}h` : ''}` }))}
+                onpick={(id) => (assignPick[s.id] = id)} />
               <input type="number" min="1" placeholder="h" bind:value={assignHours[s.id]} style="width:3.6rem" />
               <button class="bt sm" disabled={busy === s.id} onclick={() => assignSeat(p, s)}>{$t('Assign')}</button>
             </div>
@@ -708,10 +708,10 @@
             <summary><span class="regd on"></span><span class="pname">{o.email}</span>
               <span class="chip mutc">{$t('registered, linked to no member')}</span></summary>
             <div class="pf">
-              <label>{$t('Link to member')} <select bind:value={linkPick[o.account_id]}>
-                <option value="">{$t('Choose…')}</option>
-                {#each mems.filter((m) => !m.linked) as m}<option value={m.id}>{m.name}</option>{/each}
-              </select></label>
+              <label>{$t('Link to member')}
+                <PersonPick placeholder={$t('Search member…')}
+                  people={mems.filter((m) => !m.linked).map((m) => ({ id: m.id, name: m.name, hint: m.email }))}
+                  onpick={(id) => (linkPick[o.account_id] = id)} /></label>
               <button class="bt sm" disabled={busy === 'lnk'} onclick={() => linkOrphan(o)}>{$t('Link')}</button>
               <span class="mut wfull">{$t('Or: if the account email matches a member email, linking is automatic on login')}</span>
             </div>
