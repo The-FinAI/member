@@ -1,4 +1,5 @@
 import { type Page, expect } from '@playwright/test';
+import { execSync } from 'node:child_process';
 
 // Drive the app as a specific mock persona. mockAs is read from localStorage
 // before the app boots, so we set it via an init script (runs on every nav).
@@ -24,6 +25,14 @@ async function dbSession(role: string) {
   const s = await r.json();
   if (!r.ok) throw new Error(`e2e login failed for ${role}: ${JSON.stringify(s)}`);
   return { ...s, expires_at: Math.floor(Date.now() / 1000) + (s.expires_in ?? 3600) };
+}
+
+// Real-DB lane: tests share one database, so each test starts from a fresh
+// seed (mock lane resets per browser context for free — this is its analogue).
+export function resetDb() {
+  if (!DB) return;
+  const local = process.env.LOCAL ?? 'postgresql://postgres:postgres@127.0.0.1:5432/postgres';
+  execSync(`psql "${local}" -v ON_ERROR_STOP=1 -f supabase/tests/e2e_reset.sql`, { stdio: 'pipe' });
 }
 
 export async function asRole(page: Page, role: string) {

@@ -8,8 +8,8 @@ export default defineConfig({
   testDir: './tests/e2e',
   timeout: 30_000,
   expect: { timeout: 7_000 },
-  fullyParallel: true,
-  workers: 4,
+  fullyParallel: process.env.E2E_DB !== '1',
+  workers: process.env.E2E_DB === '1' ? 1 : 2,
   reporter: [['list']],
   use: {
     baseURL: 'http://localhost:5183',

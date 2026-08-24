@@ -1,12 +1,23 @@
 import { test } from '@playwright/test';
-import { asRole, trackErrors, dismissQuest, expect } from './helpers';
+import { asRole, trackErrors, dismissQuest, resetDb, expect } from './helpers';
 
 // 市场 Market (v49 落地, governance v0.3 无权限期) — Definition of Done:
 // real role · real surface · interact → control appears → reload → persisted ·
 // console clean. Settlement/minting stay President-gated and are NOT here.
 
+
+// a row can collapse when a background reload lands between our isVisible
+// check and the next action — retry open until the body is really there
+async function ensureOpen(row: import('@playwright/test').Locator) {
+  await expect(async () => {
+    if (!(await row.locator('.pbody').isVisible())) await row.locator('> summary').click({ force: true });
+    expect(await row.locator('.pbody').isVisible()).toBeTruthy();
+  }).toPass({ timeout: 10_000 });
+}
+
 test.describe('market — officer single page', () => {
   test.beforeEach(async ({ page }) => {
+    resetDb(); // real-DB lane: fresh world per test (no-op on mock)
     await asRole(page, 'uid-chap'); // Chan Min: chapter officer (no admin caps)
     // pre-complete the onboarding quest for every persona so its fixed panel
     // never intercepts market clicks (quests have their own spec)
@@ -75,7 +86,7 @@ test.describe('market — officer single page', () => {
     await page.reload();
     await dismissQuest(page);
     const row3 = page.locator('.prow', { hasText: 'ml-Tagging' });
-    if (!(await row3.locator('.pbody').isVisible())) await row3.locator('> summary').click();
+    await ensureOpen(row3);
     await expect(row3.locator('.seat', { hasText: 'Co-corresponding' })).toBeVisible();
     // D: close the opening
     await row3.locator('details.seat', { hasText: 'Co-corresponding' }).locator('.rel').click({ force: true });
@@ -122,7 +133,7 @@ test.describe('market — officer single page', () => {
     const errs = trackErrors(page);
     await page.goto('/market');
     await dismissQuest(page);
-    const orow = page.locator('.p.orphan', { hasText: 'orphan@test' });
+    const orow = page.locator('.p.orphan', { hasText: 'orphan@' });
     await orow.locator('> summary').click();
     await orow.locator('select').selectOption({ label: 'Wang Fang' });
     await orow.getByRole('button', { name: 'Link' }).click();
@@ -193,7 +204,7 @@ test.describe('market — officer single page', () => {
     await expect(row3).toBeVisible();
     await expect(row3.locator('> summary .ddl')).toContainText('ARR');
     // U: transfer the project to another working group
-    if (!(await row3.locator('.pbody').isVisible())) await row3.locator('> summary').click();
+    await ensureOpen(row3);
     const edit3 = row3.locator('details.sub2', { hasText: 'Edit' });
     await edit3.locator('> summary').click();
     await edit3.locator('label', { hasText: 'Group' }).locator('select').selectOption({ label: 'Proposal (no group)' });
@@ -214,7 +225,7 @@ test.describe('market — officer single page', () => {
     await expect(page.locator('.prow.st-dorm', { hasText: 'ml-Tagging' })).toBeVisible();
     // backward: Hold → Proposal (a reversal, not just forward)
     const row2 = page.locator('.prow', { hasText: 'ml-Tagging' });
-    if (!(await row2.locator('.pbody').isVisible())) await row2.locator('> summary').click();
+    await ensureOpen(row2);
     await row2.locator('.stsel select').first().selectOption({ label: 'Proposal' });
     await expect(page.locator('.prow.st-seed', { hasText: 'ml-Tagging' })).toBeVisible();
     await page.reload();
@@ -231,21 +242,22 @@ test.describe('market — officer single page', () => {
     await row.locator('> summary').click();
     await row.locator('.stsel select').first().selectOption({ label: 'Under review' });
     const row2 = page.locator('.prow', { hasText: 'ml-Tagging' });
-    if (!(await row2.locator('.pbody').isVisible())) await row2.locator('> summary').click();
+    await ensureOpen(row2);
     await row2.locator('input[type=date]').fill('2027-01-15');
     await row2.locator('input[type=date]').blur();
     await expect(row2.locator('> summary .ddl')).toContainText('result in');
+    await ensureOpen(row2);
     await row2.locator('.stsel select').first().selectOption({ label: 'Finished' });
     // Finished rows live only in the Accepted pool now
     await page.locator('.arcpool > summary').click();
     const row3 = page.locator('.prow', { hasText: 'ml-Tagging' });
-    if (!(await row3.locator('.pbody').isVisible())) await row3.locator('> summary').click();
+    await ensureOpen(row3);
     // U: type the outcome once → green locked chip, edit menu hidden
     await row3.locator('input[placeholder="main / findings"]').fill('main');
     await row3.locator('input[placeholder="main / findings"]').blur();
     const row4 = page.locator('.prow', { hasText: 'ml-Tagging' });
     await expect(row4.locator('> summary .ddl.acc')).toContainText('main');
-    if (!(await row4.locator('.pbody').isVisible())) await row4.locator('> summary').click();
+    await ensureOpen(row4);
     await expect(row4.locator('details.sub2', { hasText: 'Edit' })).toHaveCount(0);
     await expect(row4.locator('input[placeholder="main / findings"]')).toHaveCount(0);
     expect(errs()).toEqual([]);
@@ -261,7 +273,7 @@ test.describe('market — officer single page', () => {
     const pool = page.locator('.arcpool');
     await pool.locator('> summary').click();
     const row2 = pool.locator('.prow', { hasText: 'ml-Tagging' });
-    if (!(await row2.locator('.pbody').isVisible())) await row2.locator('> summary').click();
+    await ensureOpen(row2);
     await row2.getByRole('button', { name: 'Archive' }).click();
     await expect(pool.locator('.arow', { hasText: 'ml-Tagging' })).toBeVisible();
     await expect(page.locator('.prow', { hasText: 'ml-Tagging' })).toHaveCount(0);

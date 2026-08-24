@@ -80,11 +80,14 @@
     return Math.round((new Date(decision + 'T00:00:00').getTime() - today.getTime()) / 86400000);
   }
 
+  let booted = false; // plain var on purpose: reading $state (projs/mems)
+                      // inside the load()-effect would make it self-tracking
+                      // and loop forever (the bug behind the frozen page)
   async function load() {
     if (!supabaseConfigured) { loading = false; return; }
     // silent refresh: only the very first load shows the loading state —
     // later run()->load() swaps data in place (no full-page flash)
-    if (!projs.length && !mems.length) loading = true;
+    if (!booted) { loading = true; booted = true; }
     const [{ data: pr }, { data: ou }, { data: vn }, { data: slr }, { data: wc }, { data: mm },
       { data: ps }, { data: sk }, { data: rt }, { data: st }, { data: ty }, { data: rs },
       { data: gm }, { data: sb }, { data: orp }] = await Promise.all([
