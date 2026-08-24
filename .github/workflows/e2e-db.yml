@@ -60,7 +60,7 @@ jobs:
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:9999/health && break; sleep 2; done
       - name: load schema + seed
         run: |
-          psql "$LOCAL" -v ON_ERROR_STOP=1 -c 'drop schema public cascade; create schema public'
+          psql "$LOCAL" -v ON_ERROR_STOP=1 -c 'drop schema public cascade'
           psql "$LOCAL" -v ON_ERROR_STOP=1 -f /tmp/live_schema.sql
           psql "$LOCAL" -v ON_ERROR_STOP=1 -f /tmp/lookups.sql
           psql "$LOCAL" -v ON_ERROR_STOP=1 -f supabase/tests/db_grants.sql
