@@ -406,18 +406,10 @@ function rpc(name: string, a: any) {
     persist(); return Promise.resolve({ data: id, error: null });
   }
   if (name === 'seat_set_role') {
-    let sid = (seed.work_commitment.find((w: any) => w.project_id === a.p_project && w.member_id === a.p_member && w.slot_id) || {}).slot_id;
-    if (sid) {
-      const s = seed.project_slot.find((x: any) => x.id === sid);
-      if (s) s.authorship = a.p_authorship;
-    } else {
-      sid = nid('s');
-      seed.project_slot.push({ id: sid, project_id: a.p_project, slot_kind: 'work_labor', authorship: a.p_authorship,
-        skill_id: null, resource_type_id: null, desired_level: null, quota: null, headcount: 1, status: 'filled',
-        skill: null, resource_type: null, project: null });
-      for (const w of seed.work_commitment)
-        if (w.project_id === a.p_project && w.member_id === a.p_member && !w.slot_id) w.slot_id = sid;
-    }
+    let hit = false;
+    for (const w of seed.work_commitment)
+      if (w.project_id === a.p_project && w.member_id === a.p_member) { w.authorship = a.p_authorship; hit = true; }
+    if (!hit) return Promise.resolve({ data: null, error: { message: 'this member has no commitment on the project' } });
     persist(); return Promise.resolve({ data: null, error: null });
   }
   if (name === 'slot_set_role') {

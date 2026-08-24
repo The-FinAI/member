@@ -96,7 +96,7 @@
       supabase.from('org_unit').select('id, name, kind'),
       supabase.from('venue').select('id, name, kind, deadline, notification'),
       supabase.from('project_slot').select('id, project_id, slot_kind, authorship, desired_level, quota, status, skill:skill_id(name), resource_type:resource_type_id(name)'),
-      supabase.from('work_commitment').select('project_id, slot_id, member_id, monthly_amount, nominal_str, member:member_id(full_name)'),
+      supabase.from('work_commitment').select('project_id, slot_id, member_id, monthly_amount, nominal_str, authorship, member:member_id(full_name)'),
       supabase.from('member').select('id, full_name, email, home_unit_id, monthly_hours, auth_user_id, archived_at'),
       supabase.from('person_skill').select('member_id, level, skill_id, skill:skill_id(name)'),
       supabase.from('skill').select('id, name, parent_id'),
@@ -135,11 +135,14 @@
     for (const w of (wc as any[]) ?? []) {
       const list = (teamBy[w.project_id] ??= []);
       const nom = Number(w.nominal_str) || 0;
+      const role = w.authorship ?? slotById[w.slot_id]?.authorship
+        ?? (slotById[w.slot_id]?.slot_kind === 'leader' ? 'first' : null);
       const prev = list.find((x) => x.memberId === w.member_id);
-      if (prev) { prev.amount += Number(w.monthly_amount) || 0; prev.nominal += nom; }
+      if (prev) { prev.amount += Number(w.monthly_amount) || 0; prev.nominal += nom;
+        if (role && (prev.authorship === 'normal' || w.authorship)) prev.authorship = role; }
       else list.push({ memberId: w.member_id, name: w.member?.full_name ?? '—',
         amount: Number(w.monthly_amount) || 0, nominal: nom, slotId: w.slot_id,
-        authorship: slotById[w.slot_id]?.authorship ?? (slotById[w.slot_id]?.slot_kind === 'leader' ? 'first' : 'normal') });
+        authorship: role ?? 'normal' });
       usedBy[w.member_id] = (usedBy[w.member_id] ?? 0) + (Number(w.monthly_amount) || 0);
       nominalBy[w.member_id] = (nominalBy[w.member_id] ?? 0) + nom;
     }
@@ -587,7 +590,7 @@
                   <span class="no">{CIRC[Math.min(pos, 11)]}</span>
                   <span class="av" style="background:{avColor(seat.name)}22;color:{avColor(seat.name)}">{initials(seat.name)}</span>
                   <span class="an">{seat.name}</span>
-                  {#if sg <= 2 && seat.authorship !== 'first'}
+                  {#if sg <= 2}
                     <select class="rolec rolesel {ROLE_CLS[seat.authorship] ?? ''}" value={seat.authorship}
                       onchange={(e) => { const v = (e.target as HTMLSelectElement).value; seat.authorship = v;
                         run('rl' + seat.memberId, () => supabase.rpc('seat_set_role', { p_project: p.id, p_member: seat.memberId, p_authorship: v })); }}>
