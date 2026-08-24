@@ -1,0 +1,102 @@
+# Full-stack e2e against a REAL database: live prod schema in postgres:17,
+# GoTrue (real password auth) + PostgREST behind nginx as a Supabase-compatible
+# endpoint, and the SAME playwright suite (M1-M17) driving the real app.
+# The mock e2e stays for fast iteration; this run is the truth layer.
+name: E2E (real DB)
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:17
+        env: { POSTGRES_PASSWORD: postgres }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      LOCAL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      E2E_JWT_SECRET: super-secret-jwt-token-with-at-least-32-characters
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - name: postgresql-client-17
+        run: |
+          sudo sh -c 'echo "deb https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo tee /etc/apt/trusted.gpg.d/pgdg.asc > /dev/null
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-17
+      - name: dump live schema
+        run: |
+          /usr/lib/postgresql/17/bin/pg_dump "$SUPABASE_DB_URL" --schema-only --no-owner --no-privileges \
+            --schema=public --schema=supabase_migrations -f /tmp/live_schema.sql
+          /usr/lib/postgresql/17/bin/pg_dump "$SUPABASE_DB_URL" --data-only --no-owner \
+            --table=project_status --table=project_type --table=resource_type --table=project_role \
+            --table=supabase_migrations.schema_migrations \
+            -f /tmp/lookups.sql
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      - name: gotrue (real auth)
+        run: |
+          docker run -d --name gotrue --network host \
+            -e GOTRUE_DB_DRIVER=postgres \
+            -e DATABASE_URL="postgres://postgres:postgres@127.0.0.1:5432/postgres?search_path=auth" \
+            -e GOTRUE_DB_NAMESPACE=auth \
+            -e GOTRUE_JWT_SECRET="$E2E_JWT_SECRET" \
+            -e GOTRUE_JWT_EXP=86400 \
+            -e GOTRUE_JWT_DEFAULT_GROUP_NAME=authenticated \
+            -e GOTRUE_JWT_ADMIN_ROLES=service_role \
+            -e GOTRUE_SITE_URL=http://127.0.0.1:8000 \
+            -e API_EXTERNAL_URL=http://127.0.0.1:8000 \
+            -e GOTRUE_API_HOST=0.0.0.0 -e PORT=9999 \
+            -e GOTRUE_DISABLE_SIGNUP=false \
+            -e GOTRUE_MAILER_AUTOCONFIRM=true \
+            -e GOTRUE_EXTERNAL_EMAIL_ENABLED=true \
+            supabase/gotrue:v2.195.0
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:9999/health && break; sleep 2; done
+      - name: load schema + seed
+        run: |
+          psql "$LOCAL" -v ON_ERROR_STOP=1 -c 'drop schema public cascade; create schema public'
+          psql "$LOCAL" -v ON_ERROR_STOP=1 -f /tmp/live_schema.sql
+          psql "$LOCAL" -v ON_ERROR_STOP=1 -f /tmp/lookups.sql
+          psql "$LOCAL" -v ON_ERROR_STOP=1 -f supabase/tests/db_grants.sql
+          MAXV=$(psql "$LOCAL" -tAc "select coalesce(max(version), '0') from supabase_migrations.schema_migrations")
+          for f in supabase/migrations/*.sql; do
+            v=$(basename "$f" | cut -d_ -f1)
+            if [ "$v" \> "$MAXV" ]; then psql "$LOCAL" -v ON_ERROR_STOP=1 -f "$f"; fi
+          done
+          psql "$LOCAL" -v ON_ERROR_STOP=1 -f supabase/tests/e2e_seed.sql
+      - name: users
+        run: node scripts/e2e-db-setup.mjs users
+      - name: postgrest + nginx gateway
+        run: |
+          docker run -d --name postgrest --network host \
+            -e PGRST_DB_URI="postgres://postgres:postgres@127.0.0.1:5432/postgres" \
+            -e PGRST_DB_SCHEMAS=public \
+            -e PGRST_DB_ANON_ROLE=anon \
+            -e PGRST_JWT_SECRET="$E2E_JWT_SECRET" \
+            -e PGRST_SERVER_PORT=3333 \
+            postgrest/postgrest:v12.2.3
+          cat > /tmp/nginx.conf <<'NGINX'
+          events {}
+          http { server { listen 8000;
+            location /auth/v1/ { proxy_pass http://127.0.0.1:9999/; }
+            location /rest/v1/ { proxy_pass http://127.0.0.1:3333/; }
+            location /realtime/ { return 404; }
+          } }
+          NGINX
+          docker run -d --name gw --network host -v /tmp/nginx.conf:/etc/nginx/nginx.conf:ro nginx:alpine
+          sleep 3; curl -sf http://127.0.0.1:8000/rest/v1/ -H "apikey: dummy" -o /dev/null || true
+      - name: playwright
+        run: |
+          eval "$(node scripts/e2e-db-setup.mjs mint)"
+          export E2E_DB=1
+          export PUBLIC_SUPABASE_URL=http://127.0.0.1:8000
+          export PUBLIC_SUPABASE_ANON_KEY="$ANON_KEY"
+          npm ci
+          npx playwright install --with-deps chromium
+          npx playwright test

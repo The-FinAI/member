@@ -6,7 +6,34 @@ import { type Page, expect } from '@playwright/test';
 //   uid-member= Li Hua     (a plain member, no officer role)
 //   uid-admin = Sai Tan    (President / admin)
 //   uid-wg    = Wu Jing    (working-group officer)
+const DB = process.env.E2E_DB === '1';
+const SB_URL = process.env.PUBLIC_SUPABASE_URL ?? '';
+const SB_ANON = process.env.PUBLIC_SUPABASE_ANON_KEY ?? '';
+const ROLE_EMAIL: Record<string, string> = {
+  'uid-chap': 'chan@e2e.local', 'uid-member': 'li@e2e.local',
+  'uid-admin': 'admin@e2e.local', 'uid-wg': 'wu@e2e.local', 'mock-uid': 'chen@e2e.local'
+};
+// storage key supabase-js derives from the URL host's first label
+const sbKey = () => `sb-${new URL(SB_URL).hostname.split('.')[0]}-auth-token`;
+async function dbSession(role: string) {
+  const r = await fetch(`${SB_URL}/auth/v1/token?grant_type=password`, {
+    method: 'POST',
+    headers: { apikey: SB_ANON, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email: ROLE_EMAIL[role] ?? ROLE_EMAIL['uid-chap'], password: 'e2e-password' })
+  });
+  const s = await r.json();
+  if (!r.ok) throw new Error(`e2e login failed for ${role}: ${JSON.stringify(s)}`);
+  return { ...s, expires_at: Math.floor(Date.now() / 1000) + (s.expires_in ?? 3600) };
+}
+
 export async function asRole(page: Page, role: string) {
+  if (DB) {
+    const session = await dbSession(role);
+    await page.addInitScript(([k, v]) => {
+      try { if (!localStorage.getItem(k)) localStorage.setItem(k, v); } catch { /* ignore */ }
+    }, [sbKey(), JSON.stringify(session)] as const);
+    return;
+  }
   // set on every nav, but only if not already set — so a test can switch persona
   // mid-flow via switchRole() without this clobbering it back.
   await page.addInitScript((r) => {
@@ -16,6 +43,12 @@ export async function asRole(page: Page, role: string) {
 
 // switch the acting persona mid-test (e.g. member submits → officer approves)
 export async function switchRole(page: Page, role: string) {
+  if (DB) {
+    const session = await dbSession(role);
+    await page.evaluate(([k, v]) => localStorage.setItem(k, v), [sbKey(), JSON.stringify(session)] as const);
+    await page.reload();
+    return;
+  }
   await page.evaluate((r) => localStorage.setItem('mockAs', r), role);
   await page.reload();
 }
@@ -26,7 +59,7 @@ export function trackErrors(page: Page) {
   const errors: string[] = [];
   page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
   page.on('pageerror', (e) => errors.push(String(e?.message ?? e)));
-  return () => errors.filter((e) => !/favicon|net::ERR|Failed to load resource/i.test(e));
+  return () => errors.filter((e) => !/favicon|net::ERR|Failed to load resource|WebSocket|realtime/i.test(e));
 }
 
 // The member detail page is tabbed (SectionNav shows only the active section).

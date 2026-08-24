@@ -17,9 +17,12 @@ export default defineConfig({
     ...devices['Desktop Chrome']
   },
   webServer: {
-    command: 'npx vite dev --port 5183 --mode mock',
+    command: process.env.E2E_DB === '1' ? 'npx vite dev --port 5183' : 'npx vite dev --port 5183 --mode mock',
     port: 5183,
     reuseExistingServer: !process.env.CI,
-    timeout: 60_000
+    timeout: 60_000,
+    env: process.env.E2E_DB === '1'
+      ? { PUBLIC_SUPABASE_URL: process.env.PUBLIC_SUPABASE_URL ?? '', PUBLIC_SUPABASE_ANON_KEY: process.env.PUBLIC_SUPABASE_ANON_KEY ?? '', PUBLIC_MOCK: '' }
+      : {}
   }
 });
