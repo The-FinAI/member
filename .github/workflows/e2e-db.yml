@@ -42,6 +42,7 @@ jobs:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       - name: gotrue (real auth)
         run: |
+          psql "$LOCAL" -v ON_ERROR_STOP=1 -c 'create schema if not exists auth'
           docker run -d --name gotrue --network host \
             -e GOTRUE_DB_DRIVER=postgres \
             -e DATABASE_URL="postgres://postgres:postgres@127.0.0.1:5432/postgres?search_path=auth" \
@@ -58,6 +59,7 @@ jobs:
             -e GOTRUE_EXTERNAL_EMAIL_ENABLED=true \
             supabase/gotrue:v2.195.0
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:9999/health && break; sleep 2; done
+          curl -sf http://127.0.0.1:9999/health || { docker logs gotrue; exit 1; }
       - name: load schema + seed
         run: |
           psql "$LOCAL" -v ON_ERROR_STOP=1 -c 'drop schema public cascade'
