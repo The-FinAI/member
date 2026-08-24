@@ -43,8 +43,9 @@ jobs:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       - name: load into vanilla postgres
         run: |
+          psql "$LOCAL" -v ON_ERROR_STOP=1 -c 'drop schema public cascade'
           psql "$LOCAL" -v ON_ERROR_STOP=1 -f supabase/tests/prelude.sql
-          psql "$LOCAL" -f /tmp/live_schema.sql
+          psql "$LOCAL" -v ON_ERROR_STOP=1 -f /tmp/live_schema.sql
           psql "$LOCAL" -v ON_ERROR_STOP=1 -f /tmp/lookups.sql
       - name: apply migrations newer than prod's frontier
         run: |

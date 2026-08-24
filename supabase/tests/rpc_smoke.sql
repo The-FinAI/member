@@ -10,14 +10,16 @@ begin;
 insert into auth.users (id, email) values
   ('11111111-1111-1111-1111-111111111111', 'smoke@test.local'),
   ('22222222-2222-2222-2222-222222222222', 'orphan@test.local');
+-- bootstrap member first: every gate needs current_member_id() non-null
+insert into member (full_name, email, kind, status, auth_user_id)
+values ('Smoke Officer', 'smoke@test.local', 'operator', 'active',
+        '11111111-1111-1111-1111-111111111111');
 select set_config('request.jwt.claims',
   '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}', true);
 
 -- org + people
 select unit_create('Smoke WG', 'working_group') as wg \gset
 select unit_create('Smoke Chapter', 'chapter') as ch \gset
-select forge_member_card('Smoke Officer', 'smoke@test.local', :'ch') as me \gset
-update member set auth_user_id = '11111111-1111-1111-1111-111111111111' where id = :'me';
 select forge_member_card('Smoke Worker', 'worker@test.local', :'ch') as worker \gset
 select member_set_home_unit(:'worker', :'ch');
 select person_set_capacity(20, :'worker');
