@@ -63,6 +63,11 @@ jobs:
       - name: load schema + seed
         run: |
           psql "$LOCAL" -v ON_ERROR_STOP=1 -c 'drop schema public cascade'
+          psql "$LOCAL" -v ON_ERROR_STOP=1 -c "do \$\$ begin
+            if not exists (select 1 from pg_roles where rolname = 'anon') then create role anon nologin; end if;
+            if not exists (select 1 from pg_roles where rolname = 'authenticated') then create role authenticated nologin; end if;
+            if not exists (select 1 from pg_roles where rolname = 'service_role') then create role service_role nologin; end if;
+          end \$\$"
           psql "$LOCAL" -v ON_ERROR_STOP=1 -f /tmp/live_schema.sql
           psql "$LOCAL" -v ON_ERROR_STOP=1 -f /tmp/lookups.sql
           psql "$LOCAL" -v ON_ERROR_STOP=1 -f supabase/tests/db_grants.sql
