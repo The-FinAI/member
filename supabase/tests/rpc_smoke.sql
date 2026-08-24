@@ -61,8 +61,10 @@ select project_archive(:'prj', true);
 select project_archive(:'prj', false);
 
 -- resources
+-- p_gpu_model exists only on the 12-arg overload → disambiguates (an older
+-- 8-arg forge_resource is still live; the app always sends p_gpu_model too)
 select forge_resource((select id from resource_type where name <> 'Labor' limit 1),
-                      'Smoke GPU', :'worker', 'member', 100);
+                      'Smoke GPU', :'worker', 'member', 100, null, null, null, '[]'::jsonb, null, null, null);
 select resource_set_quota((select id from resource where name = 'Smoke GPU'), 150);
 
 -- accounts
