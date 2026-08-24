@@ -104,6 +104,6 @@ jobs:
           export E2E_DB=1
           export PUBLIC_SUPABASE_URL=http://127.0.0.1:8000
           export PUBLIC_SUPABASE_ANON_KEY="$ANON_KEY"
-          npm ci
+          npm install --no-audit --no-fund
           npx playwright install --with-deps chromium
           npx playwright test
