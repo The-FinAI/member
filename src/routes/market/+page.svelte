@@ -589,7 +589,8 @@
                   <span class="an">{seat.name}</span>
                   {#if sg <= 2 && seat.authorship !== 'first'}
                     <select class="rolec rolesel {ROLE_CLS[seat.authorship] ?? ''}" value={seat.authorship}
-                      onchange={(e) => { const v = (e.target as HTMLSelectElement).value; seat.authorship = v; setRole(seat.slotId, v); }}>
+                      onchange={(e) => { const v = (e.target as HTMLSelectElement).value; seat.authorship = v;
+                        run('rl' + seat.memberId, () => supabase.rpc('seat_set_role', { p_project: p.id, p_member: seat.memberId, p_authorship: v })); }}>
                       <option value="normal">{$t('Author')}</option><option value="first">{$t('First author')}</option>
                       <option value="corresponding">{$t('Co-corresponding')}</option><option value="last">{$t('Last author')}</option>
                     </select>

@@ -405,6 +405,21 @@ function rpc(name: string, a: any) {
     seed.venue.push({ id, name: (a.p_name || '').trim(), kind: a.p_kind, deadline: a.p_deadline ?? null, notification: null, rank: 99 });
     persist(); return Promise.resolve({ data: id, error: null });
   }
+  if (name === 'seat_set_role') {
+    let sid = (seed.work_commitment.find((w: any) => w.project_id === a.p_project && w.member_id === a.p_member && w.slot_id) || {}).slot_id;
+    if (sid) {
+      const s = seed.project_slot.find((x: any) => x.id === sid);
+      if (s) s.authorship = a.p_authorship;
+    } else {
+      sid = nid('s');
+      seed.project_slot.push({ id: sid, project_id: a.p_project, slot_kind: 'work_labor', authorship: a.p_authorship,
+        skill_id: null, resource_type_id: null, desired_level: null, quota: null, headcount: 1, status: 'filled',
+        skill: null, resource_type: null, project: null });
+      for (const w of seed.work_commitment)
+        if (w.project_id === a.p_project && w.member_id === a.p_member && !w.slot_id) w.slot_id = sid;
+    }
+    persist(); return Promise.resolve({ data: null, error: null });
+  }
   if (name === 'slot_set_role') {
     const s = seed.project_slot.find((x: any) => x.id === a.p_slot);
     if (!s) return Promise.resolve({ data: null, error: { message: 'no such need' } });

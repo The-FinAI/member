@@ -425,6 +425,14 @@ test.describe('market — officer single page', () => {
     const row3 = page.locator('.prow', { hasText: 'ml-Tagging' });
     await ensureOpen(row3);
     await expect(row3.locator('.seat', { has: page.locator('.an', { hasText: 'Chan Min' }) }).locator('select.rolesel')).toHaveValue('last');
+    // legacy path: Chen Wei's seeded commitment has NO slot — role change must still work
+    const legacy = row3.locator('.seat', { has: page.locator('.an', { hasText: 'Chen Wei' }) });
+    await legacy.locator('select.rolesel').selectOption('corresponding');
+    await page.reload();
+    await dismissQuest(page);
+    const row4 = page.locator('.prow', { hasText: 'ml-Tagging' });
+    await ensureOpen(row4);
+    await expect(row4.locator('.seat', { has: page.locator('.an', { hasText: 'Chen Wei' }) }).locator('select.rolesel')).toHaveValue('corresponding');
     expect(errs()).toEqual([]);
   });
 
