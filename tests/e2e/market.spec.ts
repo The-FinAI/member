@@ -202,7 +202,8 @@ test.describe('market — officer single page', () => {
     const edit = row.locator('details.sub2', { hasText: 'Edit' });
     await edit.locator('> summary').click();
     await edit.locator('label', { hasText: 'Name' }).locator('input').fill('ml-Tagging-v2');
-    await edit.locator('label', { hasText: 'Venue' }).locator('select').selectOption({ label: 'ARR' });
+    const arrVal = await edit.locator('label', { hasText: 'Venue' }).locator('option', { hasText: 'ARR' }).getAttribute('value');
+    await edit.locator('label', { hasText: 'Venue' }).locator('select').selectOption(arrVal!);
     await edit.getByRole('button', { name: 'Save' }).click();
     const row2 = page.locator('.prow', { hasText: 'ml-Tagging-v2' });
     await expect(row2.locator('> summary .ddl')).toContainText('ARR');
