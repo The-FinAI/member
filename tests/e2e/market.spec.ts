@@ -79,7 +79,7 @@ test.describe('market — officer single page', () => {
     // ml-Tagging is stage Active in the seed — the hire box shows directly
     const row = page.locator('.prow', { hasText: 'ml-Tagging' });
     await row.locator('> summary').click();
-    const hire = row.locator('details.hire');
+    const hire = row.locator('details.hire', { hasText: 'Add opening' });
     await hire.locator('> summary').click();
     await hire.locator('select').first().selectOption('corresponding');
     await hire.locator('input[type=number]').fill('6');
@@ -388,6 +388,30 @@ test.describe('market — officer single page', () => {
     await pool2.locator('> summary').click();
     await pool2.locator('.arow', { hasText: 'Zhao Lei' }).getByRole('button', { name: 'Restore' }).click();
     await expect(page.locator('.p', { has: page.locator('.pname', { hasText: 'Zhao Lei' }) }).first()).toBeVisible();
+    expect(errs()).toEqual([]);
+  });
+
+  test('M18: add an existing author directly (search + role + hours, one step)', async ({ page }) => {
+    const errs = trackErrors(page);
+    await page.goto('/market');
+    await dismissQuest(page);
+    const row = page.locator('.prow', { hasText: 'ml-Tagging' });
+    await row.locator('> summary').click();
+    const box = row.locator('details.hire', { hasText: 'Add author' });
+    await box.locator('> summary').click();
+    await box.locator('.ppick input').fill('chan');
+    await box.locator('.pp-row', { hasText: 'Chan Min' }).click();
+    await box.locator('select').selectOption('corresponding');
+    await box.locator('input[type=number]').fill('6');
+    await box.getByRole('button', { name: 'Add' }).click();
+    const seat = row.locator('.seat', { has: page.locator('.an', { hasText: 'Chan Min' }) });
+    await expect(seat).toContainText('Co-corresponding');
+    await expect(seat).toContainText('60 STR');
+    await page.reload();
+    await dismissQuest(page);
+    const row2 = page.locator('.prow', { hasText: 'ml-Tagging' });
+    await ensureOpen(row2);
+    await expect(row2.locator('.seat', { has: page.locator('.an', { hasText: 'Chan Min' }) })).toContainText('Co-corresponding');
     expect(errs()).toEqual([]);
   });
 

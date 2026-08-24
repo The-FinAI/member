@@ -325,6 +325,27 @@
     }));
   }
 
+  // 直加作者(补录既有作者):forge_need 建槽 → assign 入席,一步完成
+  const authorPick: Record<string, string> = {};
+  const authorRole: Record<string, string> = {};
+  const authorHours: Record<string, string> = {};
+  async function addAuthor(p: Proj) {
+    const memberId = authorPick[p.id];
+    if (!memberId) return;
+    const hours = Number(authorHours[p.id]) || 5;
+    busy = 'au' + p.id;
+    const { data: sid, error } = await supabase.rpc('forge_need', {
+      p_project: p.id, p_kind: 'work_labor', p_skill: null, p_resource_type: null,
+      p_level: null, p_capacity: hours, p_headcount: 1,
+      p_authorship: authorRole[p.id] || 'normal'
+    });
+    if (error || !sid) { busy = ''; toast.error(error?.message ?? 'failed'); await load(); return; }
+    const { error: e2 } = await supabase.rpc('assign', { p_member: memberId, p_slot: sid, p_hours: hours });
+    busy = '';
+    if (e2) toast.error(e2.message);
+    await load();
+  }
+
   const statusId = (name: string) => statuses.find((s) => s.name === name)?.id ?? null;
   // 阶段=下拉:可进可退可停滞(project_set_status 本就无方向限制)
   const STATUS_ORDER = ['Proposal', 'Data Collecting', 'Work in progress', 'Active', 'Under review', 'Finished', 'Hold'];
@@ -595,6 +616,21 @@
               {/each}
               {#if !p.team.length && !p.slots.length}<div class="seat"><span class="mut">{$t('no members yet')}</span></div>{/if}
 
+              {#if sg <= 2}
+                <details class="hire"><summary>+ {$t('Add author')}</summary>
+                  <div class="hf">
+                    <PersonPick placeholder={$t('Search member…')}
+                      people={mems.map((om) => ({ id: om.id, name: om.name, hint: `${om.skills[0]?.name ?? ''}${freeOf(om) != null ? ` · ${$t('free')} ${freeOf(om)}h` : ''}` }))}
+                      onpick={(id) => (authorPick[p.id] = id)} />
+                    <select bind:value={authorRole[p.id]}>
+                      <option value="normal">{$t('Author')}</option><option value="first">{$t('First author')}</option>
+                      <option value="corresponding">{$t('Co-corresponding')}</option><option value="last">{$t('Last author')}</option>
+                    </select>
+                    <input type="number" min="1" bind:value={authorHours[p.id]} placeholder="5" style="width:3.4rem" />h/{$t('mo')}
+                    <button class="bt sm" disabled={busy === 'au' + p.id} onclick={() => addAuthor(p)}>{$t('Add')}</button>
+                  </div>
+                </details>
+              {/if}
               {#if sg === 1 || sg === 2}
                 <details class="hire"><summary>+ {$t('Add opening')}</summary>
                   <div class="hf">
