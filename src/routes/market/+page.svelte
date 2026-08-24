@@ -221,7 +221,7 @@
   const sections = $derived.by(() => {
     const S = (label: string, ps: Proj[]) => ({ label, ps: [...ps].sort(cmp) });
     if (groupBy === 'stage')
-      return [1, 0, 2, -1].map((k) =>
+      return [0, 1, 2, -1].map((k) =>
         S($t(k >= 0 ? STEPS[k] : 'On hold'), working.filter((p) => stage(p) === k)));
     if (groupBy === 'wg') {
       const m = new Map<string, Proj[]>();
