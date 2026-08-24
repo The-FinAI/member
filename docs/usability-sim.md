@@ -271,3 +271,27 @@ inline controls, change-to-save, collapsed adder).
 regressions M1–M14) but structurally cannot find (a) paths never built,
 (b) judgments that aren't box constraints. Those need the source-blind
 explorer pass before each release.
+
+## Retro 2026-08-24 — the frozen frontend & the fake greens
+
+**The bug:** the silent-refresh guard read `projs/mems` inside the load()
+$effect — the effect tracked its own output and looped forever, starving the
+renderer. On mock (microtask resolves) the page froze solid; on prod (network
+latency each cycle) it thrashed — the "nothing can be edited" report.
+
+**Why the suite said green anyway:** several verification runs were piped
+(`playwright | tail`), which reports tail's exit code — always 0. The literal
+"N passed" line was never actually present in those outputs. This is the
+"验语义非响应" discipline failure in test-runner form: an exit code was
+treated as a verdict without checking WHOSE exit code it was.
+
+**Standing rules from this:**
+1. every suite invocation asserts playwright's own exit (pipefail or no pipe);
+2. no reactive reads inside data-loading $effects (plain flags only);
+3. a real database is shared state: the real-DB e2e lane resets the seed
+   before every test and runs serial;
+4. one racy `isVisible` check is not a synchronization primitive — retry
+   helpers (ensureOpen) or nothing.
+
+**End state:** mock lane 17/17 (exit 0, un-piped) · real-DB lane (GoTrue +
+PostgREST + live schema) 17/17 in CI · schema smoke green on prod-as-is.
