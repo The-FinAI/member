@@ -37,6 +37,7 @@ jobs:
             --schema=public --schema=supabase_migrations -f /tmp/live_schema.sql
           /usr/lib/postgresql/17/bin/pg_dump "$SUPABASE_DB_URL" --data-only --no-owner \
             --table=project_status --table=project_type --table=resource_type --table=project_role \
+            --table=supabase_migrations.schema_migrations \
             -f /tmp/lookups.sql
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
