@@ -121,7 +121,7 @@ const seed: Record<string, any[]> = {
     { id: 'v-acl', name: 'ACL', kind: 'conference', deadline: '2026-01-05', notification: '2026-11-20', rank: 1 },
     { id: 'v-iclr', name: 'ICLR', kind: 'conference', deadline: '2025-09-24', rank: 2 },
     { id: 'v-ipm', name: 'IPM', kind: 'journal', deadline: null, rank: 3 },
-    { id: 'v-arr', name: 'ARR', kind: 'rolling', deadline: null, rank: 4 }
+    { id: 'v-arr', name: 'ARR', kind: 'rolling', deadline: '2026-10-12', notification: '2026-12-20', rank: 4 }
   ],
   project_slot: [
     { id: 's-lead', project_id: P1, slot_kind: 'leader', authorship: 'first', skill_id: null, resource_type_id: null, desired_level: null, quota: 20, headcount: 1, status: 'open', skill: null, resource_type: null, project: { name: 'ml-Tagging', emoji: '🏷️', code: 'ml-Tagging' } },

@@ -61,19 +61,29 @@
 
   // 目标会议的下一轮截止(过期按年顺延;期刊=随时可投)
   function nextDdl(name: string | null, kind: string | null, deadline: string | null): { label: string; days: number | null; year: number | null } {
-    if (!name) return { label: '', days: null, year: null };
-    if (kind === 'journal') return { label: 'rolling', days: 999, year: null };
-    if (!deadline) return { label: '', days: null, year: null };
+    if (!name) return { label: '', days: null, year: null, cycle: null };
+    if (kind === 'journal') return { label: 'rolling', days: 999, year: null, cycle: null };
     const today = new Date(); today.setHours(0, 0, 0, 0);
+    if (kind === 'rolling') {
+      // ARR-style cycles: the deadline IS the next cycle (weekly sync keeps it
+      // fresh); a passed cycle never rolls by a year — the next one is ~10 weeks
+      if (!deadline) return { label: '', days: null, year: null, cycle: null };
+      const d = new Date(deadline + 'T00:00:00');
+      if (d < today) return { label: '', days: null, year: null, cycle: null };
+      const days = Math.round((d.getTime() - today.getTime()) / 86400000);
+      return { label: `${days}d`, days, year: null,
+        cycle: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` };
+    }
+    if (!deadline) return { label: '', days: null, year: null, cycle: null };
     const d = new Date(deadline + 'T00:00:00');
     while (d < today) d.setFullYear(d.getFullYear() + 1);
     const days = Math.round((d.getTime() - today.getTime()) / 86400000);
-    return { label: `${days}d`, days, year: d.getFullYear() };
+    return { label: `${days}d`, days, year: d.getFullYear(), cycle: null };
   }
   // 评审中:倒数到 decision 日;为负=结果应已出
   const venLabel = (v: { name: string; kind: string; deadline: string | null }) => {
-    const y = nextDdl(v.name, v.kind, v.deadline).year;
-    return y ? `${v.name} ${y}` : v.name;
+    const dd = nextDdl(v.name, v.kind, v.deadline);
+    return dd.cycle ? `${v.name} ${dd.cycle}` : dd.year ? `${v.name} ${dd.year}` : v.name;
   };
   function decDays(decision: string | null): number | null {
     if (!decision) return null;
@@ -155,7 +165,7 @@
       const team = (teamBy[p.id] ?? []).sort((a, b) => (a.authorship === 'first' ? -1 : 0) - (b.authorship === 'first' ? -1 : 0) || b.nominal - a.nominal);
       return { id: p.id, name: p.name, status: p.project_status?.name ?? 'Proposal',
         venue: vname, venueId: p.venue_id ?? null,
-        venueYr: vname ? (dd.year ? `${vname} ${dd.year}` : vname) : '',
+        venueYr: vname ? (dd.cycle ? `${vname} ${dd.cycle}` : dd.year ? `${vname} ${dd.year}` : vname) : '',
         decision: p.deadline ?? null, venueNotif: v?.notification ?? null,
         outcome: p.tag || null, unitId: p.org_unit_id ?? null,
         unit: p.org_unit_id ? (unitName[p.org_unit_id] ?? null) : null,

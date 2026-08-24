@@ -12,6 +12,35 @@ const ALLCONF = 'https://ccfddl.com/conference/allconf.yml';
 
 // venue.name (in our DB) → ccfddl title
 const ALIAS = { MM: 'ACM MM' };
+// venues with their own cycle pages (bypass ccfddl entirely)
+const SPECIAL = {
+  ARR: async () => {
+    const html = await get('https://aclrollingreview.org/dates');
+    const MONTHS_FULL = { january:1, february:2, march:3, april:4, may:5, june:6, july:7, august:8, september:9, october:10, november:11, december:12 };
+    const iso = (y, m, d) => `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const cellDate = (cell, year) => {
+      const m = cell.match(/([A-Za-z]+)\s+(\d{1,2})/);
+      if (!m) return null;
+      const mo = MONTHS_FULL[m[1].toLowerCase()]; if (!mo) return null;
+      return iso(year, mo, +m[2]);
+    };
+    const cycles = [];
+    for (const tr of html.match(/<tr[^>]*>[\s\S]*?<\/tr>/g) ?? []) {
+      const cells = [...tr.matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/g)].map((c) => c[1].replace(/<[^>]+>/g, '').trim());
+      const head = cells[0] ?? '';
+      const cy = head.match(/^([A-Za-z]+)\s+(20\d{2})$/); // "October 2026"
+      if (!cy || cells.length < 6) continue;
+      const year = +cy[2];
+      const submission = cellDate(cells[1] ?? '', year);
+      // meta-review release ~ the decision date; fall back to cycle end
+      const notif = cellDate(cells[5] ?? '', year) ?? cellDate(cells[6] ?? '', year);
+      if (submission) cycles.push({ submission, notif });
+    }
+    cycles.sort((a, b) => a.submission.localeCompare(b.submission));
+    const next = cycles.find((c) => c.submission >= today) ?? cycles.at(-1);
+    return next ? { deadline: next.submission, notification: next.notif ?? null, source: 'aclrollingreview.org/dates' } : null;
+  }
+};
 // official-site subpages worth probing for an "important dates" section
 const SUBPATHS = ['', 'dates', 'Dates', 'calls', 'cfp', 'call-for-papers', 'important-dates', 'calls/papers'];
 
@@ -112,11 +141,28 @@ if (KEY) {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/venue?select=id,name,kind`, { dispatcher, headers });
   venues = await r.json();
 } else {
-  venues = ['AAAI', 'ACL', 'COLM', 'EMNLP', 'ICLR', 'ICML', 'MM', 'NeurIPS', 'WWW'].map((name) => ({ id: null, name, kind: 'conference' }));
+  venues = ['AAAI', 'ACL', 'ARR', 'COLM', 'EMNLP', 'ICLR', 'ICML', 'MM', 'NeurIPS', 'WWW'].map((name) => ({ id: null, name, kind: 'conference' }));
 }
 
 for (const v of venues) {
   if (v.kind === 'journal') continue;
+  if (SPECIAL[v.name]) {
+    try {
+      const r = await SPECIAL[v.name]();
+      if (r) {
+        console.log(`- ${v.name}: deadline ${r.deadline}` + (r.notification ? ` · notification ${r.notification}` : ' · notification TBA') + ` (${r.source})`);
+        if (KEY && v.id) {
+          const patch = { deadline: r.deadline };
+          if (r.notification) patch.notification = r.notification;
+          const w = await fetch(`${SUPABASE_URL}/rest/v1/venue?id=eq.${v.id}`, {
+            method: 'PATCH', dispatcher, headers, body: JSON.stringify(patch)
+          });
+          if (!w.ok) console.error(`  ! write failed: ${w.status}`);
+        }
+      } else console.log(`- ${v.name}: cycle page yielded nothing`);
+    } catch (e) { console.log(`- ${v.name}: cycle page failed: ${String(e).slice(0, 80)}`); }
+    continue;
+  }
   const entry = all.find((e) => e.title.toUpperCase() === (ALIAS[v.name] ?? v.name).toUpperCase());
   if (!entry) { console.log(`- ${v.name}: not in ccfddl, skipped`); continue; }
 
