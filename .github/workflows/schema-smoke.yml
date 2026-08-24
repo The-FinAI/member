@@ -45,11 +45,13 @@ jobs:
           psql "$LOCAL" -v ON_ERROR_STOP=1 -f supabase/tests/prelude.sql
           psql "$LOCAL" -f /tmp/live_schema.sql
           psql "$LOCAL" -v ON_ERROR_STOP=1 -f /tmp/lookups.sql
-      - name: apply migrations prod has not run yet
+      - name: apply migrations newer than prod's frontier
         run: |
+          MAXV=$(psql "$LOCAL" -tAc "select coalesce(max(version), '0') from supabase_migrations.schema_migrations")
+          echo "prod migration frontier: $MAXV"
           for f in supabase/migrations/*.sql; do
             v=$(basename "$f" | cut -d_ -f1)
-            if [ "$(psql "$LOCAL" -tAc "select 1 from supabase_migrations.schema_migrations where version='$v'")" != "1" ]; then
+            if [ "$v" \> "$MAXV" ]; then
               echo "applying NEW migration $f"
               psql "$LOCAL" -v ON_ERROR_STOP=1 -f "$f"
             fi
