@@ -106,7 +106,7 @@
       supabase.from('org_unit').select('id, name, kind'),
       supabase.from('venue').select('id, name, kind, deadline, notification'),
       supabase.from('project_slot').select('id, project_id, slot_kind, authorship, desired_level, quota, status, skill:skill_id(name), resource_type:resource_type_id(name)'),
-      supabase.from('work_commitment').select('project_id, slot_id, member_id, monthly_amount, nominal_str, authorship, member:member_id(full_name)'),
+      supabase.from('work_commitment').select('project_id, slot_id, member_id, monthly_amount, nominal_str, authorship, year_month, member:member_id(full_name)'),
       supabase.from('member').select('id, full_name, email, home_unit_id, monthly_hours, auth_user_id, archived_at'),
       supabase.from('person_skill').select('member_id, level, skill_id, skill:skill_id(name)'),
       supabase.from('skill').select('id, name, parent_id'),
@@ -142,18 +142,28 @@
     const teamBy: Record<string, Seat[]> = {};
     const usedBy: Record<string, number> = {};
     const nominalBy: Record<string, number> = {};
+    // months are ledger entries: the LATEST month is the live commitment
+    // (summing across months made hour edits only ever grow), STR accrues over all
+    const latestYm: Record<string, string> = {};
+    for (const w of (wc as any[]) ?? []) {
+      const k = w.project_id + '|' + w.member_id; const ym = w.year_month ?? '';
+      if (!latestYm[k] || ym > latestYm[k]) latestYm[k] = ym;
+    }
     for (const w of (wc as any[]) ?? []) {
       const list = (teamBy[w.project_id] ??= []);
+      const live = (w.year_month ?? '') === latestYm[w.project_id + '|' + w.member_id];
+      const amt = live ? Number(w.monthly_amount) || 0 : 0;
       const nom = Number(w.nominal_str) || 0;
       const role = w.authorship ?? slotById[w.slot_id]?.authorship
         ?? (slotById[w.slot_id]?.slot_kind === 'leader' ? 'first' : null);
       const prev = list.find((x) => x.memberId === w.member_id);
-      if (prev) { prev.amount += Number(w.monthly_amount) || 0; prev.nominal += nom;
+      if (prev) { prev.amount += amt; prev.nominal += nom;
+        if (live && w.slot_id) prev.slotId = w.slot_id;
         if (role && (prev.authorship === 'normal' || w.authorship)) prev.authorship = role; }
       else list.push({ memberId: w.member_id, name: w.member?.full_name ?? '—',
-        amount: Number(w.monthly_amount) || 0, nominal: nom, slotId: w.slot_id,
+        amount: amt, nominal: nom, slotId: w.slot_id,
         authorship: role ?? 'normal' });
-      usedBy[w.member_id] = (usedBy[w.member_id] ?? 0) + (Number(w.monthly_amount) || 0);
+      usedBy[w.member_id] = (usedBy[w.member_id] ?? 0) + amt;
       nominalBy[w.member_id] = (nominalBy[w.member_id] ?? 0) + nom;
     }
 
@@ -610,7 +620,7 @@
                   {:else}
                     <span class="rolec {ROLE_CLS[seat.authorship] ?? ''}">{$t(ROLE_LABEL[seat.authorship] ?? 'Author')}</span>
                   {/if}
-                  {#if sg <= 1}
+                  {#if sg <= 2}
                     <span class="give"><input class="ghours" type="number" min="1" value={seat.amount}
                       onchange={(e) => { const h = Number((e.target as HTMLInputElement).value); if (h > 0 && h !== seat.amount) {
                         seat.amount = h; // optimistic; reload reconciles nominal
@@ -619,7 +629,7 @@
                     <span class="give">{seat.amount}h/{$t('mo')}</span>
                   {/if}
                   {#if seat.nominal}<span class="pts">{seat.nominal.toLocaleString()} STR</span>{/if}
-                  {#if sg <= 1}<button class="rel" title={$t('Remove')} onclick={() => removeSeat(p, seat)}>×</button>{/if}
+                  {#if sg <= 2}<button class="rel" title={$t('Remove')} onclick={() => removeSeat(p, seat)}>×</button>{/if}
                 </div>
               {/each}
               {#each p.slots.filter((s) => s.slot_kind !== 'leader') as s, j}

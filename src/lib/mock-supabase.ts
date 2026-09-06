@@ -129,6 +129,8 @@ const seed: Record<string, any[]> = {
     { id: 's-gpu', project_id: P1, slot_kind: 'work_resource', authorship: 'normal', skill_id: null, resource_type_id: RT_GPU, desired_level: null, quota: 100, headcount: 1, status: 'open', skill: null, resource_type: { name: 'GPU', unit: 'GPU-hours' }, project: { name: 'ml-Tagging', emoji: '🏷️', code: 'ml-Tagging' } }
   ],
   work_commitment: [
+    // wc-0 is a PAST month's ledger row: it must accrue STR but never add to the live h/mo
+    { id: 'wc-0', project_id: P1, slot_id: 's-ann', member_id: M_ZHAO, monthly_amount: 7, nominal_str: 70, year_month: '2026-05', resource_id: null, slot: { slot_kind: 'work_labor' }, member: { full_name: 'Zhao Lei' }, resource: { unit: 'h' } },
     { id: 'wc-1', project_id: P1, slot_id: 's-ann', member_id: M_ZHAO, monthly_amount: 5, nominal_str: 50, year_month: '2026-06', resource_id: null, slot: { slot_kind: 'work_labor' }, member: { full_name: 'Zhao Lei' }, resource: { unit: 'h' } },
     { id: 'wc-me', project_id: P1, slot_id: null, member_id: M_ME, monthly_amount: 34, nominal_str: 340, year_month: '2026-06', resource_id: null, slot: { slot_kind: 'work_labor' }, member: { full_name: 'Chen Wei' }, resource: { unit: 'h' } }
   ],
@@ -460,7 +462,10 @@ function rpc(name: string, a: any) {
     if (!canSeatMemberMock(me, a.p_member))
       return Promise.resolve({ data: null, error: { message: "only the member's chapter officer (or an admin) can assign them" } });
     const s = seed.project_slot.find((x) => x.id === a.p_slot);
-    seed.work_commitment.push({ id: nid('wc'), project_id: s?.project_id, slot_id: a.p_slot, member_id: a.p_member,
+    // mirrors work_seat's upsert on (slot_id, member_id, year_month)
+    const ex = seed.work_commitment.find((w) => w.slot_id === a.p_slot && w.member_id === a.p_member && w.year_month === '2026-06');
+    if (ex) { ex.monthly_amount = a.p_hours; ex.nominal_str = Math.round(a.p_hours * 10); }
+    else seed.work_commitment.push({ id: nid('wc'), project_id: s?.project_id, slot_id: a.p_slot, member_id: a.p_member,
       monthly_amount: a.p_hours, nominal_str: Math.round(a.p_hours * 10), year_month: '2026-06', resource_id: null,
       slot: { slot_kind: s?.slot_kind }, member: { full_name: (seed.member.find((m) => m.id === a.p_member) || {}).full_name }, resource: { unit: 'h' } });
     if (s) {

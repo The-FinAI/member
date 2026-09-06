@@ -10,6 +10,9 @@ import { asRole, trackErrors, dismissQuest, resetDb, expect } from './helpers';
 // check and the next action — retry open until the body is really there
 async function ensureOpen(row: import('@playwright/test').Locator) {
   await expect(async () => {
+    // a refresh can collapse the Accepted pool around the row — reopen it first
+    if (!(await row.isVisible()))
+      for (const s of await row.page().locator('.arcpool:not([open]) > summary').all()) await s.click();
     if (!(await row.locator('.pbody').isVisible())) await row.locator('> summary').click({ force: true });
     expect(await row.locator('.pbody').isVisible()).toBeTruthy();
   }).toPass({ timeout: 10_000 });
@@ -252,6 +255,8 @@ test.describe('market — officer single page', () => {
     await row.locator('.stsel select').first().selectOption({ label: 'Under review' });
     const row2 = page.locator('.prow', { hasText: 'ml-Tagging' });
     await ensureOpen(row2);
+    // under review, seat hours stay editable (late-added 0h authors need fixing up)
+    await expect(row2.locator('.seat .give input').first()).toBeVisible();
     await row2.locator('input[type=date]').fill('2027-01-15');
     await row2.locator('input[type=date]').blur();
     await expect(row2.locator('> summary .ddl')).toContainText('result in');
@@ -472,6 +477,29 @@ test.describe('market — officer single page', () => {
     await page.reload();
     await dismissQuest(page);
     await expect(page.locator('.prow', { hasText: 'mk-NewPaper' })).toBeVisible();
+    expect(errs()).toEqual([]);
+  });
+
+  test('M19: past-month ledger rows never inflate live hours; lowering works', async ({ page }) => {
+    const errs = trackErrors(page);
+    await page.goto('/market');
+    await dismissQuest(page);
+    const row = page.locator('.prow', { hasText: 'ml-Tagging' });
+    await ensureOpen(row);
+    // seed has a past-month 7h row for Zhao Lei — only the current month (5h) is
+    // live, while STR accrues over both months (70 + 50)
+    const seat = row.locator('div.seat', { hasText: 'Zhao Lei' });
+    await expect(seat.locator('.give input')).toHaveValue('5');
+    await expect(seat).toContainText('120 STR');
+    await seat.locator('.give input').fill('3');
+    await seat.locator('.give input').blur();
+    await page.reload();
+    await dismissQuest(page);
+    const row2 = page.locator('.prow', { hasText: 'ml-Tagging' });
+    await ensureOpen(row2);
+    const seat2 = row2.locator('div.seat', { hasText: 'Zhao Lei' });
+    await expect(seat2.locator('.give input')).toHaveValue('3');
+    await expect(seat2).toContainText('100 STR'); // 70 past + 30 current
     expect(errs()).toEqual([]);
   });
 });
