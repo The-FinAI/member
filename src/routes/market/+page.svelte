@@ -8,6 +8,7 @@
   import { t } from '$lib/i18n';
   import { toast } from '$lib/toast';
   import PersonPick from '$lib/PersonPick.svelte';
+  import Meeting from '$lib/Meeting.svelte';
 
   type Slot = { id: string; project_id: string; slot_kind: string; authorship: string | null;
     skill: { name: string } | null; resource_type: { name: string } | null;
@@ -472,6 +473,48 @@
     await run('lnk', () => supabase.rpc('member_link_account', { p_member: mid, p_account: o.account_id }));
   }
 
+  // ── 会议模式:看板 → 议程 → 聚焦(src/lib/Meeting.svelte) ──
+  let meeting = $state(false);
+  function meetingSetHours(p: Proj, s: Seat, h: number) {
+    s.amount = h; // optimistic; reload reconciles nominal
+    run(s.slotId + s.memberId, () => supabase.rpc('assign', { p_member: s.memberId, p_slot: s.slotId, p_hours: h }));
+  }
+  async function meetingCreateProject(d: { name: string; unitId: string; venueId: string; firstId: string; hours: number }) {
+    const sid = statusId('Proposal') ?? statuses[0]?.id;
+    const tid = types.find((x) => /paper|research/i.test(x.name))?.id ?? types[0]?.id;
+    busy = 'newp';
+    const { data: pid, error } = await supabase.rpc('create_project_phase1', {
+      p_name: d.name, p_type_id: tid, p_status_id: sid, p_wg_unit: d.unitId || null, p_venue_id: d.venueId || null
+    });
+    busy = '';
+    if (error || !pid) { toast.error(error?.message ?? 'failed'); return false; }
+    await load();
+    const lead = projs.find((p) => p.id === pid)?.slots.find((s) => s.slot_kind === 'leader');
+    if (d.firstId && lead) return run('newp', () => supabase.rpc('assign', { p_member: d.firstId, p_slot: lead.id, p_hours: d.hours }));
+    return true;
+  }
+  // 邮箱可空:卡片先用 <slug>@pending.thefin.ai 占位(与 OpenReview 导入同一约定),chair 事后补
+  const pendingEmail = (name: string) => name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '.').replace(/^\.|\.$/g, '') + '@pending.thefin.ai';
+  async function meetingAddMember(d: { name: string; affiliation: string; email: string; unitId: string; projectId: string; role: string; hours: number }) {
+    busy = 'add';
+    const { data: mid, error } = await supabase.rpc('forge_member_card', {
+      p_full_name: d.name, p_email: d.email || pendingEmail(d.name), p_unit: d.unitId || null, p_affiliation: d.affiliation || null
+    });
+    if (error || !mid) { busy = ''; toast.error(error?.message ?? 'failed'); return false; }
+    if (d.projectId) {
+      const { data: slot, error: e1 } = await supabase.rpc('forge_need', {
+        p_project: d.projectId, p_kind: 'work_labor', p_skill: null, p_resource_type: null,
+        p_level: null, p_capacity: d.hours, p_headcount: 1, p_authorship: d.role || 'normal'
+      });
+      if (e1 || !slot) { busy = ''; toast.error(e1?.message ?? 'failed'); await load(); return false; }
+      const { error: e2 } = await supabase.rpc('assign', { p_member: mid, p_slot: slot, p_hours: d.hours });
+      if (e2) { busy = ''; toast.error(e2.message); await load(); return false; }
+    }
+    busy = '';
+    await load();
+    return true;
+  }
+
   const slotAsk = (s: Slot) =>
     s.slot_kind === 'leader' ? $t('Lead · hours') :
     s.slot_kind === 'work_resource' ? (s.resource_type?.name ?? $t('Resource')) :
@@ -486,6 +529,7 @@
 <div class="mk">
   <div class="mtop">
     <h1>🌿 {$t('Market')}</h1>
+    <button class="np meet" onclick={() => (meeting = true)}>▶ {$t('Meeting')}</button>
     <details class="acct newmenu">
       <summary class="np">+ {$t('New')} ▾</summary>
       <div class="km">
@@ -516,6 +560,11 @@
     </details>
   </div>
 
+  {#if meeting && !loading}
+    <Meeting projs={working} {mems} {wgs} chapters={chapterUnits} {venues} {stage} {decDays} {venLabel} {busy}
+      onclose={() => (meeting = false)} onsethours={meetingSetHours}
+      oncreateproject={meetingCreateProject} onaddmember={meetingAddMember} />
+  {/if}
   {#if loading}
     <p class="mut">{$t('Loading…')}</p>
   {:else}
@@ -1084,6 +1133,9 @@
   .acct > summary:hover { background: var(--wash); }
   .acct > summary::-webkit-details-marker { display: none; }
   .np { color: var(--dim2); font-weight: 500; font-size: 13px; }
+  .np.meet { font: inherit; font-size: 13px; font-weight: 500; color: var(--dim2); background: none; border: 1px solid var(--line2);
+    border-radius: 6px; padding: 3px 10px; cursor: pointer; }
+  .np.meet:hover { background: var(--wash); color: var(--ink2); }
   .acct[open] > .km { display: flex; position: absolute; right: 0; top: 30px; z-index: 9; background: #fff;
     border: 1px solid var(--line2); border-radius: 8px; box-shadow: 0 8px 28px rgba(55, 53, 47, .12);
     padding: 6px; min-width: 250px; flex-direction: column; gap: 2px; }

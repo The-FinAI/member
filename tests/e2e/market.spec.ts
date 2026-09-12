@@ -502,4 +502,52 @@ test.describe('market — officer single page', () => {
     await expect(seat2).toContainText('100 STR'); // 70 past + 30 current
     expect(errs()).toEqual([]);
   });
+
+  test('M20: meeting view — board → agenda → focus with arrows; add project + member from a sheet', async ({ page }) => {
+    const errs = trackErrors(page);
+    await page.goto('/market');
+    await dismissQuest(page);
+    await page.getByRole('button', { name: 'Meeting' }).click();
+    const mt = page.locator('.mt');
+    await expect(mt).toHaveAttribute('data-view', 'board');
+    await expect(mt.locator('.card', { hasText: 'ml-Tagging' })).toBeVisible();
+    await page.keyboard.press('ArrowRight');
+    await expect(mt).toHaveAttribute('data-view', 'agenda');
+    await expect(mt.locator('.row').first()).toBeVisible();
+    await page.keyboard.press('ArrowRight');
+    await expect(mt).toHaveAttribute('data-view', 'focus');
+    await expect(mt.locator('.fn')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(mt).toHaveAttribute('data-view', 'agenda');
+    // set hours on a seated author straight from focus
+    await mt.locator('.row', { hasText: 'ml-Tagging' }).click();
+    const zhao = mt.locator('.seat', { hasText: 'Zhao Lei' });
+    await zhao.locator('input').fill('7');
+    await zhao.locator('input').blur();
+    await expect(mt.locator('.seat', { hasText: 'Zhao Lei' }).locator('input')).toHaveValue('7');
+    // new project from the sheet, first author seated in one step
+    await mt.getByRole('button', { name: '+ Project' }).first().click();
+    const sheet = mt.locator('.sheet');
+    await sheet.locator('input.big').fill('mk-MeetingPaper');
+    await sheet.locator('.ppick input').fill('fang');
+    await sheet.locator('.pp-row', { hasText: 'Wang Fang' }).click();
+    await sheet.getByRole('button', { name: 'Create project' }).click();
+    await expect(mt.locator('.sheet')).toHaveCount(0);
+    await mt.locator('.crumbs button', { hasText: 'Agenda' }).click();
+    await expect(mt.locator('.row', { hasText: 'mk-MeetingPaper' })).toBeVisible();
+    await expect(mt.locator('.row', { hasText: 'mk-MeetingPaper' })).toContainText('1 authors');
+    // new member card with a blank email, seated on that project
+    await mt.getByRole('button', { name: '+ Member' }).first().click();
+    const ms = mt.locator('.sheet');
+    await ms.locator('input.big').fill('Meeting Newcomer');
+    await ms.locator('.three select').first().selectOption({ label: 'mk-MeetingPaper' });
+    await ms.getByRole('button', { name: 'Add member' }).click();
+    await expect(mt.locator('.sheet')).toHaveCount(0);
+    await expect(mt.locator('.row', { hasText: 'mk-MeetingPaper' })).toContainText('2 authors');
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.mt')).toHaveCount(0);
+    await expect(page.locator('.prow', { hasText: 'mk-MeetingPaper' })).toBeVisible();
+    expect(errs()).toEqual([]);
+  });
 });
