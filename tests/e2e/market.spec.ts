@@ -512,6 +512,11 @@ test.describe('market — officer single page', () => {
     const errs = trackErrors(page);
     await page.goto('/market');
     await dismissQuest(page);
+    // a project in review: its agenda row once matched a `.dim` overlay rule and
+    // became a full-screen veil, smearing the whole agenda
+    const seedRow = page.locator('.prow', { hasText: 'ml-Tagging' });
+    await seedRow.locator('> summary').click();
+    await seedRow.locator('.stsel select').first().selectOption({ label: 'Under review' });
     await page.getByRole('button', { name: 'Meeting' }).click();
     const mt = page.locator('.mt');
     await expect(mt).toHaveAttribute('data-view', 'board');
@@ -519,6 +524,15 @@ test.describe('market — officer single page', () => {
     await page.keyboard.press('ArrowRight');
     await expect(mt).toHaveAttribute('data-view', 'agenda');
     await expect(mt.locator('.row').first()).toBeVisible();
+    // rows stay in flow and one line tall — never stretched over the viewport
+    for (const r of await mt.locator('.row').all()) {
+      const box = await r.evaluate((el) => {
+        const c = getComputedStyle(el);
+        return { pos: c.position, h: Math.round(el.getBoundingClientRect().height) };
+      });
+      expect(box.pos).toBe('static');
+      expect(box.h).toBeLessThan(200);
+    }
     await page.keyboard.press('ArrowRight');
     await expect(mt).toHaveAttribute('data-view', 'focus');
     await expect(mt.locator('.fn')).toBeVisible();

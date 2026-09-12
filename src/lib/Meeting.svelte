@@ -172,7 +172,7 @@
     <div class="rows">
       {#each agenda as p, i (p.id)}
         {@const sg = stage(p)}
-        <button class="row" class:dim={sg === 2 || sg < 0} onclick={() => go(p)}>
+        <button class="row" class:onhold={sg < 0} onclick={() => go(p)}>
           <span class="num idx">{String(i + 1).padStart(2, '0')}</span>
           <span class="rn">{p.name}</span>
           <span class="stc {sg >= 0 ? STC[Math.min(sg, 3)] : 'gy'}">{$t(sg >= 0 ? STEPS[Math.min(sg, 3)] : 'On hold')}</span>
@@ -235,7 +235,7 @@
   {/if}
 
   {#if sheet === 'project'}
-    <div class="dim" role="presentation" onclick={() => (sheet = '')}></div>
+    <div class="scrim" role="presentation" onclick={() => (sheet = '')}></div>
     <div class="sheet" role="dialog">
       <div class="sh"><span class="st">{$t('New project')}</span><span class="mut">{np.unitId ? $t('in') + ' ' + (wgs.find((u) => u.id === np.unitId)?.name ?? '') : $t('Proposal (no group)')}</span></div>
       <label class="fld"><span>{$t('Name')}</span><input class="big" bind:value={np.name} placeholder={$t('Project name')} /></label>
@@ -253,7 +253,7 @@
         <span class="mut">{$t('lands as a Start card, first author seated')}</span></div>
     </div>
   {:else if sheet === 'member'}
-    <div class="dim" role="presentation" onclick={() => (sheet = '')}></div>
+    <div class="scrim" role="presentation" onclick={() => (sheet = '')}></div>
     <div class="sheet" role="dialog">
       <div class="sh"><span class="st">{$t('New member')}</span><span class="mut">{$t('card only — they sign in later with this email')}</span></div>
       <div class="two">
@@ -342,7 +342,7 @@
   .row .idx { grid-area: idx; } .row .rn { grid-area: name; } .row .stc { grid-area: stage; justify-self: start; }
   .row .rv { grid-area: venue; } .row .ri { grid-area: info; } .row .rt { grid-area: need; }
   .row:hover { background: #f7f7f5; }
-  .row.dim { opacity: .7; }
+  .row.onhold { opacity: .55; }
   .idx { font-size: 15px; color: #9b9a97; }
   .rn { font-size: 20px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .rv { font-size: 15px; }
@@ -367,7 +367,9 @@
   .zchips { display: flex; flex-wrap: wrap; gap: 8px; }
   .zchip { font-size: 15px; border: 1px dashed #e9e9e7; border-radius: 6px; padding: 4px 6px 4px 12px; color: #6b6a66; display: inline-flex; align-items: center; gap: 6px; }
   .zchip input { font-size: 15px; width: 3rem; }
-  .dim { position: fixed; inset: 0; background: rgba(255, 255, 255, .65); z-index: 60; }
+  /* name it scrim, never dim: a `.dim` utility also matched the agenda rows
+     (class:dim) and turned every in-review row into a full-screen veil */
+  .scrim { position: fixed; inset: 0; background: rgba(255, 255, 255, .65); z-index: 60; }
   .sheet { position: fixed; left: 50%; top: 14vh; transform: translateX(-50%); width: min(680px, 92vw); z-index: 61; background: #fff; border: 1px solid #e9e9e7;
     border-radius: 10px; box-shadow: 0 8px 28px rgba(55, 53, 47, .12); padding: 28px 32px; box-sizing: border-box; display: flex; flex-direction: column; gap: 20px; }
   .sh { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
