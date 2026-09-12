@@ -295,3 +295,43 @@ treated as a verdict without checking WHOSE exit code it was.
 
 **End state:** mock lane 17/17 (exit 0, un-piped) · real-DB lane (GoTrue +
 PostgREST + live schema) 17/17 in CI · schema smoke green on prod-as-is.
+
+## Retro 2026-09-12 — the agenda that veiled itself
+
+**The bug:** Meeting.svelte used `.dim` for two unrelated things — the sheet
+backdrop (`position: fixed; inset: 0; background: rgba(255,255,255,.65)`) and
+the row modifier for in-review/on-hold projects (`class:dim`). Both rules are
+scoped to the component, so every in-review agenda row became a full-screen
+white veil: rows stretched to 100vh (their grid tracks split the viewport
+height), text landed in other rows' positions, and the whole page read as
+ghosted. Screen-shared at the weekly meeting it looked like a compositing
+glitch, which sent the first two fix attempts at layout and stacking contexts.
+
+**Why the suite said green:** the mock seed has no project in the `Under
+review` or `Hold` stage, so `class:dim` never applied in any test — the one
+condition that triggers the bug could not occur in our world. Production is
+the opposite: nearly every project is in review. This is the black-box
+explorer ceiling in its purest form — *the mock world is my model of the
+world*, and my model was of a community that had just started working, not one
+mid-cycle with 39 projects awaiting decisions.
+
+**What actually found it:** reading the live DOM in the preview pane with the
+user's session — `getComputedStyle` on a real agenda row (position `fixed`,
+height 838 = 100vh) and then walking the stylesheets for rules that
+`element.matches()`. Two screenshots and two speculative fixes had preceded
+this and both were wrong. Measure the live element before theorising.
+
+**Standing rules from this:**
+1. a class name is either a utility or a modifier, never both — a modifier
+   that shares its name with a positioned utility silently inherits layout;
+2. seed data must span every *state* the UI branches on (stage, role, empty),
+   not merely every feature — states the seed cannot reach are untested code;
+3. for a report that only reproduces in production, read the live DOM first:
+   computed styles and matched rules, not screenshots;
+4. regression case goes in with the state that triggers it — M20 now moves a
+   project to Under review before entering the meeting view and asserts every
+   agenda row stays in flow and under 200px tall.
+
+**End state:** mock lane 20/20 (exit 0, un-piped) · real-DB lane green in CI ·
+verified live across all 6 working groups, 39 rows: 0 out-of-flow rows, 0
+overlaps, max row height 95px.
