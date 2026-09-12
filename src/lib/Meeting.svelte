@@ -277,13 +277,13 @@
 </div>
 
 <style>
-  .mt { position: fixed; inset: 0; z-index: 50; background: #fff; color: #37352f; overflow: auto;
-    padding: 28px 48px 40px; box-sizing: border-box; font-size: 16px;
+  .mt { position: relative; width: 100vw; margin-left: calc(50% - 50vw); min-height: 100vh; background: #fff; color: #37352f;
+    padding: 20px 48px 40px; box-sizing: border-box; font-size: 16px;
     font-family: -apple-system, "SF Pro SC", "PingFang SC", system-ui, "Segoe UI", sans-serif; }
   .num { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric: tabular-nums; }
   .mut { color: #9b9a97; }
   .rd { color: #93382a; } .or { color: #9a5b13; } .bl { color: #2b5a75; } .gn { color: #1c513f; } .yl { color: #6f5615; }
-  .hd { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+  .hd { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-bottom: 22px; }
   .crumbs { display: flex; align-items: center; gap: 10px; min-width: 0; }
   .crumbs button { font: inherit; font-size: 26px; font-weight: 600; letter-spacing: -.01em; background: none; border: 0; color: #9b9a97; cursor: pointer; padding: 2px 6px; border-radius: 6px;
     white-space: nowrap; max-width: 34vw; overflow: hidden; text-overflow: ellipsis; }

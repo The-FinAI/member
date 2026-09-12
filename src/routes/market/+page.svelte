@@ -526,8 +526,8 @@
 
 <svelte:head><title>{$t('Market')} · The Fin AI</title></svelte:head>
 
-<div class="mk">
-  <div class="mtop">
+<div class="mk" class:inmeet={meeting}>
+  <div class="mtop" hidden={meeting}>
     <h1>🌿 {$t('Market')}</h1>
     <button class="np meet" onclick={() => (meeting = true)}>▶ {$t('Meeting')}</button>
     <details class="acct newmenu">
@@ -560,13 +560,14 @@
     </details>
   </div>
 
-  {#if meeting && !loading}
+  {#if loading}
+    <p class="mut">{$t('Loading…')}</p>
+  {:else if meeting}
+    <!-- in normal flow (not a fixed overlay): a fixed layer with its own
+         scroll over the live page glitched on Chrome screen-share -->
     <Meeting projs={working} {mems} {wgs} chapters={chapterUnits} {venues} {stage} {decDays} {venLabel} {busy}
       onclose={() => (meeting = false)} onsethours={meetingSetHours}
       oncreateproject={meetingCreateProject} onaddmember={meetingAddMember} />
-  {/if}
-  {#if loading}
-    <p class="mut">{$t('Loading…')}</p>
   {:else}
     <div class="strbar">
       <div class="strt">STR
@@ -959,6 +960,8 @@
     --tag-pu-bg: #e8deee; --tag-pu-tx: #5a4a72;   /* resources */
     margin: 0 auto; color: var(--ink2); font-size: 14px; }
   .mtop { display: flex; align-items: baseline; gap: 16px; }
+  .mk.inmeet { max-width: none; }
+  .mtop[hidden] { display: none; }
   h1 { font-size: 28px; font-weight: 700; letter-spacing: -.01em; padding: 14px 0 14px; }
   h2 { font-size: 13px; font-weight: 600; color: var(--dim2); padding: 14px 0 6px; }
   h2 .n, .sh .n { color: var(--faint2); font-weight: 400; font-size: 12px; margin-left: 5px; }
