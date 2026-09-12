@@ -179,7 +179,7 @@
           <span class="rv"><span class="mut">{p.venueYr || $t('TBD')}</span>
             {#if sg === 2}<span class="num bl"> · {resultDays(p) != null ? $t('result') + ' ' + resultDays(p) + 'd' : ''}</span>
             {:else if p.ddlLabel}<span class="num" class:rd={p.ddlDays != null && p.ddlDays <= 14} class:or={p.ddlDays != null && p.ddlDays > 14 && p.ddlDays <= 70}> · {p.ddlLabel === 'rolling' ? $t('rolling') : p.ddlLabel}</span>{/if}</span>
-          <span class="mut">{p.unit ?? $t('Proposal')} · {$t('{n} authors', { n: p.team.length })} · <span class="num">{hoursOf(p)}h</span>/{$t('mo')}</span>
+          <span class="ri mut">{$t('{n} authors', { n: p.team.length })} · <span class="num">{hoursOf(p)}h</span>/{$t('mo')}</span>
           <span class="rt">{#if needOf(p)}<span class="chip or">{needOf(p)}</span>{:else if p.team.filter((s) => !s.amount).length}<span class="chip rd">{$t('{n} authors at 0h', { n: p.team.filter((s) => !s.amount).length })}</span>{:else}<span class="mut">—</span>{/if}</span>
         </button>
       {/each}
@@ -283,15 +283,17 @@
   .num { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric: tabular-nums; }
   .mut { color: #9b9a97; }
   .rd { color: #93382a; } .or { color: #9a5b13; } .bl { color: #2b5a75; } .gn { color: #1c513f; } .yl { color: #6f5615; }
-  .hd { display: flex; align-items: center; justify-content: space-between; margin-bottom: 22px; }
-  .crumbs { display: flex; align-items: center; gap: 10px; }
-  .crumbs button { font: inherit; font-size: 26px; font-weight: 600; letter-spacing: -.01em; background: none; border: 0; color: #9b9a97; cursor: pointer; padding: 2px 6px; border-radius: 6px; }
+  .hd { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 22px; }
+  .crumbs { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .crumbs button { font: inherit; font-size: 26px; font-weight: 600; letter-spacing: -.01em; background: none; border: 0; color: #9b9a97; cursor: pointer; padding: 2px 6px; border-radius: 6px;
+    white-space: nowrap; max-width: 34vw; overflow: hidden; text-overflow: ellipsis; }
   .crumbs button.on { color: #37352f; }
   .crumbs button:hover { background: #f7f7f5; }
   .crumbs .num { font-size: 15px; font-weight: 500; color: #9b9a97; margin-left: 8px; }
   .sheet :global(.ppick input) { font: inherit; font-size: 16px; border: 1px solid #e9e9e7; border-radius: 6px; padding: 9px 12px; width: 100%; box-sizing: border-box; }
   .sep { color: #e9e9e7; font-size: 22px; }
-  .hr { display: flex; align-items: center; gap: 8px; }
+  .hr { display: flex; align-items: center; gap: 8px; flex: none; }
+  .hr .gh { white-space: nowrap; }
   .hint { font-size: 13px; color: #9b9a97; margin-right: 8px; }
   .gh { font: inherit; font-size: 14px; color: #6b6a66; background: #fff; border: 1px solid #e9e9e7; border-radius: 6px; padding: 6px 12px; cursor: pointer; }
   .gh:hover { background: #f7f7f5; color: #37352f; }
@@ -334,7 +336,11 @@
   .chip.or { background: #fadec9; color: #9a5b13; } .chip.rd { background: #ffe2dd; color: #93382a; }
   .rows { display: flex; flex-direction: column; border-top: 1px solid #e9e9e7; }
   .row { font: inherit; text-align: left; color: inherit; background: none; border: 0; border-bottom: 1px solid #f1f1ef; cursor: pointer;
-    display: grid; grid-template-columns: 44px minmax(0, 300px) 120px 200px 1fr 240px; gap: 16px; align-items: center; padding: 14px 8px; }
+    display: grid; grid-template-columns: 44px minmax(140px, 2fr) 110px minmax(150px, 1.3fr) minmax(0, 1.4fr) minmax(0, 1.6fr);
+    grid-template-areas: "idx name stage venue info need"; gap: 10px 16px; align-items: center; padding: 14px 8px; min-width: 0; }
+  .row > * { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .idx { grid-area: idx; } .row .rn { grid-area: name; } .row .stc { grid-area: stage; justify-self: start; }
+  .row .rv { grid-area: venue; } .row .ri { grid-area: info; } .row .rt { grid-area: need; }
   .row:hover { background: #f7f7f5; }
   .row.dim { opacity: .7; }
   .idx { font-size: 15px; color: #9b9a97; }
@@ -377,5 +383,6 @@
   .inl { display: inline-flex; align-items: center; gap: 4px; font-size: 15px; color: #6b6a66; }
   .acts { display: flex; align-items: center; gap: 12px; padding-top: 4px; font-size: 13px; }
   .acts .mut { margin-left: auto; }
-  @media (max-width: 1100px) { .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tiles.four { grid-template-columns: repeat(2, minmax(0, 1fr)); } .fcols { grid-template-columns: 1fr; } .row { grid-template-columns: 36px 1fr 110px 160px; } .row > :nth-child(5), .row > :nth-child(6) { display: none; } }
+  @media (max-width: 1100px) { .crumbs button { font-size: 20px; } .hint { display: none; } .gtitle { font-size: 18px; } .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } .tiles.four { grid-template-columns: repeat(2, minmax(0, 1fr)); } .fcols { grid-template-columns: 1fr; }
+    .row { grid-template-columns: 36px minmax(0, 1fr) 110px minmax(120px, auto); grid-template-areas: "idx name stage venue" ". info info need"; } }
 </style>

@@ -98,9 +98,14 @@ test.describe('market — officer single page', () => {
     // U: change the opening's role inline
     await opening.locator('select.rolesel').selectOption('last');
     await expect(opening.locator('select.rolesel')).toHaveValue('last');
-    // D: close the opening
-    await opening.locator('.rel').click({ force: true });
-    await expect(row3.locator('details.seat', { hasText: '6h/mo' })).toHaveCount(0);
+    // D: close the opening (retry: a background reload can swap the row
+    // under the first click)
+    await expect(async () => {
+      await ensureOpen(row3);
+      const left = row3.locator('details.seat', { hasText: '6h/mo' });
+      if (await left.count()) await left.locator('.rel').click({ force: true });
+      expect(await left.count()).toBe(0);
+    }).toPass({ timeout: 15_000 });
     expect(errs()).toEqual([]);
   });
 
