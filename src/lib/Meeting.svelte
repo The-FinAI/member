@@ -37,7 +37,8 @@
   let sheet = $state<'' | 'project' | 'member'>('');
 
   // 议程 = 会议的脊柱:在做的按截止日,评审中的按出结果日,搁置的沉底
-  const agenda = $derived([...projs].sort((a, b) => {
+  let wg = $state(0); // 当前工作组(议程与聚焦都在这一组里走)
+  const all = $derived([...projs].sort((a, b) => {
     const sa = stage(a), sb = stage(b);
     const bucket = (s: number) => (s === -1 ? 3 : s === 2 ? 2 : 1);
     if (bucket(sa) !== bucket(sb)) return bucket(sa) - bucket(sb);
@@ -45,12 +46,14 @@
   }));
   const groups = $derived.by(() => {
     const m = new Map<string, { unitId: string; ps: Proj[] }>();
-    for (const p of agenda) { const k = p.unit ?? $t('Proposal'); const g = m.get(k) ?? { unitId: p.unitId ?? '', ps: [] }; g.ps.push(p); m.set(k, g); }
+    for (const p of all) { const k = p.unit ?? $t('Proposal'); const g = m.get(k) ?? { unitId: p.unitId ?? '', ps: [] }; g.ps.push(p); m.set(k, g); }
     return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([name, g]) => ({ name, ...g }));
   });
-  const dueSoon = $derived(agenda.filter((p) => stage(p) >= 0 && stage(p) < 2 && p.ddlDays != null && p.ddlDays <= 14));
-  const openSeats = $derived(agenda.reduce((a, p) => a + (stage(p) >= 0 && stage(p) < 2 ? p.slots.filter((s) => s.slot_kind !== 'leader').length : 0), 0));
-  const zeroHours = $derived(agenda.reduce((a, p) => a + p.team.filter((s) => !s.amount).length, 0));
+  const group = $derived(groups[Math.min(wg, Math.max(0, groups.length - 1))] ?? null);
+  const agenda = $derived(group?.ps ?? []);
+  const dueSoon = $derived(all.filter((p) => stage(p) >= 0 && stage(p) < 2 && p.ddlDays != null && p.ddlDays <= 14));
+  const openSeats = $derived(all.reduce((a, p) => a + (stage(p) >= 0 && stage(p) < 2 ? p.slots.filter((s) => s.slot_kind !== 'leader').length : 0), 0));
+  const zeroHours = $derived(all.reduce((a, p) => a + p.team.filter((s) => !s.amount).length, 0));
   const focus = $derived(agenda[cur] ?? null);
   const hoursOf = (p: Proj) => p.team.reduce((a, s) => a + s.amount, 0);
   const resultDays = (p: Proj) => decDays(p.decision ?? p.venueNotif);
@@ -61,15 +64,19 @@
     return `${$t('needs {n}', { n: s.length })} · ${first.resource_type?.name ?? first.skill?.name ?? $t('Hours')}`;
   };
 
-  function go(p: Proj) { cur = Math.max(0, agenda.indexOf(p)); view = 'focus'; }
+  function goGroup(i: number) { wg = Math.max(0, Math.min(groups.length - 1, i)); cur = 0; view = 'agenda'; }
+  function go(p: Proj) { const gi = groups.findIndex((g) => g.ps.includes(p)); if (gi >= 0) wg = gi; cur = Math.max(0, agenda.indexOf(p)); view = 'focus'; }
+  // 聚焦走到组尾 → 下一组的议程;走到组头往回 → 本组议程
+  function next() { if (cur < agenda.length - 1) cur += 1; else if (wg < groups.length - 1) goGroup(wg + 1); }
+  function prev() { if (cur > 0) cur -= 1; else view = 'agenda'; }
   function onkey(e: KeyboardEvent) {
     if (sheet) { if (e.key === 'Escape') sheet = ''; return; }
     const tag = (e.target as HTMLElement)?.tagName;
     if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
     if (e.key === 'ArrowRight') { e.preventDefault();
-      if (view === 'board') view = 'agenda'; else if (view === 'agenda') { cur = 0; view = 'focus'; } else cur = Math.min(agenda.length - 1, cur + 1); }
+      if (view === 'board') goGroup(0); else if (view === 'agenda') { cur = 0; view = 'focus'; } else next(); }
     else if (e.key === 'ArrowLeft') { e.preventDefault();
-      if (view === 'focus') { if (cur > 0) cur -= 1; else view = 'agenda'; } else if (view === 'agenda') view = 'board'; }
+      if (view === 'focus') prev(); else if (view === 'agenda') view = 'board'; }
     else if (e.key === 'Escape') { if (view === 'focus') view = 'agenda'; else if (view === 'agenda') view = 'board'; else onclose(); }
   }
 
@@ -78,7 +85,7 @@
   let nm = $state({ name: '', affiliation: '', email: '', unitId: '', projectId: '', role: 'normal', hours: '' });
   function openProject(unitId = '') { np = { name: '', unitId, venueId: '', firstId: '', hours: '' }; sheet = 'project'; }
   function openMember(unitId = '') {
-    const first = agenda.find((p) => !unitId || p.unitId === unitId);
+    const first = all.find((p) => !unitId || p.unitId === unitId);
     nm = { name: '', affiliation: '', email: '', unitId: chapters[0]?.id ?? '', projectId: first?.id ?? '', role: 'normal', hours: '' };
     memberWg = unitId; sheet = 'member';
   }
@@ -103,7 +110,7 @@
     <div class="crumbs">
       <button class:on={view === 'board'} onclick={() => (view = 'board')}>{$t('Board')}</button>
       <span class="sep">→</span>
-      <button class:on={view === 'agenda'} onclick={() => (view = 'agenda')}>{$t('Agenda')}</button>
+      <button class:on={view === 'agenda'} onclick={() => (view = 'agenda')}>{group?.name ?? $t('Agenda')}</button>
       <span class="sep">→</span>
       <button class:on={view === 'focus'} onclick={() => { view = 'focus'; }}>{$t('Focus')}{#if view === 'focus'} <span class="num">{cur + 1} / {agenda.length}</span>{/if}</button>
     </div>
@@ -120,13 +127,14 @@
       <div class="tile"><div class="tl rd">{$t('Due within 14 days')}</div>
         <div class="tv"><span class="num big">{dueSoon.length}</span><span class="tx">{dueSoon.map((p) => `${p.name} · ${p.ddlDays}d`).join('  ·  ') || '—'}</span></div></div>
       <div class="tile"><div class="tl or">{$t('Open seats')}</div>
-        <div class="tv"><span class="num big">{openSeats}</span><span class="tx">{$t('across {n} projects', { n: agenda.filter((p) => p.slots.some((s) => s.slot_kind !== 'leader')).length })}</span></div></div>
+        <div class="tv"><span class="num big">{openSeats}</span><span class="tx">{$t('across {n} projects', { n: all.filter((p) => p.slots.some((s) => s.slot_kind !== 'leader')).length })}</span></div></div>
       <div class="tile"><div class="tl bl">{$t('Hours unset')}</div>
         <div class="tv"><span class="num big">{zeroHours}</span><span class="tx">{$t('authors at 0 h/mo')}</span></div></div>
     </div>
     {#each groups as g (g.name)}
       <div class="grp">
-        <div class="gh2"><span class="gname">{g.name}</span><span class="gc">{$t('{n} projects', { n: g.ps.length })}</span>
+        <div class="gh2"><button class="gname" onclick={() => goGroup(groups.indexOf(g))}>{g.name}</button><span class="gc">{$t('{n} projects', { n: g.ps.length })}</span>
+          <button class="gh sm" onclick={() => goGroup(groups.indexOf(g))}>{$t('Agenda')} →</button>
           <button class="gh sm" onclick={() => openProject(g.unitId)}>+ {$t('Project')}</button>
           <button class="gh sm" onclick={() => openMember(g.unitId)}>+ {$t('Member')}</button></div>
         <div class="cards">
@@ -154,6 +162,13 @@
     {/each}
 
   {:else if view === 'agenda'}
+    <div class="gnav">
+      <button class="gh" disabled={wg === 0} onclick={() => goGroup(wg - 1)}>←</button>
+      <span class="gtitle">{group?.name}</span><span class="num mut">{wg + 1} / {groups.length}</span>
+      <button class="gh" disabled={wg >= groups.length - 1} onclick={() => goGroup(wg + 1)}>→</button>
+      <button class="gh sm" onclick={() => openProject(group?.unitId ?? '')}>+ {$t('Project')}</button>
+      <button class="gh sm" onclick={() => openMember(group?.unitId ?? '')}>+ {$t('Member')}</button>
+    </div>
     <div class="rows">
       {#each agenda as p, i (p.id)}
         {@const sg = stage(p)}
@@ -176,9 +191,9 @@
     {@const zero = p.team.filter((s) => !s.amount)}
     {@const live = p.team.filter((s) => s.amount)}
     <div class="fnav">
-      <button class="gh" onclick={() => (cur > 0 ? (cur -= 1) : (view = 'agenda'))}>←</button>
+      <button class="gh" onclick={prev}>←</button>
       <span class="num">{cur + 1} / {agenda.length}</span>
-      <button class="gh" onclick={() => (cur = Math.min(agenda.length - 1, cur + 1))}>→</button>
+      <button class="gh" onclick={next}>→</button>
       <span class="mut">{p.unit ?? $t('Proposal')}</span>
     </div>
     <div class="ft"><span class="fn">{p.name}</span><span class="stc lg {sg >= 0 ? STC[Math.min(sg, 3)] : 'gy'}">{$t(sg >= 0 ? STEPS[Math.min(sg, 3)] : 'On hold')}</span></div>
@@ -251,7 +266,7 @@
       </div>
       <div class="fld"><span>{$t('Seat on a project now')} <i>· {$t('optional')}</i></span>
         <div class="three">
-          <select bind:value={nm.projectId}><option value="">—</option>{#each agenda.filter((p) => !memberWg || p.unitId === memberWg) as p}<option value={p.id}>{p.name}</option>{/each}</select>
+          <select bind:value={nm.projectId}><option value="">—</option>{#each all.filter((p) => !memberWg || p.unitId === memberWg) as p}<option value={p.id}>{p.name}</option>{/each}</select>
           <select bind:value={nm.role}><option value="normal">{$t('Author')}</option><option value="first">{$t('First author')}</option><option value="corresponding">{$t('Co-corresponding')}</option><option value="last">{$t('Last author')}</option></select>
           <label class="inl"><input class="num" type="number" min="1" bind:value={nm.hours} placeholder="5" style="width:4rem" />h/{$t('mo')}</label>
         </div></div>
@@ -294,7 +309,11 @@
   .sm2 { font-size: 15px; font-weight: 500; }
   .grp { display: flex; flex-direction: column; gap: 10px; margin-bottom: 26px; }
   .gh2 { display: flex; align-items: center; gap: 12px; }
-  .gname { font-size: 18px; font-weight: 600; color: #37352f; }
+  .gname { font: inherit; font-size: 18px; font-weight: 600; color: #37352f; background: none; border: 0; padding: 2px 6px; margin-left: -6px; border-radius: 6px; cursor: pointer; }
+  .gname:hover { background: #f7f7f5; }
+  .gnav { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .gtitle { font-size: 22px; font-weight: 600; }
+  .gh:disabled { opacity: .4; cursor: default; }
   .gc { font-size: 14px; color: #9b9a97; margin-right: 6px; }
   .cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
   .card { font: inherit; text-align: left; color: inherit; border: 1px solid #e9e9e7; border-radius: 8px; padding: 16px 18px; background: #fbfbfa;

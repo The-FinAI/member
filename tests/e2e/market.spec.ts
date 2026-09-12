@@ -533,7 +533,11 @@ test.describe('market — officer single page', () => {
     await sheet.locator('.pp-row', { hasText: 'Wang Fang' }).click();
     await sheet.getByRole('button', { name: 'Create project' }).click();
     await expect(mt.locator('.sheet')).toHaveCount(0);
-    await mt.locator('.crumbs button', { hasText: 'Agenda' }).click();
+    // agenda is per working group: the ungrouped project lives under "Proposal"
+    await mt.locator('.crumbs button', { hasText: 'Board' }).click();
+    await mt.locator('.gname', { hasText: 'Proposal' }).click();
+    await expect(mt).toHaveAttribute('data-view', 'agenda');
+    await expect(mt.locator('.gtitle')).toHaveText('Proposal');
     await expect(mt.locator('.row', { hasText: 'mk-MeetingPaper' })).toBeVisible();
     await expect(mt.locator('.row', { hasText: 'mk-MeetingPaper' })).toContainText('1 authors');
     // new member card with a blank email, seated on that project
