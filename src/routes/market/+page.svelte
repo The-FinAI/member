@@ -479,7 +479,18 @@
     s.amount = h; // optimistic; reload reconciles nominal
     run(s.slotId + s.memberId, () => supabase.rpc('assign', { p_member: s.memberId, p_slot: s.slotId, p_hours: h }));
   }
-  // 分会线:当场把人放到空位上 / 补月度容量
+  // 分会线:当场把人放到空位上 / 补月度容量 / 补技能与资源(右侧「能接的位子」按技能匹配)
+  function meetingSetSkill(memberId: string, skillId: string, level: string | null) {
+    run(memberId, () => supabase.rpc('person_skill_set', { p_skill: skillId, p_level: level, p_member: memberId }));
+  }
+  function meetingAddResource(memberId: string, typeId: string, qty: number, gpuModelId: string | null) {
+    const ty = resourceTypes.find((x) => x.id === typeId);
+    const isGpu = /gpu|compute/i.test(ty?.name ?? '');
+    run('res' + memberId, () => supabase.rpc('forge_resource', {
+      p_type: typeId, p_name: ty?.name ?? 'Resource', p_holder: memberId, p_scope: 'member',
+      p_monthly_quota: qty, p_gpu_model: isGpu ? (gpuModelId || gpuModels[0]?.id || null) : null
+    }));
+  }
   function meetingSeat(slotId: string, memberId: string, hours: number) {
     run('seat' + slotId, () => supabase.rpc('assign', { p_member: memberId, p_slot: slotId, p_hours: hours }));
   }
@@ -574,7 +585,8 @@
     <!-- in normal flow (not a fixed overlay): a fixed layer with its own
          scroll over the live page glitched on Chrome screen-share -->
     <Meeting projs={working} {mems} {wgs} chapters={chapterUnits} {venues} settled={settledBy}
-      {stage} {decDays} {venLabel} {busy}
+      {skills} {resourceTypes} {gpuModels} {stage} {decDays} {venLabel} {busy}
+      onsetskill={meetingSetSkill} onaddresource={meetingAddResource} onsetquota={setQuota}
       onclose={() => (meeting = false)} onsethours={meetingSetHours} onseat={meetingSeat}
       onsetcapacity={meetingSetCapacity}
       oncreateproject={meetingCreateProject} onaddmember={meetingAddMember} />

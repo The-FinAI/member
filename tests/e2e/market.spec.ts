@@ -598,10 +598,20 @@ test.describe('market — officer single page', () => {
     await mt.locator('input.cap').fill('12');
     await mt.locator('input.cap').blur();
     await expect(mt.locator('input.cap')).toHaveValue('12');
-    // and seat them on an open slot without leaving the meeting
+    // skills live here too — and they are what makes the match list useful
+    await expect(mt.locator('.chip.mutc')).toBeVisible(); // no skills yet
     await expect(mt.locator('.offer').first()).toBeVisible();
-    const offer = await mt.locator('.offer .on').first().textContent();
-    await mt.locator('.offer').first().click();
+    await expect(mt.locator('.offer.match')).toHaveCount(0);
+    await mt.locator('details.add > summary').click();
+    const skRow = mt.locator('.addrow').nth(0);
+    await skRow.locator('select').first().selectOption({ label: 'Annotation' });
+    await skRow.getByRole('button', { name: 'Add' }).click();
+    await expect(mt.locator('.chip', { hasText: 'Annotation' })).toBeVisible();
+    // the seat asking for Annotation is now flagged as a match
+    await expect(mt.locator('.offer.match').first()).toBeVisible();
+    // and seat them on it without leaving the meeting
+    const offer = await mt.locator('.offer.match .on').first().textContent();
+    await mt.locator('.offer.match').first().click();
     await expect(mt.locator('.seat .lnk', { hasText: offer!.trim() })).toBeVisible();
     // the other lens: the project link jumps to that project's screen
     await mt.locator('.seat .lnk', { hasText: offer!.trim() }).click();

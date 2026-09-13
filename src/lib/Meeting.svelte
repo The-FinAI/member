@@ -11,16 +11,18 @@
     venueNotif: string | null; unitId: string | null; unit: string | null; team: Seat[]; slots: Slot[];
     pool: number; ddlDays: number | null; ddlLabel: string };
   type Mem = { id: string; name: string; email: string; unitId: string | null; unit: string | null;
-    hours: number | null; used: number; linked: boolean; skills: { name: string }[];
-    resources: { name: string; typeName: string; quota: number }[] };
+    hours: number | null; used: number; linked: boolean; skills: { id: string; name: string; level: string }[];
+    resources: { id: string; name: string; typeName: string; quota: number }[] };
   type Commit = { projectId: string; projectName: string; authorship: string; amount: number; nominal: number; slotId: string };
   type Offer = { slotId: string; projectId: string; projectName: string; ask: string; ddl: string; urgent: boolean; match: boolean };
   type Unit = { id: string; name: string };
   type Venue = { id: string; name: string; kind: string; deadline: string | null };
 
-  let { projs, mems, wgs, chapters, venues, settled, stage, decDays, venLabel, busy,
-        onclose, onsethours, oncreateproject, onaddmember, onseat, onsetcapacity }: {
+  let { projs, mems, wgs, chapters, venues, settled, skills, resourceTypes, gpuModels, stage, decDays, venLabel, busy,
+        onclose, onsethours, oncreateproject, onaddmember, onseat, onsetcapacity,
+        onsetskill, onaddresource, onsetquota }: {
     projs: Proj[]; mems: Mem[]; wgs: Unit[]; chapters: Unit[]; venues: Venue[]; settled: Record<string, number>;
+    skills: { id: string; name: string }[]; resourceTypes: { id: string; name: string }[]; gpuModels: { id: string; name: string }[];
     stage: (p: Proj) => number; decDays: (d: string | null) => number | null; venLabel: (v: Venue) => string;
     busy: string;
     onclose: () => void;
@@ -29,6 +31,9 @@
     onaddmember: (d: { name: string; affiliation: string; email: string; unitId: string; projectId: string; role: string; hours: number }) => Promise<boolean>;
     onseat: (slotId: string, memberId: string, hours: number) => void;
     onsetcapacity: (m: Mem, hours: number) => void;
+    onsetskill: (memberId: string, skillId: string, level: string | null) => void;
+    onaddresource: (memberId: string, typeId: string, qty: number, gpuModelId: string | null) => void;
+    onsetquota: (resourceId: string, qty: number) => void;
   } = $props();
 
   const STEPS = ['Start', 'Active', 'In review', 'Accepted'];
@@ -351,7 +356,8 @@
       <span class="mut">{x.unit ?? $t('No chapter')}</span>
     </div>
     <PersonFocus m={x} commits={commitsOf(x)} offers={offersOf(x)} nominal={nominalOf(x)}
-      settled={settled[x.id] ?? 0} {busy} {onsetcapacity} onsethours={seatCommit}
+      settled={settled[x.id] ?? 0} {busy} {skills} {resourceTypes} {gpuModels}
+      {onsetcapacity} {onsetskill} {onaddresource} {onsetquota} onsethours={seatCommit}
       onseat={(o, mm, h) => onseat(o.slotId, mm.id, h)} onproject={goProject} />
   {/if}
 
