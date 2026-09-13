@@ -3,25 +3,32 @@
   // →/← 沿这条线走,Esc 退回上一层;加项目/加人两张大表单任何一层都能开。
   import { t } from '$lib/i18n';
   import PersonPick from '$lib/PersonPick.svelte';
+  import PersonFocus from '$lib/PersonFocus.svelte';
 
   type Seat = { memberId: string; name: string; amount: number; nominal: number; slotId: string; authorship: string };
   type Slot = { id: string; slot_kind: string; skill: { name: string } | null; resource_type: { name: string } | null; quota: number | null };
   type Proj = { id: string; name: string; status: string; venueYr: string; venueId: string | null; decision: string | null;
     venueNotif: string | null; unitId: string | null; unit: string | null; team: Seat[]; slots: Slot[];
     pool: number; ddlDays: number | null; ddlLabel: string };
-  type Mem = { id: string; name: string; hours: number | null; used: number; skills: { name: string }[] };
+  type Mem = { id: string; name: string; email: string; unitId: string | null; unit: string | null;
+    hours: number | null; used: number; linked: boolean; skills: { name: string }[];
+    resources: { name: string; typeName: string; quota: number }[] };
+  type Commit = { projectId: string; projectName: string; authorship: string; amount: number; nominal: number; slotId: string };
+  type Offer = { slotId: string; projectId: string; projectName: string; ask: string; ddl: string; urgent: boolean; match: boolean };
   type Unit = { id: string; name: string };
   type Venue = { id: string; name: string; kind: string; deadline: string | null };
 
-  let { projs, mems, wgs, chapters, venues, stage, decDays, venLabel, busy,
-        onclose, onsethours, oncreateproject, onaddmember }: {
-    projs: Proj[]; mems: Mem[]; wgs: Unit[]; chapters: Unit[]; venues: Venue[];
+  let { projs, mems, wgs, chapters, venues, settled, stage, decDays, venLabel, busy,
+        onclose, onsethours, oncreateproject, onaddmember, onseat, onsetcapacity }: {
+    projs: Proj[]; mems: Mem[]; wgs: Unit[]; chapters: Unit[]; venues: Venue[]; settled: Record<string, number>;
     stage: (p: Proj) => number; decDays: (d: string | null) => number | null; venLabel: (v: Venue) => string;
     busy: string;
     onclose: () => void;
     onsethours: (p: Proj, s: Seat, h: number) => void;
     oncreateproject: (d: { name: string; unitId: string; venueId: string; firstId: string; hours: number }) => Promise<boolean>;
     onaddmember: (d: { name: string; affiliation: string; email: string; unitId: string; projectId: string; role: string; hours: number }) => Promise<boolean>;
+    onseat: (slotId: string, memberId: string, hours: number) => void;
+    onsetcapacity: (m: Mem, hours: number) => void;
   } = $props();
 
   const STEPS = ['Start', 'Active', 'In review', 'Accepted'];
@@ -33,28 +40,48 @@
   const freeOf = (m: Mem) => (m.hours != null ? m.hours - m.used : null);
 
   let view = $state<'board' | 'agenda' | 'focus'>('board');
-  let cur = $state(0);
+  // 聚焦记的是「哪一个」,不是「第几个」:改完容量/阶段后名单会重排,
+  // 按下标记会当场跳到另一个人/另一个项目
+  let curId = $state('');
   let sheet = $state<'' | 'project' | 'member'>('');
 
-  // 议程 = 会议的脊柱:在做的按截止日,评审中的按出结果日,搁置的沉底
-  let wg = $state(0); // 当前工作组(议程与聚焦都在这一组里走)
+  // 一条脊柱两条线:组(工作组=项目 / 分会=人)→ 项 → 聚焦。导航只写一次。
+  let lane = $state<'wg' | 'chapter'>('wg');
+  let gi = $state(0);
   const all = $derived([...projs].sort((a, b) => {
     const sa = stage(a), sb = stage(b);
     const bucket = (s: number) => (s === -1 ? 3 : s === 2 ? 2 : 1);
     if (bucket(sa) !== bucket(sb)) return bucket(sa) - bucket(sb);
     return (a.ddlDays ?? 998) - (b.ddlDays ?? 998);
   }));
-  const groups = $derived.by(() => {
-    const m = new Map<string, { unitId: string; ps: Proj[] }>();
-    for (const p of all) { const k = p.unit ?? $t('Proposal'); const g = m.get(k) ?? { unitId: p.unitId ?? '', ps: [] }; g.ps.push(p); m.set(k, g); }
+  const wgGroups = $derived.by(() => {
+    const m = new Map<string, { unitId: string; items: Proj[] }>();
+    for (const p of all) { const k = p.unit ?? $t('Proposal'); const g = m.get(k) ?? { unitId: p.unitId ?? '', items: [] }; g.items.push(p); m.set(k, g); }
     return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([name, g]) => ({ name, ...g }));
   });
-  const group = $derived(groups[Math.min(wg, Math.max(0, groups.length - 1))] ?? null);
-  const agenda = $derived(group?.ps ?? []);
+  const isOver = (x: Mem) => x.hours != null && x.used > x.hours;
+  // 分会议程把「要补的」排前面:没填容量 → 超载 → 有余量 → 已排满
+  const weight = (x: Mem) => (x.hours == null ? 0 : isOver(x) ? 1 : (freeOf(x) ?? 0) > 0 ? 2 : 3);
+  const chGroups = $derived.by(() => {
+    const m = new Map<string, { unitId: string; items: Mem[] }>();
+    for (const x of mems) { const k = x.unit ?? $t('No chapter'); const g = m.get(k) ?? { unitId: x.unitId ?? '', items: [] }; g.items.push(x); m.set(k, g); }
+    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([name, g]) => ({ name, unitId: g.unitId,
+      items: [...g.items].sort((a, b) => weight(a) - weight(b) || (freeOf(b) ?? 0) - (freeOf(a) ?? 0) || a.name.localeCompare(b.name)) }));
+  });
+  const groups = $derived<{ name: string; unitId: string; items: unknown[] }[]>(lane === 'wg' ? wgGroups : chGroups);
+  const group = $derived(groups[Math.min(gi, Math.max(0, groups.length - 1))] ?? null);
+  const agenda = $derived(group?.items ?? []);
+  const projItems = $derived(lane === 'wg' ? (agenda as Proj[]) : []);
+  const memItems = $derived(lane === 'chapter' ? (agenda as Mem[]) : []);
+  const cur = $derived(Math.max(0, (agenda as { id: string }[]).findIndex((it) => it.id === curId)));
+  const focusP = $derived(lane === 'wg' ? ((agenda as Proj[])[cur] ?? null) : null);
+  const focusM = $derived(lane === 'chapter' ? ((agenda as Mem[])[cur] ?? null) : null);
+  const notRegistered = $derived(mems.filter((x) => !x.linked).length);
+  const noHours = $derived(mems.filter((x) => x.hours == null).length);
+  const freePool = $derived(mems.reduce((a, x) => a + Math.max((x.hours ?? 0) - x.used, 0), 0));
   const dueSoon = $derived(all.filter((p) => stage(p) >= 0 && stage(p) < 2 && p.ddlDays != null && p.ddlDays <= 14));
   const openSeats = $derived(all.reduce((a, p) => a + (stage(p) >= 0 && stage(p) < 2 ? p.slots.filter((s) => s.slot_kind !== 'leader').length : 0), 0));
   const zeroHours = $derived(all.reduce((a, p) => a + p.team.filter((s) => !s.amount).length, 0));
-  const focus = $derived(agenda[cur] ?? null);
   const hoursOf = (p: Proj) => p.team.reduce((a, s) => a + s.amount, 0);
   const resultDays = (p: Proj) => decDays(p.decision ?? p.venueNotif);
   const needOf = (p: Proj) => {
@@ -64,17 +91,50 @@
     return `${$t('needs {n}', { n: s.length })} · ${first.resource_type?.name ?? first.skill?.name ?? $t('Hours')}`;
   };
 
-  function goGroup(i: number) { wg = Math.max(0, Math.min(groups.length - 1, i)); cur = 0; view = 'agenda'; }
-  function go(p: Proj) { const gi = groups.findIndex((g) => g.ps.includes(p)); if (gi >= 0) wg = gi; cur = Math.max(0, agenda.indexOf(p)); view = 'focus'; }
+  const askOf = (s: Slot) => s.slot_kind === 'leader' ? $t('First author')
+    : (s.resource_type?.name ?? s.skill?.name ?? $t('Hours'));
+  const commitsOf = (x: Mem): Commit[] => all.flatMap((p) => p.team.filter((s) => s.memberId === x.id)
+    .map((s) => ({ projectId: p.id, projectName: p.name, authorship: s.authorship, amount: s.amount, nominal: s.nominal, slotId: s.slotId })));
+  const offersOf = (x: Mem): Offer[] => {
+    const taken = new Set(commitsOf(x).map((c) => c.projectId));
+    return all.flatMap((p) => p.slots.map((s) => ({
+        slotId: s.id, projectId: p.id, projectName: p.name, ask: askOf(s),
+        ddl: p.ddlLabel && p.ddlLabel !== 'rolling' ? p.ddlLabel : '',
+        urgent: p.ddlDays != null && p.ddlDays <= 14,
+        match: !!s.skill && x.skills.some((k) => k.name === s.skill?.name),
+        ok: s.slot_kind !== 'work_resource' || x.resources.some((r) => r.typeName === s.resource_type?.name) })))
+      // never offer a resource seat to someone who holds no such resource:
+      // assign() rejects it in postgres (the mock does not — it would pass here
+      // and fail in the real-DB lane)
+      .filter((o) => !taken.has(o.projectId) && o.ok)
+      .sort((a, b) => Number(b.match) - Number(a.match) || Number(b.urgent) - Number(a.urgent))
+      .slice(0, 10);
+  };
+  const nominalOf = (x: Mem) => all.reduce((a, p) => a + p.team.filter((s) => s.memberId === x.id).reduce((b, s) => b + s.nominal, 0), 0);
+
+  const setCur = (i: number) => { curId = (agenda as { id: string }[])[i]?.id ?? ''; };
+  function goGroup(i: number) { gi = Math.max(0, Math.min(groups.length - 1, i)); setCur(0); view = 'agenda'; }
+  function goLane(l: 'wg' | 'chapter', i: number) { lane = l; goGroup(i); }
+  function go(p: Proj) { lane = 'wg'; const j = wgGroups.findIndex((g) => g.items.includes(p)); if (j >= 0) gi = j;
+    curId = p.id; view = 'focus'; }
+  function goM(x: Mem) { lane = 'chapter'; const j = chGroups.findIndex((g) => g.items.includes(x)); if (j >= 0) gi = j;
+    curId = x.id; view = 'focus'; }
+  // 两个镜头互相跳:项目里的作者 → 那个人;人身上的项目 → 那个项目
+  function goPerson(memberId: string) { const x = mems.find((y) => y.id === memberId); if (x) goM(x); }
+  function goProject(projectId: string) { const p = all.find((y) => y.id === projectId); if (p) go(p); }
+  function seatCommit(c: Commit, h: number) {
+    const p = all.find((y) => y.id === c.projectId); const s = p?.team.find((y) => y.slotId === c.slotId);
+    if (p && s) onsethours(p, s, h);
+  }
   // 聚焦走到组尾 → 下一组的议程;走到组头往回 → 本组议程
-  function next() { if (cur < agenda.length - 1) cur += 1; else if (wg < groups.length - 1) goGroup(wg + 1); }
-  function prev() { if (cur > 0) cur -= 1; else view = 'agenda'; }
+  function next() { if (cur < agenda.length - 1) setCur(cur + 1); else if (gi < groups.length - 1) goGroup(gi + 1); }
+  function prev() { if (cur > 0) setCur(cur - 1); else view = 'agenda'; }
   function onkey(e: KeyboardEvent) {
     if (sheet) { if (e.key === 'Escape') sheet = ''; return; }
     const tag = (e.target as HTMLElement)?.tagName;
     if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
     if (e.key === 'ArrowRight') { e.preventDefault();
-      if (view === 'board') goGroup(0); else if (view === 'agenda') { cur = 0; view = 'focus'; } else next(); }
+      if (view === 'board') goGroup(0); else if (view === 'agenda') { setCur(0); view = 'focus'; } else next(); }
     else if (e.key === 'ArrowLeft') { e.preventDefault();
       if (view === 'focus') prev(); else if (view === 'agenda') view = 'board'; }
     else if (e.key === 'Escape') { if (view === 'focus') view = 'agenda'; else if (view === 'agenda') view = 'board'; else onclose(); }
@@ -84,9 +144,9 @@
   let np = $state({ name: '', unitId: '', venueId: '', firstId: '', hours: '' });
   let nm = $state({ name: '', affiliation: '', email: '', unitId: '', projectId: '', role: 'normal', hours: '' });
   function openProject(unitId = '') { np = { name: '', unitId, venueId: '', firstId: '', hours: '' }; sheet = 'project'; }
-  function openMember(unitId = '') {
+  function openMember(unitId = '', chapterId = '') {
     const first = all.find((p) => !unitId || p.unitId === unitId);
-    nm = { name: '', affiliation: '', email: '', unitId: chapters[0]?.id ?? '', projectId: first?.id ?? '', role: 'normal', hours: '' };
+    nm = { name: '', affiliation: '', email: '', unitId: chapterId || chapters[0]?.id || '', projectId: first?.id ?? '', role: 'normal', hours: '' };
     memberWg = unitId; sheet = 'member';
   }
   let memberWg = $state('');
@@ -131,14 +191,24 @@
       <div class="tile"><div class="tl bl">{$t('Hours unset')}</div>
         <div class="tv"><span class="num big">{zeroHours}</span><span class="tx">{$t('authors at 0 h/mo')}</span></div></div>
     </div>
-    {#each groups as g (g.name)}
+    <div class="tiles">
+      <div class="tile"><div class="tl bl">{$t('Not registered')}</div>
+        <div class="tv"><span class="num big">{notRegistered}</span><span class="tx">{$t('of {n} people', { n: mems.length })}</span></div></div>
+      <div class="tile"><div class="tl rd">{$t('Capacity unset')}</div>
+        <div class="tv"><span class="num big">{noHours}</span><span class="tx">{$t('cannot be matched to open seats')}</span></div></div>
+      <div class="tile"><div class="tl gn">{$t('Free capacity')}</div>
+        <div class="tv"><span class="num big">{freePool}h</span><span class="tx">{$t('per month, across known capacity')}</span></div></div>
+    </div>
+
+    <div class="bh">{$t('Working groups')}</div>
+    {#each wgGroups as g (g.name)}
       <div class="grp">
-        <div class="gh2"><button class="gname" onclick={() => goGroup(groups.indexOf(g))}>{g.name}</button><span class="gc">{$t('{n} projects', { n: g.ps.length })}</span>
-          <button class="gh sm" onclick={() => goGroup(groups.indexOf(g))}>{$t('Agenda')} →</button>
+        <div class="gh2"><button class="gname" onclick={() => goLane('wg', wgGroups.indexOf(g))}>{g.name}</button><span class="gc">{$t('{n} projects', { n: g.items.length })}</span>
+          <button class="gh sm" onclick={() => goLane('wg', wgGroups.indexOf(g))}>{$t('Agenda')} →</button>
           <button class="gh sm" onclick={() => openProject(g.unitId)}>+ {$t('Project')}</button>
           <button class="gh sm" onclick={() => openMember(g.unitId)}>+ {$t('Member')}</button></div>
         <div class="cards">
-          {#each g.ps as p (p.id)}
+          {#each g.items as p (p.id)}
             {@const sg = stage(p)}
             <button class="card" onclick={() => go(p)}>
               <div class="ch"><span class="cn">{p.name}</span><span class="stc {sg >= 0 ? STC[Math.min(sg, 3)] : 'gy'}">{$t(sg >= 0 ? STEPS[Math.min(sg, 3)] : 'On hold')}</span></div>
@@ -161,16 +231,55 @@
       </div>
     {/each}
 
+    <div class="bh">{$t('Chapters')}</div>
+    <div class="cards">
+      {#each chGroups as c (c.name)}
+        {@const unset = c.items.filter((x) => x.hours == null).length}
+        {@const over = c.items.filter(isOver).length}
+        {@const free = c.items.reduce((a, x) => a + Math.max((x.hours ?? 0) - x.used, 0), 0)}
+        <button class="card" onclick={() => goLane('chapter', chGroups.indexOf(c))}>
+          <div class="ch"><span class="cn">{c.name}</span><span class="stc gy">{$t('{n} people', { n: c.items.length })}</span></div>
+          <div class="cv"><span class="mut">{$t('{n} registered', { n: c.items.filter((x) => x.linked).length })}</span>
+            <span class="num gn">{$t('free')} {free}h/{$t('mo')}</span></div>
+          <div class="ct">
+            {#each c.items.slice(0, 4) as x (x.id)}<span class="av" style="background:{avColor(x.name)}22;color:{avColor(x.name)}">{initials(x.name)}</span>{/each}
+            <span class="mut">{$t('committed')} <span class="num">{c.items.reduce((a, x) => a + x.used, 0)}h</span>/{$t('mo')}</span>
+          </div>
+          <div class="cf">
+            {#if unset}<span class="chip rd">{$t('{n} without hours', { n: unset })}</span>{/if}
+            {#if over}<span class="chip or">{$t('{n} over capacity', { n: over })}</span>{/if}
+          </div>
+        </button>
+      {/each}
+    </div>
+
   {:else if view === 'agenda'}
     <div class="gnav">
-      <button class="gh" disabled={wg === 0} onclick={() => goGroup(wg - 1)}>←</button>
-      <span class="gtitle">{group?.name}</span><span class="num mut">{wg + 1} / {groups.length}</span>
-      <button class="gh" disabled={wg >= groups.length - 1} onclick={() => goGroup(wg + 1)}>→</button>
-      <button class="gh sm" onclick={() => openProject(group?.unitId ?? '')}>+ {$t('Project')}</button>
-      <button class="gh sm" onclick={() => openMember(group?.unitId ?? '')}>+ {$t('Member')}</button>
+      <button class="gh" disabled={gi === 0} onclick={() => goGroup(gi - 1)}>←</button>
+      <span class="gtitle">{group?.name}</span><span class="num mut">{gi + 1} / {groups.length}</span>
+      <button class="gh" disabled={gi >= groups.length - 1} onclick={() => goGroup(gi + 1)}>→</button>
+      {#if lane === 'wg'}
+        <button class="gh sm" onclick={() => openProject(group?.unitId ?? '')}>+ {$t('Project')}</button>
+        <button class="gh sm" onclick={() => openMember(group?.unitId ?? '')}>+ {$t('Member')}</button>
+      {:else}
+        <button class="gh sm" onclick={() => openMember('', group?.unitId ?? '')}>+ {$t('Member')}</button>
+      {/if}
     </div>
     <div class="rows">
-      {#each agenda as p, i (p.id)}
+      {#each memItems as x, i (x.id)}
+        <button class="row" onclick={() => goM(x)}>
+          <span class="num idx">{String(i + 1).padStart(2, '0')}</span>
+          <span class="rn">{x.name}</span>
+          <span class="stc {x.linked ? 'gn' : 'gy'}">{x.linked ? $t('Registered') : $t('Card')}</span>
+          <span class="rv">{#if x.hours == null}<span class="rd">{$t('no hours set')}</span>
+            {:else}<span class="num" class:rd={isOver(x)}>{x.used}h</span><span class="mut"> / {x.hours}h</span>{/if}</span>
+          <span class="ri mut">{x.skills.map((k) => k.name).join(' · ') || $t('no skills set')}</span>
+          <span class="rt">{#if isOver(x)}<span class="chip rd">{$t('over by')} {x.used - (x.hours ?? 0)}h</span>
+            {:else if (freeOf(x) ?? 0) > 0}<span class="chip gn">{$t('free')} {freeOf(x)}h</span>
+            {:else}<span class="mut">—</span>{/if}</span>
+        </button>
+      {/each}
+      {#each projItems as p, i (p.id)}
         {@const sg = stage(p)}
         <button class="row" class:onhold={sg < 0} onclick={() => go(p)}>
           <span class="num idx">{String(i + 1).padStart(2, '0')}</span>
@@ -185,8 +294,8 @@
       {/each}
     </div>
 
-  {:else if focus}
-    {@const p = focus}
+  {:else if focusP}
+    {@const p = focusP}
     {@const sg = stage(p)}
     {@const zero = p.team.filter((s) => !s.amount)}
     {@const live = p.team.filter((s) => s.amount)}
@@ -210,7 +319,7 @@
         {#each live as s, i (s.memberId)}
           <div class="seat">
             <span class="num idx">{i + 1}</span>
-            <span class="sn">{s.name}</span>
+            <button class="lnk sn" onclick={() => goPerson(s.memberId)}>{s.name}</button>
             <span class="rolec {s.authorship === 'first' ? 'rd' : s.authorship === 'corresponding' ? 'bl' : /last/.test(s.authorship) ? 'gn' : ''}">{$t(ROLE[s.authorship] ?? 'Author')}</span>
             <span class="give"><input class="num" type="number" min="1" value={s.amount}
               onchange={(e) => { const h = Number((e.target as HTMLInputElement).value); if (h > 0 && h !== s.amount) onsethours(p, s, h); }} />h</span>
@@ -224,14 +333,26 @@
           <div class="zt">{$t('{n} authors at 0 h/mo', { n: zero.length })}</div>
           <div class="zchips">
             {#each zero as s (s.memberId)}
-              <label class="zchip"><span>{s.name}</span><input class="num" type="number" min="1" placeholder="h"
-                onchange={(e) => { const h = Number((e.target as HTMLInputElement).value); if (h > 0) onsethours(p, s, h); }} /></label>
+              <span class="zchip"><button class="lnk" onclick={() => goPerson(s.memberId)}>{s.name}</button><input class="num" type="number" min="1" placeholder="h"
+                onchange={(e) => { const h = Number((e.target as HTMLInputElement).value); if (h > 0) onsethours(p, s, h); }} /></span>
             {/each}
           </div>
           <div class="mut">{$t('type hours to set them without leaving the meeting')}</div>
         {/if}
       </div>
     </div>
+
+  {:else if focusM}
+    {@const x = focusM}
+    <div class="fnav">
+      <button class="gh" onclick={prev}>←</button>
+      <span class="num">{cur + 1} / {agenda.length}</span>
+      <button class="gh" onclick={next}>→</button>
+      <span class="mut">{x.unit ?? $t('No chapter')}</span>
+    </div>
+    <PersonFocus m={x} commits={commitsOf(x)} offers={offersOf(x)} nominal={nominalOf(x)}
+      settled={settled[x.id] ?? 0} {busy} {onsetcapacity} onsethours={seatCommit}
+      onseat={(o, mm, h) => onseat(o.slotId, mm.id, h)} onproject={goProject} />
   {/if}
 
   {#if sheet === 'project'}
@@ -309,6 +430,12 @@
   .tx { font-size: 15px; color: #6b6a66; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tv2 { font-size: 22px; font-weight: 600; }
   .sm2 { font-size: 15px; font-weight: 500; }
+  .bh { font-size: 12.5px; font-weight: 600; color: #9b9a97; text-transform: uppercase; letter-spacing: .06em;
+    border-top: 1px solid #e9e9e7; padding-top: 14px; margin: 4px 0 14px; }
+  .lnk { font: inherit; text-align: left; background: none; border: 0; color: #37352f; cursor: pointer;
+    padding: 2px 6px; margin-left: -6px; border-radius: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .lnk:hover { background: #f7f7f5; }
+  .chip.gn { background: #dbeddb; color: #1c513f; }
   .grp { display: flex; flex-direction: column; gap: 10px; margin-bottom: 26px; }
   .gh2 { display: flex; align-items: center; gap: 12px; }
   .gname { font: inherit; font-size: 18px; font-weight: 600; color: #37352f; background: none; border: 0; padding: 2px 6px; margin-left: -6px; border-radius: 6px; cursor: pointer; }

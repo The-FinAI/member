@@ -479,6 +479,14 @@
     s.amount = h; // optimistic; reload reconciles nominal
     run(s.slotId + s.memberId, () => supabase.rpc('assign', { p_member: s.memberId, p_slot: s.slotId, p_hours: h }));
   }
+  // 分会线:当场把人放到空位上 / 补月度容量
+  function meetingSeat(slotId: string, memberId: string, hours: number) {
+    run('seat' + slotId, () => supabase.rpc('assign', { p_member: memberId, p_slot: slotId, p_hours: hours }));
+  }
+  function meetingSetCapacity(m: Mem, hours: number) {
+    m.hours = hours; // optimistic; reload reconciles free/used
+    run(m.id, () => supabase.rpc('person_set_capacity', { p_hours: hours, p_member: m.id }));
+  }
   async function meetingCreateProject(d: { name: string; unitId: string; venueId: string; firstId: string; hours: number }) {
     const sid = statusId('Proposal') ?? statuses[0]?.id;
     const tid = types.find((x) => /paper|research/i.test(x.name))?.id ?? types[0]?.id;
@@ -565,8 +573,10 @@
   {:else if meeting}
     <!-- in normal flow (not a fixed overlay): a fixed layer with its own
          scroll over the live page glitched on Chrome screen-share -->
-    <Meeting projs={working} {mems} {wgs} chapters={chapterUnits} {venues} {stage} {decDays} {venLabel} {busy}
-      onclose={() => (meeting = false)} onsethours={meetingSetHours}
+    <Meeting projs={working} {mems} {wgs} chapters={chapterUnits} {venues} settled={settledBy}
+      {stage} {decDays} {venLabel} {busy}
+      onclose={() => (meeting = false)} onsethours={meetingSetHours} onseat={meetingSeat}
+      onsetcapacity={meetingSetCapacity}
       oncreateproject={meetingCreateProject} onaddmember={meetingAddMember} />
   {:else}
     <div class="strbar">

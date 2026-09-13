@@ -8,13 +8,13 @@ import { asRole, trackErrors, dismissQuest, resetDb, expect } from './helpers';
 
 // a row can collapse when a background reload lands between our isVisible
 // check and the next action — retry open until the body is really there
-async function ensureOpen(row: import('@playwright/test').Locator) {
+async function ensureOpen(row: import('@playwright/test').Locator, body = '.pbody') {
   await expect(async () => {
     // a refresh can collapse the Accepted pool around the row — reopen it first
     if (!(await row.isVisible()))
       for (const s of await row.page().locator('.arcpool:not([open]) > summary').all()) await s.click();
-    if (!(await row.locator('.pbody').isVisible())) await row.locator('> summary').click({ force: true });
-    expect(await row.locator('.pbody').isVisible()).toBeTruthy();
+    if (!(await row.locator(body).isVisible())) await row.locator('> summary').click({ force: true });
+    expect(await row.locator(body).isVisible()).toBeTruthy();
   }).toPass({ timeout: 10_000 });
 }
 
@@ -168,18 +168,21 @@ test.describe('market — officer single page', () => {
     await page.goto('/market');
     await dismissQuest(page);
     const wrow = page.locator('.p', { has: page.locator('.pname', { hasText: 'Wang Fang' }) }).first();
-    await wrow.locator('> summary').click();
+    await ensureOpen(wrow, '.pf');
     // U: edit the GPU resource quota inline
     await wrow.locator('.chip.rs .ghours').fill('150');
     await wrow.locator('.chip.rs .ghours').blur();
     await expect(wrow.locator('.chip.rs .ghours')).toHaveValue('150');
     // U2: change a skill's level inline on its chip
+    await ensureOpen(wrow, '.pf');
     await wrow.locator('.chip', { hasText: 'Annotation' }).locator('.lvlsel').selectOption('learning');
     await expect(wrow.locator('.chip', { hasText: 'Annotation' }).locator('.lvlsel')).toHaveValue('learning');
     // D: delete the Annotation skill chip
+    await ensureOpen(wrow, '.pf');
     await wrow.locator('.chip', { hasText: 'Annotation' }).locator('.chipx').click({ force: true });
     await expect(wrow.locator('.chip', { hasText: 'Annotation' })).toHaveCount(0);
     // C: add a skill via the collapsed adder
+    await ensureOpen(wrow, '.pf');
     await wrow.locator('details.sub2', { hasText: 'Add skill / resource' }).locator('> summary').click();
     const skRow = wrow.locator('.addrow').nth(0);
     await skRow.locator('select').first().selectOption({ label: 'Writing' });
@@ -571,6 +574,47 @@ test.describe('market — officer single page', () => {
     await page.keyboard.press('Escape');
     await expect(page.locator('.mt')).toHaveCount(0);
     await expect(page.locator('.prow', { hasText: 'mk-MeetingPaper' })).toBeVisible();
+    expect(errs()).toEqual([]);
+  });
+
+  test('M21: chapter lane — roster by chapter, set capacity, seat from the person screen', async ({ page }) => {
+    const errs = trackErrors(page);
+    await page.goto('/market');
+    await dismissQuest(page);
+    await page.getByRole('button', { name: 'Meeting' }).click();
+    const mt = page.locator('.mt');
+    // the board carries both lanes: working groups, then chapters
+    await expect(mt.locator('.bh', { hasText: 'Working groups' })).toBeVisible();
+    await mt.locator('.card', { hasText: 'Beijing Chapter' }).click();
+    await expect(mt).toHaveAttribute('data-view', 'agenda');
+    await expect(mt.locator('.gtitle')).toHaveText('Beijing Chapter');
+    // people needing attention come first: Pei Lan has no capacity set
+    await expect(mt.locator('.row').first()).toContainText('Pei Lan');
+    await expect(mt.locator('.row').first()).toContainText('no hours set');
+    await mt.locator('.row', { hasText: 'Pei Lan' }).click();
+    await expect(mt).toHaveAttribute('data-view', 'focus');
+    await expect(mt.locator('.fn')).toHaveText('Pei Lan');
+    // fill the capacity the chapter chair owes us, right here
+    await mt.locator('input.cap').fill('12');
+    await mt.locator('input.cap').blur();
+    await expect(mt.locator('input.cap')).toHaveValue('12');
+    // and seat them on an open slot without leaving the meeting
+    await expect(mt.locator('.offer').first()).toBeVisible();
+    const offer = await mt.locator('.offer .on').first().textContent();
+    await mt.locator('.offer').first().click();
+    await expect(mt.locator('.seat .lnk', { hasText: offer!.trim() })).toBeVisible();
+    // the other lens: the project link jumps to that project's screen
+    await mt.locator('.seat .lnk', { hasText: offer!.trim() }).click();
+    await expect(mt.locator('.fn')).toHaveText(offer!.trim());
+    await expect(mt.locator('.seat', { hasText: 'Pei Lan' })).toBeVisible();
+    // back out to the page; the capacity stuck
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Escape');
+    await page.keyboard.press('Escape');
+    await expect(page.locator('.mt')).toHaveCount(0);
+    const prow = page.locator('.p', { has: page.locator('.pname', { hasText: 'Pei Lan' }) }).first();
+    await prow.locator('> summary').click();
+    await expect(prow.locator('.pf label', { hasText: 'Monthly' }).locator('input')).toHaveValue('12');
     expect(errs()).toEqual([]);
   });
 });

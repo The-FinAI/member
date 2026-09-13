@@ -28,6 +28,9 @@ const seed: Record<string, any[]> = {
   member: [
     { id: M_ME, full_name: 'Chen Wei', email: 'chen@test', affiliation: 'The Fin AI', kind: 'operator', status: 'active', availability: 'limited', home_unit_id: U_CHAP, auth_user_id: 'mock-uid', monthly_hours: 20, bio: 'Chapter & WG officer.', links: {}, member_position: [{ position: { name: 'President' } }] },
     { id: M_LI, full_name: 'Li Hua', email: 'li@test', affiliation: 'PKU', kind: 'operator', status: 'active', availability: 'looking', home_unit_id: U_CHAP, auth_user_id: 'uid-member', monthly_hours: 10, bio: 'Researcher — no officer role.', links: {}, member_position: [], is_release_reviewer: true },
+    // no capacity set: what every OpenReview-imported card looks like until
+    // someone fills it in (68 of 83 people in production)
+    { id: 'm-pei', full_name: 'Pei Lan', email: 'pei@test', affiliation: 'SCU', kind: 'card', status: 'invited', availability: 'looking', home_unit_id: U_CHAP, auth_user_id: null, monthly_hours: null, member_position: [] },
     { id: M_WANG, full_name: 'Wang Fang', email: 'wang@test', affiliation: 'THU', kind: 'card', status: 'active', availability: 'looking', home_unit_id: U_CHAP, auth_user_id: null, monthly_hours: 30, member_position: [], is_release_reviewer: true },
     { id: M_ZHAO, full_name: 'Zhao Lei', email: 'zhao@test', affiliation: 'SJTU', kind: 'card', status: 'active', availability: 'looking', home_unit_id: U_CHAP, auth_user_id: null, monthly_hours: 8, member_position: [] },
     { id: 'm-wg', full_name: 'Wu Jing', email: 'wu@test', affiliation: 'The Fin AI', kind: 'operator', status: 'active', availability: 'looking', home_unit_id: U_WG, auth_user_id: 'uid-wg', monthly_hours: 20, bio: 'Working-group officer.', links: {}, member_position: [] },

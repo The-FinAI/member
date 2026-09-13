@@ -25,7 +25,10 @@ insert into member (id, full_name, email, kind, status, home_unit_id, monthly_ho
   ('c0000000-0000-0000-0000-000000000004', 'Zhao Lei', 'zhao@e2e.local', 'card', 'active', 'a0000000-0000-0000-0000-00000000000a', 8),
   ('c0000000-0000-0000-0000-000000000005', 'Wu Jing', 'wu@e2e.local', 'operator', 'active', 'a0000000-0000-0000-0000-00000000000b', 20),
   ('c0000000-0000-0000-0000-000000000006', 'Chan Min', 'chan@e2e.local', 'operator', 'active', 'a0000000-0000-0000-0000-00000000000a', 20),
-  ('c0000000-0000-0000-0000-000000000007', 'Sai Tan', 'admin@e2e.local', 'operator', 'active', 'a0000000-0000-0000-0000-00000000000a', 0);
+  ('c0000000-0000-0000-0000-000000000007', 'Sai Tan', 'admin@e2e.local', 'operator', 'active', 'a0000000-0000-0000-0000-00000000000a', 0),
+  -- the dominant real-world state after an OpenReview import: a card whose
+  -- capacity nobody has filled in yet (68 of 83 people in production)
+  ('c0000000-0000-0000-0000-000000000008', 'Pei Lan', 'pei@e2e.local', 'card', 'invited', 'a0000000-0000-0000-0000-00000000000a', null);
 
 insert into person_skill (member_id, skill_id, level) values
   ('c0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-00000000000b', 'lead'),
