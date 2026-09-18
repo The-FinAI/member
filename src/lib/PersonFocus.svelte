@@ -5,11 +5,12 @@
   type Mem = { id: string; name: string; email: string; unit: string | null; hours: number | null;
     used: number; linked: boolean; skills: { id: string; name: string; level: string }[];
     resources: { id: string; name: string; typeName: string; quota: number }[] };
-  type Commit = { projectId: string; projectName: string; authorship: string; amount: number; nominal: number; slotId: string };
+  type Give = { slotId: string; rtype: string; unit: string; amount: number };
+  type Commit = { projectId: string; projectName: string; authorship: string; amount: number; nominal: number; slotId: string; gives: Give[] };
   type Offer = { slotId: string; projectId: string; projectName: string; ask: string; ddl: string; urgent: boolean; match: boolean };
 
   let { m, commits, offers, nominal, settled, busy, skills, resourceTypes, gpuModels,
-        onsetcapacity, onsethours, onseat, onproject, onsetskill, onaddresource, onsetquota }: {
+        onsetcapacity, onsethours, onseat, onproject, onsetskill, onaddresource, onsetquota, onsetgive }: {
     m: Mem; commits: Commit[]; offers: Offer[]; nominal: number; settled: number; busy: string;
     skills: { id: string; name: string }[]; resourceTypes: { id: string; name: string }[]; gpuModels: { id: string; name: string }[];
     onsetcapacity: (m: Mem, hours: number) => void;
@@ -19,6 +20,7 @@
     onsetskill: (memberId: string, skillId: string, level: string | null) => void;
     onaddresource: (memberId: string, typeId: string, qty: number, gpuModelId: string | null) => void;
     onsetquota: (resourceId: string, qty: number) => void;
+    onsetgive: (memberId: string, slotId: string, qty: number) => void;
   } = $props();
 
   // plain object on purpose: a reactive draft would re-render and close the adder
@@ -93,8 +95,12 @@
       <div class="seat">
         <button class="lnk" onclick={() => onproject(c.projectId)}>{c.projectName}</button>
         <span class="rolec {c.authorship === 'first' ? 'rd' : c.authorship === 'corresponding' ? 'bl' : /last/.test(c.authorship) ? 'gn' : ''}">{$t(ROLE[c.authorship] ?? 'Author')}</span>
-        <span class="give"><input class="num" type="number" min="1" value={c.amount}
-          onchange={(e) => { const h = Number((e.target as HTMLInputElement).value); if (h > 0 && h !== c.amount) onsethours(c, h); }} />h</span>
+        <span class="give">
+          {#if c.amount || !c.gives.length}<input class="num" type="number" min="1" value={c.amount}
+            onchange={(e) => { const h = Number((e.target as HTMLInputElement).value); if (h > 0 && h !== c.amount) onsethours(c, h); }} />h{/if}
+          {#each c.gives as g (g.slotId)}<span class="gv" title={g.unit}>{g.rtype}<input class="num" type="number" min="1" value={g.amount}
+            onchange={(e) => { const q = Number((e.target as HTMLInputElement).value); if (q > 0 && q !== g.amount) onsetgive(m.id, g.slotId, q); }} /></span>{/each}
+        </span>
         <span class="num pts">{c.nominal.toLocaleString()}</span>
       </div>
     {/each}
@@ -156,7 +162,7 @@
   .bt:disabled { opacity: .5; }
   .fcols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 48px; }
   .seats { display: flex; flex-direction: column; }
-  .seat { display: grid; grid-template-columns: 1fr 150px 100px 80px; gap: 12px; align-items: center; padding: 12px 8px; border-bottom: 1px solid #f1f1ef; }
+  .seat { display: grid; grid-template-columns: 1fr 150px minmax(100px, auto) 80px; gap: 12px; align-items: center; padding: 12px 8px; border-bottom: 1px solid #f1f1ef; }
   .lnk { font: inherit; font-size: 19px; font-weight: 500; text-align: left; background: none; border: 0; color: #37352f; cursor: pointer;
     padding: 2px 6px; margin-left: -6px; border-radius: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .lnk:hover { background: #f7f7f5; }
@@ -165,6 +171,8 @@
   .give { justify-self: end; font-size: 17px; }
   .give input { font: inherit; font-size: 17px; width: 4rem; text-align: right; border: 1px solid transparent; border-radius: 4px; padding: 2px 4px; background: none; }
   .give input:hover, .give input:focus { border-color: #e9e9e7; background: #fff; outline: none; }
+  .gv { display: inline-flex; align-items: center; gap: 2px; font-size: 13px; background: #e8deee; color: #5a4a72; border-radius: 4px; padding: 1px 2px 1px 8px; margin-left: 6px; }
+  .gv input { width: 3.2rem !important; font-size: 14px !important; }
   .pts { justify-self: end; font-size: 14px; color: #6f5615; background: #fdecc8; border-radius: 4px; padding: 2px 8px; }
   .zeros { display: flex; flex-direction: column; gap: 10px; padding-top: 12px; }
   .zt { font-size: 13px; color: #6b6a66; font-weight: 600; }

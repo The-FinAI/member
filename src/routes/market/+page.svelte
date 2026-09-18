@@ -11,9 +11,12 @@
   import Meeting from '$lib/Meeting.svelte';
 
   type Slot = { id: string; project_id: string; slot_kind: string; authorship: string | null;
-    skill: { name: string } | null; resource_type: { name: string } | null;
+    skill: { name: string } | null; resource_type: { name: string; unit?: string } | null;
     desired_level: string | null; quota: number | null; status: string };
-  type Seat = { memberId: string; name: string; amount: number; nominal: number; slotId: string; authorship: string };
+  // an author contributes hours, resources (GPU, funding, data…), or both — `amount` is
+  // hours only; each resource contribution keeps its own unit and slot
+  type Give = { slotId: string; rtype: string; unit: string; amount: number };
+  type Seat = { memberId: string; name: string; amount: number; nominal: number; slotId: string; authorship: string; gives: Give[] };
   type Proj = { id: string; name: string; status: string; venue: string | null; venueId: string | null;
     venueYr: string; decision: string | null; venueNotif: string | null; outcome: string | null;
     unitId: string | null; unit: string | null; team: Seat[]; slots: Slot[];
@@ -44,7 +47,7 @@
   let chapterUnits = $state<Unit[]>([]);
   let venues = $state<{ id: string; name: string; kind: string; deadline: string | null }[]>([]);
   let skills = $state<{ id: string; name: string }[]>([]);
-  let resourceTypes = $state<{ id: string; name: string }[]>([]);
+  let resourceTypes = $state<{ id: string; name: string; unit?: string }[]>([]);
   let statuses = $state<{ id: string; name: string }[]>([]);
   let types = $state<{ id: string; name: string }[]>([]);
   let gpuModels = $state<{ id: string; name: string }[]>([]);
@@ -106,12 +109,12 @@
       supabase.from('project').select('id, name, org_unit_id, target_venue, venue_id, deadline, tag, archived_at, project_status!project_status_id_fkey(name)'),
       supabase.from('org_unit').select('id, name, kind'),
       supabase.from('venue').select('id, name, kind, deadline, notification'),
-      supabase.from('project_slot').select('id, project_id, slot_kind, authorship, desired_level, quota, status, skill:skill_id(name), resource_type:resource_type_id(name)'),
+      supabase.from('project_slot').select('id, project_id, slot_kind, authorship, desired_level, quota, status, skill:skill_id(name), resource_type:resource_type_id(name, unit)'),
       supabase.from('work_commitment').select('project_id, slot_id, member_id, monthly_amount, nominal_str, authorship, year_month, member:member_id(full_name)'),
       supabase.from('member').select('id, full_name, email, home_unit_id, monthly_hours, auth_user_id, archived_at'),
       supabase.from('person_skill').select('member_id, level, skill_id, skill:skill_id(name)'),
       supabase.from('skill').select('id, name, parent_id'),
-      supabase.from('resource_type').select('id, name'),
+      supabase.from('resource_type').select('id, name, unit'),
       supabase.from('project_status').select('id, name'),
       supabase.from('project_type').select('id, name'),
       supabase.from('resource').select('id, name, holder_member_id, monthly_quota, resource_type:type_id(name)'),
@@ -157,14 +160,21 @@
       const nom = Number(w.nominal_str) || 0;
       const role = w.authorship ?? slotById[w.slot_id]?.authorship
         ?? (slotById[w.slot_id]?.slot_kind === 'leader' ? 'first' : null);
-      const prev = list.find((x) => x.memberId === w.member_id);
-      if (prev) { prev.amount += amt; prev.nominal += nom;
-        if (live && w.slot_id) prev.slotId = w.slot_id;
-        if (role && (prev.authorship === 'normal' || w.authorship)) prev.authorship = role; }
-      else list.push({ memberId: w.member_id, name: w.member?.full_name ?? '—',
-        amount: amt, nominal: nom, slotId: w.slot_id,
-        authorship: role ?? 'normal' });
-      usedBy[w.member_id] = (usedBy[w.member_id] ?? 0) + amt;
+      const sl = slotById[w.slot_id];
+      const isRes = sl?.slot_kind === 'work_resource';
+      let seat = list.find((x) => x.memberId === w.member_id);
+      if (!seat) { seat = { memberId: w.member_id, name: w.member?.full_name ?? '—', amount: 0, nominal: 0,
+        slotId: '', authorship: role ?? 'normal', gives: [] }; list.push(seat); }
+      else if (role && (seat.authorship === 'normal' || w.authorship)) seat.authorship = role;
+      seat.nominal += nom;
+      if (isRes) {
+        if (live) seat.gives.push({ slotId: w.slot_id, rtype: sl?.resource_type?.name ?? 'Resource',
+          unit: sl?.resource_type?.unit ?? '', amount: amt });
+      } else {
+        seat.amount += amt;
+        if (live && w.slot_id) seat.slotId = w.slot_id;
+        usedBy[w.member_id] = (usedBy[w.member_id] ?? 0) + amt; // capacity is hours: resources never count
+      }
       nominalBy[w.member_id] = (nominalBy[w.member_id] ?? 0) + nom;
     }
 
@@ -330,8 +340,11 @@
     await run(s.id, () => supabase.rpc('assign', { p_member: memberId, p_slot: s.id, p_hours: hours }));
   }
   async function removeSeat(p: Proj, seat: Seat) {
-    await run(seat.slotId + seat.memberId,
-      () => supabase.rpc('unassign', { p_slot: seat.slotId, p_member: seat.memberId }));
+    for (const g of seat.gives)
+      if (!await run(g.slotId + seat.memberId, () => supabase.rpc('unassign', { p_slot: g.slotId, p_member: seat.memberId }))) return;
+    if (seat.slotId || !seat.gives.length)
+      await run(seat.slotId + seat.memberId,
+        () => supabase.rpc('unassign', { p_slot: seat.slotId, p_member: seat.memberId }));
   }
 
   const openRole: Record<string, string> = {};
@@ -357,20 +370,35 @@
   const authorPick: Record<string, string> = {};
   const authorRole: Record<string, string> = {};
   const authorHours: Record<string, string> = {};
+  const authorGive: Record<string, string> = {}; // '' = hours, else a resource_type id
+  // Seat someone as an author with what they bring: hours, or a resource (GPU,
+  // funding, data…). A resource they do not hold yet is recorded for them first —
+  // assign() only accepts a resource seat from someone holding that type.
+  async function seatAuthor(projectId: string, memberId: string, role: string, give: string, qty: number) {
+    const ty = give ? resourceTypes.find((x) => x.id === give) : null;
+    if (ty && !mems.find((m) => m.id === memberId)?.resources.some((r) => r.typeName === ty.name)) {
+      const isGpu = /gpu|compute/i.test(ty.name);
+      const { error: e0 } = await supabase.rpc('forge_resource', {
+        p_type: ty.id, p_name: ty.name, p_holder: memberId, p_scope: 'member',
+        p_monthly_quota: qty, p_gpu_model: isGpu ? (gpuModels[0]?.id ?? null) : null });
+      if (e0) { toast.error(e0.message); return false; }
+    }
+    const { data: sid, error } = await supabase.rpc('forge_need', {
+      p_project: projectId, p_kind: ty ? 'work_resource' : 'work_labor', p_skill: null,
+      p_resource_type: ty?.id ?? null, p_level: null, p_capacity: qty, p_headcount: 1,
+      p_authorship: role || 'normal'
+    });
+    if (error || !sid) { toast.error(error?.message ?? 'failed'); return false; }
+    const { error: e2 } = await supabase.rpc('assign', { p_member: memberId, p_slot: sid, p_hours: qty });
+    if (e2) { toast.error(e2.message); return false; }
+    return true;
+  }
   async function addAuthor(p: Proj) {
     const memberId = authorPick[p.id];
     if (!memberId) return;
-    const hours = Number(authorHours[p.id]) || 5;
     busy = 'au' + p.id;
-    const { data: sid, error } = await supabase.rpc('forge_need', {
-      p_project: p.id, p_kind: 'work_labor', p_skill: null, p_resource_type: null,
-      p_level: null, p_capacity: hours, p_headcount: 1,
-      p_authorship: authorRole[p.id] || 'normal'
-    });
-    if (error || !sid) { busy = ''; toast.error(error?.message ?? 'failed'); await load(); return; }
-    const { error: e2 } = await supabase.rpc('assign', { p_member: memberId, p_slot: sid, p_hours: hours });
+    await seatAuthor(p.id, memberId, authorRole[p.id] || 'normal', authorGive[p.id] || '', Number(authorHours[p.id]) || 5);
     busy = '';
-    if (e2) toast.error(e2.message);
     await load();
   }
 
@@ -514,24 +542,16 @@
   }
   // 邮箱可空:卡片先用 <slug>@pending.thefin.ai 占位(与 OpenReview 导入同一约定),chair 事后补
   const pendingEmail = (name: string) => name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '.').replace(/^\.|\.$/g, '') + '@pending.thefin.ai';
-  async function meetingAddMember(d: { name: string; affiliation: string; email: string; unitId: string; projectId: string; role: string; hours: number }) {
+  async function meetingAddMember(d: { name: string; affiliation: string; email: string; unitId: string; projectId: string; role: string; give: string; hours: number }) {
     busy = 'add';
     const { data: mid, error } = await supabase.rpc('forge_member_card', {
       p_full_name: d.name, p_email: d.email || pendingEmail(d.name), p_unit: d.unitId || null, p_affiliation: d.affiliation || null
     });
     if (error || !mid) { busy = ''; toast.error(error?.message ?? 'failed'); return false; }
-    if (d.projectId) {
-      const { data: slot, error: e1 } = await supabase.rpc('forge_need', {
-        p_project: d.projectId, p_kind: 'work_labor', p_skill: null, p_resource_type: null,
-        p_level: null, p_capacity: d.hours, p_headcount: 1, p_authorship: d.role || 'normal'
-      });
-      if (e1 || !slot) { busy = ''; toast.error(e1?.message ?? 'failed'); await load(); return false; }
-      const { error: e2 } = await supabase.rpc('assign', { p_member: mid, p_slot: slot, p_hours: d.hours });
-      if (e2) { busy = ''; toast.error(e2.message); await load(); return false; }
-    }
+    const ok = !d.projectId || await seatAuthor(d.projectId, mid, d.role, d.give, d.hours);
     busy = '';
     await load();
-    return true;
+    return ok;
   }
 
   const slotAsk = (s: Slot) =>
@@ -587,6 +607,7 @@
     <Meeting projs={working} {mems} {wgs} chapters={chapterUnits} {venues} settled={settledBy}
       {skills} {resourceTypes} {gpuModels} {stage} {decDays} {venLabel} {busy}
       onsetskill={meetingSetSkill} onaddresource={meetingAddResource} onsetquota={setQuota}
+      onsetgive={(memberId, slotId, qty) => run(slotId + memberId, () => supabase.rpc('assign', { p_member: memberId, p_slot: slotId, p_hours: qty }))}
       onclose={() => (meeting = false)} onsethours={meetingSetHours} onseat={meetingSeat}
       onsetcapacity={meetingSetCapacity}
       oncreateproject={meetingCreateProject} onaddmember={meetingAddMember} />
@@ -692,14 +713,24 @@
                   {:else}
                     <span class="rolec {ROLE_CLS[seat.authorship] ?? ''}">{$t(ROLE_LABEL[seat.authorship] ?? 'Author')}</span>
                   {/if}
-                  {#if sg <= 2}
-                    <span class="give"><input class="ghours" type="number" min="1" value={seat.amount}
-                      onchange={(e) => { const h = Number((e.target as HTMLInputElement).value); if (h > 0 && h !== seat.amount) {
-                        seat.amount = h; // optimistic; reload reconciles nominal
-                        run(seat.slotId + seat.memberId, () => supabase.rpc('assign', { p_member: seat.memberId, p_slot: seat.slotId, p_hours: h })); } }} />h/{$t('mo')}</span>
-                  {:else}
-                    <span class="give">{seat.amount}h/{$t('mo')}</span>
+                  {#if seat.amount || !seat.gives.length}
+                    {#if sg <= 2}
+                      <span class="give"><input class="ghours" type="number" min="1" value={seat.amount}
+                        onchange={(e) => { const h = Number((e.target as HTMLInputElement).value); if (h > 0 && h !== seat.amount) {
+                          seat.amount = h; // optimistic; reload reconciles nominal
+                          run(seat.slotId + seat.memberId, () => supabase.rpc('assign', { p_member: seat.memberId, p_slot: seat.slotId, p_hours: h })); } }} />h/{$t('mo')}</span>
+                    {:else}
+                      <span class="give">{seat.amount}h/{$t('mo')}</span>
+                    {/if}
                   {/if}
+                  {#each seat.gives as g (g.slotId)}
+                    <span class="give res"><span class="grt">{g.rtype}</span>
+                      {#if sg <= 2}<input class="ghours" type="number" min="1" value={g.amount}
+                        onchange={(e) => { const q = Number((e.target as HTMLInputElement).value); if (q > 0 && q !== g.amount) {
+                          g.amount = q;
+                          run(g.slotId + seat.memberId, () => supabase.rpc('assign', { p_member: seat.memberId, p_slot: g.slotId, p_hours: q })); } }} />{:else}{g.amount}{/if}
+                      {g.unit}/{$t('mo')}</span>
+                  {/each}
                   {#if seat.nominal}<span class="pts">{seat.nominal.toLocaleString()} STR</span>{/if}
                   {#if sg <= 2}<button class="rel" title={$t('Remove')} onclick={() => removeSeat(p, seat)}>×</button>{/if}
                 </div>
@@ -739,7 +770,11 @@
                       <option value="normal">{$t('Author')}</option><option value="first">{$t('First author')}</option>
                       <option value="corresponding">{$t('Co-corresponding')}</option><option value="last">{$t('Last author')}</option>
                     </select>
-                    <input type="number" min="1" bind:value={authorHours[p.id]} placeholder="5" style="width:3.4rem" />h/{$t('mo')}
+                    <select bind:value={authorGive[p.id]} title={$t('Contributes')}>
+                      <option value="">{$t('Hours')} (h)</option>
+                      {#each resourceTypes.filter((r) => r.name !== 'Labor') as r}<option value={r.id}>{r.name}{r.unit ? ` (${r.unit})` : ''}</option>{/each}
+                    </select>
+                    <input type="number" min="1" bind:value={authorHours[p.id]} placeholder="5" style="width:3.4rem" />/{$t('mo')}
                     <button class="bt sm" disabled={busy === 'au' + p.id} onclick={() => addAuthor(p)}>{$t('Add')}</button>
                   </div>
                 </details>
@@ -1157,6 +1192,8 @@
   .acct > summary { list-style: none; cursor: pointer; display: inline-flex; border-radius: 6px; padding: 3px 8px; }
   .acct > summary:hover { background: var(--wash); }
   .acct > summary::-webkit-details-marker { display: none; }
+  .give.res { background: var(--tag-pu-bg); color: var(--tag-pu-tx); border-radius: 4px; padding: 0 6px; }
+  .give.res .grt { font-weight: 500; margin-right: 2px; }
   .np { color: var(--dim2); font-weight: 500; font-size: 13px; }
   .np.meet { font: inherit; font-size: 13px; font-weight: 500; color: var(--dim2); background: none; border: 1px solid var(--line2);
     border-radius: 6px; padding: 3px 10px; cursor: pointer; }

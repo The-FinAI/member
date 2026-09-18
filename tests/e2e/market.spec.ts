@@ -420,7 +420,7 @@ test.describe('market — officer single page', () => {
     await box.locator('> summary').click();
     await box.locator('.ppick input').fill('chan');
     await box.locator('.pp-row', { hasText: 'Chan Min' }).click();
-    await box.locator('select').selectOption('corresponding');
+    await box.locator('select').first().selectOption('corresponding');
     await box.locator('input[type=number]').fill('6');
     await box.getByRole('button', { name: 'Add' }).click();
     const seat = row.locator('.seat', { has: page.locator('.an', { hasText: 'Chan Min' }) });
@@ -574,6 +574,48 @@ test.describe('market — officer single page', () => {
     await page.keyboard.press('Escape');
     await expect(page.locator('.mt')).toHaveCount(0);
     await expect(page.locator('.prow', { hasText: 'mk-MeetingPaper' })).toBeVisible();
+    expect(errs()).toEqual([]);
+  });
+
+  test('M22: an author can contribute a resource instead of hours', async ({ page }) => {
+    const errs = trackErrors(page);
+    await page.goto('/market');
+    await dismissQuest(page);
+    const row = page.locator('.prow', { hasText: 'ml-Tagging' });
+    await ensureOpen(row);
+    const box = row.locator('details.hire', { hasText: 'Add author' });
+    await box.locator('> summary').click();
+    // Li Hua holds no GPU yet: seating her with one records the resource first
+    await box.locator('.ppick input').fill('li hua');
+    await box.locator('.pp-row', { hasText: 'Li Hua' }).click();
+    await box.locator('select').first().selectOption('last');
+    await box.locator('select[title=Contributes]').selectOption({ index: 1 }); // first non-hours resource
+    await box.locator('input[type=number]').fill('8');
+    await box.getByRole('button', { name: 'Add' }).click();
+    const seat = row.locator('div.seat', { has: page.locator('.an', { hasText: 'Li Hua' }) });
+    await expect(seat).toContainText('Last author');
+    // shown as a resource with its own unit — never as hours
+    await expect(seat.locator('.give.res input')).toHaveValue('8');
+    await expect(seat.locator('.give:not(.res)')).toHaveCount(0);
+    // and it does not eat her monthly hours
+    const lrow = page.locator('.p', { has: page.locator('.pname', { hasText: 'Li Hua' }) }).first();
+    await expect(lrow).toContainText('free 10h');
+    // U: change the quantity in place → persists
+    await seat.locator('.give.res input').fill('12');
+    await seat.locator('.give.res input').blur();
+    await page.reload();
+    await dismissQuest(page);
+    const row2 = page.locator('.prow', { hasText: 'ml-Tagging' });
+    await ensureOpen(row2);
+    const seat2 = row2.locator('div.seat', { has: page.locator('.an', { hasText: 'Li Hua' }) });
+    await expect(seat2.locator('.give.res input')).toHaveValue('12');
+    await expect(page.locator('.p', { has: page.locator('.pname', { hasText: 'Li Hua' }) }).first()).toContainText('free 10h');
+    // the meeting's project screen counts her as contributing, not as "0h"
+    await page.getByRole('button', { name: 'Meeting' }).click();
+    const mt = page.locator('.mt');
+    await mt.locator('.card', { hasText: 'ml-Tagging' }).click();
+    await expect(mt.locator('.seat', { hasText: 'Li Hua' }).locator('.gv input')).toHaveValue('12');
+    await expect(mt.locator('.zchip', { hasText: 'Li Hua' })).toHaveCount(0);
     expect(errs()).toEqual([]);
   });
 

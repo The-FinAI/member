@@ -2292,6 +2292,7 @@ const zh: Table = {
   'Saved': '已保存',
   'compute / datasets / funding convert by type': '算力/数据集/资金按类型折算为 STR',
   // 会议模式 · 分会线
+  'Contributes': '贡献',
   'Not registered': '未注册',
   'of {n} people': '共 {n} 人',
   'Capacity unset': '未填容量',

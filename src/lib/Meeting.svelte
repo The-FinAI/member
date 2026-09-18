@@ -5,7 +5,8 @@
   import PersonPick from '$lib/PersonPick.svelte';
   import PersonFocus from '$lib/PersonFocus.svelte';
 
-  type Seat = { memberId: string; name: string; amount: number; nominal: number; slotId: string; authorship: string };
+  type Give = { slotId: string; rtype: string; unit: string; amount: number };
+  type Seat = { memberId: string; name: string; amount: number; nominal: number; slotId: string; authorship: string; gives: Give[] };
   type Slot = { id: string; slot_kind: string; skill: { name: string } | null; resource_type: { name: string } | null; quota: number | null };
   type Proj = { id: string; name: string; status: string; venueYr: string; venueId: string | null; decision: string | null;
     venueNotif: string | null; unitId: string | null; unit: string | null; team: Seat[]; slots: Slot[];
@@ -13,22 +14,23 @@
   type Mem = { id: string; name: string; email: string; unitId: string | null; unit: string | null;
     hours: number | null; used: number; linked: boolean; skills: { id: string; name: string; level: string }[];
     resources: { id: string; name: string; typeName: string; quota: number }[] };
-  type Commit = { projectId: string; projectName: string; authorship: string; amount: number; nominal: number; slotId: string };
+  type Commit = { projectId: string; projectName: string; authorship: string; amount: number; nominal: number; slotId: string; gives: Give[] };
   type Offer = { slotId: string; projectId: string; projectName: string; ask: string; ddl: string; urgent: boolean; match: boolean };
   type Unit = { id: string; name: string };
   type Venue = { id: string; name: string; kind: string; deadline: string | null };
 
   let { projs, mems, wgs, chapters, venues, settled, skills, resourceTypes, gpuModels, stage, decDays, venLabel, busy,
         onclose, onsethours, oncreateproject, onaddmember, onseat, onsetcapacity,
-        onsetskill, onaddresource, onsetquota }: {
+        onsetskill, onaddresource, onsetquota, onsetgive }: {
     projs: Proj[]; mems: Mem[]; wgs: Unit[]; chapters: Unit[]; venues: Venue[]; settled: Record<string, number>;
-    skills: { id: string; name: string }[]; resourceTypes: { id: string; name: string }[]; gpuModels: { id: string; name: string }[];
+    skills: { id: string; name: string }[]; resourceTypes: { id: string; name: string; unit?: string }[]; gpuModels: { id: string; name: string }[];
     stage: (p: Proj) => number; decDays: (d: string | null) => number | null; venLabel: (v: Venue) => string;
     busy: string;
     onclose: () => void;
     onsethours: (p: Proj, s: Seat, h: number) => void;
     oncreateproject: (d: { name: string; unitId: string; venueId: string; firstId: string; hours: number }) => Promise<boolean>;
-    onaddmember: (d: { name: string; affiliation: string; email: string; unitId: string; projectId: string; role: string; hours: number }) => Promise<boolean>;
+    onaddmember: (d: { name: string; affiliation: string; email: string; unitId: string; projectId: string; role: string; give: string; hours: number }) => Promise<boolean>;
+    onsetgive: (memberId: string, slotId: string, qty: number) => void;
     onseat: (slotId: string, memberId: string, hours: number) => void;
     onsetcapacity: (m: Mem, hours: number) => void;
     onsetskill: (memberId: string, skillId: string, level: string | null) => void;
@@ -64,9 +66,13 @@
     for (const p of all) { const k = p.unit ?? $t('Proposal'); const g = m.get(k) ?? { unitId: p.unitId ?? '', items: [] }; g.items.push(p); m.set(k, g); }
     return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([name, g]) => ({ name, ...g }));
   });
+  // contributing a resource is contributing: only someone giving neither hours nor
+  // resources is still to be filled in
+  const isZero = (s: Seat) => !s.amount && !s.gives.length;
+  const needsCap = (x: Mem) => x.hours == null && !x.resources.length;
   const isOver = (x: Mem) => x.hours != null && x.used > x.hours;
   // 分会议程把「要补的」排前面:没填容量 → 超载 → 有余量 → 已排满
-  const weight = (x: Mem) => (x.hours == null ? 0 : isOver(x) ? 1 : (freeOf(x) ?? 0) > 0 ? 2 : 3);
+  const weight = (x: Mem) => (needsCap(x) ? 0 : isOver(x) ? 1 : (freeOf(x) ?? 0) > 0 ? 2 : 3);
   const chGroups = $derived.by(() => {
     const m = new Map<string, { unitId: string; items: Mem[] }>();
     for (const x of mems) { const k = x.unit ?? $t('No chapter'); const g = m.get(k) ?? { unitId: x.unitId ?? '', items: [] }; g.items.push(x); m.set(k, g); }
@@ -82,11 +88,11 @@
   const focusP = $derived(lane === 'wg' ? ((agenda as Proj[])[cur] ?? null) : null);
   const focusM = $derived(lane === 'chapter' ? ((agenda as Mem[])[cur] ?? null) : null);
   const notRegistered = $derived(mems.filter((x) => !x.linked).length);
-  const noHours = $derived(mems.filter((x) => x.hours == null).length);
+  const noHours = $derived(mems.filter(needsCap).length);
   const freePool = $derived(mems.reduce((a, x) => a + Math.max((x.hours ?? 0) - x.used, 0), 0));
   const dueSoon = $derived(all.filter((p) => stage(p) >= 0 && stage(p) < 2 && p.ddlDays != null && p.ddlDays <= 14));
   const openSeats = $derived(all.reduce((a, p) => a + (stage(p) >= 0 && stage(p) < 2 ? p.slots.filter((s) => s.slot_kind !== 'leader').length : 0), 0));
-  const zeroHours = $derived(all.reduce((a, p) => a + p.team.filter((s) => !s.amount).length, 0));
+  const zeroHours = $derived(all.reduce((a, p) => a + p.team.filter(isZero).length, 0));
   const hoursOf = (p: Proj) => p.team.reduce((a, s) => a + s.amount, 0);
   const resultDays = (p: Proj) => decDays(p.decision ?? p.venueNotif);
   const needOf = (p: Proj) => {
@@ -99,7 +105,7 @@
   const askOf = (s: Slot) => s.slot_kind === 'leader' ? $t('First author')
     : (s.resource_type?.name ?? s.skill?.name ?? $t('Hours'));
   const commitsOf = (x: Mem): Commit[] => all.flatMap((p) => p.team.filter((s) => s.memberId === x.id)
-    .map((s) => ({ projectId: p.id, projectName: p.name, authorship: s.authorship, amount: s.amount, nominal: s.nominal, slotId: s.slotId })));
+    .map((s) => ({ projectId: p.id, projectName: p.name, authorship: s.authorship, amount: s.amount, nominal: s.nominal, slotId: s.slotId, gives: s.gives })));
   const offersOf = (x: Mem): Offer[] => {
     const taken = new Set(commitsOf(x).map((c) => c.projectId));
     return all.flatMap((p) => p.slots.map((s) => ({
@@ -147,11 +153,11 @@
 
   // ── 表单草稿(普通对象:响应式草稿会让打开的表单重渲染) ──
   let np = $state({ name: '', unitId: '', venueId: '', firstId: '', hours: '' });
-  let nm = $state({ name: '', affiliation: '', email: '', unitId: '', projectId: '', role: 'normal', hours: '' });
+  let nm = $state({ name: '', affiliation: '', email: '', unitId: '', projectId: '', role: 'normal', give: '', hours: '' });
   function openProject(unitId = '') { np = { name: '', unitId, venueId: '', firstId: '', hours: '' }; sheet = 'project'; }
   function openMember(unitId = '', chapterId = '') {
     const first = all.find((p) => !unitId || p.unitId === unitId);
-    nm = { name: '', affiliation: '', email: '', unitId: chapterId || chapters[0]?.id || '', projectId: first?.id ?? '', role: 'normal', hours: '' };
+    nm = { name: '', affiliation: '', email: '', unitId: chapterId || chapters[0]?.id || '', projectId: first?.id ?? '', role: 'normal', give: '', hours: '' };
     memberWg = unitId; sheet = 'member';
   }
   let memberWg = $state('');
@@ -162,7 +168,7 @@
   async function submitMember() {
     if (!nm.name.trim()) return;
     if (await onaddmember({ name: nm.name.trim(), affiliation: nm.affiliation.trim(), email: nm.email.trim(), unitId: nm.unitId,
-      projectId: nm.projectId, role: nm.role, hours: Number(nm.hours) || 5 })) sheet = '';
+      projectId: nm.projectId, role: nm.role, give: nm.give, hours: Number(nm.hours) || 5 })) sheet = '';
   }
   const people = $derived(mems.map((m) => ({ id: m.id, name: m.name,
     hint: `${m.skills[0]?.name ?? ''}${freeOf(m) != null ? ` · ${$t('free')} ${freeOf(m)}h` : ''}` })));
@@ -228,7 +234,7 @@
               </div>
               <div class="cf">
                 {#if needOf(p)}<span class="chip or">{needOf(p)}</span>{/if}
-                {#if p.team.filter((s) => !s.amount).length}<span class="chip rd">{$t('{n} authors at 0h', { n: p.team.filter((s) => !s.amount).length })}</span>{/if}
+                {#if p.team.filter(isZero).length}<span class="chip rd">{$t('{n} authors at 0h', { n: p.team.filter(isZero).length })}</span>{/if}
               </div>
             </button>
           {/each}
@@ -239,7 +245,7 @@
     <div class="bh">{$t('Chapters')}</div>
     <div class="cards">
       {#each chGroups as c (c.name)}
-        {@const unset = c.items.filter((x) => x.hours == null).length}
+        {@const unset = c.items.filter(needsCap).length}
         {@const over = c.items.filter(isOver).length}
         {@const free = c.items.reduce((a, x) => a + Math.max((x.hours ?? 0) - x.used, 0), 0)}
         <button class="card" onclick={() => goLane('chapter', chGroups.indexOf(c))}>
@@ -276,7 +282,8 @@
           <span class="num idx">{String(i + 1).padStart(2, '0')}</span>
           <span class="rn">{x.name}</span>
           <span class="stc {x.linked ? 'gn' : 'gy'}">{x.linked ? $t('Registered') : $t('Card')}</span>
-          <span class="rv">{#if x.hours == null}<span class="rd">{$t('no hours set')}</span>
+          <span class="rv">{#if x.hours == null && x.resources.length}<span class="pu">{x.resources.map((r) => `${r.typeName} ${r.quota}`).join(' · ')}</span>
+            {:else if x.hours == null}<span class="rd">{$t('no hours set')}</span>
             {:else}<span class="num" class:rd={isOver(x)}>{x.used}h</span><span class="mut"> / {x.hours}h</span>{/if}</span>
           <span class="ri mut">{x.skills.map((k) => k.name).join(' · ') || $t('no skills set')}</span>
           <span class="rt">{#if isOver(x)}<span class="chip rd">{$t('over by')} {x.used - (x.hours ?? 0)}h</span>
@@ -294,7 +301,7 @@
             {#if sg === 2}<span class="num bl"> · {resultDays(p) != null ? $t('result') + ' ' + resultDays(p) + 'd' : ''}</span>
             {:else if p.ddlLabel}<span class="num" class:rd={p.ddlDays != null && p.ddlDays <= 14} class:or={p.ddlDays != null && p.ddlDays > 14 && p.ddlDays <= 70}> · {p.ddlLabel === 'rolling' ? $t('rolling') : p.ddlLabel}</span>{/if}</span>
           <span class="ri mut">{$t('{n} authors', { n: p.team.length })} · <span class="num">{hoursOf(p)}h</span>/{$t('mo')}</span>
-          <span class="rt">{#if needOf(p)}<span class="chip or">{needOf(p)}</span>{:else if p.team.filter((s) => !s.amount).length}<span class="chip rd">{$t('{n} authors at 0h', { n: p.team.filter((s) => !s.amount).length })}</span>{:else}<span class="mut">—</span>{/if}</span>
+          <span class="rt">{#if needOf(p)}<span class="chip or">{needOf(p)}</span>{:else if p.team.filter(isZero).length}<span class="chip rd">{$t('{n} authors at 0h', { n: p.team.filter(isZero).length })}</span>{:else}<span class="mut">—</span>{/if}</span>
         </button>
       {/each}
     </div>
@@ -302,8 +309,8 @@
   {:else if focusP}
     {@const p = focusP}
     {@const sg = stage(p)}
-    {@const zero = p.team.filter((s) => !s.amount)}
-    {@const live = p.team.filter((s) => s.amount)}
+    {@const zero = p.team.filter(isZero)}
+    {@const live = p.team.filter((s) => !isZero(s))}
     <div class="fnav">
       <button class="gh" onclick={prev}>←</button>
       <span class="num">{cur + 1} / {agenda.length}</span>
@@ -326,8 +333,12 @@
             <span class="num idx">{i + 1}</span>
             <button class="lnk sn" onclick={() => goPerson(s.memberId)}>{s.name}</button>
             <span class="rolec {s.authorship === 'first' ? 'rd' : s.authorship === 'corresponding' ? 'bl' : /last/.test(s.authorship) ? 'gn' : ''}">{$t(ROLE[s.authorship] ?? 'Author')}</span>
-            <span class="give"><input class="num" type="number" min="1" value={s.amount}
-              onchange={(e) => { const h = Number((e.target as HTMLInputElement).value); if (h > 0 && h !== s.amount) onsethours(p, s, h); }} />h</span>
+            <span class="give">
+              {#if s.amount}<input class="num" type="number" min="1" value={s.amount}
+                onchange={(e) => { const h = Number((e.target as HTMLInputElement).value); if (h > 0 && h !== s.amount) onsethours(p, s, h); }} />h{/if}
+              {#each s.gives as g (g.slotId)}<span class="gv" title={g.unit}>{g.rtype}<input class="num" type="number" min="1" value={g.amount}
+                onchange={(e) => { const q = Number((e.target as HTMLInputElement).value); if (q > 0 && q !== g.amount) onsetgive(s.memberId, g.slotId, q); }} /></span>{/each}
+            </span>
             <span class="num pts">{s.nominal.toLocaleString()}</span>
           </div>
         {/each}
@@ -357,7 +368,7 @@
     </div>
     <PersonFocus m={x} commits={commitsOf(x)} offers={offersOf(x)} nominal={nominalOf(x)}
       settled={settled[x.id] ?? 0} {busy} {skills} {resourceTypes} {gpuModels}
-      {onsetcapacity} {onsetskill} {onaddresource} {onsetquota} onsethours={seatCommit}
+      {onsetcapacity} {onsetskill} {onaddresource} {onsetquota} {onsetgive} onsethours={seatCommit}
       onseat={(o, mm, h) => onseat(o.slotId, mm.id, h)} onproject={goProject} />
   {/if}
 
@@ -395,8 +406,12 @@
         <div class="three">
           <select bind:value={nm.projectId}><option value="">—</option>{#each all.filter((p) => !memberWg || p.unitId === memberWg) as p}<option value={p.id}>{p.name}</option>{/each}</select>
           <select bind:value={nm.role}><option value="normal">{$t('Author')}</option><option value="first">{$t('First author')}</option><option value="corresponding">{$t('Co-corresponding')}</option><option value="last">{$t('Last author')}</option></select>
-          <label class="inl"><input class="num" type="number" min="1" bind:value={nm.hours} placeholder="5" style="width:4rem" />h/{$t('mo')}</label>
-        </div></div>
+          <label class="inl"><input class="num" type="number" min="1" bind:value={nm.hours} placeholder="5" style="width:4rem" />/{$t('mo')}</label>
+        </div>
+        <select bind:value={nm.give} title={$t('Contributes')}>
+          <option value="">{$t('Contributes')}: {$t('Hours')} (h)</option>
+          {#each resourceTypes.filter((r) => r.name !== 'Labor') as r}<option value={r.id}>{$t('Contributes')}: {r.name}{r.unit ? ` (${r.unit})` : ''}</option>{/each}
+        </select></div>
       <div class="acts"><button class="pri" disabled={busy === 'add'} onclick={submitMember}>{$t('Add member')}</button>
         <button class="gh" onclick={() => (sheet = '')}>{$t('Cancel')}</button></div>
     </div>
@@ -487,13 +502,16 @@
   .fn { font-size: 44px; font-weight: 600; letter-spacing: -.015em; }
   .fcols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 48px; }
   .seats { display: flex; flex-direction: column; }
-  .seat { display: grid; grid-template-columns: 36px 1fr 150px 100px 80px; gap: 12px; align-items: center; padding: 12px 8px; border-bottom: 1px solid #f1f1ef; }
+  .seat { display: grid; grid-template-columns: 36px 1fr 150px minmax(100px, auto) 80px; gap: 12px; align-items: center; padding: 12px 8px; border-bottom: 1px solid #f1f1ef; }
   .sn { font-size: 19px; font-weight: 500; }
   .rolec { font-size: 13px; color: #6b6a66; justify-self: start; border-radius: 4px; padding: 2px 8px; }
   .rolec.rd { background: #ffe2dd; color: #93382a; } .rolec.bl { background: #d3e5ef; color: #2b5a75; } .rolec.gn { background: #dbeddb; color: #1c513f; }
   .give { justify-self: end; font-size: 17px; }
   .give input, .zchip input { font: inherit; font-size: 17px; width: 4rem; text-align: right; border: 1px solid transparent; border-radius: 4px; padding: 2px 4px; background: none; }
   .give input:hover, .give input:focus, .zchip input:hover, .zchip input:focus { border-color: #e9e9e7; background: #fff; outline: none; }
+  .gv { display: inline-flex; align-items: center; gap: 2px; font-size: 13px; background: #e8deee; color: #5a4a72; border-radius: 4px; padding: 1px 2px 1px 8px; margin-left: 6px; }
+  .gv input { width: 3.2rem !important; font-size: 14px !important; }
+  .pu { color: #5a4a72; }
   .pts { justify-self: end; font-size: 14px; color: #6f5615; background: #fdecc8; border-radius: 4px; padding: 2px 8px; }
   .zeros { display: flex; flex-direction: column; gap: 10px; padding-top: 12px; }
   .zt { font-size: 13px; color: #93382a; font-weight: 600; }

@@ -465,6 +465,9 @@ function rpc(name: string, a: any) {
     if (!canSeatMemberMock(me, a.p_member))
       return Promise.resolve({ data: null, error: { message: "only the member's chapter officer (or an admin) can assign them" } });
     const s = seed.project_slot.find((x) => x.id === a.p_slot);
+    // mirrors assign(): a resource seat is only open to someone holding that resource type
+    if (s?.slot_kind === 'work_resource' && !(seed.resource ?? []).some((r: any) => r.holder_member_id === a.p_member && r.type_id === s.resource_type_id && (r.scope ?? 'member') === 'member'))
+      return Promise.resolve({ data: null, error: { message: 'this person holds no resource of that type' } });
     // mirrors work_seat's upsert on (slot_id, member_id, year_month)
     const ex = seed.work_commitment.find((w) => w.slot_id === a.p_slot && w.member_id === a.p_member && w.year_month === '2026-06');
     if (ex) { ex.monthly_amount = a.p_hours; ex.nominal_str = Math.round(a.p_hours * 10); }
