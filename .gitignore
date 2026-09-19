@@ -5,9 +5,10 @@ node_modules/
 .env
 .env.*
 !.env.example
+# placeholder-only config for the local mock world — no secrets in it
+!.env.mock
 .DS_Store
 supabase/.temp/
-.env.mock
 test-results/
 playwright-report/
 .playwright/
