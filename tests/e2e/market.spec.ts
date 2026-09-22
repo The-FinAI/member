@@ -541,12 +541,34 @@ test.describe('market — officer single page', () => {
     await expect(mt.locator('.fn')).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(mt).toHaveAttribute('data-view', 'agenda');
-    // set hours on a seated author straight from focus
+    // the project screen edits the project, not just hours: stage, role, seats, openings
     await mt.locator('.row', { hasText: 'ml-Tagging' }).click();
     const zhao = mt.locator('.seat', { hasText: 'Zhao Lei' });
-    await zhao.locator('input').fill('7');
-    await zhao.locator('input').blur();
-    await expect(mt.locator('.seat', { hasText: 'Zhao Lei' }).locator('input')).toHaveValue('7');
+    await zhao.locator('input.num').first().fill('7');
+    await zhao.locator('input.num').first().blur();
+    await expect(mt.locator('.seat', { hasText: 'Zhao Lei' }).locator('input.num').first()).toHaveValue('7');
+    await mt.locator('.seat', { hasText: 'Zhao Lei' }).locator('select.rsel').selectOption('last');
+    await expect(mt.locator('.seat', { hasText: 'Zhao Lei' }).locator('select.rsel')).toHaveValue('last');
+    await mt.locator('.ctl select').first().selectOption({ label: 'Active' });
+    await expect(mt.locator('.ft .stc')).toHaveText('Active');
+    // seat someone on the open first-author seat from here
+    const lead = mt.locator('.seat.open', { hasText: 'First author' }).first();
+    await lead.locator('.ppick input').fill('fang');
+    await lead.locator('.pp-row', { hasText: 'Wang Fang' }).click();
+    await lead.getByRole('button', { name: 'Seat' }).click();
+    await expect(mt.locator('.seat', { hasText: 'Wang Fang' }).locator('select.rsel')).toHaveValue('first');
+    // post a new opening and close it again
+    const openRow = mt.locator('.addrow', { hasText: 'Opening' });
+    await openRow.locator('select').first().selectOption('corresponding');
+    await openRow.locator('input').fill('6');
+    await openRow.getByRole('button', { name: 'Add' }).click();
+    const newSlot = mt.locator('.seat.open', { hasText: '6h/mo' });
+    await expect(newSlot).toBeVisible();
+    await newSlot.locator('.rel').click();
+    await expect(mt.locator('.seat.open', { hasText: '6h/mo' })).toHaveCount(0);
+    // remove the seat we just filled
+    await mt.locator('.seat', { hasText: 'Wang Fang' }).locator('.rel').click();
+    await expect(mt.locator('.seat', { hasText: 'Wang Fang' })).toHaveCount(0);
     // new project from the sheet, first author seated in one step
     await mt.getByRole('button', { name: '+ Project' }).first().click();
     const sheet = mt.locator('.sheet');
@@ -657,7 +679,7 @@ test.describe('market — officer single page', () => {
     await expect(mt.locator('.seat .lnk', { hasText: offer!.trim() })).toBeVisible();
     // the other lens: the project link jumps to that project's screen
     await mt.locator('.seat .lnk', { hasText: offer!.trim() }).click();
-    await expect(mt.locator('.fn')).toHaveText(offer!.trim());
+    await expect(mt.locator('input.fn')).toHaveValue(offer!.trim()); // project title is editable now
     await expect(mt.locator('.seat', { hasText: 'Pei Lan' })).toBeVisible();
     // back out to the page; the capacity stuck
     await page.keyboard.press('Escape');

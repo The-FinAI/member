@@ -507,6 +507,29 @@
     s.amount = h; // optimistic; reload reconciles nominal
     run(s.slotId + s.memberId, () => supabase.rpc('assign', { p_member: s.memberId, p_slot: s.slotId, p_hours: h }));
   }
+  // 会议模式的项目页要能做市场行能做的一切 — 同一批 RPC,不另起炉灶
+  const meetingActs = {
+    setStatus: (p: Proj, sid: string) => setStatus(p, sid),
+    setDeadline: (p: Proj, d: string) => run('dd' + p.id, () => supabase.rpc('project_set_deadline', { p_project: p.id, p_deadline: d || null })),
+    setVenue: (p: Proj, v: string) => { if (v !== (p.venueId ?? '')) run('e' + p.id, () => supabase.rpc('project_set_venue', { p_project: p.id, p_venue: v || null })); },
+    setUnit: (p: Proj, u: string) => { if (u !== (p.unitId ?? '')) run('e' + p.id, () => supabase.rpc('project_set_org_unit', { p_project: p.id, p_unit: u || null })); },
+    rename: (p: Proj, nm: string) => run('e' + p.id, () => supabase.rpc('project_rename', { p_project: p.id, p_name: nm })),
+    setSeatRole: (p: Proj, memberId: string, role: string) => run('rl' + memberId, () => supabase.rpc('seat_set_role', { p_project: p.id, p_member: memberId, p_authorship: role })),
+    removeSeat: (p: Proj, s: Seat) => removeSeat(p, s),
+    setSlotRole: (slotId: string, role: string) => setRole(slotId, role),
+    closeSlot: (slotId: string) => run(slotId, () => supabase.rpc('slot_close', { p_slot: slotId })),
+    assign: (slotId: string, memberId: string, qty: number) => run(slotId, () => supabase.rpc('assign', { p_member: memberId, p_slot: slotId, p_hours: qty })),
+    addOpening: (p: Proj, role: string, need: string, qty: number) => {
+      const isRes = need.startsWith('rt:');
+      run('open' + p.id, () => supabase.rpc('forge_need', {
+        p_project: p.id, p_kind: isRes ? 'work_resource' : 'work_labor',
+        p_skill: !isRes && need ? need : null, p_resource_type: isRes ? need.slice(3) : null,
+        p_level: null, p_capacity: qty, p_headcount: 1, p_authorship: role || 'normal' }));
+    },
+    addAuthor: async (projectId: string, memberId: string, role: string, give: string, qty: number) => {
+      busy = 'au' + projectId; await seatAuthor(projectId, memberId, role, give, qty); busy = ''; await load();
+    }
+  };
   // 分会线:当场把人放到空位上 / 补月度容量 / 补技能与资源(右侧「能接的位子」按技能匹配)
   function meetingSetSkill(memberId: string, skillId: string, level: string | null) {
     run(memberId, () => supabase.rpc('person_skill_set', { p_skill: skillId, p_level: level, p_member: memberId }));
@@ -608,6 +631,7 @@
       {skills} {resourceTypes} {gpuModels} {stage} {decDays} {venLabel} {busy}
       onsetskill={meetingSetSkill} onaddresource={meetingAddResource} onsetquota={setQuota}
       onsetgive={(memberId, slotId, qty) => run(slotId + memberId, () => supabase.rpc('assign', { p_member: memberId, p_slot: slotId, p_hours: qty }))}
+      acts={meetingActs} statuses={orderedStatuses}
       onclose={() => (meeting = false)} onsethours={meetingSetHours} onseat={meetingSeat}
       onsetcapacity={meetingSetCapacity}
       oncreateproject={meetingCreateProject} onaddmember={meetingAddMember} />

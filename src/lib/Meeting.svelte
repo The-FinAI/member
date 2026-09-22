@@ -7,7 +7,17 @@
 
   type Give = { slotId: string; rtype: string; unit: string; amount: number };
   type Seat = { memberId: string; name: string; amount: number; nominal: number; slotId: string; authorship: string; gives: Give[] };
-  type Slot = { id: string; slot_kind: string; skill: { name: string } | null; resource_type: { name: string } | null; quota: number | null };
+  type Slot = { id: string; slot_kind: string; authorship: string | null; skill: { name: string } | null; resource_type: { name: string } | null; quota: number | null };
+  // everything the market row can do to a project, so the meeting screen can too
+  type Acts = {
+    setStatus: (p: Proj, statusId: string) => void; setDeadline: (p: Proj, date: string) => void;
+    setVenue: (p: Proj, venueId: string) => void; setUnit: (p: Proj, unitId: string) => void; rename: (p: Proj, name: string) => void;
+    setSeatRole: (p: Proj, memberId: string, role: string) => void; removeSeat: (p: Proj, s: Seat) => void;
+    setSlotRole: (slotId: string, role: string) => void; closeSlot: (slotId: string) => void;
+    assign: (slotId: string, memberId: string, qty: number) => void;
+    addOpening: (p: Proj, role: string, need: string, qty: number) => void;
+    addAuthor: (projectId: string, memberId: string, role: string, give: string, qty: number) => void;
+  };
   type Proj = { id: string; name: string; status: string; venueYr: string; venueId: string | null; decision: string | null;
     venueNotif: string | null; unitId: string | null; unit: string | null; team: Seat[]; slots: Slot[];
     pool: number; ddlDays: number | null; ddlLabel: string };
@@ -21,7 +31,7 @@
 
   let { projs, mems, wgs, chapters, venues, settled, skills, resourceTypes, gpuModels, stage, decDays, venLabel, busy,
         onclose, onsethours, oncreateproject, onaddmember, onseat, onsetcapacity,
-        onsetskill, onaddresource, onsetquota, onsetgive }: {
+        onsetskill, onaddresource, onsetquota, onsetgive, acts, statuses }: {
     projs: Proj[]; mems: Mem[]; wgs: Unit[]; chapters: Unit[]; venues: Venue[]; settled: Record<string, number>;
     skills: { id: string; name: string }[]; resourceTypes: { id: string; name: string; unit?: string }[]; gpuModels: { id: string; name: string }[];
     stage: (p: Proj) => number; decDays: (d: string | null) => number | null; venLabel: (v: Venue) => string;
@@ -36,7 +46,11 @@
     onsetskill: (memberId: string, skillId: string, level: string | null) => void;
     onaddresource: (memberId: string, typeId: string, qty: number, gpuModelId: string | null) => void;
     onsetquota: (resourceId: string, qty: number) => void;
+    acts: Acts; statuses: { id: string; name: string }[];
   } = $props();
+  // drafts for the project screen's add boxes — plain objects (see np/nm)
+  const pd = { authorId: '', authorRole: 'normal', authorGive: '', authorQty: '', openRole: 'normal', openNeed: '', openQty: '', pick: {} as Record<string, string>, qty: {} as Record<string, string> };
+  const roleCls = (r: string) => (r === 'first' ? 'rd' : r === 'corresponding' ? 'bl' : /last/.test(r) ? 'gn' : '');
 
   const STEPS = ['Start', 'Active', 'In review', 'Accepted'];
   const STC = ['or', 'gn', 'bl', 'yl'];
@@ -317,7 +331,22 @@
       <button class="gh" onclick={next}>→</button>
       <span class="mut">{p.unit ?? $t('Proposal')}</span>
     </div>
-    <div class="ft"><span class="fn">{p.name}</span><span class="stc lg {sg >= 0 ? STC[Math.min(sg, 3)] : 'gy'}">{$t(sg >= 0 ? STEPS[Math.min(sg, 3)] : 'On hold')}</span></div>
+    <div class="ft">
+      <input class="fn fnin" value={p.name} title={$t('Rename')}
+        onchange={(e) => { const v = (e.target as HTMLInputElement).value.trim(); if (v && v !== p.name) acts.rename(p, v); }} />
+      <span class="stc lg {sg >= 0 ? STC[Math.min(sg, 3)] : 'gy'}">{$t(sg >= 0 ? STEPS[Math.min(sg, 3)] : 'On hold')}</span>
+    </div>
+    <div class="ctl">
+      <label>{$t('Stage')}<select value={statuses.find((x) => x.name === p.status)?.id ?? ''} disabled={busy === 'st' + p.id}
+        onchange={(e) => acts.setStatus(p, (e.target as HTMLSelectElement).value)}>
+        {#each statuses as x}<option value={x.id}>{$t(x.name)}</option>{/each}</select></label>
+      <label>{$t('Working group')}<select value={p.unitId ?? ''} onchange={(e) => acts.setUnit(p, (e.target as HTMLSelectElement).value)}>
+        <option value="">{$t('Proposal (no group)')}</option>{#each wgs as u}<option value={u.id}>{u.name}</option>{/each}</select></label>
+      <label>{$t('Venue')}<select value={p.venueId ?? ''} onchange={(e) => acts.setVenue(p, (e.target as HTMLSelectElement).value)}>
+        <option value="">{$t('TBD')}</option>{#each venues as v}<option value={v.id}>{venLabel(v)}</option>{/each}</select></label>
+      {#if sg === 2}<label>{$t('Result date')}<input type="date" value={p.decision ?? p.venueNotif ?? ''}
+        onchange={(e) => acts.setDeadline(p, (e.target as HTMLInputElement).value)} /></label>{/if}
+    </div>
     <div class="tiles four">
       <div class="tile"><div class="tl">{$t('Venue')}</div><div class="tv2">{p.venueYr || $t('TBD')}</div></div>
       <div class="tile"><div class="tl">{sg === 2 ? $t('Result') : $t('Deadline')}</div>
@@ -332,17 +361,75 @@
           <div class="seat">
             <span class="num idx">{i + 1}</span>
             <button class="lnk sn" onclick={() => goPerson(s.memberId)}>{s.name}</button>
-            <span class="rolec {s.authorship === 'first' ? 'rd' : s.authorship === 'corresponding' ? 'bl' : /last/.test(s.authorship) ? 'gn' : ''}">{$t(ROLE[s.authorship] ?? 'Author')}</span>
+            {#if sg <= 2}
+              <select class="rolec rsel {roleCls(s.authorship)}" value={s.authorship}
+                onchange={(e) => { const v = (e.target as HTMLSelectElement).value; s.authorship = v; acts.setSeatRole(p, s.memberId, v); }}>
+                <option value="normal">{$t('Author')}</option><option value="first">{$t('First author')}</option>
+                <option value="corresponding">{$t('Co-corresponding')}</option><option value="last">{$t('Last author')}</option>
+              </select>
+            {:else}<span class="rolec {roleCls(s.authorship)}">{$t(ROLE[s.authorship] ?? 'Author')}</span>{/if}
             <span class="give">
               {#if s.amount}<input class="num" type="number" min="1" value={s.amount}
                 onchange={(e) => { const h = Number((e.target as HTMLInputElement).value); if (h > 0 && h !== s.amount) onsethours(p, s, h); }} />h{/if}
               {#each s.gives as g (g.slotId)}<span class="gv" title={g.unit}>{g.rtype}<input class="num" type="number" min="1" value={g.amount}
                 onchange={(e) => { const q = Number((e.target as HTMLInputElement).value); if (q > 0 && q !== g.amount) onsetgive(s.memberId, g.slotId, q); }} /></span>{/each}
             </span>
-            <span class="num pts">{s.nominal.toLocaleString()}</span>
+            <span class="pts-x"><span class="num pts">{s.nominal.toLocaleString()}</span>
+              {#if sg <= 2}<button class="rel" title={$t('Remove')} onclick={() => acts.removeSeat(p, s)}>×</button>{/if}</span>
           </div>
         {/each}
-        {#if !live.length}<div class="mut">{$t('no members yet')}</div>{/if}
+        {#if !live.length && !zero.length}<div class="mut">{$t('no members yet')}</div>{/if}
+
+        {#each p.slots.filter((x) => x.slot_kind !== 'leader' || sg <= 2) as sl (sl.id)}
+          <div class="seat open">
+            <span class="num idx mut">○</span>
+            <span class="ask"><span class="mut">{askOf(sl)}{#if sl.quota} · {sl.quota}{sl.slot_kind === 'work_resource' ? '' : 'h'}/{$t('mo')}{/if}</span></span>
+            {#if sg <= 2}
+              <select class="rolec rsel {roleCls(sl.authorship ?? (sl.slot_kind === 'leader' ? 'first' : 'normal'))}"
+                value={sl.authorship ?? (sl.slot_kind === 'leader' ? 'first' : 'normal')}
+                onchange={(e) => acts.setSlotRole(sl.id, (e.target as HTMLSelectElement).value)}>
+                <option value="normal">{$t('Author')}</option><option value="first">{$t('First author')}</option>
+                <option value="corresponding">{$t('Co-corresponding')}</option><option value="last">{$t('Last author')}</option>
+              </select>
+              <span class="fill">
+                <PersonPick placeholder={$t('Choose member')} {people} onpick={(id) => (pd.pick[sl.id] = id)} />
+                <input class="num" type="number" min="1" placeholder={String(sl.quota ?? 5)} bind:value={pd.qty[sl.id]} style="width:3.4rem" />
+                <button class="gh sm" disabled={busy === sl.id}
+                  onclick={() => { const m = pd.pick[sl.id]; if (m) acts.assign(sl.id, m, Number(pd.qty[sl.id]) || Number(sl.quota) || 5); }}>{$t('Seat')}</button>
+              </span>
+              <span class="pts-x"><button class="rel" title={$t('Close opening')} onclick={() => acts.closeSlot(sl.id)}>×</button></span>
+            {:else}<span class="rolec {roleCls(sl.authorship ?? 'normal')}">{$t(ROLE[sl.authorship ?? 'normal'] ?? 'Author')}</span><span></span><span></span>{/if}
+          </div>
+        {/each}
+
+        {#if sg <= 2}
+          <div class="addbox">
+            <div class="addrow"><span class="al">+ {$t('Author')}</span>
+              <PersonPick placeholder={$t('Search member…')} {people} onpick={(id) => (pd.authorId = id)} />
+              <select bind:value={pd.authorRole}>
+                <option value="normal">{$t('Author')}</option><option value="first">{$t('First author')}</option>
+                <option value="corresponding">{$t('Co-corresponding')}</option><option value="last">{$t('Last author')}</option></select>
+              <select bind:value={pd.authorGive} title={$t('Contributes')}>
+                <option value="">{$t('Hours')} (h)</option>
+                {#each resourceTypes.filter((r) => r.name !== 'Labor') as r}<option value={r.id}>{r.name}{r.unit ? ` (${r.unit})` : ''}</option>{/each}</select>
+              <input class="num" type="number" min="1" placeholder="5" bind:value={pd.authorQty} style="width:3.4rem" />
+              <button class="gh sm" disabled={busy === 'au' + p.id}
+                onclick={() => { if (pd.authorId) acts.addAuthor(p.id, pd.authorId, pd.authorRole, pd.authorGive, Number(pd.authorQty) || 5); }}>{$t('Add')}</button>
+            </div>
+            <div class="addrow"><span class="al">+ {$t('Opening')}</span>
+              <select bind:value={pd.openRole}>
+                <option value="normal">{$t('Author')}</option><option value="first">{$t('First author')}</option>
+                <option value="corresponding">{$t('Co-corresponding')}</option><option value="last">{$t('Last author')}</option></select>
+              <select bind:value={pd.openNeed} title={$t('Needs')}>
+                <option value="">{$t('Hours')}</option>
+                {#each skills as sk}<option value={sk.id}>{sk.name}</option>{/each}
+                {#each resourceTypes.filter((r) => r.name !== 'Labor') as r}<option value={'rt:' + r.id}>{r.name} ({$t('resource')})</option>{/each}</select>
+              <input class="num" type="number" min="1" placeholder="8" bind:value={pd.openQty} style="width:3.4rem" />
+              <button class="gh sm" disabled={busy === 'open' + p.id}
+                onclick={() => acts.addOpening(p, pd.openRole, pd.openNeed, Number(pd.openQty) || 8)}>{$t('Add')}</button>
+            </div>
+          </div>
+        {/if}
       </div>
       <div class="zeros">
         {#if zero.length}
@@ -498,9 +585,31 @@
   .rt { justify-self: start; }
   .fnav { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
   .fnav .num { font-size: 15px; color: #9b9a97; }
-  .ft { display: flex; align-items: baseline; gap: 20px; margin-bottom: 22px; }
+  .ft { display: flex; align-items: baseline; gap: 20px; margin-bottom: 14px; }
+  .fnin { font: inherit; font-size: 44px; font-weight: 600; letter-spacing: -.015em; border: 1px solid transparent; border-radius: 6px;
+    padding: 0 6px; margin-left: -6px; background: none; color: inherit; min-width: 0; flex: 0 1 36rem; }
+  .fnin:hover, .fnin:focus { border-color: #e9e9e7; background: #fff; outline: none; }
+  .ctl { display: flex; flex-wrap: wrap; gap: 10px 22px; margin-bottom: 22px; }
+  .ctl label { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: #6b6a66; }
+  .ctl select, .ctl input { font: inherit; font-size: 15px; border: 1px solid #e9e9e7; border-radius: 6px; padding: 5px 10px; background: #fff; color: #37352f; max-width: 22rem; }
+  .rsel { font: inherit; border: 0; cursor: pointer; appearance: auto; }
+  .pts-x { justify-self: end; display: inline-flex; align-items: center; gap: 6px; }
+  .rel { font: inherit; background: none; border: 0; color: #9b9a97; cursor: pointer; font-weight: 600; padding: 0 4px; }
+  .rel:hover { color: #93382a; }
+  .seat.open { grid-template-columns: 36px minmax(0, 1fr) 150px minmax(0, 2fr) 40px; }
+  .seat.open > * { min-width: 0; }
+  .seat.open .ask { font-size: 15px; }
+  .fill { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; }
+  .fill :global(.ppick) { flex: 1; min-width: 8rem; }
+  .fill :global(.ppick input), .fill input { font: inherit; font-size: 14px; border: 1px solid #e9e9e7; border-radius: 6px; padding: 4px 8px; width: 100%; box-sizing: border-box; }
+  .addbox { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+  .addrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .addrow .al { font-size: 13px; color: #6b6a66; min-width: 5rem; }
+  .addrow :global(.ppick) { min-width: 10rem; }
+  .addrow :global(.ppick input), .addrow select, .addrow input { font: inherit; font-size: 14px; border: 1px solid #e9e9e7; border-radius: 6px; padding: 5px 8px; background: #fff; color: #37352f; }
   .fn { font-size: 44px; font-weight: 600; letter-spacing: -.015em; }
-  .fcols { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 48px; }
+  .fcols { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: 0 40px; }
+  .seats, .zeros { min-width: 0; }
   .seats { display: flex; flex-direction: column; }
   .seat { display: grid; grid-template-columns: 36px 1fr 150px minmax(100px, auto) 80px; gap: 12px; align-items: center; padding: 12px 8px; border-bottom: 1px solid #f1f1ef; }
   .sn { font-size: 19px; font-weight: 500; }
