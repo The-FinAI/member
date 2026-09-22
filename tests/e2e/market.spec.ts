@@ -549,8 +549,8 @@ test.describe('market — officer single page', () => {
     await expect(mt.locator('.seat', { hasText: 'Zhao Lei' }).locator('input.num').first()).toHaveValue('7');
     await mt.locator('.seat', { hasText: 'Zhao Lei' }).locator('select.rsel').selectOption('last');
     await expect(mt.locator('.seat', { hasText: 'Zhao Lei' }).locator('select.rsel')).toHaveValue('last');
-    await mt.locator('.ctl select').first().selectOption({ label: 'Active' });
-    await expect(mt.locator('.ft .stc')).toHaveText('Active');
+    await mt.locator('.ctl select').first().selectOption({ label: 'Work in progress' });
+    await expect(mt.locator('.ft .stc')).toHaveText('Active'); // stage label for that status
     // seat someone on the open first-author seat from here
     const lead = mt.locator('.seat.open', { hasText: 'First author' }).first();
     await lead.locator('.ppick input').fill('fang');

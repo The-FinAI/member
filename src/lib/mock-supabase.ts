@@ -114,11 +114,14 @@ const seed: Record<string, any[]> = {
   ],
   project_type: [{ id: 'pt-1', name: 'Dataset', leader_stake: 0 }],
   project_status: [
+    // the production catalogue, name for name — a status the mock has and prod
+    // lacks (or the reverse) lets a test pass in one lane and hang in the other
     { id: 'ps-prop', name: 'Proposal', rank: 1, is_active: true },
-    { id: 'ps-active', name: 'Active', rank: 2, is_active: true },
-    { id: 'ps-review', name: 'Under review', rank: 3, is_active: true },
-    { id: 'ps-hold', name: 'Hold', rank: 4, is_active: false },
-    { id: 'ps-fin', name: 'Finished', rank: 5, is_active: false }
+    { id: 'ps-data', name: 'Data Collecting', rank: 2, is_active: true },
+    { id: 'ps-active', name: 'Work in progress', rank: 3, is_active: true },
+    { id: 'ps-review', name: 'Under review', rank: 4, is_active: true },
+    { id: 'ps-fin', name: 'Finished', rank: 5, is_active: false },
+    { id: 'ps-hold', name: 'Hold', rank: 6, is_active: false }
   ],
   venue: [
     { id: 'v-acl', name: 'ACL', kind: 'conference', deadline: '2026-01-05', notification: '2026-11-20', rank: 1 },
