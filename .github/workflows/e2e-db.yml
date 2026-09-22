@@ -107,3 +107,10 @@ jobs:
           npm install --no-audit --no-fund
           npx playwright install --with-deps chromium
           npx playwright test
+      - name: failure snapshots
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-db-test-results
+          path: test-results/
+          if-no-files-found: ignore
