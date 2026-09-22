@@ -552,7 +552,8 @@ test.describe('market — officer single page', () => {
     await mt.locator('.ctl select').first().selectOption({ label: 'Work in progress' });
     await expect(mt.locator('.ft .stc')).toHaveText('Active'); // stage label for that status
     // seat someone on the open first-author seat from here
-    const lead = mt.locator('.seat.open', { hasText: 'First author' }).first();
+    // anchor on the ask text — 'First author' is also an option in every role select
+    const lead = mt.locator('.seat.open', { has: page.locator('.ask', { hasText: 'First author' }) });
     await lead.locator('.ppick input').fill('fang');
     await lead.locator('.pp-row', { hasText: 'Wang Fang' }).click();
     await lead.getByRole('button', { name: 'Seat' }).click();

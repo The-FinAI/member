@@ -380,7 +380,7 @@
         {/each}
         {#if !live.length && !zero.length}<div class="mut">{$t('no members yet')}</div>{/if}
 
-        {#each p.slots.filter((x) => x.slot_kind !== 'leader' || sg <= 2) as sl (sl.id)}
+        {#each p.slots.filter((x) => x.slot_kind !== 'leader' || sg <= 2).sort((a, b) => Number(b.slot_kind === 'leader') - Number(a.slot_kind === 'leader')) as sl (sl.id)}
           <div class="seat open">
             <span class="num idx mut">○</span>
             <span class="ask"><span class="mut">{askOf(sl)}{#if sl.quota} · {sl.quota}{sl.slot_kind === 'work_resource' ? '' : 'h'}/{$t('mo')}{/if}</span></span>
