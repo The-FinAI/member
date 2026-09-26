@@ -10,7 +10,7 @@ insert into venue (name, kind, deadline, notification, rank) values
   ('ACL', 'conference', '2026-01-05', '2026-11-20', 1),
   ('ICLR', 'conference', '2025-09-24', null, 2),
   ('IPM', 'journal', null, null, 3),
-  ('ARR', 'rolling', null, null, 4);
+  ('ARR 2026-10', 'rolling', '2026-10-12', '2026-12-17', 4);
 
 insert into skill (id, name, parent_id) values
   ('b0000000-0000-0000-0000-00000000000d', 'Data', null),

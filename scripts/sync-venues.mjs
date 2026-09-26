@@ -14,7 +14,8 @@ const ALLCONF = 'https://ccfddl.com/conference/allconf.yml';
 const ALIAS = { MM: 'ACM MM' };
 // venues with their own cycle pages (bypass ccfddl entirely)
 const SPECIAL = {
-  ARR: async () => {
+  // 'ARR' → the next cycle; 'ARR 2026-10' → that cycle's own dates (one venue per cycle)
+  ARR: async (name = 'ARR') => {
     const html = await get('https://aclrollingreview.org/dates');
     const MONTHS_FULL = { january:1, february:2, march:3, april:4, may:5, june:6, july:7, august:8, september:9, october:10, november:11, december:12 };
     const iso = (y, m, d) => `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
@@ -37,6 +38,11 @@ const SPECIAL = {
       if (submission) cycles.push({ submission, notif });
     }
     cycles.sort((a, b) => a.submission.localeCompare(b.submission));
+    const want = name.match(/(\d{4}-\d{2})$/)?.[1];
+    if (want) {
+      const c = cycles.find((x) => x.submission.startsWith(want));
+      return c ? { deadline: c.submission, notification: c.notif ?? null, source: 'aclrollingreview.org/dates' } : null;
+    }
     const next = cycles.find((c) => c.submission >= today) ?? cycles.at(-1);
     return next ? { deadline: next.submission, notification: next.notif ?? null, source: 'aclrollingreview.org/dates' } : null;
   }
@@ -141,14 +147,15 @@ if (KEY) {
   const r = await fetch(`${SUPABASE_URL}/rest/v1/venue?select=id,name,kind`, { dispatcher, headers });
   venues = await r.json();
 } else {
-  venues = ['AAAI', 'ACL', 'ARR', 'COLM', 'EMNLP', 'ICLR', 'ICML', 'MM', 'NeurIPS', 'WWW'].map((name) => ({ id: null, name, kind: 'conference' }));
+  venues = ['AAAI', 'ACL', 'ARR 2026-08', 'ARR 2026-10', 'ARR 2027-01', 'COLM', 'EMNLP', 'ICLR', 'ICML', 'MM', 'NeurIPS', 'WWW'].map((name) => ({ id: null, name, kind: 'conference' }));
 }
 
 for (const v of venues) {
   if (v.kind === 'journal') continue;
-  if (SPECIAL[v.name]) {
+  const special = SPECIAL[v.name] ?? (/^ARR \d{4}-\d{2}$/.test(v.name) ? SPECIAL.ARR : null);
+  if (special) {
     try {
-      const r = await SPECIAL[v.name]();
+      const r = await special(v.name);
       if (r) {
         console.log(`- ${v.name}: deadline ${r.deadline}` + (r.notification ? ` · notification ${r.notification}` : ' · notification TBA') + ` (${r.source})`);
         if (KEY && v.id) {
@@ -159,7 +166,7 @@ for (const v of venues) {
           });
           if (!w.ok) console.error(`  ! write failed: ${w.status}`);
         }
-      } else console.log(`- ${v.name}: cycle page yielded nothing`);
+      } else console.log(`- ${v.name}: cycle not on the official table yet`);
     } catch (e) { console.log(`- ${v.name}: cycle page failed: ${String(e).slice(0, 80)}`); }
     continue;
   }

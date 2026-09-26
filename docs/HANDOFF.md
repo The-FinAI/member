@@ -188,8 +188,12 @@ verified OpenReview affiliation, with a placeholder email and
 **as token sets** — "Yi Han" and "Han Yi" are the same person and once became two.
 
 **Venue dates.** `sync-venues.mjs` takes deadlines from ccfddl and scrapes each
-conference's own site for the notification date; ARR is special-cased from its
-official cycle table. Run locally for a dry run; CI writes with the service key.
+conference's own site for the notification date. **ARR is one venue per cycle**
+(`ARR 2026-08`, `ARR 2026-10`, `ARR 2027-01`, …): a project stays in the cycle it
+was submitted to. The script fills each cycle's dates from the official table by
+name; a cycle not on the table yet keeps null dates and shows as TBD. To open a
+new cycle, add the venue (`+ New venue`, kind rolling, name `ARR YYYY-MM`) — the
+next Monday sync dates it. Run locally for a dry run; CI writes with the service key.
 
 **Announcing a change to officers.** Current officers:
 `org_unit_officer where ended_on is null`. Screenshots from

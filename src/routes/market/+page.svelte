@@ -69,7 +69,15 @@
     if (kind === 'journal') return { label: 'rolling', days: 999, year: null, cycle: null };
     const today = new Date(); today.setHours(0, 0, 0, 0);
     if (kind === 'rolling') {
-      // ARR-style cycles: the deadline IS the next cycle (weekly sync keeps it
+      // one venue per cycle ('ARR 2026-10'): the name carries the cycle, the
+      // deadline is that cycle's; a passed deadline never rolls by a year
+      if (/\d{4}-\d{2}$/.test(name)) {
+        if (!deadline) return { label: '', days: null, year: null, cycle: null };
+        const d = new Date(deadline + 'T00:00:00'); const today = new Date(); today.setHours(0, 0, 0, 0);
+        const days = Math.round((d.getTime() - today.getTime()) / 86400000);
+        return days < 0 ? { label: '', days: null, year: null, cycle: null } : { label: `${days}d`, days, year: null, cycle: null };
+      }
+      // legacy single 'ARR' row: the deadline IS the next cycle (weekly sync keeps it
       // fresh); a passed cycle never rolls by a year — the next one is ~10 weeks
       if (!deadline) return { label: '', days: null, year: null, cycle: null };
       const d = new Date(deadline + 'T00:00:00');
